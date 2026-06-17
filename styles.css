@@ -1154,6 +1154,15 @@ section { padding: 100px 0; }
 }
 .footer__bottom a:hover { color: var(--white); }
 
+.footer__powered {
+  flex-basis: 100%;
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.22);
+}
+.footer__powered a { color: rgba(255,255,255,0.3); }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {
   .nav { padding: 18px 28px; }
