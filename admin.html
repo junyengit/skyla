@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Skyla</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="admin-body">
+
+  <!-- PASSWORD GATE -->
+  <div class="gate" id="gate">
+    <div class="gate__card">
+      <div class="gate__logo">SKYLA</div>
+      <div class="gate__sub">Admin Portal</div>
+      <div class="gate__lockicon">🔒</div>
+      <form class="gate__form" id="gate-form">
+        <input
+          type="email"
+          id="gate-email"
+          class="gate__input"
+          placeholder="Admin email"
+          autocomplete="username"
+          autofocus
+        />
+        <input
+          type="password"
+          id="gate-input"
+          class="gate__input"
+          placeholder="Password"
+          autocomplete="current-password"
+        />
+        <p class="gate__error" id="gate-error"></p>
+        <button type="submit" class="gate__btn">Unlock Admin →</button>
+      </form>
+      <a href="index.html" class="gate__back">← Back to site</a>
+    </div>
+  </div>
+
+  <!-- ADMIN SHELL (hidden until authenticated) -->
+  <div class="admin-shell" id="admin-shell" style="display:none;">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__logo">SKYLA</div>
+        <div class="sidebar__label">Admin</div>
+      </div>
+      <nav class="sidebar__nav">
+        <button class="sidebar__link active" data-section="dashboard">
+          <span class="sidebar__icon">◈</span> Dashboard
+        </button>
+        <button class="sidebar__link" data-section="bookings">
+          <span class="sidebar__icon">📅</span> Bookings
+        </button>
+        <button class="sidebar__link" data-section="checkin">
+          <span class="sidebar__icon">🛂</span> Check-In
+        </button>
+        <button class="sidebar__link" data-section="pricing">
+          <span class="sidebar__icon">🎫</span> Ticket Pricing
+        </button>
+        <button class="sidebar__link" data-section="cafe">
+          <span class="sidebar__icon">☕</span> Café Menu
+        </button>
+        <button class="sidebar__link" data-section="hours">
+          <span class="sidebar__icon">🕘</span> Hours
+        </button>
+        <button class="sidebar__link" data-section="members">
+          <span class="sidebar__icon">👑</span> Members
+        </button>
+        <button class="sidebar__link" data-section="settings">
+          <span class="sidebar__icon">⚙️</span> Settings
+        </button>
+      </nav>
+      <div class="sidebar__footer">
+        <a href="index.html" class="sidebar__view-site">↗ View Site</a>
+        <button class="sidebar__logout" id="logout-btn">Log out</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="admin-main" id="admin-main">
+
+      <!-- TOAST -->
+      <div class="toast" id="toast"></div>
+
+      <!-- ── DASHBOARD ── -->
+      <section class="admin-section active" id="section-dashboard">
+        <div class="admin-section__header">
+          <h1>Dashboard</h1>
+          <span class="admin-section__date" id="dash-date"></span>
+        </div>
+
+        <div class="stat-cards" id="stat-cards"></div>
+
+        <div class="dash-grid">
+          <div class="dash-panel">
+            <div class="dash-panel__title">Recent Bookings</div>
+            <div class="dash-panel__body" id="dash-recent"></div>
+          </div>
+          <div class="dash-panel">
+            <div class="dash-panel__title">Package Breakdown</div>
+            <div class="dash-panel__body" id="dash-breakdown"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── BOOKINGS ── -->
+      <section class="admin-section" id="section-bookings">
+        <div class="admin-section__header">
+          <h1>Bookings</h1>
+          <div class="header-actions">
+            <button class="admin-btn admin-btn--sm" id="export-csv-btn">↓ Export CSV</button>
+            <button class="admin-btn admin-btn--sm admin-btn--danger" id="clear-bookings-btn">Clear All</button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <input type="text"   class="filter-input" id="search-input"   placeholder="Search name or email…" />
+          <input type="date"   class="filter-input" id="date-filter"    />
+          <select class="filter-input" id="pkg-filter">
+            <option value="">All Packages</option>
+            <option value="general">General Admission</option>
+            <option value="coffee">Deck + Coffee</option>
+            <option value="matcha">Deck + Matcha</option>
+            <option value="date-night">Date Night Experience</option>
+            <option value="champagne-room">Champagne Room</option>
+            <option value="family-suite">Family Suite</option>
+          </select>
+          <select class="filter-input" id="status-filter">
+            <option value="">All Statuses</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="checked-in">Checked In</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table class="admin-table" id="bookings-table">
+            <thead>
+              <tr>
+                <th>Booked</th>
+                <th>Guest</th>
+                <th>Visit Date</th>
+                <th>Time</th>
+                <th>Package</th>
+                <th>Guests</th>
+                <th>Vouchers</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bookings-tbody"></tbody>
+          </table>
+          <div class="table-empty" id="bookings-empty">No bookings yet. Bookings placed through the site will appear here.</div>
+        </div>
+        <div class="table-meta" id="bookings-meta"></div>
+      </section>
+
+      <!-- ── CHECK-IN ── -->
+      <section class="admin-section" id="section-checkin">
+        <div class="admin-section__header">
+          <h1>Front Desk Check-In</h1>
+          <span class="admin-section__date" id="checkin-date"></span>
+        </div>
+
+        <div class="checkin-scan">
+          <label class="checkin-scan__label" for="checkin-input">Scan QR or enter booking reference</label>
+          <form class="checkin-scan__form" id="checkin-form" autocomplete="off">
+            <input
+              type="text"
+              id="checkin-input"
+              class="checkin-scan__input"
+              placeholder="SKY0000-XXXXXX"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+            />
+            <button type="submit" class="admin-btn checkin-scan__btn">Look Up →</button>
+            <button type="button" class="admin-btn admin-btn--ghost checkin-scan__cam" id="checkin-camera-btn">📷 Scan with Camera</button>
+          </form>
+          <div id="checkin-camera" class="checkin-camera" style="display:none;"></div>
+          <p class="checkin-scan__hint">
+            🔎 USB / Bluetooth QR &amp; barcode scanners work automatically — just scan while this field is focused. Or use the camera button. You can also search by guest name or email.
+          </p>
+        </div>
+
+        <div id="checkin-result"></div>
+
+        <div class="checkin-stats" id="checkin-stats"></div>
+
+        <div class="checkin-recent-wrap">
+          <div class="dash-panel__title">Recent Check-Ins</div>
+          <div id="checkin-recent"></div>
+        </div>
+      </section>
+
+      <!-- ── PRICING ── -->
+      <section class="admin-section" id="section-pricing">
+        <div class="admin-section__header">
+          <h1>Ticket Pricing</h1>
+          <button class="admin-btn" id="save-pricing-btn">Save Changes</button>
+        </div>
+
+        <div class="pricing-cards" id="pricing-cards"></div>
+
+        <div class="pricing-extra">
+          <h3>Additional Rates</h3>
+          <div class="pricing-extra__grid">
+            <div class="field-group">
+              <label>Child Discount (% of adult price)</label>
+              <div class="input-with-symbol">
+                <input type="number" id="child-discount" min="0" max="100" step="5" />
+                <span>%</span>
+              </div>
+              <p class="field-hint">Ages 4–12. Currently 50% off adult price.</p>
+            </div>
+            <div class="field-group">
+              <label>Booking Fee</label>
+              <div class="input-with-symbol">
+                <input type="number" id="booking-fee" min="0" max="30" step="0.5" />
+                <span>%</span>
+              </div>
+              <p class="field-hint">Applied at checkout. Currently 5%.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── CAFÉ MENU ── -->
+      <section class="admin-section" id="section-cafe">
+        <div class="admin-section__header">
+          <h1>Café Menu</h1>
+          <button class="admin-btn" id="save-cafe-btn">Save Changes</button>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="matcha">🍵 Matcha</button>
+          <button class="tab-btn" data-tab="coffee">☕ Coffee</button>
+          <button class="tab-btn" data-tab="bites">🥐 Bites</button>
+          <button class="tab-btn" data-tab="addons">➕ Checkout Add-Ons</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-matcha">
+          <div class="menu-editor" id="editor-matcha"></div>
+          <button class="add-item-btn" data-tab="matcha">+ Add Matcha Item</button>
+        </div>
+        <div class="tab-panel" id="tab-coffee">
+          <div class="menu-editor" id="editor-coffee"></div>
+          <button class="add-item-btn" data-tab="coffee">+ Add Coffee Item</button>
+        </div>
+        <div class="tab-panel" id="tab-bites">
+          <div class="menu-editor" id="editor-bites"></div>
+          <button class="add-item-btn" data-tab="bites">+ Add Bite</button>
+        </div>
+        <div class="tab-panel" id="tab-addons">
+          <div class="menu-editor" id="editor-addons"></div>
+        </div>
+      </section>
+
+      <!-- ── HOURS ── -->
+      <section class="admin-section" id="section-hours">
+        <div class="admin-section__header">
+          <h1>Operating Hours</h1>
+          <button class="admin-btn" id="save-hours-btn">Save Changes</button>
+        </div>
+        <div class="hours-editor" id="hours-editor"></div>
+      </section>
+
+      <!-- ── SETTINGS ── -->
+      <section class="admin-section" id="section-settings">
+        <div class="admin-section__header">
+          <h1>Settings</h1>
+        </div>
+
+        <!-- ANNOUNCEMENT -->
+        <div class="settings-block">
+          <h3>Site Announcement Banner</h3>
+          <p class="settings-block__desc">Displays a banner at the top of all public pages.</p>
+          <div class="settings-row">
+            <label class="toggle-label">
+              <input type="checkbox" id="ann-active" />
+              <span class="toggle-switch"></span>
+              Enable banner
+            </label>
+          </div>
+          <div class="field-group" style="margin-top:16px;">
+            <label>Banner Text</label>
+            <input type="text" id="ann-text" placeholder="e.g. Closed for private event Saturday July 4th" />
+          </div>
+          <div class="field-group">
+            <label>Banner Type</label>
+            <select id="ann-type">
+              <option value="info">ℹ️ Info (gold)</option>
+              <option value="warning">⚠️ Warning (amber)</option>
+              <option value="success">✅ Success (green)</option>
+            </select>
+          </div>
+          <button class="admin-btn" id="save-ann-btn" style="margin-top:16px;">Save Announcement</button>
+        </div>
+
+        <!-- CHANGE PASSWORD -->
+        <div class="settings-block">
+          <h3>Change Admin Password</h3>
+          <p class="settings-block__desc">Password is stored locally in this browser. Share with staff by telling them directly.</p>
+          <div class="field-group">
+            <label>Current Password</label>
+            <input type="password" id="pwd-current" autocomplete="current-password" />
+          </div>
+          <div class="field-group">
+            <label>New Password</label>
+            <input type="password" id="pwd-new" autocomplete="new-password" />
+          </div>
+          <div class="field-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="pwd-confirm" autocomplete="new-password" />
+          </div>
+          <p class="settings-error" id="pwd-error"></p>
+          <button class="admin-btn" id="save-pwd-btn" style="margin-top:8px;">Update Password</button>
+        </div>
+
+        <!-- DANGER ZONE -->
+        <div class="settings-block settings-block--danger">
+          <h3>⚠ Danger Zone</h3>
+          <p class="settings-block__desc">These actions are irreversible.</p>
+          <div class="danger-row">
+            <div>
+              <strong>Clear All Bookings</strong>
+              <p>Permanently delete every booking record.</p>
+            </div>
+            <button class="admin-btn admin-btn--danger" id="danger-clear-bookings">Clear Bookings</button>
+          </div>
+          <div class="danger-row">
+            <div>
+              <strong>Reset All Settings to Default</strong>
+              <p>Restores all prices, menu items, and hours to the original defaults.</p>
+            </div>
+            <button class="admin-btn admin-btn--danger" id="danger-reset-all">Reset Everything</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── MEMBERS ── -->
+      <section class="admin-section" id="section-members">
+        <div class="admin-section__header">
+          <h1>Member Applications</h1>
+          <button class="admin-btn" id="export-members-csv-btn">Export CSV ↓</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stat-cards" id="mem-stat-cards"></div>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+          <input type="text" id="mem-search-input" class="filter-input" placeholder="Search name or email…" style="flex:1;min-width:180px" />
+          <select id="mem-tier-filter" class="filter-input">
+            <option value="">All Tiers</option>
+            <option value="obsidian">Obsidian</option>
+            <option value="gold">Gold</option>
+            <option value="black">Black Card</option>
+          </select>
+          <select id="mem-status-filter" class="filter-input">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="waitlisted">Waitlisted</option>
+          </select>
+          <button class="admin-btn admin-btn--ghost" id="mem-clear-filters-btn">Clear</button>
+        </div>
+        <div class="table-meta" id="mem-meta"></div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+          <table class="admin-table" id="members-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Applicant</th>
+                <th>Phone</th>
+                <th>Tier</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody"></tbody>
+          </table>
+          <div class="table-empty" id="members-empty">No applications found.</div>
+        </div>
+      </section>
+
+      <!-- Bio detail modal -->
+      <div class="mem-bio-overlay" id="mem-bio-overlay" style="display:none;">
+        <div class="mem-bio-box">
+          <div class="mem-bio-box__head">
+            <h3 id="mem-bio-name"></h3>
+            <button class="mem-bio-close" onclick="closeMemberBio()">✕</button>
+          </div>
+          <div class="mem-bio-meta" id="mem-bio-meta"></div>
+          <div class="mem-bio-body" id="mem-bio-body"></div>
+          <div class="mem-bio-actions" id="mem-bio-actions"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- QR camera scanner for front-desk check-in -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="shared-data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
