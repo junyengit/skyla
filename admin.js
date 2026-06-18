@@ -170,7 +170,7 @@ function pkgLabel(key) {
     const pkgs = SkylaData.getPackages();
     if (pkgs && pkgs[key] && pkgs[key].name) return pkgs[key].name;
   } catch (e) { /* fall through */ }
-  const map = { general: 'General', coffee: 'Deck + Coffee', matcha: 'Deck + Matcha' };
+  const map = { general: 'General', drink: 'Deck + Drink', coffee: 'Deck + Coffee', matcha: 'Deck + Matcha' };
   return map[key] || key;
 }
 
@@ -288,13 +288,8 @@ function exportCSV() {
 // perGuest:true → one per head; otherwise a fixed qty per booking.
 const PACKAGE_VOUCHERS = {
   general: [],
-  coffee: [
-    { label: 'Handcrafted Coffee Drink', emoji: '☕', perGuest: true },
-  ],
-  matcha: [
-    { label: 'Ceremonial Matcha Latte', emoji: '🍵', perGuest: true },
-    { label: 'Matcha Tasting Flight',   emoji: '🍵', perGuest: true },
-    { label: 'Keepsake Skyla Cup',      emoji: '🥤', perGuest: true },
+  drink: [
+    { label: 'Coffee or Matcha (your choice)', emoji: '☕', perGuest: true },
   ],
   'date-night': [
     { label: 'Champagne for Two',     emoji: '🥂', qty: 1 },

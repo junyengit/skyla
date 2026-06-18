@@ -2,9 +2,8 @@
 const PACKAGES_RAW = (typeof SkylaData !== 'undefined')
   ? SkylaData.getPackages()
   : {
-      general: { name: 'General Admission',        price: 29 },
-      coffee:  { name: 'Deck + Coffee',            price: 44 },
-      matcha:  { name: 'Deck + Matcha Experience', price: 49 },
+      general: { name: 'General Admission', price: 29 },
+      drink:   { name: 'Deck + Drink',      price: 37 },
     };
 
 let PACKAGES = PACKAGES_RAW;
@@ -69,13 +68,8 @@ function qrUrl(ref) {
 // What each package includes at the venue. Keep in sync with admin.js PACKAGE_VOUCHERS.
 const PACKAGE_VOUCHERS = {
   general: [],
-  coffee: [
-    { label: 'Handcrafted Coffee Drink', emoji: '☕', perGuest: true },
-  ],
-  matcha: [
-    { label: 'Ceremonial Matcha Latte', emoji: '🍵', perGuest: true },
-    { label: 'Matcha Tasting Flight',   emoji: '🍵', perGuest: true },
-    { label: 'Keepsake Skyla Cup',      emoji: '🥤', perGuest: true },
+  drink: [
+    { label: 'Coffee or Matcha (your choice)', emoji: '☕', perGuest: true },
   ],
   'date-night': [
     { label: 'Champagne for Two',     emoji: '🥂', qty: 1 },
@@ -224,7 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Premium experience card clicks
   document.querySelectorAll('.exp-pkg-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if (card.dataset.soon) { e.preventDefault(); return; }   // Coming Soon — not bookable yet
       selectPackage(card.dataset.package, parseFloat(card.dataset.roomFee || 0));
     });
   });

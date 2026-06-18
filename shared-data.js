@@ -19,8 +19,7 @@ const SkylaData = (() => {
   const DEFAULTS = {
     packages: {
       general:          { name: 'General Admission',        price: 29,  description: '360° Observation Deck, Indoor Lounge, Timed Entry — Skip the Line' },
-      coffee:           { name: 'Deck + Coffee',            price: 44,  description: 'All General features + 1 Handcrafted Coffee Drink, Hot or Iced' },
-      matcha:           { name: 'Deck + Matcha Experience', price: 49,  description: 'Priority Entry + Ceremonial Matcha Latte + Tasting Flight + Keepsake Skyla Cup' },
+      drink:            { name: 'Deck + Drink',             price: 37,  description: 'All General features + 1 handcrafted drink — your choice of coffee or ceremonial matcha, claimed at the café' },
       'date-night':     { name: 'Date Night Experience',    price: 98,  description: 'Reserved window seats · Champagne for two · Charcuterie & dessert · Keepsake photo · Entry included', entryIncluded: true, minAdults: 2 },
       'champagne-room': { name: 'Champagne Room',           price: 0,   description: 'Private room · Full champagne bottle service · Caviar & small bites · Personal host · Entry included', entryIncluded: true, roomFee: 350 },
       'family-suite':   { name: 'Family Suite',             price: 0,   description: 'Private room · Dedicated waitress · Family & kids menu · Up to 12 guests', entryIncluded: false, roomFee: 250 },

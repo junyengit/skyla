@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3" />
-  <link rel="stylesheet" href="checkout.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="checkout.css?v=5" />
 </head>
 <body class="checkout-page">
 
@@ -81,40 +81,21 @@
               </div>
             </label>
 
-            <label class="pkg-card pkg-card--featured" data-package="coffee" data-price="44">
-              <input type="radio" name="package" value="coffee" />
+            <label class="pkg-card pkg-card--featured" data-package="drink" data-price="37">
+              <input type="radio" name="package" value="drink" />
               <div class="pkg-card__badge">Best Value</div>
               <div class="pkg-card__inner">
                 <div class="pkg-card__check"></div>
                 <div class="pkg-card__info">
-                  <div class="pkg-card__name">Deck + Coffee</div>
+                  <div class="pkg-card__name">Deck + Drink</div>
                   <ul class="pkg-card__perks">
                     <li>360° Observation Deck</li>
                     <li>Indoor Lounge Access</li>
-                    <li>1 Handcrafted Coffee Drink</li>
-                    <li>Hot or Iced — Your Choice</li>
+                    <li>1 Handcrafted Drink — Coffee or Matcha</li>
+                    <li>Hot or Iced — Your Choice at the Café</li>
                   </ul>
                 </div>
-                <div class="pkg-card__price">$44<span>/person</span></div>
-              </div>
-            </label>
-
-            <label class="pkg-card pkg-card--premium" data-package="matcha" data-price="54">
-              <input type="radio" name="package" value="matcha" />
-              <div class="pkg-card__badge pkg-card__badge--gold">Premium</div>
-              <div class="pkg-card__inner">
-                <div class="pkg-card__check"></div>
-                <div class="pkg-card__info">
-                  <div class="pkg-card__name">Deck + Matcha Experience</div>
-                  <ul class="pkg-card__perks">
-                    <li>360° Observation Deck</li>
-                    <li>Priority Entry — No Wait</li>
-                    <li>Ceremonial Matcha Latte</li>
-                    <li>Matcha Tasting Flight (3 styles)</li>
-                    <li>Keepsake Skyla Cup</li>
-                  </ul>
-                </div>
-                <div class="pkg-card__price">$54<span>/person</span></div>
+                <div class="pkg-card__price">$37<span>/person</span></div>
               </div>
             </label>
 
@@ -122,13 +103,14 @@
 
           <!-- PREMIUM EXPERIENCES -->
           <div class="premium-divider">
-            <span>Or book a premium experience</span>
+            <span>Premium Experiences — Coming Soon</span>
           </div>
 
           <div class="exp-pkg-cards">
 
-            <label class="exp-pkg-card" data-package="date-night" data-price="98">
-              <input type="radio" name="package" value="date-night" />
+            <label class="exp-pkg-card exp-pkg-card--soon" data-package="date-night" data-price="98" data-soon="1">
+              <span class="exp-pkg-card__soon">Coming Soon</span>
+              <input type="radio" name="package" value="date-night" disabled />
               <div class="exp-pkg-card__inner">
                 <div class="exp-pkg-card__check"></div>
                 <div class="exp-pkg-card__thumb">
@@ -146,9 +128,9 @@
               </div>
             </label>
 
-            <label class="exp-pkg-card exp-pkg-card--prestige" data-package="champagne-room" data-price="0" data-room-fee="350">
-              <div class="exp-pkg-card__badge">Entry Included</div>
-              <input type="radio" name="package" value="champagne-room" />
+            <label class="exp-pkg-card exp-pkg-card--prestige exp-pkg-card--soon" data-package="champagne-room" data-price="0" data-room-fee="350" data-soon="1">
+              <span class="exp-pkg-card__soon">Coming Soon</span>
+              <input type="radio" name="package" value="champagne-room" disabled />
               <div class="exp-pkg-card__inner">
                 <div class="exp-pkg-card__check"></div>
                 <div class="exp-pkg-card__thumb">
@@ -166,8 +148,9 @@
               </div>
             </label>
 
-            <label class="exp-pkg-card" data-package="family-suite" data-price="0" data-room-fee="250">
-              <input type="radio" name="package" value="family-suite" />
+            <label class="exp-pkg-card exp-pkg-card--soon" data-package="family-suite" data-price="0" data-room-fee="250" data-soon="1">
+              <span class="exp-pkg-card__soon">Coming Soon</span>
+              <input type="radio" name="package" value="family-suite" disabled />
               <div class="exp-pkg-card__inner">
                 <div class="exp-pkg-card__check"></div>
                 <div class="exp-pkg-card__thumb">

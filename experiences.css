@@ -794,3 +794,14 @@
   .exp-anchor-btn { padding: 8px 18px; font-size: 0.8rem; }
   .date-cta { flex-direction: column; align-items: flex-start; }
 }
+
+/* Coming Soon — disabled booking buttons (visible but not actionable) */
+.btn--soon,
+.bar-btn--soon {
+  opacity: 0.5;
+  cursor: default !important;
+  pointer-events: none;
+  box-shadow: none !important;
+}
+.btn--soon:hover,
+.bar-btn--soon:hover { transform: none !important; filter: none !important; }

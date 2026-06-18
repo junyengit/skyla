@@ -738,6 +738,25 @@
   overflow: hidden;
 }
 
+/* Coming Soon — visible but not bookable */
+.exp-pkg-card--soon { cursor: default; }
+.exp-pkg-card--soon .exp-pkg-card__inner { opacity: 0.45; filter: grayscale(0.3); }
+.exp-pkg-card--soon:hover { border-color: rgba(255,255,255,0.07); background: var(--dark-2); }
+.exp-pkg-card__soon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  background: var(--gold, #c9a84c);
+  color: #0a0a0a;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 50px;
+}
+
 .exp-pkg-card:hover {
   border-color: rgba(255,255,255,0.18);
   background: var(--dark-3);
