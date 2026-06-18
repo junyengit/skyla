@@ -584,6 +584,27 @@ async function handleStripeReturn() {
   }
 }
 
+// ── PAYMENTS (Kaskade — crypto, experimental) ────────────────────────────────
+// Alternative provider to Stripe (pay in BTC, etc.). Like Stripe, nothing
+// sensitive lives here: the secret key (ks_live_...) is stored in the Supabase
+// `kaskade-payment` Edge Function and never reaches the browser. Off by default
+// while we trial it alongside Stripe — flip to true once the function is
+// deployed and the KASKADE_SECRET_KEY secret is set in Supabase.
+const KASKADE_ENABLED = false;
+
+// Creates a crypto payment and returns { id, payAddress, payAmount, ... }.
+// The customer then sends that exact amount of crypto to payAddress.
+async function createKaskadePayment(booking, payCurrency = 'btc') {
+  const data = await SkylaData.invokeFunction('kaskade-payment', {
+    priceUsd:         Math.round(booking.total),
+    payCurrency,
+    orderId:          booking.bookingRef,
+    orderDescription: `Sky LA — ${booking.packageName || 'Booking'}`,
+  });
+  if (!data || data.error) throw new Error(data?.error || 'Kaskade payment failed');
+  return data.payment;
+}
+
 // ── TICKET GENERATION ──
 function generateBookingRef() {
   const d    = new Date();
