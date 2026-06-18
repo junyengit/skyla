@@ -12,10 +12,10 @@ let PACKAGES = PACKAGES_RAW;
 const ADDONS_RAW = (typeof SkylaData !== 'undefined')
   ? SkylaData.getAddons()
   : [
-      { id: 'matcha',   name: 'Ceremonial Matcha Latte',   price: 12 },
-      { id: 'pourover', name: 'Single-Origin Pour Over',   price: 10 },
-      { id: 'hojicha',  name: 'Iced Matcha Hojicha Latte', price: 13 },
-      { id: 'coldbrew', name: 'Iced Mocha Cold Brew',      price: 11 },
+      { id: 'matcha',   name: 'Ceremonial Matcha Latte',   price: 8 },
+      { id: 'pourover', name: 'Single-Origin Pour Over',   price: 8 },
+      { id: 'hojicha',  name: 'Iced Matcha Hojicha Latte', price: 8 },
+      { id: 'coldbrew', name: 'Iced Mocha Cold Brew',      price: 8 },
     ];
 
 // Build addon map keyed by id
