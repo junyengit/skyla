@@ -1181,6 +1181,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkin-form')?.addEventListener('submit', lookupCheckin);
   document.getElementById('checkin-camera-btn')?.addEventListener('click', toggleCamera);
 
+  // ── HARDWARE SCANNER CAPTURE ──
+  // USB / Bluetooth barcode & QR scanners act like a keyboard: they "type" the
+  // code in a fast burst then press Enter. This captures that anywhere on the
+  // Check-In screen, so staff can just scan without clicking into the field.
+  let _scanBuf = '';
+  let _scanLast = 0;
+  document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('section-checkin')?.classList.contains('active')) return;
+    // If they're typing/searching in a field, let normal handling apply
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT')) return;
+
+    const now = Date.now();
+    if (now - _scanLast > 120) _scanBuf = '';   // reset on human-speed gap
+    _scanLast = now;
+
+    if (e.key === 'Enter') {
+      if (_scanBuf.length >= 4) {
+        const input = document.getElementById('checkin-input');
+        if (input) input.value = _scanBuf.trim();
+        lookupCheckin();
+      }
+      _scanBuf = '';
+      return;
+    }
+    if (e.key.length === 1) _scanBuf += e.key;   // printable character
+  });
+
   // Close bio modal on overlay click
   document.getElementById('mem-bio-overlay')?.addEventListener('click', e => {
     if (e.target === document.getElementById('mem-bio-overlay')) closeMemberBio();
