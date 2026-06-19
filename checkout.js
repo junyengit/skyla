@@ -636,6 +636,14 @@ async function startCryptoCheckout(booking, ticketData) {
   setBtnBusy('Creating payment…');
   try {
     const payment = await createKaskadePayment(booking, currency);
+    // Record the booking up front as pending so it's never lost — the webhook
+    // flips it to paid even if the customer closes the tab mid-payment.
+    booking.status          = 'pending_payment';
+    booking.paid            = false;
+    booking.paymentMethod   = 'crypto';
+    booking.payCurrency     = currency;
+    booking.cryptoPaymentId = payment.id;
+    if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
     clearBtnBusy();
     openCryptoModal(payment, currency, booking, ticketData);
   } catch (err) {
@@ -687,11 +695,9 @@ async function finalizeCryptoBooking() {
   clearInterval(_cryptoTimer);
   setCryptoStatus('paid', 'Payment confirmed!');
 
-  const { booking, ticketData, payment } = _cryptoCtx;
-  booking.paid = true;
-  booking.paymentMethod = 'crypto';
-  booking.cryptoPaymentId = payment.id;
-  if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
+  // The booking was already recorded (pending) when checkout started; the
+  // webhook marks it paid server-side. Here we just confirm to the customer.
+  const { ticketData } = _cryptoCtx;
   const emailStatus = await sendConfirmationEmail(ticketData);
 
   setTimeout(() => {

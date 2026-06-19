@@ -1417,3 +1417,46 @@
 .crypto-status--failed { color: #e08080; }
 .crypto-status--failed .crypto-status__dot { background: #c0392b; animation: none; }
 .crypto-timer { font-size: 0.72rem; color: #8a8f99; }
+
+/* ── CRYPTO CURRENCY SELECT (clean) ── */
+.crypto-currency-field { margin-top: 16px; }
+.crypto-currency-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold, #c9a84c);
+  margin-bottom: 10px;
+}
+.crypto-select-wrap { position: relative; }
+.crypto-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 9px; height: 9px;
+  border-right: 2px solid var(--gold, #c9a84c);
+  border-bottom: 2px solid var(--gold, #c9a84c);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+.crypto-select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: var(--dark-3, #1a1c20);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 15px 44px 15px 16px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.crypto-select:hover { border-color: rgba(255,255,255,0.22); }
+.crypto-select:focus { outline: none; border-color: var(--gold, #c9a84c); background: var(--dark-2, #16181c); }
+.crypto-select option { background: #16181c; color: #fff; padding: 10px; }

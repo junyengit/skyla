@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=6" />
-  <link rel="stylesheet" href="checkout.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="checkout.css?v=7" />
 </head>
 <body class="checkout-page">
 
@@ -386,18 +386,20 @@
               </label>
             </div>
 
-            <div class="form-field crypto-currency-field" id="crypto-currency-field" style="display:none;">
-              <label>Pay with</label>
-              <select id="crypto-currency">
-                <option value="btc">Bitcoin (BTC)</option>
-                <option value="eth">Ethereum (ETH)</option>
-                <option value="usdttrc20">Tether — USDT (TRC-20)</option>
-                <option value="usdc">USD Coin (USDC)</option>
-                <option value="ltc">Litecoin (LTC)</option>
-                <option value="sol">Solana (SOL)</option>
-                <option value="doge">Dogecoin (DOGE)</option>
-                <option value="xrp">XRP (XRP)</option>
-              </select>
+            <div class="crypto-currency-field" id="crypto-currency-field" style="display:none;">
+              <label class="crypto-currency-label">Choose your coin</label>
+              <div class="crypto-select-wrap">
+                <select id="crypto-currency" class="crypto-select">
+                  <option value="btc">₿ &nbsp;Bitcoin · BTC</option>
+                  <option value="eth">Ξ &nbsp;Ethereum · ETH</option>
+                  <option value="usdttrc20">₮ &nbsp;Tether · USDT (TRC-20)</option>
+                  <option value="usdc">＄ &nbsp;USD Coin · USDC</option>
+                  <option value="ltc">Ł &nbsp;Litecoin · LTC</option>
+                  <option value="sol">◎ &nbsp;Solana · SOL</option>
+                  <option value="doge">Ð &nbsp;Dogecoin · DOGE</option>
+                  <option value="xrp">✕ &nbsp;XRP</option>
+                </select>
+              </div>
             </div>
           </div>
 

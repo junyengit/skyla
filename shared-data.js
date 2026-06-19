@@ -232,7 +232,7 @@ const SkylaData = (() => {
       const bookings = this.getBookings();
       b.id        = uid();
       b.createdAt = new Date().toISOString();
-      b.status    = 'confirmed';
+      b.status    = b.status || 'confirmed';   // allow 'pending_payment' for crypto
       bookings.unshift(b);
       save('bookings', bookings);
       cloudInsert('bookings', b);          // public insert (no-op if disabled)
