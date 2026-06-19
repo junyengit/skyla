@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://skydeckla.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://skydeckla.com/about.html</loc><priority>0.8</priority></url>
+  <url><loc>https://skydeckla.com/experiences.html</loc><priority>0.8</priority></url>
+  <url><loc>https://skydeckla.com/cafe.html</loc><priority>0.7</priority></url>
+  <url><loc>https://skydeckla.com/members.html</loc><priority>0.7</priority></url>
+  <url><loc>https://skydeckla.com/checkout.html</loc><priority>0.6</priority></url>
+  <url><loc>https://skydeckla.com/privacy.html</loc><priority>0.3</priority></url>
+  <url><loc>https://skydeckla.com/terms.html</loc><priority>0.3</priority></url>
+</urlset>
