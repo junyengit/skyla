@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="checkout.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="checkout.css?v=6" />
 </head>
 <body class="checkout-page">
 
@@ -371,6 +371,34 @@
                 <input type="text" id="pay-last" placeholder="Smith" autocomplete="family-name" />
               </div>
             </div>
+
+            <!-- PAYMENT METHOD -->
+            <div class="pay-method" id="pay-method">
+              <label class="pay-method__opt is-active">
+                <input type="radio" name="paymethod" value="card" checked />
+                <span class="pay-method__icon">💳</span>
+                <span class="pay-method__label">Card</span>
+              </label>
+              <label class="pay-method__opt">
+                <input type="radio" name="paymethod" value="crypto" />
+                <span class="pay-method__icon">₿</span>
+                <span class="pay-method__label">Crypto</span>
+              </label>
+            </div>
+
+            <div class="form-field crypto-currency-field" id="crypto-currency-field" style="display:none;">
+              <label>Pay with</label>
+              <select id="crypto-currency">
+                <option value="btc">Bitcoin (BTC)</option>
+                <option value="eth">Ethereum (ETH)</option>
+                <option value="usdttrc20">Tether — USDT (TRC-20)</option>
+                <option value="usdc">USD Coin (USDC)</option>
+                <option value="ltc">Litecoin (LTC)</option>
+                <option value="sol">Solana (SOL)</option>
+                <option value="doge">Dogecoin (DOGE)</option>
+                <option value="xrp">XRP (XRP)</option>
+              </select>
+            </div>
           </div>
 
           <div class="step-nav">
@@ -451,6 +479,39 @@
         <button class="btn btn--ghost" onclick="printTicket()">🖨&nbsp; Print Ticket</button>
         <a href="index.html" class="btn btn--gold">Done</a>
       </div>
+    </div>
+  </div>
+
+  <!-- CRYPTO PAYMENT MODAL -->
+  <div class="crypto-modal-overlay" id="crypto-modal">
+    <div class="crypto-modal">
+      <button class="crypto-modal__close" onclick="closeCryptoModal()" aria-label="Cancel">✕</button>
+
+      <div class="crypto-modal__head">
+        <div class="crypto-modal__coin" id="crypto-coin">₿</div>
+        <h2>Pay with <span id="crypto-cur-name">Bitcoin</span></h2>
+        <p>Send the exact amount below to the address. Your ticket is issued automatically once the payment confirms.</p>
+      </div>
+
+      <div class="crypto-amount">
+        <div class="crypto-amount__value" id="crypto-amount">—</div>
+        <div class="crypto-amount__usd" id="crypto-usd">≈ $0.00</div>
+      </div>
+
+      <div class="crypto-qr" id="crypto-qr"></div>
+
+      <div class="crypto-addr-label">Send to this address</div>
+      <div class="crypto-addr">
+        <code id="crypto-address">—</code>
+        <button class="crypto-copy" id="crypto-copy" onclick="copyCryptoAddress()">Copy</button>
+      </div>
+
+      <div class="crypto-status" id="crypto-status">
+        <span class="crypto-status__dot"></span>
+        <span id="crypto-status-text">Waiting for payment…</span>
+      </div>
+
+      <div class="crypto-timer" id="crypto-timer"></div>
     </div>
   </div>
 

@@ -190,6 +190,12 @@ document.addEventListener('DOMContentLoaded', () => {
     handleStripeReturn();
   }
 
+  // Payment-method toggle (Card / Crypto)
+  document.querySelectorAll('input[name="paymethod"]').forEach(r => {
+    r.addEventListener('change', updatePayMethodUI);
+  });
+  updatePayMethodUI();
+
   // Live prices from SkylaData — update the display cards on this page
   updateDisplayedPrices();
 
@@ -492,6 +498,11 @@ async function confirmOrder() {
 
   const { booking, ticketData } = buildBookingPayload();
 
+  const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
+
+  if (method === 'crypto' && KASKADE_ENABLED) {
+    return startCryptoCheckout(booking, ticketData);
+  }
   if (STRIPE_ENABLED) {
     return startStripeCheckout(booking, ticketData);
   }
@@ -590,10 +601,25 @@ async function handleStripeReturn() {
 // `kaskade-payment` Edge Function and never reaches the browser. Off by default
 // while we trial it alongside Stripe — flip to true once the function is
 // deployed and the KASKADE_SECRET_KEY secret is set in Supabase.
-const KASKADE_ENABLED = false;
+const KASKADE_ENABLED = true;
+
+const CRYPTO_META = {
+  btc:       { name: 'Bitcoin',      sym: '₿' },
+  eth:       { name: 'Ethereum',     sym: 'Ξ' },
+  usdttrc20: { name: 'Tether (USDT)', sym: '₮' },
+  usdc:      { name: 'USD Coin',     sym: '$' },
+  ltc:       { name: 'Litecoin',     sym: 'Ł' },
+  sol:       { name: 'Solana',       sym: '◎' },
+  doge:      { name: 'Dogecoin',     sym: 'Ð' },
+  xrp:       { name: 'XRP',          sym: '✕' },
+};
+// Statuses that mean "the customer has paid" → issue the ticket
+const CRYPTO_PAID    = ['confirmed', 'finished', 'sending'];
+const CRYPTO_FAILED  = ['failed', 'expired', 'refunded'];
+
+let _cryptoPoll = null, _cryptoTimer = null, _cryptoCtx = null;
 
 // Creates a crypto payment and returns { id, payAddress, payAmount, ... }.
-// The customer then sends that exact amount of crypto to payAddress.
 async function createKaskadePayment(booking, payCurrency = 'btc') {
   const data = await SkylaData.invokeFunction('kaskade-payment', {
     priceUsd:         Math.round(booking.total),
@@ -601,8 +627,140 @@ async function createKaskadePayment(booking, payCurrency = 'btc') {
     orderId:          booking.bookingRef,
     orderDescription: `Sky LA — ${booking.packageName || 'Booking'}`,
   });
-  if (!data || data.error) throw new Error(data?.error || 'Kaskade payment failed');
+  if (!data || data.error) throw new Error(data?.error || 'Crypto payment failed');
   return data.payment;
+}
+
+async function startCryptoCheckout(booking, ticketData) {
+  const currency = document.getElementById('crypto-currency')?.value || 'btc';
+  setBtnBusy('Creating payment…');
+  try {
+    const payment = await createKaskadePayment(booking, currency);
+    clearBtnBusy();
+    openCryptoModal(payment, currency, booking, ticketData);
+  } catch (err) {
+    clearBtnBusy();
+    console.error('Crypto checkout failed:', err);
+    flashError('step-4', 'Could not start crypto payment. Try another coin or use card.');
+  }
+}
+
+function openCryptoModal(payment, currency, booking, ticketData) {
+  const meta = CRYPTO_META[currency] || { name: currency.toUpperCase(), sym: '◈' };
+  _cryptoCtx = { payment, booking, ticketData, done: false };
+
+  document.getElementById('crypto-coin').textContent      = meta.sym;
+  document.getElementById('crypto-cur-name').textContent  = meta.name;
+  document.getElementById('crypto-amount').textContent    = `${payment.payAmount} ${currency.toUpperCase()}`;
+  document.getElementById('crypto-usd').textContent       = `≈ $${Number(payment.priceUsd || booking.total).toFixed(2)}`;
+  document.getElementById('crypto-address').textContent   = payment.payAddress || '—';
+  document.getElementById('crypto-qr').innerHTML =
+    `<img src="${qrUrl(payment.payAddress)}" width="180" height="180" alt="Payment address QR" />`;
+  setCryptoStatus('waiting', 'Waiting for payment…');
+
+  document.getElementById('crypto-modal').classList.add('visible');
+
+  startCryptoCountdown(payment.expiresAt);
+  // Poll status every 8s
+  clearInterval(_cryptoPoll);
+  _cryptoPoll = setInterval(() => checkCryptoStatus(payment.id), 8000);
+  checkCryptoStatus(payment.id);
+}
+
+async function checkCryptoStatus(paymentId) {
+  if (!_cryptoCtx || _cryptoCtx.done) return;
+  try {
+    const data = await SkylaData.invokeFunction('kaskade-payment', { action: 'status', paymentId });
+    const status = (data?.payment?.status || '').toLowerCase();
+    if (CRYPTO_PAID.includes(status))      return finalizeCryptoBooking();
+    if (CRYPTO_FAILED.includes(status))    return setCryptoStatus('failed', 'Payment ' + status + '. Please try again.');
+    if (status === 'confirming')           return setCryptoStatus('confirming', 'Payment seen — confirming on-chain…');
+    if (status === 'partially_paid')       return setCryptoStatus('confirming', 'Partial payment received — send the remainder.');
+    // else still waiting
+  } catch (e) { console.error('status check failed', e); }
+}
+
+async function finalizeCryptoBooking() {
+  if (!_cryptoCtx || _cryptoCtx.done) return;
+  _cryptoCtx.done = true;
+  clearInterval(_cryptoPoll);
+  clearInterval(_cryptoTimer);
+  setCryptoStatus('paid', 'Payment confirmed!');
+
+  const { booking, ticketData, payment } = _cryptoCtx;
+  booking.paid = true;
+  booking.paymentMethod = 'crypto';
+  booking.cryptoPaymentId = payment.id;
+  if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
+  const emailStatus = await sendConfirmationEmail(ticketData);
+
+  setTimeout(() => {
+    document.getElementById('crypto-modal').classList.remove('visible');
+    showTicket({ ...ticketData, emailStatus });
+  }, 1200);
+}
+
+function setCryptoStatus(state, text) {
+  const wrap = document.getElementById('crypto-status');
+  if (wrap) wrap.className = 'crypto-status crypto-status--' + state;
+  const t = document.getElementById('crypto-status-text');
+  if (t) t.textContent = text;
+}
+
+function startCryptoCountdown(expiresAt) {
+  clearInterval(_cryptoTimer);
+  const el = document.getElementById('crypto-timer');
+  const end = expiresAt ? new Date(expiresAt).getTime() : 0;
+  if (!end || !el) { if (el) el.textContent = ''; return; }
+  const tick = () => {
+    const left = Math.max(0, Math.floor((end - Date.now()) / 1000));
+    const m = Math.floor(left / 60), s = left % 60;
+    el.textContent = left > 0 ? `Address expires in ${m}:${String(s).padStart(2, '0')}` : 'This payment window has expired — please restart.';
+    if (left <= 0) clearInterval(_cryptoTimer);
+  };
+  tick();
+  _cryptoTimer = setInterval(tick, 1000);
+}
+
+function copyCryptoAddress() {
+  const addr = document.getElementById('crypto-address')?.textContent || '';
+  navigator.clipboard?.writeText(addr).then(() => {
+    const btn = document.getElementById('crypto-copy');
+    if (btn) { btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = 'Copy', 1800); }
+  });
+}
+
+function closeCryptoModal() {
+  clearInterval(_cryptoPoll);
+  clearInterval(_cryptoTimer);
+  if (_cryptoCtx) _cryptoCtx.done = true;
+  document.getElementById('crypto-modal').classList.remove('visible');
+}
+
+// Toggle the payment-step UI between Card and Crypto
+function updatePayMethodUI() {
+  const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
+  const cryptoField = document.getElementById('crypto-currency-field');
+  if (cryptoField) cryptoField.style.display = method === 'crypto' ? '' : 'none';
+
+  document.querySelectorAll('.pay-method__opt').forEach(opt => {
+    opt.classList.toggle('is-active', opt.querySelector('input')?.value === method);
+  });
+
+  const total  = document.getElementById('final-total')?.textContent || '$0.00';
+  const btn    = document.querySelector('.btn--confirm');
+  const notice = document.getElementById('pay-notice');
+
+  if (method === 'crypto') {
+    if (btn) btn.innerHTML = `₿ Pay with Crypto — <span id="final-total">${total}</span>`;
+    if (notice) notice.innerHTML =
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` +
+      ` Pay in Bitcoin, Ethereum, USDT &amp; more. Your ticket is issued the moment the payment confirms.`;
+  } else if (STRIPE_ENABLED) {
+    applyStripeUI();
+  } else if (btn) {
+    btn.innerHTML = `🔒 Confirm &amp; Pay — <span id="final-total">${total}</span>`;
+  }
 }
 
 // ── TICKET GENERATION ──

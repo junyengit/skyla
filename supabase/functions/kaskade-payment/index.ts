@@ -11,7 +11,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "jsr:@supabase/server@^1";
 
 const KASKADE_SECRET = Deno.env.get("KASKADE_SECRET_KEY") ?? "";
-const KASKADE_API = "https://kaskade.com/api/v1";
+const KASKADE_API = "https://pharosgate.com/api/v1";   // provider: PharosGate
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -29,8 +29,23 @@ function json(body: unknown, status = 200) {
 async function handle(req: Request) {
   try {
     if (!KASKADE_SECRET) return json({ error: "KASKADE_SECRET_KEY not set" }, 500);
+    const payload = await req.json();
 
-    const { priceUsd, payCurrency = "btc", orderId, orderDescription } = await req.json();
+    // ── Check live status of an existing payment (for polling) ──
+    if (payload.action === "status") {
+      if (!payload.paymentId) return json({ error: "Missing paymentId" }, 400);
+      const res = await fetch(`${KASKADE_API}/payments/${payload.paymentId}`, {
+        headers: { "Authorization": `Bearer ${KASKADE_SECRET}` },
+      });
+      const raw = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(raw); } catch { /* non-JSON */ }
+      if (!res.ok) return json({ error: "PharosGate status failed", status: res.status, detail: data || raw }, 400);
+      return json({ payment: data.payment ?? data });
+    }
+
+    // ── Create a payment ──
+    const { priceUsd, payCurrency = "btc", orderId, orderDescription } = payload;
     if (!priceUsd || priceUsd < 1) return json({ error: "Invalid amount" }, 400);
 
     const res = await fetch(`${KASKADE_API}/payments`, {
@@ -41,8 +56,12 @@ async function handle(req: Request) {
       },
       body: JSON.stringify({ priceUsd, payCurrency, orderId, orderDescription }),
     });
-    const data = await res.json();
-    if (!res.ok) return json({ error: data?.message || "Kaskade request failed" }, 400);
+    const raw = await res.text();
+    let data: any = {};
+    try { data = JSON.parse(raw); } catch { /* non-JSON */ }
+    if (!res.ok) {
+      return json({ error: "PharosGate request failed", status: res.status, detail: data || raw }, 400);
+    }
 
     return json({ payment: data.payment ?? data });
   } catch (e) {

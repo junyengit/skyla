@@ -1337,3 +1337,83 @@
   .modal { padding: 36px 24px; }
   .step-nav { flex-direction: column; }
 }
+
+/* ── PAYMENT METHOD TOGGLE ── */
+.pay-method {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 20px 0 0;
+}
+.pay-method__opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.02);
+  transition: all 0.2s ease;
+}
+.pay-method__opt input { display: none; }
+.pay-method__opt:hover { border-color: rgba(255,255,255,0.22); }
+.pay-method__opt.is-active { border-color: var(--gold, #c9a84c); background: rgba(201,168,76,0.08); }
+.pay-method__icon { font-size: 1.1rem; }
+.pay-method__label { font-size: 0.9rem; font-weight: 600; color: #fff; }
+.crypto-currency-field { margin-top: 14px; }
+
+/* ── CRYPTO PAYMENT MODAL ── */
+.crypto-modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  padding: 24px;
+}
+.crypto-modal-overlay.visible { display: flex; }
+.crypto-modal {
+  position: relative;
+  width: 100%; max-width: 420px;
+  background: #111;
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 18px;
+  padding: 38px 30px 30px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  animation: cryptoIn 0.3s ease;
+}
+@keyframes cryptoIn { from { opacity:0; transform: translateY(12px) scale(0.98); } to { opacity:1; transform:none; } }
+.crypto-modal__close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; color: #888; font-size: 1.1rem; cursor: pointer;
+}
+.crypto-modal__coin {
+  font-size: 1.9rem; width: 62px; height: 62px; margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(201,168,76,0.12); color: var(--gold, #c9a84c); border-radius: 50%;
+}
+.crypto-modal__head h2 { font-family: var(--font-serif, 'Playfair Display', serif); font-size: 1.5rem; color: #fff; margin-bottom: 8px; }
+.crypto-modal__head p { font-size: 0.82rem; color: #8a8f99; line-height: 1.6; margin-bottom: 24px; }
+.crypto-amount { margin-bottom: 20px; }
+.crypto-amount__value { font-family: var(--font-serif, serif); font-size: 1.9rem; font-weight: 700; color: var(--gold, #c9a84c); }
+.crypto-amount__usd { font-size: 0.82rem; color: #8a8f99; margin-top: 2px; }
+.crypto-qr { display: inline-block; padding: 10px; background: #fff; border-radius: 12px; margin-bottom: 20px; line-height: 0; }
+.crypto-qr img { display: block; border-radius: 4px; }
+.crypto-addr-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: #8a8f99; margin-bottom: 8px; }
+.crypto-addr {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 18px;
+}
+.crypto-addr code { flex: 1; font-family: monospace; font-size: 0.74rem; color: #fff; word-break: break-all; text-align: left; }
+.crypto-copy { flex-shrink: 0; background: var(--gold, #c9a84c); color: #0a0a0a; border: none; border-radius: 6px; padding: 7px 13px; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+.crypto-status { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.85rem; color: #b0b4be; margin-bottom: 10px; }
+.crypto-status__dot { width: 8px; height: 8px; border-radius: 50%; background: #d4860f; animation: cryptoPulse 1.4s infinite; }
+@keyframes cryptoPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.crypto-status--confirming .crypto-status__dot { background: #3a7abf; }
+.crypto-status--paid { color: #5cc99a; }
+.crypto-status--paid .crypto-status__dot { background: #3d9e6e; animation: none; }
+.crypto-status--failed { color: #e08080; }
+.crypto-status--failed .crypto-status__dot { background: #c0392b; animation: none; }
+.crypto-timer { font-size: 0.72rem; color: #8a8f99; }
