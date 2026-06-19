@@ -1507,3 +1507,44 @@ button { cursor: pointer; font-family: var(--font); border: none; }
   }
   .admin-mobile-select:focus { outline: none; border-color: var(--gold); }
 }
+
+/* ── MOBILE SIZE-DOWN (phones) ── */
+@media (max-width: 600px) {
+  html { font-size: 13px; }
+  .admin-main { padding: 16px 14px; }
+
+  .admin-section__header { margin-bottom: 20px; gap: 8px; }
+  .admin-section__header h1 { font-size: 1.45rem; }
+
+  /* Stat cards + dashboard stack */
+  .stat-cards { grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat-card { padding: 16px 18px; }
+  .stat-card__value { font-size: 1.7rem; }
+  .dash-grid { grid-template-columns: 1fr; gap: 14px; }
+
+  /* Filters full-width, stacked */
+  .filter-bar { flex-direction: column; gap: 10px; }
+  .filter-input, #search-input, #mem-search-input { width: 100% !important; min-width: 0; flex: none; }
+
+  /* Tables: tighter; the wrapper keeps horizontal scroll */
+  .admin-table { font-size: 0.76rem; }
+  .admin-table th, .admin-table td { padding: 9px 9px; }
+  .row-actions { flex-wrap: wrap; gap: 6px; }
+  .row-btn { padding: 5px 8px; font-size: 0.68rem; }
+
+  /* Editors single column */
+  .pricing-cards { grid-template-columns: 1fr; gap: 14px; }
+  .pricing-extra__grid { grid-template-columns: 1fr; }
+
+  /* Check-In stacks cleanly */
+  .checkin-scan { padding: 18px 16px; }
+  .checkin-scan__form { flex-direction: column; }
+  .checkin-scan__input, .checkin-scan__btn, .checkin-scan__cam { width: 100%; }
+  .checkin-scan__input { font-size: 1.1rem; }
+  .checkin-stats { grid-template-columns: 1fr; gap: 12px; }
+  .checkin-card { flex-direction: column; gap: 14px; }
+  .checkin-card__grid { grid-template-columns: 1fr 1fr; }
+
+  /* Settings + forms breathe a bit less */
+  .settings-block { padding: 20px 18px; }
+}
