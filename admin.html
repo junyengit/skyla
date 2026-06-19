@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="admin.css?v=2" />
 </head>
 <body class="admin-body">
 
@@ -86,6 +86,21 @@
 
       <!-- TOAST -->
       <div class="toast" id="toast"></div>
+
+      <!-- MOBILE SECTION NAV (dropdown) -->
+      <div class="admin-mobile-nav">
+        <span class="admin-mobile-nav__brand">SKYLA <small>Admin</small></span>
+        <select id="mobile-section-select" class="admin-mobile-select" aria-label="Go to section">
+          <option value="dashboard">◈  Dashboard</option>
+          <option value="bookings">📅  Bookings</option>
+          <option value="checkin">🛂  Check-In</option>
+          <option value="pricing">🎫  Ticket Pricing</option>
+          <option value="cafe">☕  Café Menu</option>
+          <option value="hours">🕘  Hours</option>
+          <option value="members">👑  Members</option>
+          <option value="settings">⚙️  Settings</option>
+        </select>
+      </div>
 
       <!-- ── DASHBOARD ── -->
       <section class="admin-section active" id="section-dashboard">

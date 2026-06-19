@@ -94,6 +94,8 @@ function goSection(name) {
   document.querySelectorAll('.sidebar__link').forEach(l => l.classList.remove('active'));
   document.getElementById(`section-${name}`)?.classList.add('active');
   document.querySelector(`.sidebar__link[data-section="${name}"]`)?.classList.add('active');
+  const mobSel = document.getElementById('mobile-section-select');
+  if (mobSel && mobSel.value !== name) mobSel.value = name;
 
   if (name === 'dashboard') renderDashboard();
   if (name === 'bookings')  renderBookings();
@@ -1109,6 +1111,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.sidebar__link').forEach(link => {
     link.addEventListener('click', () => goSection(link.dataset.section));
   });
+  // Mobile dropdown nav
+  document.getElementById('mobile-section-select')?.addEventListener('change', (e) => goSection(e.target.value));
 
   // Pricing save
   document.getElementById('save-pricing-btn').addEventListener('click', savePricing);
