@@ -394,7 +394,7 @@ function goToStep(num) {
     if (n < num)  s.classList.add('completed');
   });
 
-  if (num === 4) buildReview();
+  if (num === 4) { buildReview(); mountCardForm(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -499,18 +499,19 @@ async function confirmOrder() {
     }
   }
 
-  const { booking, ticketData } = buildBookingPayload();
-
   const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
 
   if (method === 'crypto' && KASKADE_ENABLED) {
+    const { booking, ticketData } = buildBookingPayload();
     return startCryptoCheckout(booking, ticketData);
   }
   if (STRIPE_ENABLED) {
-    return startStripeEmbedded(booking, ticketData);
+    // Card form is already dropped down inline — just confirm it
+    return submitStripePayment();
   }
 
   // Demo mode — no real payment, create the booking directly
+  const { booking, ticketData } = buildBookingPayload();
   setBtnBusy('Processing…');
   if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
   const emailStatus = await sendConfirmationEmail(ticketData);
@@ -599,71 +600,109 @@ async function handleStripeReturn() {
 }
 
 // ── EMBEDDED CARD PAYMENT (Stripe.js Payment Element) ────────────────────────
-async function startStripeEmbedded(booking, ticketData) {
-  // Fall back to the hosted redirect if the SDK or key isn't available
-  if (typeof Stripe === 'undefined' || !/^pk_(test|live)_/.test(STRIPE_PUBLISHABLE_KEY)) {
-    return startStripeCheckout(booking, ticketData);
-  }
-  setBtnBusy('Loading secure payment…');
-  try {
-    const data = await SkylaData.invokeFunction('stripe-checkout', {
-      action:      'payment-intent',
-      amountCents: Math.round(booking.total * 100),
-      currency:    'usd',
-      bookingRef:  booking.bookingRef,
-      email:       booking.email,
-    });
-    if (!data || !data.clientSecret) throw new Error(data?.error || 'No client secret');
-    clearBtnBusy();
-    openStripeInline(data.clientSecret, booking, ticketData);
-  } catch (err) {
-    clearBtnBusy();
-    console.error('Stripe embedded init failed:', err);
-    flashError('step-4', 'Could not start payment. Please try again or use crypto.');
-  }
+// State for the inline card form
+let _cardMounted = false;     // a Payment Element is currently mounted
+let _cardMountTotal = null;   // the amount (in cents) it was created for
+let _cardMounting = false;    // a mount request is in flight
+
+function stripeAvailable() {
+  return STRIPE_ENABLED && typeof Stripe !== 'undefined' && /^pk_(test|live)_/.test(STRIPE_PUBLISHABLE_KEY);
 }
 
-function openStripeInline(clientSecret, booking, ticketData) {
-  _stripeCtx = { booking, ticketData, done: false };
-  if (!_stripe) _stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-  _stripeElements = _stripe.elements({
-    clientSecret,
-    appearance: {
-      theme: 'night',
-      variables: {
-        colorPrimary: '#c9a84c', colorBackground: '#16181c',
-        borderRadius: '10px', fontFamily: 'Inter, system-ui, sans-serif',
-      },
-    },
-  });
-  const el = _stripeElements.create('payment', { layout: 'tabs' });
-  const mount = document.getElementById('stripe-payment-element');
-  if (mount) mount.innerHTML = '';
-  el.mount('#stripe-payment-element');
-  document.getElementById('stripe-pay-error').textContent = '';
-  document.getElementById('stripe-pay-amount').textContent = document.getElementById('final-total')?.textContent || '';
-  const btn = document.getElementById('stripe-pay-btn');
-  if (btn) { btn.disabled = false; btn.innerHTML = 'Pay <span id="stripe-pay-amount">' + (document.getElementById('final-total')?.textContent || '') + '</span>'; }
+function currentTotalCents() {
+  const subtotal = calcSubtotal();
+  const fee = Math.round(subtotal * BOOKING_FEE_RATE * 100) / 100;
+  return Math.round((subtotal + fee) * 100);
+}
 
-  // Reveal the embedded card dropdown and slide it open
+// Drop the card form down inline as soon as Card is selected on the review step
+async function mountCardForm() {
   const box = document.getElementById('stripe-inline');
-  if (box) {
+  if (!box) return;
+  const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
+  const onReview = document.getElementById('step-4')?.classList.contains('active');
+
+  // Only show for Card on the review step when the embedded SDK is usable
+  if (method !== 'card' || !onReview || !stripeAvailable()) {
+    box.classList.remove('open');
+    box.hidden = true;
+    return;
+  }
+
+  const totalCents = currentTotalCents();
+  if (totalCents < 50) return;
+
+  // Already mounted for this exact amount — just make sure it's visible
+  if (_cardMounted && _cardMountTotal === totalCents) {
     box.hidden = false;
     requestAnimationFrame(() => box.classList.add('open'));
-    setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+    return;
   }
-  // The top "Confirm & Pay" button is now redundant — hide it while the card form is open
-  const confirm = document.querySelector('.btn--confirm');
-  if (confirm) confirm.style.display = 'none';
+  if (_cardMounting) return;
+  _cardMounting = true;
+  _cardMounted = false;
+
+  // Reveal the box with a loading state while we fetch the client secret
+  box.hidden = false;
+  requestAnimationFrame(() => box.classList.add('open'));
+  const mount = document.getElementById('stripe-payment-element');
+  if (mount) mount.innerHTML = '<div class="stripe-loading">Loading secure card form…</div>';
+  const errEl = document.getElementById('stripe-pay-error');
+  if (errEl) errEl.textContent = '';
+
+  try {
+    const email = document.getElementById('booking-email')?.value?.trim() || '';
+    const data = await SkylaData.invokeFunction('stripe-checkout', {
+      action:      'payment-intent',
+      amountCents: totalCents,
+      currency:    'usd',
+      bookingRef:  'PENDING',
+      email,
+    });
+    if (!data || !data.clientSecret) throw new Error(data?.error || 'No client secret');
+
+    if (!_stripe) _stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+    _stripeElements = _stripe.elements({
+      clientSecret: data.clientSecret,
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#c9a84c', colorBackground: '#16181c',
+          borderRadius: '10px', fontFamily: 'Inter, system-ui, sans-serif',
+        },
+      },
+    });
+    const el = _stripeElements.create('payment', { layout: 'tabs' });
+    if (mount) mount.innerHTML = '';
+    el.mount('#stripe-payment-element');
+    _cardMounted = true;
+    _cardMountTotal = totalCents;
+  } catch (err) {
+    console.error('Card form mount failed:', err);
+    if (mount) mount.innerHTML = '';
+    if (errEl) errEl.textContent = 'Could not load the card form. You can use Crypto, or try again.';
+    _cardMounted = false;
+  } finally {
+    _cardMounting = false;
+  }
 }
 
+// Confirm the already-mounted card form (driven by the main "Pay Securely" button)
 async function submitStripePayment() {
-  if (!_stripe || !_stripeElements) return;
-  const btn = document.getElementById('stripe-pay-btn');
+  // If the inline form never mounted, fall back to Stripe's hosted page
+  if (!_stripe || !_stripeElements || !_cardMounted) {
+    const { booking, ticketData } = buildBookingPayload();
+    return startStripeCheckout(booking, ticketData);
+  }
+
+  const { booking, ticketData } = buildBookingPayload();
+  _stripeCtx = { booking, ticketData, done: false };
+
+  const btn = document.querySelector('.btn--confirm');
   const errEl = document.getElementById('stripe-pay-error');
-  errEl.textContent = '';
-  const prev = btn.innerHTML;
-  btn.disabled = true; btn.innerHTML = 'Processing…';
+  if (errEl) errEl.textContent = '';
+  const prev = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Processing…'; }
 
   const { error, paymentIntent } = await _stripe.confirmPayment({
     elements: _stripeElements,
@@ -671,15 +710,15 @@ async function submitStripePayment() {
   });
 
   if (error) {
-    errEl.textContent = error.message || 'Payment failed — please check your card details.';
-    btn.disabled = false; btn.innerHTML = prev;
+    if (errEl) errEl.textContent = error.message || 'Payment failed — please check your card details.';
+    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
     return;
   }
   if (paymentIntent && paymentIntent.status === 'succeeded') {
     await finalizeStripeBooking(paymentIntent.id);
   } else {
-    errEl.textContent = 'Payment was not completed.';
-    btn.disabled = false; btn.innerHTML = prev;
+    if (errEl) errEl.textContent = 'Payment was not completed.';
+    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
   }
 }
 
@@ -694,6 +733,7 @@ async function finalizeStripeBooking(piId) {
   const emailStatus = await sendConfirmationEmail(ticketData);
   const box = document.getElementById('stripe-inline');
   if (box) { box.classList.remove('open'); box.hidden = true; }
+  _cardMounted = false; _cardMountTotal = null;
   showTicket({ ...ticketData, emailStatus });
 }
 
@@ -851,11 +891,14 @@ function updatePayMethodUI() {
   const cryptoField = document.getElementById('crypto-currency-field');
   if (cryptoField) cryptoField.style.display = method === 'crypto' ? '' : 'none';
 
-  // Collapse an open card form and restore the confirm button when switching methods
+  // Card → drop the embedded card form down; Crypto → collapse it
   const box = document.getElementById('stripe-inline');
-  if (box && !box.hidden) { box.classList.remove('open'); box.hidden = true; if (_stripeCtx) _stripeCtx.done = true; }
-  const confirmBtn = document.querySelector('.btn--confirm');
-  if (confirmBtn) confirmBtn.style.display = '';
+  if (method === 'card') {
+    mountCardForm();
+  } else if (box && !box.hidden) {
+    box.classList.remove('open');
+    box.hidden = true;
+  }
 
   document.querySelectorAll('.pay-method__opt').forEach(opt => {
     opt.classList.toggle('is-active', opt.querySelector('input')?.value === method);

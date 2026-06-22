@@ -1489,7 +1489,16 @@
 }
 .stripe-inline__title { font-weight: 600; font-size: 0.95rem; color: #f4f4f5; }
 .stripe-inline__secure { font-size: 0.74rem; color: #c9a84c; opacity: 0.85; white-space: nowrap; }
-#stripe-payment-element { margin: 4px 0 14px; min-height: 40px; text-align: left; }
-.stripe-pay-error { color: #e08080; font-size: 0.82rem; min-height: 1.1em; margin-bottom: 10px; text-align: center; }
-.stripe-pay-btn { width: 100%; justify-content: center; }
-.stripe-pay-btn:disabled { opacity: 0.6; cursor: default; }
+#stripe-payment-element { margin: 4px 0 2px; min-height: 40px; text-align: left; }
+.stripe-loading {
+  padding: 26px 0; text-align: center; color: #9aa0a6;
+  font-size: 0.86rem; letter-spacing: 0.01em;
+}
+.stripe-pay-error { color: #e08080; font-size: 0.82rem; min-height: 0; margin: 8px 0 0; text-align: center; }
+.stripe-pay-error:empty { margin: 0; }
+
+@media (max-width: 600px) {
+  .stripe-inline.open { padding: 14px; }
+  .stripe-inline__head { flex-wrap: wrap; gap: 4px 10px; }
+  .stripe-inline__secure { font-size: 0.68rem; }
+}

@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=10" />
-  <link rel="stylesheet" href="checkout.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="checkout.css?v=11" />
 </head>
 <body class="checkout-page">
 
@@ -403,7 +403,7 @@
               </div>
             </div>
 
-            <!-- EMBEDDED CARD FORM (Stripe Payment Element) — expands inline -->
+            <!-- EMBEDDED CARD FORM (Stripe Payment Element) — drops down under Card -->
             <div class="stripe-inline" id="stripe-inline" hidden>
               <div class="stripe-inline__head">
                 <span class="stripe-inline__title">💳 Card Details</span>
@@ -411,9 +411,6 @@
               </div>
               <div id="stripe-payment-element"></div>
               <p class="stripe-pay-error" id="stripe-pay-error"></p>
-              <button class="btn btn--gold stripe-pay-btn" id="stripe-pay-btn" type="button" onclick="submitStripePayment()">
-                Pay <span id="stripe-pay-amount"></span>
-              </button>
             </div>
           </div>
 
@@ -535,7 +532,7 @@
   <script src="https://js.stripe.com/v3/"></script>
   <!-- EmailJS — client-side email delivery for booking confirmations (no backend) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script src="shared-data.js?v=3"></script>
-  <script src="checkout.js?v=3"></script>
+  <script src="shared-data.js?v=4"></script>
+  <script src="checkout.js?v=4"></script>
 </body>
 </html>
