@@ -1461,8 +1461,35 @@
 .crypto-select:focus { outline: none; border-color: var(--gold, #c9a84c); background: var(--dark-2, #16181c); }
 .crypto-select option { background: #16181c; color: #fff; padding: 10px; }
 
-/* ── EMBEDDED STRIPE PAYMENT MODAL ── */
-#stripe-payment-element { margin: 8px 0 14px; min-height: 40px; text-align: left; }
+/* ── EMBEDDED CARD FORM (Stripe Payment Element — inline dropdown) ── */
+.stripe-inline {
+  margin-top: 16px;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 12px;
+  background: rgba(22, 24, 28, 0.6);
+  /* Slide-open dropdown animation */
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 16px;
+  transition: max-height 0.45s ease, opacity 0.35s ease, padding 0.35s ease;
+}
+.stripe-inline.open {
+  max-height: 900px;
+  opacity: 1;
+  padding: 16px;
+}
+.stripe-inline__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.stripe-inline__title { font-weight: 600; font-size: 0.95rem; color: #f4f4f5; }
+.stripe-inline__secure { font-size: 0.74rem; color: #c9a84c; opacity: 0.85; white-space: nowrap; }
+#stripe-payment-element { margin: 4px 0 14px; min-height: 40px; text-align: left; }
 .stripe-pay-error { color: #e08080; font-size: 0.82rem; min-height: 1.1em; margin-bottom: 10px; text-align: center; }
 .stripe-pay-btn { width: 100%; justify-content: center; }
 .stripe-pay-btn:disabled { opacity: 0.6; cursor: default; }

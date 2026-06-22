@@ -615,7 +615,7 @@ async function startStripeEmbedded(booking, ticketData) {
     });
     if (!data || !data.clientSecret) throw new Error(data?.error || 'No client secret');
     clearBtnBusy();
-    openStripeModal(data.clientSecret, booking, ticketData);
+    openStripeInline(data.clientSecret, booking, ticketData);
   } catch (err) {
     clearBtnBusy();
     console.error('Stripe embedded init failed:', err);
@@ -623,7 +623,7 @@ async function startStripeEmbedded(booking, ticketData) {
   }
 }
 
-function openStripeModal(clientSecret, booking, ticketData) {
+function openStripeInline(clientSecret, booking, ticketData) {
   _stripeCtx = { booking, ticketData, done: false };
   if (!_stripe) _stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
   _stripeElements = _stripe.elements({
@@ -643,8 +643,18 @@ function openStripeModal(clientSecret, booking, ticketData) {
   document.getElementById('stripe-pay-error').textContent = '';
   document.getElementById('stripe-pay-amount').textContent = document.getElementById('final-total')?.textContent || '';
   const btn = document.getElementById('stripe-pay-btn');
-  if (btn) { btn.disabled = false; btn.dataset.prevHtml = ''; }
-  document.getElementById('stripe-modal').classList.add('visible');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Pay <span id="stripe-pay-amount">' + (document.getElementById('final-total')?.textContent || '') + '</span>'; }
+
+  // Reveal the embedded card dropdown and slide it open
+  const box = document.getElementById('stripe-inline');
+  if (box) {
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('open'));
+    setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+  }
+  // The top "Confirm & Pay" button is now redundant — hide it while the card form is open
+  const confirm = document.querySelector('.btn--confirm');
+  if (confirm) confirm.style.display = 'none';
 }
 
 async function submitStripePayment() {
@@ -682,13 +692,9 @@ async function finalizeStripeBooking(piId) {
   booking.stripePaymentId = piId;
   if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
   const emailStatus = await sendConfirmationEmail(ticketData);
-  document.getElementById('stripe-modal').classList.remove('visible');
+  const box = document.getElementById('stripe-inline');
+  if (box) { box.classList.remove('open'); box.hidden = true; }
   showTicket({ ...ticketData, emailStatus });
-}
-
-function closeStripeModal() {
-  if (_stripeCtx) _stripeCtx.done = true;
-  document.getElementById('stripe-modal').classList.remove('visible');
 }
 
 // ── PAYMENTS (Kaskade — crypto, experimental) ────────────────────────────────
@@ -844,6 +850,12 @@ function updatePayMethodUI() {
   const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
   const cryptoField = document.getElementById('crypto-currency-field');
   if (cryptoField) cryptoField.style.display = method === 'crypto' ? '' : 'none';
+
+  // Collapse an open card form and restore the confirm button when switching methods
+  const box = document.getElementById('stripe-inline');
+  if (box && !box.hidden) { box.classList.remove('open'); box.hidden = true; if (_stripeCtx) _stripeCtx.done = true; }
+  const confirmBtn = document.querySelector('.btn--confirm');
+  if (confirmBtn) confirmBtn.style.display = '';
 
   document.querySelectorAll('.pay-method__opt').forEach(opt => {
     opt.classList.toggle('is-active', opt.querySelector('input')?.value === method);
