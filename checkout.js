@@ -394,7 +394,7 @@ function goToStep(num) {
     if (n < num)  s.classList.add('completed');
   });
 
-  if (num === 4) { buildReview(); mountCardForm(); }
+  if (num === 3) { buildReview(); mountCardForm(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -555,7 +555,7 @@ async function startStripeCheckout(booking, ticketData) {
   } catch (err) {
     console.error('Stripe checkout failed:', err);
     clearBtnBusy();
-    flashError('step-4', 'Payment could not be started. Please try again.');
+    flashError('step-3', 'Payment could not be started. Please try again.');
   }
 }
 
@@ -568,8 +568,8 @@ async function handleStripeReturn() {
 
   if (status === 'cancel') {
     window.history.replaceState({}, '', cleanUrl);
-    goToStep(4);
-    flashError('step-4', 'Payment canceled — you have not been charged.');
+    goToStep(3);
+    flashError('step-3', 'Payment canceled — you have not been charged.');
     return;
   }
 
@@ -582,10 +582,10 @@ async function handleStripeReturn() {
 
     try {
       const v = await SkylaData.invokeFunction('stripe-checkout', { action: 'verify', sessionId });
-      if (!v || !v.paid) { goToStep(4); flashError('step-4', 'Payment was not completed.'); return; }
+      if (!v || !v.paid) { goToStep(3); flashError('step-3', 'Payment was not completed.'); return; }
     } catch (e) {
       console.error('verify failed', e);
-      goToStep(4); flashError('step-4', 'Could not verify payment — contact us if you were charged.');
+      goToStep(3); flashError('step-3', 'Could not verify payment — contact us if you were charged.');
       return;
     }
 
@@ -620,7 +620,7 @@ async function mountCardForm() {
   const box = document.getElementById('stripe-inline');
   if (!box) return;
   const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
-  const onReview = document.getElementById('step-4')?.classList.contains('active');
+  const onReview = document.getElementById('step-3')?.classList.contains('active');
 
   // Only show for Card on the review step when the embedded SDK is usable
   if (method !== 'card' || !onReview || !stripeAvailable()) {
@@ -791,7 +791,7 @@ async function startCryptoCheckout(booking, ticketData) {
   } catch (err) {
     clearBtnBusy();
     console.error('Crypto checkout failed:', err);
-    flashError('step-4', 'Could not start crypto payment. Try another coin or use card.');
+    flashError('step-3', 'Could not start crypto payment. Try another coin or use card.');
   }
 }
 

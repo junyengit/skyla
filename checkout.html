@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
-  <link rel="stylesheet" href="checkout.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="checkout.css?v=12" />
 </head>
 <body class="checkout-page">
 
@@ -45,11 +45,6 @@
       <div class="checkout-step__line"></div>
       <div class="checkout-step" data-step="3">
         <div class="checkout-step__num">3</div>
-        <div class="checkout-step__label">Add-Ons</div>
-      </div>
-      <div class="checkout-step__line"></div>
-      <div class="checkout-step" data-step="4">
-        <div class="checkout-step__num">4</div>
         <div class="checkout-step__label">Review</div>
       </div>
     </div>
@@ -260,91 +255,12 @@
 
           <div class="step-nav">
             <button class="btn btn--ghost btn--step" onclick="goToStep(1)">← Back</button>
-            <button class="btn btn--primary btn--step" onclick="goToStep(3)">Continue to Add-Ons →</button>
+            <button class="btn btn--primary btn--step" onclick="goToStep(3)">Review Order →</button>
           </div>
         </div>
 
-        <!-- STEP 3: ADD-ONS -->
+        <!-- STEP 3: REVIEW -->
         <div class="form-step" id="step-3">
-          <h2 class="form-step__title">Enhance Your Visit</h2>
-          <p class="form-step__sub">Optional add-ons available per guest. Redeemable at the café on arrival.</p>
-
-          <div class="addons-checkout">
-
-            <div class="addon-checkout-item" data-addon="matcha" data-price="12">
-              <div class="addon-checkout-item__icon">🍵</div>
-              <div class="addon-checkout-item__info">
-                <h4>Ceremonial Matcha Latte</h4>
-                <p>Premium Japanese ceremonial grade matcha, oat or whole milk</p>
-              </div>
-              <div class="addon-checkout-item__right">
-                <div class="addon-checkout-item__price">+$12</div>
-                <div class="qty-control qty-control--sm">
-                  <button class="qty-btn" data-addon="matcha" data-action="minus">−</button>
-                  <span class="qty-value" id="addon-matcha">0</span>
-                  <button class="qty-btn" data-addon="matcha" data-action="plus">+</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="addon-checkout-item" data-addon="pourover" data-price="10">
-              <div class="addon-checkout-item__icon">☕</div>
-              <div class="addon-checkout-item__info">
-                <h4>Single-Origin Pour Over</h4>
-                <p>Rotating small-batch roasters, hot or over ice</p>
-              </div>
-              <div class="addon-checkout-item__right">
-                <div class="addon-checkout-item__price">+$10</div>
-                <div class="qty-control qty-control--sm">
-                  <button class="qty-btn" data-addon="pourover" data-action="minus">−</button>
-                  <span class="qty-value" id="addon-pourover">0</span>
-                  <button class="qty-btn" data-addon="pourover" data-action="plus">+</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="addon-checkout-item" data-addon="hojicha" data-price="13">
-              <div class="addon-checkout-item__icon">🧋</div>
-              <div class="addon-checkout-item__info">
-                <h4>Iced Matcha Hojicha Latte</h4>
-                <p>Roasted green tea with house-made brown sugar syrup</p>
-              </div>
-              <div class="addon-checkout-item__right">
-                <div class="addon-checkout-item__price">+$13</div>
-                <div class="qty-control qty-control--sm">
-                  <button class="qty-btn" data-addon="hojicha" data-action="minus">−</button>
-                  <span class="qty-value" id="addon-hojicha">0</span>
-                  <button class="qty-btn" data-addon="hojicha" data-action="plus">+</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="addon-checkout-item" data-addon="coldbrew" data-price="11">
-              <div class="addon-checkout-item__icon">🍫</div>
-              <div class="addon-checkout-item__info">
-                <h4>Iced Mocha Cold Brew</h4>
-                <p>24-hour cold brew, dark chocolate, oat milk</p>
-              </div>
-              <div class="addon-checkout-item__right">
-                <div class="addon-checkout-item__price">+$11</div>
-                <div class="qty-control qty-control--sm">
-                  <button class="qty-btn" data-addon="coldbrew" data-action="minus">−</button>
-                  <span class="qty-value" id="addon-coldbrew">0</span>
-                  <button class="qty-btn" data-addon="coldbrew" data-action="plus">+</button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="step-nav">
-            <button class="btn btn--ghost btn--step" onclick="goToStep(2)">← Back</button>
-            <button class="btn btn--primary btn--step" onclick="goToStep(4)">Review Order →</button>
-          </div>
-        </div>
-
-        <!-- STEP 4: REVIEW -->
-        <div class="form-step" id="step-4">
           <h2 class="form-step__title">Review Your Order</h2>
           <p class="form-step__sub">Almost there — confirm your details before checkout.</p>
 
@@ -415,7 +331,7 @@
           </div>
 
           <div class="step-nav">
-            <button class="btn btn--ghost btn--step" onclick="goToStep(3)">← Back</button>
+            <button class="btn btn--ghost btn--step" onclick="goToStep(2)">← Back</button>
             <button class="btn btn--gold btn--step btn--confirm" onclick="confirmOrder()">
               🔒 Confirm & Pay — <span id="final-total">$0.00</span>
             </button>
@@ -532,7 +448,7 @@
   <script src="https://js.stripe.com/v3/"></script>
   <!-- EmailJS — client-side email delivery for booking confirmations (no backend) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script src="shared-data.js?v=4"></script>
-  <script src="checkout.js?v=4"></script>
+  <script src="shared-data.js?v=5"></script>
+  <script src="checkout.js?v=5"></script>
 </body>
 </html>
