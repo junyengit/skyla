@@ -1,0 +1,93 @@
+// ============================================================
+// Supabase Edge Function: stripe-terminal
+// Powers the in-person POS (BBPOS WisePOS E / Stripe Reader S700).
+//   • action: "connection-token" → short-lived token the Terminal SDK uses to
+//                                   talk to readers (never exposes the secret key)
+//   • action: "create-intent"    → a card-present PaymentIntent for a sale
+//   • action: "list-readers"     → registered readers for a location (optional)
+//
+// Uses the same Stripe secret as checkout (STRIPE_SECRET_KEY in Supabase
+// Edge Function secrets). Reuses withSupabase so the website can call it with
+// the publishable key.
+// ============================================================
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { withSupabase } from "jsr:@supabase/server@^1";
+
+const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+const STRIPE_API = "https://api.stripe.com/v1";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
+
+async function stripe(path: string, method = "GET", body?: string) {
+  const res = await fetch(`${STRIPE_API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${STRIPE_SECRET}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "Stripe request failed");
+  return data;
+}
+
+async function handle(req: Request) {
+  try {
+    if (!STRIPE_SECRET) return json({ error: "STRIPE_SECRET_KEY not set" }, 500);
+    const payload = await req.json();
+
+    // Token the Terminal JS SDK exchanges to connect to readers
+    if (payload.action === "connection-token") {
+      const tok = await stripe("/terminal/connection_tokens", "POST", "");
+      return json({ secret: tok.secret });
+    }
+
+    // A card-present PaymentIntent for an in-person sale
+    if (payload.action === "create-intent") {
+      const { amountCents, currency = "usd", description, metadata = {} } = payload;
+      if (!amountCents || amountCents < 50) return json({ error: "Invalid amount" }, 400);
+      const fields: Record<string, string> = {
+        "amount": String(Math.round(amountCents)),
+        "currency": currency,
+        "payment_method_types[]": "card_present",
+        "capture_method": "automatic",
+      };
+      if (description) fields["description"] = description;
+      for (const [k, v] of Object.entries(metadata)) {
+        fields[`metadata[${k}]`] = String(v ?? "").slice(0, 480);
+      }
+      const pi = await stripe("/payment_intents", "POST", new URLSearchParams(fields).toString());
+      return json({ clientSecret: pi.client_secret, id: pi.id });
+    }
+
+    // Readers registered to a location (handy for picking a real reader)
+    if (payload.action === "list-readers") {
+      const q = payload.locationId ? `?location=${encodeURIComponent(payload.locationId)}` : "";
+      const readers = await stripe(`/terminal/readers${q}`, "GET");
+      return json({ readers: readers.data || [] });
+    }
+
+    return json({ error: "Unknown action" }, 400);
+  } catch (e) {
+    return json({ error: String((e as Error)?.message || e) }, 400);
+  }
+}
+
+export default {
+  fetch: (req: Request, ctx: unknown) => {
+    if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+    return withSupabase({ auth: ["publishable", "secret"] }, handle)(req, ctx);
+  },
+};
