@@ -145,8 +145,14 @@ function renderCart() {
 }
 
 // ── STRIPE TERMINAL ──
+// Optional: scope readers to a venue. Set in the console with
+// localStorage.setItem('skyla_pos_location', 'tml_xxx')
+let _posLocation = (typeof localStorage !== 'undefined' && localStorage.getItem('skyla_pos_location')) || null;
+
 async function fetchConnectionToken() {
-  const data = await SkylaData.invokeFunction('stripe-terminal', { action: 'connection-token' });
+  const body = { action: 'connection-token' };
+  if (_posLocation) body.location = _posLocation;
+  const data = await SkylaData.invokeFunction('stripe-terminal', body);
   if (!data || !data.secret) throw new Error(data?.error || 'No connection token');
   return data.secret;
 }
@@ -159,66 +165,106 @@ function initTerminal() {
   return terminal;
 }
 function setReaderStatus(connected, label) {
-  connectedReader = connected ? (connectedReader || true) : null;
+  if (!connected) connectedReader = null;
   document.getElementById('reader-dot').classList.toggle('is-on', !!connected);
   document.getElementById('reader-label').textContent = connected
     ? `Reader: ${label || 'connected'}`
     : 'Reader: not connected';
   document.getElementById('reader-connect').textContent = connected ? 'Reconnect' : 'Connect reader';
 }
+
+// Discover readers and let the operator pick (you run two — café + door)
 async function connectReader() {
-  const btn = document.getElementById('reader-connect');
-  btn.disabled = true; btn.textContent = 'Searching…';
+  initTerminal();
+  openPicker('Searching for readers on this network…');
   try {
-    initTerminal();
     const simulated = document.getElementById('reader-sim').checked;
-    const discover = await terminal.discoverReaders({ simulated });
+    const config = { simulated };
+    if (!simulated && _posLocation) config.location = _posLocation;
+    const discover = await terminal.discoverReaders(config);
     if (discover.error) throw new Error(discover.error.message);
-    if (!discover.discoveredReaders.length) throw new Error('No readers found — make sure the reader is on the same WiFi.');
-    const conn = await terminal.connectReader(discover.discoveredReaders[0]);
+    const readers = discover.discoveredReaders || [];
+    if (!readers.length) { setPickerMsg('No readers found. Make sure the reader is powered on and on the same WiFi as this device.'); return; }
+    renderReaderList(readers);
+  } catch (e) {
+    setPickerMsg('Error: ' + (e.message || e));
+  }
+}
+function renderReaderList(readers) {
+  setPickerMsg(`${readers.length} reader${readers.length > 1 ? 's' : ''} found — tap one to connect:`);
+  const list = document.getElementById('reader-list');
+  list.innerHTML = readers.map((r, i) => `
+    <button class="reader-row" data-i="${i}" type="button">
+      <strong>${r.label || r.id}</strong>
+      <span>${r.serial_number || r.device_type || ''}${r.status ? ' · ' + r.status : ''}</span>
+    </button>`).join('');
+  list.querySelectorAll('.reader-row').forEach(b =>
+    b.addEventListener('click', () => doConnect(readers[parseInt(b.dataset.i)])));
+}
+async function doConnect(reader) {
+  setPickerMsg('Connecting…');
+  document.getElementById('reader-list').innerHTML = '';
+  try {
+    const conn = await terminal.connectReader(reader);
     if (conn.error) throw new Error(conn.error.message);
     connectedReader = conn.reader;
     setReaderStatus(true, conn.reader.label || conn.reader.id);
+    closePicker();
   } catch (e) {
-    setReaderStatus(false);
-    alert('Could not connect: ' + (e.message || e));
-  } finally {
-    btn.disabled = false;
+    setPickerMsg('Could not connect: ' + (e.message || e));
   }
 }
+function openPicker(msg) { setPickerMsg(msg); document.getElementById('reader-list').innerHTML = ''; document.getElementById('reader-picker').classList.add('visible'); }
+function closePicker() { document.getElementById('reader-picker').classList.remove('visible'); }
+function setPickerMsg(m) { document.getElementById('picker-msg').textContent = m; }
 
 // ── CHARGE ──
 let _lastSale = null;
+let _charge = null;   // { clientSecret } — kept so a retry reuses the SAME PaymentIntent (no double charge)
 
 async function charge() {
   if (!connectedReader) { alert('Connect a reader first (top right).'); return; }
   const total = cartTotalCents();
   if (total < 50) return;
 
-  openPay('Present card on the reader…', 'Ask the customer to tap, insert, or swipe.');
+  openPay('Starting…', 'Preparing the reader.');
   try {
+    const receiptEmail = document.getElementById('cart-email')?.value?.trim() || '';
     const data = await SkylaData.invokeFunction('stripe-terminal', {
       action: 'create-intent',
       amountCents: total,
       description: 'Sky LA — in-person sale',
+      receiptEmail: receiptEmail || undefined,
       metadata: { source: 'pos', has_tickets: cartHasTickets() ? '1' : '0' },
     });
     if (!data || !data.clientSecret) throw new Error(data?.error || 'Could not start payment');
+    _charge = { clientSecret: data.clientSecret };
+    await runCharge();
+  } catch (e) {
+    payError(e.message || 'Payment failed.');
+  }
+}
 
-    const collect = await terminal.collectPaymentMethod(data.clientSecret);
-    if (collect.error) throw new Error(collect.error.message);
+// Collect + process on the current PaymentIntent. Safe to call again on retry —
+// it reuses the same clientSecret, so the customer is never double-charged.
+async function runCharge() {
+  if (!_charge) return;
+  openPay('Present card on the reader…', 'Ask the customer to tap, insert, or swipe.');
+  try {
+    const collect = await terminal.collectPaymentMethod(_charge.clientSecret);
+    if (collect.error) return payError(collect.error.message, true);
 
     payUpdate('Processing…', 'Hold on — confirming the payment.');
     const result = await terminal.processPayment(collect.paymentIntent);
-    if (result.error) throw new Error(result.error.message);
+    if (result.error) return payError(result.error.message, true);
 
     if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
       finalizeSale(result.paymentIntent.id);
     } else {
-      payError('Payment was not completed.');
+      payError('Payment was not completed.', true);
     }
   } catch (e) {
-    payError(e.message || 'Payment failed.');
+    payError(e.message || 'Payment failed.', true);
   }
 }
 
@@ -263,6 +309,7 @@ function openPay(title, msg) {
   document.getElementById('pay-spin').style.display = 'block';
   document.getElementById('pay-icon').style.display = 'none';
   document.getElementById('pay-actions').style.display = 'none';
+  document.getElementById('pay-retry-actions').style.display = 'none';
   document.getElementById('pay-cancel').style.display = 'block';
   document.getElementById('pay-title').textContent = title;
   document.getElementById('pay-msg').textContent = msg;
@@ -272,14 +319,16 @@ function payUpdate(title, msg) {
   document.getElementById('pay-title').textContent = title;
   document.getElementById('pay-msg').textContent = msg;
 }
-function payError(msg) {
+function payError(msg, canRetry) {
   document.getElementById('pay-spin').style.display = 'none';
   const icon = document.getElementById('pay-icon');
   icon.style.display = 'flex'; icon.textContent = '✕'; icon.className = 'pos-pay__icon is-err';
   document.getElementById('pay-title').textContent = 'Payment failed';
   document.getElementById('pay-msg').textContent = msg;
-  document.getElementById('pay-cancel').style.display = 'block';
   document.getElementById('pay-actions').style.display = 'none';
+  // Offer a retry that reuses the same PaymentIntent (no re-keying, no double charge)
+  document.getElementById('pay-retry-actions').style.display = (canRetry && _charge) ? 'flex' : 'none';
+  document.getElementById('pay-cancel').style.display = (canRetry && _charge) ? 'none' : 'block';
 }
 function paySuccess(sale) {
   document.getElementById('pay-spin').style.display = 'none';
@@ -303,9 +352,16 @@ function paySuccess(sale) {
   }
   document.getElementById('pay-msg').innerHTML = html;
   document.getElementById('pay-actions').style.display = 'flex';
+  document.getElementById('pay-retry-actions').style.display = 'none';
   document.getElementById('pay-cancel').style.display = 'none';
+  _charge = null;   // sale complete — don't let a stray retry re-run
 }
-function closePay() { document.getElementById('pos-pay').classList.remove('visible'); }
+function closePay() {
+  document.getElementById('pos-pay').classList.remove('visible');
+  // Cancel any in-progress collection so the reader returns to idle
+  if (_charge && terminal) { try { terminal.cancelCollectPaymentMethod(); } catch (e) {} }
+  _charge = null;
+}
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -352,8 +408,11 @@ function boot() {
   document.getElementById('cart-charge').addEventListener('click', charge);
   document.getElementById('cart-clear').addEventListener('click', clearCart);
   document.getElementById('pay-cancel').addEventListener('click', closePay);
+  document.getElementById('pay-cancel-retry').addEventListener('click', closePay);
+  document.getElementById('pay-retry').addEventListener('click', runCharge);
   document.getElementById('pay-done').addEventListener('click', closePay);
   document.getElementById('pay-print').addEventListener('click', () => window.print());
+  document.getElementById('picker-cancel').addEventListener('click', closePicker);
 
   // Refresh prices if config arrives from cloud
   window.addEventListener('skyla:config', renderCatalog);

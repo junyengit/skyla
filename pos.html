@@ -7,7 +7,7 @@
   <title>POS — Sky LA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pos.css?v=1" />
+  <link rel="stylesheet" href="pos.css?v=2" />
 </head>
 <body class="pos-body">
 
@@ -76,6 +76,16 @@
     </div>
   </div>
 
+  <!-- READER PICKER -->
+  <div class="pos-pay" id="reader-picker">
+    <div class="pos-pay__card">
+      <h2>Choose a reader</h2>
+      <p id="picker-msg">Searching for readers on this network…</p>
+      <div class="reader-list" id="reader-list"></div>
+      <button class="pos-pay__cancel" id="picker-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
   <!-- PAYMENT STATUS OVERLAY -->
   <div class="pos-pay" id="pos-pay">
     <div class="pos-pay__card">
@@ -87,6 +97,10 @@
         <button class="btn-ghost" id="pay-print" type="button">🖨 Print</button>
         <button class="btn-gold" id="pay-done" type="button">New Order</button>
       </div>
+      <div class="pos-pay__actions" id="pay-retry-actions" style="display:none;">
+        <button class="btn-ghost" id="pay-cancel-retry" type="button">Cancel</button>
+        <button class="btn-gold" id="pay-retry" type="button">Try again</button>
+      </div>
       <button class="pos-pay__cancel" id="pay-cancel" type="button">Cancel</button>
     </div>
   </div>
@@ -94,6 +108,6 @@
   <!-- Stripe Terminal SDK -->
   <script src="https://js.stripe.com/terminal/v1/"></script>
   <script src="shared-data.js?v=5"></script>
-  <script src="pos.js?v=1"></script>
+  <script src="pos.js?v=2"></script>
 </body>
 </html>

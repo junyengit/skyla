@@ -48,15 +48,25 @@ async function handle(req: Request) {
     if (!STRIPE_SECRET) return json({ error: "STRIPE_SECRET_KEY not set" }, 500);
     const payload = await req.json();
 
-    // Token the Terminal JS SDK exchanges to connect to readers
+    // Token the Terminal JS SDK exchanges to connect to readers.
+    // Passing a location scopes the token to readers at that venue (best practice).
     if (payload.action === "connection-token") {
-      const tok = await stripe("/terminal/connection_tokens", "POST", "");
+      const body = payload.location
+        ? new URLSearchParams({ location: payload.location }).toString()
+        : "";
+      const tok = await stripe("/terminal/connection_tokens", "POST", body);
       return json({ secret: tok.secret });
+    }
+
+    // List Terminal locations (so the POS can pick a venue)
+    if (payload.action === "list-locations") {
+      const locs = await stripe("/terminal/locations", "GET");
+      return json({ locations: locs.data || [] });
     }
 
     // A card-present PaymentIntent for an in-person sale
     if (payload.action === "create-intent") {
-      const { amountCents, currency = "usd", description, metadata = {} } = payload;
+      const { amountCents, currency = "usd", description, metadata = {}, receiptEmail } = payload;
       if (!amountCents || amountCents < 50) return json({ error: "Invalid amount" }, 400);
       const fields: Record<string, string> = {
         "amount": String(Math.round(amountCents)),
@@ -65,6 +75,7 @@ async function handle(req: Request) {
         "capture_method": "automatic",
       };
       if (description) fields["description"] = description;
+      if (receiptEmail) fields["receipt_email"] = receiptEmail;   // Stripe emails a receipt
       for (const [k, v] of Object.entries(metadata)) {
         fields[`metadata[${k}]`] = String(v ?? "").slice(0, 480);
       }
