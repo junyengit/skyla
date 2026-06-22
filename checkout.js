@@ -444,7 +444,7 @@ function buildReview() {
 // no real charge) so the site keeps working.
 const STRIPE_ENABLED = true;
 // Publishable key is safe to expose in the browser (Stripe.js needs it).
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51TjP70GWwAgVPTZc1FyQVFUGpca7IfRheH8RralNw46WzXCJmeCvW15WqGPLv7puyUx6DLSMjVbYup0m9C1I2pVA00PRqR1o0P';
+const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TjP6tGiz0M8uKyj8TpIyvFLrpV8SIcAAGBNinwfwRhFcNvPSKlNnUYGlOTlotoyIjoiD9KoHnl8aoxRcq1JBY0W00JOthe7gO';
 let _stripe = null, _stripeElements = null, _stripeCtx = null;
 
 function setBtnBusy(label) {
