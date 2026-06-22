@@ -20,35 +20,48 @@
 // ============================================================
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
+const WEBHOOK_SECRET = (Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "").trim();
 const SUPABASE_URL   = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
-// Verify Stripe's signature: header is "t=<ts>,v1=<hmac>"; the signed payload
-// is `${t}.${rawBody}` HMAC-SHA256'd with the signing secret.
-async function validSignature(rawBody: string, sigHeader: string): Promise<boolean> {
-  if (!WEBHOOK_SECRET || !sigHeader) return false;
-  const parts: Record<string, string> = {};
+async function hmacHex(secret: string, payload: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw", enc(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, enc(payload));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Verify Stripe's signature: header is "t=<ts>,v1=<hmac>[,v1=<hmac>...]";
+// the signed payload is `${t}.${rawBody}` HMAC-SHA256'd with the signing secret.
+// Returns { ok, diag } where diag is a NON-sensitive hint for debugging.
+async function validSignature(rawBody: string, sigHeader: string): Promise<{ ok: boolean; diag: string }> {
+  if (!WEBHOOK_SECRET) return { ok: false, diag: "no_secret_configured" };
+  if (!sigHeader)      return { ok: false, diag: "no_signature_header" };
+
+  let t: string | undefined;
+  const v1s: string[] = [];
   for (const kv of sigHeader.split(",")) {
     const i = kv.indexOf("=");
-    if (i > 0) parts[kv.slice(0, i).trim()] = kv.slice(i + 1).trim();
+    if (i < 0) continue;
+    const k = kv.slice(0, i).trim();
+    const v = kv.slice(i + 1).trim();
+    if (k === "t") t = v;
+    else if (k === "v1") v1s.push(v);
   }
-  const t = parts["t"];
-  const v1 = parts["v1"];
-  if (!t || !v1) return false;
+  if (!t || v1s.length === 0) return { ok: false, diag: "malformed_header" };
 
-  const key = await crypto.subtle.importKey(
-    "raw", enc(WEBHOOK_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
-  );
-  const mac = await crypto.subtle.sign("HMAC", key, enc(`${t}.${rawBody}`));
-  const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
-
-  if (hex.length !== v1.length) return false;
-  let diff = 0;
-  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ v1.charCodeAt(i);
-  return diff === 0;
+  const expected = await hmacHex(WEBHOOK_SECRET, `${t}.${rawBody}`);
+  for (const sig of v1s) {
+    if (sig.length !== expected.length) continue;
+    let diff = 0;
+    for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+    if (diff === 0) return { ok: true, diag: "ok" };
+  }
+  // Non-sensitive hint: length + "whsec_" prefix only (never the secret itself)
+  return { ok: false, diag: `mismatch secret_len=${WEBHOOK_SECRET.length} prefix=${WEBHOOK_SECRET.slice(0, 6)}` };
 }
 
 Deno.serve(async (req) => {
@@ -56,8 +69,9 @@ Deno.serve(async (req) => {
 
   const raw = await req.text();
   const sig = req.headers.get("stripe-signature") || "";
-  if (!(await validSignature(raw, sig))) {
-    return new Response("invalid signature", { status: 401 });
+  const check = await validSignature(raw, sig);
+  if (!check.ok) {
+    return new Response(`invalid signature: ${check.diag}`, { status: 401 });
   }
 
   let event: any = {};
