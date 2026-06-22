@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=8" />
-  <link rel="stylesheet" href="checkout.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="checkout.css?v=9" />
 </head>
 <body class="checkout-page">
 
@@ -518,6 +518,25 @@
     </div>
   </div>
 
+  <!-- CARD PAYMENT MODAL (Stripe Payment Element — embedded) -->
+  <div class="crypto-modal-overlay" id="stripe-modal">
+    <div class="crypto-modal">
+      <button class="crypto-modal__close" onclick="closeStripeModal()" aria-label="Cancel">✕</button>
+      <div class="crypto-modal__head">
+        <div class="crypto-modal__coin">💳</div>
+        <h2>Card Payment</h2>
+        <p>Pay securely without leaving the page. Your card is processed by Stripe — we never see or store it.</p>
+      </div>
+      <div id="stripe-payment-element"></div>
+      <p class="stripe-pay-error" id="stripe-pay-error"></p>
+      <button class="btn btn--gold stripe-pay-btn" id="stripe-pay-btn" onclick="submitStripePayment()">
+        Pay <span id="stripe-pay-amount"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Stripe.js SDK -->
+  <script src="https://js.stripe.com/v3/"></script>
   <!-- EmailJS — client-side email delivery for booking confirmations (no backend) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="shared-data.js"></script>

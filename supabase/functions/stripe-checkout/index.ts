@@ -68,6 +68,21 @@ async function handle(req: Request) {
       return json({ url: session.url, id: session.id });
     }
 
+    // Embedded card form (Stripe.js Payment Element) — returns a client secret
+    if (payload.action === "payment-intent") {
+      const { amountCents, currency = "usd", bookingRef, email } = payload;
+      if (!amountCents || amountCents < 50) return json({ error: "Invalid amount" }, 400);
+      const fields: Record<string, string> = {
+        "amount": String(Math.round(amountCents)),
+        "currency": currency,
+        "payment_method_types[]": "card",
+        "metadata[booking_ref]": bookingRef || "",
+      };
+      if (email) fields["receipt_email"] = email;
+      const pi = await stripe("/payment_intents", "POST", new URLSearchParams(fields).toString());
+      return json({ clientSecret: pi.client_secret, id: pi.id });
+    }
+
     if (payload.action === "verify") {
       const { sessionId } = payload;
       if (!sessionId) return json({ error: "Missing sessionId" }, 400);

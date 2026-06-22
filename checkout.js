@@ -443,6 +443,9 @@ function buildReview() {
 // flip this to true. While false, checkout creates the booking directly (demo,
 // no real charge) so the site keeps working.
 const STRIPE_ENABLED = true;
+// Publishable key is safe to expose in the browser (Stripe.js needs it).
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_REPLACE_WITH_YOUR_PUBLISHABLE_KEY';
+let _stripe = null, _stripeElements = null, _stripeCtx = null;
 
 function setBtnBusy(label) {
   const btn = document.querySelector('.btn--confirm');
@@ -504,7 +507,7 @@ async function confirmOrder() {
     return startCryptoCheckout(booking, ticketData);
   }
   if (STRIPE_ENABLED) {
-    return startStripeCheckout(booking, ticketData);
+    return startStripeEmbedded(booking, ticketData);
   }
 
   // Demo mode — no real payment, create the booking directly
@@ -521,7 +524,7 @@ function applyStripeUI() {
   if (notice) {
     notice.innerHTML =
       `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` +
-      ` You'll be sent to <strong>Stripe</strong>'s secure page to pay. We never see or store your card details.`;
+      ` Pay securely by card right here — handled by <strong>Stripe</strong>. We never see or store your card details.`;
   }
   const btn = document.querySelector('.btn--confirm');
   if (btn) btn.innerHTML = `🔒 Pay Securely — <span id="final-total">${document.getElementById('final-total')?.textContent || '$0.00'}</span>`;
@@ -593,6 +596,99 @@ async function handleStripeReturn() {
     sessionStorage.removeItem('skyla_pending_ticket');
     showTicket({ ...ticket, emailStatus });
   }
+}
+
+// ── EMBEDDED CARD PAYMENT (Stripe.js Payment Element) ────────────────────────
+async function startStripeEmbedded(booking, ticketData) {
+  // Fall back to the hosted redirect if the SDK or key isn't available
+  if (typeof Stripe === 'undefined' || !/^pk_(test|live)_/.test(STRIPE_PUBLISHABLE_KEY)) {
+    return startStripeCheckout(booking, ticketData);
+  }
+  setBtnBusy('Loading secure payment…');
+  try {
+    const data = await SkylaData.invokeFunction('stripe-checkout', {
+      action:      'payment-intent',
+      amountCents: Math.round(booking.total * 100),
+      currency:    'usd',
+      bookingRef:  booking.bookingRef,
+      email:       booking.email,
+    });
+    if (!data || !data.clientSecret) throw new Error(data?.error || 'No client secret');
+    clearBtnBusy();
+    openStripeModal(data.clientSecret, booking, ticketData);
+  } catch (err) {
+    clearBtnBusy();
+    console.error('Stripe embedded init failed:', err);
+    flashError('step-4', 'Could not start payment. Please try again or use crypto.');
+  }
+}
+
+function openStripeModal(clientSecret, booking, ticketData) {
+  _stripeCtx = { booking, ticketData, done: false };
+  if (!_stripe) _stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+  _stripeElements = _stripe.elements({
+    clientSecret,
+    appearance: {
+      theme: 'night',
+      variables: {
+        colorPrimary: '#c9a84c', colorBackground: '#16181c',
+        borderRadius: '10px', fontFamily: 'Inter, system-ui, sans-serif',
+      },
+    },
+  });
+  const el = _stripeElements.create('payment', { layout: 'tabs' });
+  const mount = document.getElementById('stripe-payment-element');
+  if (mount) mount.innerHTML = '';
+  el.mount('#stripe-payment-element');
+  document.getElementById('stripe-pay-error').textContent = '';
+  document.getElementById('stripe-pay-amount').textContent = document.getElementById('final-total')?.textContent || '';
+  const btn = document.getElementById('stripe-pay-btn');
+  if (btn) { btn.disabled = false; btn.dataset.prevHtml = ''; }
+  document.getElementById('stripe-modal').classList.add('visible');
+}
+
+async function submitStripePayment() {
+  if (!_stripe || !_stripeElements) return;
+  const btn = document.getElementById('stripe-pay-btn');
+  const errEl = document.getElementById('stripe-pay-error');
+  errEl.textContent = '';
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Processing…';
+
+  const { error, paymentIntent } = await _stripe.confirmPayment({
+    elements: _stripeElements,
+    redirect: 'if_required',
+  });
+
+  if (error) {
+    errEl.textContent = error.message || 'Payment failed — please check your card details.';
+    btn.disabled = false; btn.innerHTML = prev;
+    return;
+  }
+  if (paymentIntent && paymentIntent.status === 'succeeded') {
+    await finalizeStripeBooking(paymentIntent.id);
+  } else {
+    errEl.textContent = 'Payment was not completed.';
+    btn.disabled = false; btn.innerHTML = prev;
+  }
+}
+
+async function finalizeStripeBooking(piId) {
+  if (!_stripeCtx || _stripeCtx.done) return;
+  _stripeCtx.done = true;
+  const { booking, ticketData } = _stripeCtx;
+  booking.paid = true;
+  booking.paymentMethod = 'card';
+  booking.stripePaymentId = piId;
+  if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
+  const emailStatus = await sendConfirmationEmail(ticketData);
+  document.getElementById('stripe-modal').classList.remove('visible');
+  showTicket({ ...ticketData, emailStatus });
+}
+
+function closeStripeModal() {
+  if (_stripeCtx) _stripeCtx.done = true;
+  document.getElementById('stripe-modal').classList.remove('visible');
 }
 
 // ── PAYMENTS (Kaskade — crypto, experimental) ────────────────────────────────

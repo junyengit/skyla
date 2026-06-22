@@ -1460,3 +1460,9 @@
 .crypto-select:hover { border-color: rgba(255,255,255,0.22); }
 .crypto-select:focus { outline: none; border-color: var(--gold, #c9a84c); background: var(--dark-2, #16181c); }
 .crypto-select option { background: #16181c; color: #fff; padding: 10px; }
+
+/* ── EMBEDDED STRIPE PAYMENT MODAL ── */
+#stripe-payment-element { margin: 8px 0 14px; min-height: 40px; text-align: left; }
+.stripe-pay-error { color: #e08080; font-size: 0.82rem; min-height: 1.1em; margin-bottom: 10px; text-align: center; }
+.stripe-pay-btn { width: 100%; justify-content: center; }
+.stripe-pay-btn:disabled { opacity: 0.6; cursor: default; }
