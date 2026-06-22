@@ -604,6 +604,8 @@ async function handleStripeReturn() {
 let _cardMounted = false;     // a Payment Element is currently mounted
 let _cardMountTotal = null;   // the amount (in cents) it was created for
 let _cardMounting = false;    // a mount request is in flight
+let _cardIntentId = null;     // the PaymentIntent id (for attaching booking metadata)
+let _cardBookingRef = null;   // stable booking ref shared by the saved row + Stripe metadata
 
 function stripeAvailable() {
   return STRIPE_ENABLED && typeof Stripe !== 'undefined' && /^pk_(test|live)_/.test(STRIPE_PUBLISHABLE_KEY);
@@ -652,14 +654,17 @@ async function mountCardForm() {
 
   try {
     const email = document.getElementById('booking-email')?.value?.trim() || '';
+    // Stable ref shared by the booking row + Stripe metadata so the webhook can match them
+    _cardBookingRef = generateBookingRef();
     const data = await SkylaData.invokeFunction('stripe-checkout', {
       action:      'payment-intent',
       amountCents: totalCents,
       currency:    'usd',
-      bookingRef:  'PENDING',
+      bookingRef:  _cardBookingRef,
       email,
     });
     if (!data || !data.clientSecret) throw new Error(data?.error || 'No client secret');
+    _cardIntentId = data.id || null;
 
     if (!_stripe) _stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
     _stripeElements = _stripe.elements({
@@ -696,6 +701,8 @@ async function submitStripePayment() {
   }
 
   const { booking, ticketData } = buildBookingPayload();
+  // Reuse the ref the PaymentIntent already carries so the webhook never dupes the booking
+  if (_cardBookingRef) { booking.bookingRef = _cardBookingRef; ticketData.bookingRef = _cardBookingRef; }
   _stripeCtx = { booking, ticketData, done: false };
 
   const btn = document.querySelector('.btn--confirm');
@@ -703,6 +710,30 @@ async function submitStripePayment() {
   if (errEl) errEl.textContent = '';
   const prev = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = 'Processing…'; }
+
+  // Attach full booking details to the PaymentIntent so the webhook can recreate
+  // the booking if the customer's browser drops off right after paying.
+  if (_cardIntentId) {
+    try {
+      await SkylaData.invokeFunction('stripe-checkout', {
+        action: 'update-intent',
+        id: _cardIntentId,
+        metadata: {
+          booking_ref: booking.bookingRef,
+          pkg_key:  booking.packageKey || '',
+          pkg_name: booking.packageName || '',
+          date:     booking.date || '',
+          time:     booking.time || '',
+          adults:   booking.adults,
+          children: booking.children,
+          first:    booking.firstName || '',
+          last:     booking.lastName || '',
+          email:    booking.email || '',
+          total:    booking.total,
+        },
+      });
+    } catch (e) { console.warn('update-intent failed (non-fatal):', e); }
+  }
 
   const { error, paymentIntent } = await _stripe.confirmPayment({
     elements: _stripeElements,
@@ -733,7 +764,7 @@ async function finalizeStripeBooking(piId) {
   const emailStatus = await sendConfirmationEmail(ticketData);
   const box = document.getElementById('stripe-inline');
   if (box) { box.classList.remove('open'); box.hidden = true; }
-  _cardMounted = false; _cardMountTotal = null;
+  _cardMounted = false; _cardMountTotal = null; _cardIntentId = null; _cardBookingRef = null;
   showTicket({ ...ticketData, emailStatus });
 }
 

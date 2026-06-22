@@ -83,6 +83,19 @@ async function handle(req: Request) {
       return json({ clientSecret: pi.client_secret, id: pi.id });
     }
 
+    // Attach full booking details to a PaymentIntent's metadata just before charging,
+    // so the webhook can recreate the booking if the customer's browser drops off.
+    if (payload.action === "update-intent") {
+      const { id, metadata } = payload;
+      if (!id) return json({ error: "Missing intent id" }, 400);
+      const fields: Record<string, string> = {};
+      for (const [k, v] of Object.entries(metadata || {})) {
+        fields[`metadata[${k}]`] = String(v ?? "").slice(0, 480);
+      }
+      const pi = await stripe(`/payment_intents/${id}`, "POST", new URLSearchParams(fields).toString());
+      return json({ ok: true, id: pi.id });
+    }
+
     if (payload.action === "verify") {
       const { sessionId } = payload;
       if (!sessionId) return json({ error: "Missing sessionId" }, 400);
