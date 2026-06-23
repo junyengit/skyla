@@ -184,6 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Warm up the cloud client so the booking saves instantly on confirm (no-op if disabled)
   if (typeof SkylaData !== 'undefined' && SkylaData.ensureCloud) SkylaData.ensureCloud();
 
+  // Meta Pixel — reaching checkout is the start of the purchase funnel
+  if (typeof fbq === 'function') { try { fbq('track', 'InitiateCheckout'); } catch (e) {} }
+
   // If we're returning from Stripe, finalize / reset the booking
   if (STRIPE_ENABLED) {
     applyStripeUI();
@@ -961,6 +964,19 @@ function generateBookingRef() {
 }
 
 function showTicket(data) {
+  // Meta Pixel — a completed booking is a Purchase conversion (for ad tracking)
+  if (typeof fbq === 'function' && !data._tracked) {
+    data._tracked = true;
+    try {
+      fbq('track', 'Purchase', {
+        value: Number(data.total) || 0,
+        currency: 'USD',
+        content_name: data.packageName || 'Sky LA Booking',
+        content_type: 'product',
+      });
+    } catch (e) {}
+  }
+
   const guestLine = `${data.adults} Adult${data.adults !== 1 ? 's' : ''}` +
     (data.children > 0 ? ` · ${data.children} Child${data.children !== 1 ? 'ren' : ''}` : '');
 
