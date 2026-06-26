@@ -26,6 +26,11 @@ const cart = {};   // key → { id, name, price, qty, kind, packageKey }
 
 const fmt = (cents) => `$${(cents / 100).toFixed(2)}`;
 const dollarsToCents = (d) => Math.round(d * 100);
+const parseMoney = (value) => {
+  const cleaned = String(value || "").replace(/[^0-9.]/g, "");
+  if (!cleaned) return 0;
+  return dollarsToCents(parseFloat(cleaned));
+};
 
 function qrUrl(ref) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&qzone=1&data=${encodeURIComponent(ref)}`;
@@ -96,6 +101,34 @@ function addToCart(d) {
   cart[key].qty++;
   renderCart();
 }
+function addCustomCharge(e) {
+  e.preventDefault();
+  const nameEl = document.getElementById('custom-charge-name');
+  const amountEl = document.getElementById('custom-charge-amount');
+  const errEl = document.getElementById('custom-charge-error');
+  const amountCents = parseMoney(amountEl.value);
+  const name = nameEl.value.trim() || 'Custom charge';
+
+  errEl.textContent = '';
+  if (amountCents < 50) {
+    errEl.textContent = 'Enter at least $0.50.';
+    return;
+  }
+
+  const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  cart[`custom:${id}`] = {
+    id,
+    name,
+    price: amountCents / 100,
+    qty: 1,
+    kind: 'custom',
+    packageKey: null,
+  };
+  nameEl.value = '';
+  amountEl.value = '';
+  renderCart();
+  amountEl.focus();
+}
 function changeQty(key, delta) {
   if (!cart[key]) return;
   cart[key].qty += delta;
@@ -149,6 +182,37 @@ function renderCart() {
 // localStorage.setItem('skyla_pos_location', 'tml_xxx')
 let _posLocation = (typeof localStorage !== 'undefined' && localStorage.getItem('skyla_pos_location')) || null;
 
+function allowSimulatedReader() {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '';
+}
+
+function lockProductionReaderMode() {
+  const sim = document.getElementById('reader-sim');
+  if (!sim) return;
+  if (!allowSimulatedReader()) {
+    sim.checked = false;
+    sim.disabled = true;
+    sim.closest('label')?.classList.add('is-disabled');
+  }
+}
+
+async function hydrateTerminalLocation() {
+  if (_posLocation || typeof SkylaData === 'undefined') return;
+  try {
+    const data = await SkylaData.invokeFunction('stripe-terminal', { action: 'list-locations' });
+    const locations = data?.locations || [];
+    const skyla = locations.find(l => (l.display_name || '').toLowerCase() === 'skyla los angeles') || locations[0];
+    if (skyla?.id) {
+      _posLocation = skyla.id;
+      localStorage.setItem('skyla_pos_location', _posLocation);
+    }
+  } catch (e) {
+    console.warn('Could not load Stripe Terminal location:', e.message || e);
+  }
+}
+
 async function fetchConnectionToken() {
   const body = { action: 'connection-token' };
   if (_posLocation) body.location = _posLocation;
@@ -178,13 +242,17 @@ async function connectReader() {
   initTerminal();
   openPicker('Searching for readers on this network…');
   try {
-    const simulated = document.getElementById('reader-sim').checked;
+    const simulated = allowSimulatedReader() && document.getElementById('reader-sim').checked;
+    if (!simulated) await hydrateTerminalLocation();
     const config = { simulated };
     if (!simulated && _posLocation) config.location = _posLocation;
     const discover = await terminal.discoverReaders(config);
     if (discover.error) throw new Error(discover.error.message);
     const readers = discover.discoveredReaders || [];
-    if (!readers.length) { setPickerMsg('No readers found. Make sure the reader is powered on and on the same WiFi as this device.'); return; }
+    if (!readers.length) {
+      setPickerMsg('No readers found. Make sure the reader is powered on, online, and registered to this venue.');
+      return;
+    }
     renderReaderList(readers);
   } catch (e) {
     setPickerMsg('Error: ' + (e.message || e));
@@ -205,7 +273,7 @@ async function doConnect(reader) {
   setPickerMsg('Connecting…');
   document.getElementById('reader-list').innerHTML = '';
   try {
-    const conn = await terminal.connectReader(reader);
+    const conn = await terminal.connectReader(reader, { fail_if_in_use: true });
     if (conn.error) throw new Error(conn.error.message);
     connectedReader = conn.reader;
     setReaderStatus(true, conn.reader.label || conn.reader.id);
@@ -217,6 +285,44 @@ async function doConnect(reader) {
 function openPicker(msg) { setPickerMsg(msg); document.getElementById('reader-list').innerHTML = ''; document.getElementById('reader-picker').classList.add('visible'); }
 function closePicker() { document.getElementById('reader-picker').classList.remove('visible'); }
 function setPickerMsg(m) { document.getElementById('picker-msg').textContent = m; }
+
+function openReaderSetup(msg) {
+  document.getElementById('setup-msg').textContent = msg || 'Enter the pairing code shown on the reader.';
+  document.getElementById('reader-setup-panel').classList.add('visible');
+  setTimeout(() => document.getElementById('reader-code')?.focus(), 50);
+}
+function closeReaderSetup() { document.getElementById('reader-setup-panel').classList.remove('visible'); }
+async function setupReader(e) {
+  e.preventDefault();
+  const codeEl = document.getElementById('reader-code');
+  const nameEl = document.getElementById('reader-name');
+  const registrationCode = codeEl.value.trim();
+  const label = nameEl.value.trim() || 'Skyla reader';
+  if (!registrationCode) {
+    document.getElementById('setup-msg').textContent = 'Enter the pairing code shown on the reader.';
+    return;
+  }
+
+  document.getElementById('setup-msg').textContent = 'Registering reader with Stripe…';
+  try {
+    const data = await SkylaData.invokeFunction('stripe-terminal', {
+      action: 'setup-reader',
+      registrationCode,
+      label,
+    });
+    if (!data?.reader?.id || !data?.location?.id) throw new Error(data?.error || 'Could not register reader');
+    _posLocation = data.location.id;
+    localStorage.setItem('skyla_pos_location', _posLocation);
+    codeEl.value = '';
+    nameEl.value = '';
+    document.getElementById('reader-sim').checked = false;
+    closeReaderSetup();
+    openPicker(`${data.reader.label || 'Reader'} is registered. Searching so you can connect it…`);
+    await connectReader();
+  } catch (err) {
+    document.getElementById('setup-msg').textContent = 'Could not register reader: ' + (err.message || err);
+  }
+}
 
 // ── CHARGE ──
 let _lastSale = null;
@@ -393,6 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function boot() {
   renderCatalog();
   renderCart();
+  lockProductionReaderMode();
+  hydrateTerminalLocation();
 
   document.querySelectorAll('.pos-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -401,10 +509,15 @@ function boot() {
       const which = tab.dataset.tab;
       document.getElementById('grid-tickets').style.display = which === 'tickets' ? '' : 'none';
       document.getElementById('grid-cafe').style.display = which === 'cafe' ? '' : 'none';
+      document.getElementById('grid-custom').style.display = which === 'custom' ? '' : 'none';
     });
   });
 
   document.getElementById('reader-connect').addEventListener('click', connectReader);
+  document.getElementById('custom-charge-form').addEventListener('submit', addCustomCharge);
+  document.getElementById('reader-setup').addEventListener('click', () => openReaderSetup());
+  document.getElementById('reader-setup-form').addEventListener('submit', setupReader);
+  document.getElementById('setup-cancel').addEventListener('click', closeReaderSetup);
   document.getElementById('cart-charge').addEventListener('click', charge);
   document.getElementById('cart-clear').addEventListener('click', clearCart);
   document.getElementById('pay-cancel').addEventListener('click', closePay);

@@ -7,7 +7,7 @@
   <title>POS — Sky LA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pos.css?v=2" />
+  <link rel="stylesheet" href="pos.css?v=5" />
 </head>
 <body class="pos-body">
 
@@ -36,8 +36,9 @@
         <span class="pos-reader__dot" id="reader-dot"></span>
         <span class="pos-reader__label" id="reader-label">Reader: not connected</span>
         <button class="pos-reader__btn" id="reader-connect" type="button">Connect reader</button>
+        <button class="pos-reader__btn" id="reader-setup" type="button">Set up reader</button>
         <label class="pos-reader__sim">
-          <input type="checkbox" id="reader-sim" checked /> Simulated
+          <input type="checkbox" id="reader-sim" /> Simulated
         </label>
       </div>
       <a href="admin.html" class="pos-top__exit">Admin →</a>
@@ -50,10 +51,24 @@
         <div class="pos-tabs">
           <button class="pos-tab is-active" data-tab="tickets" type="button">🎟 Walk-up Tickets</button>
           <button class="pos-tab" data-tab="cafe" type="button">☕ Café</button>
+          <button class="pos-tab" data-tab="custom" type="button">Custom</button>
         </div>
 
         <div class="pos-grid" id="grid-tickets"></div>
         <div class="pos-grid" id="grid-cafe" style="display:none;"></div>
+        <div class="pos-custom" id="grid-custom" style="display:none;">
+          <form class="custom-charge" id="custom-charge-form">
+            <label class="custom-charge__label" for="custom-charge-name">Item name</label>
+            <input class="custom-charge__input" id="custom-charge-name" autocomplete="off" placeholder="Custom charge" />
+            <label class="custom-charge__label" for="custom-charge-amount">Amount</label>
+            <div class="custom-charge__amount">
+              <span>$</span>
+              <input class="custom-charge__input" id="custom-charge-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" />
+            </div>
+            <button class="custom-charge__btn" type="submit">Add charge</button>
+            <p class="custom-charge__error" id="custom-charge-error"></p>
+          </form>
+        </div>
       </section>
 
       <!-- RIGHT: CART -->
@@ -86,6 +101,22 @@
     </div>
   </div>
 
+  <!-- READER SETUP -->
+  <div class="pos-pay" id="reader-setup-panel">
+    <div class="pos-pay__card">
+      <h2>Set up Stripe reader</h2>
+      <p id="setup-msg">Enter the pairing code shown on the reader.</p>
+      <form class="reader-setup" id="reader-setup-form">
+        <label class="reader-setup__label" for="reader-code">Pairing code</label>
+        <input class="reader-setup__input" id="reader-code" autocomplete="off" placeholder="example: apple-tree-river" />
+        <label class="reader-setup__label" for="reader-name">Reader name</label>
+        <input class="reader-setup__input" id="reader-name" autocomplete="off" placeholder="Front desk reader" />
+        <button class="btn-gold" type="submit">Register reader</button>
+      </form>
+      <button class="pos-pay__cancel" id="setup-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
   <!-- PAYMENT STATUS OVERLAY -->
   <div class="pos-pay" id="pos-pay">
     <div class="pos-pay__card">
@@ -108,6 +139,6 @@
   <!-- Stripe Terminal SDK -->
   <script src="https://js.stripe.com/terminal/v1/"></script>
   <script src="shared-data.js?v=5"></script>
-  <script src="pos.js?v=2"></script>
+  <script src="pos.js?v=5"></script>
 </body>
 </html>
