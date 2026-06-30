@@ -60,11 +60,23 @@ Keep the bridge until the equivalent App Router routes are rebuilt with server-a
 
 Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never use that prefix.
 
-- Public client config: `NEXT_PUBLIC_SITE_URL`, analytics IDs, Meta Pixel IDs, and public Stripe publishable keys.
-- Server secrets: Stripe secret keys, webhook signing secrets, Kaskade secrets, email provider secrets, and future Convex deployment/admin secrets.
+- Public client config: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_GOOGLE_ADS_TAG_ID`, Google Ads conversion IDs, Meta Pixel IDs, and public Stripe publishable keys.
+- Server secrets: Stripe secret keys, webhook signing secrets, Kaskade secrets, `SKYLA_TERMINAL_SETUP_TOKEN` for one-time Stripe Terminal reader registration, email provider secrets, and future Convex deployment/admin secrets.
 - Transition-only backend variables: Supabase URL, anon key, and service-role key only while legacy flows remain. Do not give Preview production service-role access.
 - Feature flags: payments enabled, crypto enabled, admin/POS enabled, and migration/legacy mode.
 - Operations config: booking recipient emails, sender domains, terminal location IDs, and webhook URLs.
+
+Google Ads public env vars used by the compatibility bridge:
+
+```bash
+NEXT_PUBLIC_GOOGLE_ADS_TAG_ID=AW-XXXXXXXXX
+NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_CONVERSION=AW-XXXXXXXXX/label
+NEXT_PUBLIC_GOOGLE_ADS_EVENT_LEAD_CONVERSION=AW-XXXXXXXXX/label
+NEXT_PUBLIC_GOOGLE_ADS_MEMBERSHIP_LEAD_CONVERSION=AW-XXXXXXXXX/label
+NEXT_PUBLIC_GOOGLE_ADS_BEGIN_CHECKOUT_CONVERSION=AW-XXXXXXXXX/label
+```
+
+Leave any conversion env var blank to keep that event disabled. Do not hard-code Google Ads IDs in public static files.
 
 ## Git Workflow
 

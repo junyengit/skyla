@@ -9,7 +9,9 @@ const forbiddenPathPatterns = [
 ];
 
 const allowedPathPatterns = [
-  /(^|\/)\.env\.(example|sample|template)$/i
+  /(^|\/)\.env\.(example|sample|template)$/i,
+  /^docs\/marketing\/google-ads\/google-ads-negative-keywords\.csv$/,
+  /^docs\/marketing\/google-ads\/google-search-(ad-copy|campaign-keywords)\.csv$/
 ];
 
 const secretPatterns = [

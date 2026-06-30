@@ -296,10 +296,16 @@ async function setupReader(e) {
   e.preventDefault();
   const codeEl = document.getElementById('reader-code');
   const nameEl = document.getElementById('reader-name');
+  const tokenEl = document.getElementById('reader-token');
   const registrationCode = codeEl.value.trim();
   const label = nameEl.value.trim() || 'Skyla reader';
+  const setupToken = tokenEl.value.trim();
   if (!registrationCode) {
     document.getElementById('setup-msg').textContent = 'Enter the pairing code shown on the reader.';
+    return;
+  }
+  if (!setupToken) {
+    document.getElementById('setup-msg').textContent = 'Enter the manager setup token for reader registration.';
     return;
   }
 
@@ -309,12 +315,14 @@ async function setupReader(e) {
       action: 'setup-reader',
       registrationCode,
       label,
+      setupToken,
     });
     if (!data?.reader?.id || !data?.location?.id) throw new Error(data?.error || 'Could not register reader');
     _posLocation = data.location.id;
     localStorage.setItem('skyla_pos_location', _posLocation);
     codeEl.value = '';
     nameEl.value = '';
+    tokenEl.value = '';
     document.getElementById('reader-sim').checked = false;
     closeReaderSetup();
     openPicker(`${data.reader.label || 'Reader'} is registered. Searching so you can connect it…`);

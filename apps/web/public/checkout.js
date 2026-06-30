@@ -363,6 +363,18 @@ function updateSummary() {
   el('final-total').textContent      = `$${total.toFixed(2)}`;
 }
 
+function trackBeginCheckout() {
+  if (!window.SkylaAds || !state.packageKey) return;
+  const subtotal = calcSubtotal();
+  if (subtotal <= 0) return;
+  const total = subtotal + Math.round(subtotal * BOOKING_FEE_RATE * 100) / 100;
+  const pkg = PACKAGES[state.packageKey];
+  window.SkylaAds.trackBeginCheckout({
+    value: total,
+    items: pkg ? [{ item_name: pkg.name, quantity: state.adults + state.children }] : [],
+  });
+}
+
 // ── STEP NAV ──
 function goToStep(num) {
   if (num > 1 && !state.package) {
@@ -397,7 +409,7 @@ function goToStep(num) {
     if (n < num)  s.classList.add('completed');
   });
 
-  if (num === 3) { buildReview(); mountCardForm(); }
+  if (num === 3) { buildReview(); trackBeginCheckout(); mountCardForm(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -975,6 +987,17 @@ function showTicket(data) {
         content_type: 'product',
       });
     } catch (e) {}
+  }
+  if (window.SkylaAds && !data._googleTracked) {
+    data._googleTracked = true;
+    window.SkylaAds.trackPurchase({
+      transactionId: data.bookingRef,
+      value: Number(data.total) || 0,
+      items: [{
+        item_name: data.packageName || 'Sky LA Booking',
+        quantity: Number(data.adults || 0) + Number(data.children || 0),
+      }],
+    });
   }
 
   const guestLine = `${data.adults} Adult${data.adults !== 1 ? 's' : ''}` +
