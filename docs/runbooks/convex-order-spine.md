@@ -22,11 +22,16 @@ It is not a live payment cutover runbook yet.
 - `apps/web/app/api/order-drafts/checkout/route.ts`: a server route that accepts
   product selections, returns canonical totals, and calls Convex persistence
   when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
+- `convex/payments.ts`: a Stripe Checkout action that creates a Checkout
+  Session from a stored checkout `orderRef` and matching draft idempotency key.
+- `convex/paymentInternals.ts`: internal order snapshot and payment ledger
+  mutations used by the Stripe action.
 
 The live compatibility checkout is not cut over to Convex yet. The backend can
 persist drafts, and the Next route is ready to use that path once the real
-Convex deployment URL is configured in Vercel. Production payment creation still
-needs provider actions and frontend integration.
+Convex deployment URL is configured in Vercel. A Stripe Checkout action now
+exists, but production payment creation still needs real Convex/Stripe envs,
+frontend integration, and webhook verification.
 
 ```mermaid
 flowchart LR
@@ -35,13 +40,15 @@ flowchart LR
   pricing["@skyla/payments pricing"]
   convexMutation["Convex orderDrafts mutations"]
   convexTables["orders, orderLineItems, posSales, posSaleLines"]
-  providers["Future Stripe/Kaskade/Terminal actions"]
+  stripe["Stripe Checkout action"]
+  futureProviders["Future Kaskade/Terminal actions"]
 
   browser --> nextRoute --> pricing
   browser -. next cutover .-> convexMutation
   convexMutation --> pricing
   convexMutation --> convexTables
-  convexTables -. refs only .-> providers
+  convexTables -. orderRef only .-> stripe
+  convexTables -. refs only .-> futureProviders
 ```
 
 ## Why This Is Safer
@@ -56,8 +63,10 @@ package, guest count, and add-ons, but the server calculates:
 - subtotal
 - total
 
-The next payment PR should create provider intents from a stored `orderRef` or
-`saleRef`, not from a browser-supplied amount.
+Provider actions must create payment sessions or intents from a stored
+`orderRef` or `saleRef`, not from a browser-supplied amount. The current Stripe
+Checkout action follows this rule; Kaskade, Terminal, and webhooks are still
+future slices.
 
 ## Agent Data
 
@@ -224,6 +233,39 @@ authenticated staff identity and the `staffUsers` table.
   customer/date/time metadata, and POS terminal metadata.
 - Checkout refs use `SKYYYMM-XXXXXX`, matching admin search.
 - POS refs use `SALEYYMMDD-XXXXXX`.
+- Stripe Checkout sessions use provider idempotency keys shaped like
+  `skyla:checkout-session:<orderRef>` and record them in `paymentEvents`.
+
+## Stripe Checkout Action
+
+Public action:
+
+```ts
+api.payments.createStripeCheckoutSession({
+  orderRef: "SKY2607-ABC123",
+  idempotencyKey: "checkout_20260704_abc123",
+  successUrl: "https://skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}",
+  cancelUrl: "https://skydeckla.com/checkout?stripe=cancel"
+});
+```
+
+Rules:
+
+- The action reads the stored order and line items from Convex.
+- The action rejects missing or mismatched draft `idempotencyKey`.
+- The action rejects non-allowlisted return URL origins.
+- The action does not accept amount, currency, line item, product, or booking
+  details from the caller.
+- The action writes a `paymentEvents` row and patches the order to
+  `payment_pending`.
+
+Required Convex env:
+
+- `STRIPE_SECRET_KEY`
+- `SKYLA_PAYMENT_RETURN_ORIGINS`
+
+See [stripe-checkout-cutover.md](stripe-checkout-cutover.md) before wiring the
+frontend to this action.
 
 ## Local Validation
 
@@ -251,8 +293,9 @@ bun run convex:codegen
 ## Next Steps
 
 1. Link a real Convex deployment and set Vercel env vars for it.
-2. Add Stripe/Kaskade/Terminal actions that only accept stored refs.
-3. Add webhook HTTP actions that verify signatures, expected amounts, currency,
+2. Add webhook HTTP actions that verify signatures, expected amounts, currency,
    status, and idempotency.
-4. Cut the Next checkout/POS flows over to persisted draft refs.
+3. Add Kaskade/Terminal actions that only accept stored refs.
+4. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
+   action.
 5. Dual-run against Supabase and reconcile before cutover.

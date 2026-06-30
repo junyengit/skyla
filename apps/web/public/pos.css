@@ -2,13 +2,14 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --bg: #0c0d10; --panel: #14161b; --panel2: #1b1e24; --line: #2a2e36;
-  --gold: #c9a84c; --gold-soft: #d8be73; --text: #f4f4f5; --muted: #9aa0a6;
+  --gold: #c9a84c; --gold-soft: #d8be73; --text: #ffffff; --muted: #d4d8df;
 }
 body.pos-body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg); color: var(--text);
   height: 100vh; overflow: hidden;
 }
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.78); opacity: 1; }
 
 /* GATE */
 .gate {

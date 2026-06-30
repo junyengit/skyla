@@ -15,6 +15,9 @@ Use this after each major phase.
 - No accidental generated artifacts in `git status`
 - No secrets in source
 - No new client-trusted payment authority
+- Payment actions accept stored refs only, not browser totals
+- Stripe return URLs are allowlisted by server/Convex env
+- Webhook work verifies signature, amount, currency, status, and idempotency
 
 ## Product
 
@@ -22,6 +25,7 @@ Use this after each major phase.
 - Core navigation works
 - Legal pages are reachable
 - Ticket path is safe
+- Admin and POS text remains high-contrast on the dark background
 - Admin/POS are not indexed
 - Motion respects reduced motion
 - Legacy route bridge still covers `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos`
@@ -35,6 +39,18 @@ Use this after each major phase.
 - Production `www` smoke: `SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke`
 - Production domain is not changed without approval
 - Old backend/payment surfaces are not disabled before replacement verification
+
+## Payment Readiness
+
+- `/api/order-drafts/checkout` returns canonical totals and ignores fake client totals
+- Preview checkout draft POST returns `persisted: true` before payment cutover
+- Stripe Checkout action takes `orderRef` and draft `idempotencyKey`
+- Stripe Checkout action does not accept `amountCents`, `currency`, or line items from the browser
+- Convex has `STRIPE_SECRET_KEY` in the correct environment
+- Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
+- Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment
+- Stripe webhook secret is configured before paid-order completion moves to Convex
+- Kaskade and Terminal legacy payment paths stay enabled or explicitly disabled until replacements pass acceptance
 
 ## Why These Gates Exist
 

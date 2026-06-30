@@ -10,6 +10,10 @@ The committed artifacts now include:
   config, and audit events.
 - `orderDrafts.ts`: public Convex mutations/queries for persisted checkout
   order drafts and staff-gated POS sale drafts.
+- `payments.ts`: public Convex action for creating Stripe Checkout Sessions
+  from stored checkout `orderRef` records only.
+- `paymentInternals.ts`: internal order snapshot and payment-event ledger
+  functions used by payment actions.
 - `lib/`: shared auth and draft-persistence helpers.
 - `_generated/`: generated Convex API/server/data-model types from local
   anonymous Convex validation.
@@ -34,12 +38,14 @@ Deployment-linked validation after the real project is configured:
 bun run convex:codegen
 ```
 
-No production checkout/POS traffic is cut over by this directory yet. The next
-backend slices should:
+No production checkout/POS traffic is cut over by this directory yet. The
+Stripe Checkout action exists, but the public compatibility checkout still uses
+the legacy bridge until real Convex/Stripe envs and webhooks are verified. The
+next backend slices should:
 
 1. Create or link the real Convex deployment.
-2. Add provider actions that accept only `orderRef` or `saleRef`, never browser
-   totals.
-3. Add webhook HTTP actions with idempotency and expected amount checks.
+2. Add webhook HTTP actions with idempotency and expected amount checks.
+3. Add Kaskade and Terminal provider actions that accept only `orderRef` or
+   `saleRef`, never browser totals.
 4. Move the Next checkout/POS flows from compatibility pages to persisted
    Convex draft refs.
