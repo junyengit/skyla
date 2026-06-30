@@ -13,6 +13,7 @@ packages/ui         Shared UI primitives and icons
 docs/               Migration plan, runbooks, architecture notes
 docs/audits         Discovery notes and implementation evidence
 docs/decisions      Lightweight architecture decision records
+docs/marketing      Campaign launch notes and import templates
 supabase/functions  Legacy Supabase Edge Functions kept until Convex cutover
 scripts/            Smoke, security, setup, and migration helpers
 ```
@@ -87,6 +88,13 @@ bun run check
 SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
+
+## Current Bridge Notes
+
+- Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
+- Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
+- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Daily POS reader connection and charges still use the existing staff-authenticated bridge.
+- Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 ## Deployment Direction
 

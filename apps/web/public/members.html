@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <title>Members — Skyla Los Angeles</title>
+  <title>Members — Sky LA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -169,7 +169,7 @@
   <!-- ──────────── THE PRIVATE LOUNGE ──────────── -->
   <section class="mem-feature mem-feature--reverse" id="lounge">
     <div class="mem-feature__img">
-      <img src="images/hero-lounge.jpg" alt="The Private Lounge at Sky Deck LA" loading="lazy" />
+      <img src="images/hero-lounge.jpg" alt="The Private Lounge at Sky LA" loading="lazy" />
       <div class="mem-feature__img-overlay"></div>
       <div class="mem-feature__img-badge">Members Only</div>
     </div>
@@ -196,7 +196,7 @@
   <!-- ──────────── CIGAR LOUNGE ──────────── -->
   <section class="mem-feature mem-feature--dark">
     <div class="mem-feature__img">
-      <img src="images/private-room.jpg" alt="The Cigar Lounge at Sky Deck LA" loading="lazy" />
+      <img src="images/private-room.jpg" alt="The Cigar Lounge at Sky LA" loading="lazy" />
       <div class="mem-feature__img-overlay"></div>
       <div class="mem-feature__img-badge">Gold &amp; Black Card</div>
     </div>
@@ -223,7 +223,7 @@
   <!-- ──────────── MEMBERS BAR ──────────── -->
   <section class="mem-feature mem-feature--reverse mem-feature--light-dark">
     <div class="mem-feature__img">
-      <img src="images/bar.jpg" alt="The Members Bar at Sky Deck LA" loading="lazy" />
+      <img src="images/bar.jpg" alt="The Members Bar at Sky LA" loading="lazy" />
       <div class="mem-feature__img-overlay"></div>
       <div class="mem-feature__img-badge">Gold &amp; Black Card</div>
     </div>
@@ -391,6 +391,8 @@
   </section>
 
   <script src="shared-data.js"></script>
+  <script src="/ads-config.js"></script>
+  <script src="ads-tracking.js?v=1"></script>
   <script src="script.js"></script>
   <script>
     function submitApplication(e) {
@@ -408,10 +410,21 @@
         email, phone, tier, source, bio,
       };
 
+      let saved = false;
       try {
         // Saves locally + syncs to the cloud if configured (id/createdAt/status added here)
         SkylaData.addMember(app);
+        saved = true;
       } catch (err) { console.error('Could not save application:', err); }
+      if (saved) {
+        if (window.SkylaAds) {
+          const tierValue = tier === 'gold' ? 500 : tier === 'obsidian' ? 250 : 1000;
+          window.SkylaAds.trackLead('membership', { value: tierValue });
+        }
+        if (typeof fbq === 'function') {
+          try { fbq('track', 'Lead', { content_name: `Membership Application: ${tier || 'unknown'}` }); } catch (err) {}
+        }
+      }
 
       document.getElementById('apply-name-confirm').textContent  = `${first} ${last}`;
       document.getElementById('apply-email-confirm').textContent = email;

@@ -73,6 +73,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Merged Bun/root-cleanup PR #10 into `main` as merge commit `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-8rstxz73f-junyen-enterprises.vercel.app` (`dpl_HskCqFwWBx2UNRZevq7KXp89wWHi`).
 - [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Started branch `codex/ads-pos-convex-prep` from `origin/main` to port useful dirty legacy changes without resurrecting root static files.
+- [x] Ported Google Ads conversion tracking into `apps/web/public` with a Vercel env-backed `/ads-config.js` route and tests.
+- [x] Moved Google Ads campaign docs/import CSVs under `docs/marketing/google-ads` and kept the security artifact guard narrow.
+- [x] Added a guarded `setup-reader` bridge in the legacy Stripe Terminal function requiring `SKYLA_TERMINAL_SETUP_TOKEN`.
 
 ## In Progress
 
@@ -83,6 +87,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Create the Bun migration PR only after local canary install/checks are reproducible.
 - [x] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
 - [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
+- [ ] Verify, review, and ship `codex/ads-pos-convex-prep`.
+- [ ] Start the Convex schema/order-authority PR after bridge-hardening lands.
 
 ## Deferred Until Foundation Is Stable
 
@@ -111,3 +117,5 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.1` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
+- Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
+- `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex/payment PR.

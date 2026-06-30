@@ -241,7 +241,7 @@ Initial actions:
 - Add admin/POS authorization tests.
 - Add dependency and secret scanning workflows.
 - Protect `main`, require PRs, and require CI.
-- Track and fix current bridge risks: client-authoritative payment creation, local admin password fallback, stored-XSS surfaces, POS `setup-reader` mismatch, and POS/admin date-format drift.
+- Track and fix current bridge risks: client-authoritative payment creation, local admin password fallback, stored-XSS surfaces, legacy POS Terminal charge authority, and POS/admin date-format drift. POS reader setup is temporarily bridged, but it still belongs in the future staff-authorized backend.
 
 Definition of done:
 

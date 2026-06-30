@@ -197,7 +197,7 @@ P2 findings:
 - Dependency audit found one moderate advisory through `postcss@8.4.31` in the current lockfile.
 - No tracked `.env`, `output`, `tmp`, CSV, PDF, or log artifacts were found.
 - Public client keys exist in legacy browser files; they are not secrets, but should become environment-scoped and provider-domain-restricted.
-- POS calls a `setup-reader` action that the current `stripe-terminal` function does not implement.
+- POS reader registration is now bridged through `stripe-terminal` with a `setup-reader` action gated by `SKYLA_TERMINAL_SETUP_TOKEN`; Terminal charge creation still needs Convex/server-authoritative replacement.
 - POS writes display-formatted `visitDate`, while admin "today" logic expects ISO date strings.
 
 Recommended first QA/security gates:
@@ -206,4 +206,4 @@ Recommended first QA/security gates:
 2. Extend the route smoke script into Playwright desktop/mobile checks for screenshots, console errors, and reduced motion.
 3. Keep dependency audit, CodeQL, Dependabot, and tracked artifact/secret scanning wired into CI.
 4. Harden GitHub dashboard settings: protect `main`, require PRs, require CI and Vercel preview, block force pushes/deletions, and confirm vulnerability alerts.
-5. Track the POS `setup-reader` mismatch and date-format bug before POS rebuild or shutdown.
+5. Track the POS date-format bug and client-trusted Terminal charge amount before POS rebuild or shutdown.

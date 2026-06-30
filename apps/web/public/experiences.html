@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <title>Experiences — Skyla Los Angeles</title>
+  <title>Experiences — Sky LA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -81,7 +81,7 @@
         <div class="bar-card bar-card--prestige">
           <div class="bar-card__badge">Chef's Selection</div>
           <div class="bar-card__img">
-            <img src="images/champagne-caviar.jpg" alt="Champagne & Caviar service at Sky Deck LA" loading="lazy" />
+            <img src="images/champagne-caviar.jpg" alt="Champagne & Caviar service at Sky LA" loading="lazy" />
           </div>
           <div class="bar-card__body">
             <p class="bar-card__cat">Prestige</p>
@@ -111,7 +111,7 @@
 
         <div class="bar-card">
           <div class="bar-card__img">
-            <img src="images/beer.jpg" alt="Premium beer selection at Sky Deck LA" loading="lazy" />
+            <img src="images/beer.jpg" alt="Premium beer selection at Sky LA" loading="lazy" />
           </div>
           <div class="bar-card__body">
             <p class="bar-card__cat">On Tap &amp; Bottled</p>
@@ -136,7 +136,7 @@
       <div class="date-split">
 
         <div class="date-img">
-          <img src="images/hero-lounge.jpg" alt="Date night at Sky Deck LA — dusk lounge with city views" loading="lazy" />
+          <img src="images/hero-lounge.jpg" alt="Date night at Sky LA — dusk lounge with city views" loading="lazy" />
           <div class="date-img__caption">Limited nightly reservations</div>
         </div>
 
@@ -218,7 +218,7 @@
         <!-- FAMILY SUITE -->
         <div class="room-card">
           <div class="room-card__img">
-            <img src="images/private-room.jpg" alt="Family Suite at Sky Deck LA" loading="lazy" />
+            <img src="images/private-room.jpg" alt="Family Suite at Sky LA" loading="lazy" />
             <div class="room-card__img-shade"></div>
           </div>
           <div class="room-card__body">
@@ -249,7 +249,7 @@
             <span>✦</span> Free Entry Included
           </div>
           <div class="room-card__img">
-            <img src="images/lounge-suite.jpg" alt="Private Champagne Room with city views at Sky Deck LA" loading="lazy" />
+            <img src="images/lounge-suite.jpg" alt="Private Champagne Room with city views at Sky LA" loading="lazy" />
             <div class="room-card__img-shade"></div>
           </div>
           <div class="room-card__body">
@@ -371,6 +371,8 @@
   </section>
 
   <script src="shared-data.js"></script>
+  <script src="/ads-config.js"></script>
+  <script src="ads-tracking.js?v=1"></script>
   <script src="script.js"></script>
   <script>
     // Set date minimum
@@ -399,8 +401,17 @@
 
       // Saves locally + syncs to the cloud if configured
       const inquiry = { firstName: first, lastName: last, email, experience: exp, date, guests, notes, status: 'pending' };
-      try { SkylaData.addInquiry(inquiry); }
+      let saved = false;
+      try { SkylaData.addInquiry(inquiry); saved = true; }
       catch (err) { console.error('Could not save inquiry:', err); }
+      if (saved) {
+        if (window.SkylaAds) {
+          window.SkylaAds.trackLead('event', { value: 250 });
+        }
+        if (typeof fbq === 'function') {
+          try { fbq('track', 'Lead', { content_name: exp || 'Private Experience Inquiry' }); } catch (err) {}
+        }
+      }
 
       document.getElementById('confirm-email').textContent = email;
       document.getElementById('reserve-form').style.display = 'none';

@@ -37,4 +37,23 @@ describe("legacy route bridge", () => {
       expect(sitemap).not.toContain(`https://skydeckla.com/${route}`);
     }
   });
+
+  it("loads Google Ads config before the tracking helper on conversion pages", () => {
+    for (const route of ["checkout", "experiences", "members"]) {
+      const html = readFileSync(join(publicDir, `${route}.html`), "utf8");
+      const configIndex = html.indexOf('src="/ads-config.js"');
+      const helperIndex = html.indexOf('src="ads-tracking.js');
+
+      expect(configIndex, `${route} config script`).toBeGreaterThan(-1);
+      expect(helperIndex, `${route} tracking helper`).toBeGreaterThan(-1);
+      expect(configIndex, `${route} script order`).toBeLessThan(helperIndex);
+    }
+  });
+
+  it("keeps Stripe reader setup gated by a manager setup token field", () => {
+    const pos = readFileSync(join(publicDir, "pos.html"), "utf8");
+
+    expect(pos).toContain('id="reader-token"');
+    expect(pos).toContain('type="password"');
+  });
 });
