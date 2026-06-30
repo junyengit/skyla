@@ -8,7 +8,7 @@ Move Skyla from a flat GitHub Pages static site with Supabase-era operational co
 
 - Next.js `16.2.9`
 - React `19.2.7`
-- Motion `12.42.0`
+- Motion `12.42.2`
 - Turborepo `2.10.2`
 - TypeScript `6.0.3`
 

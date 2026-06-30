@@ -9,10 +9,12 @@ const publicDir = join(import.meta.dirname, "public");
 describe("legacy route bridge", () => {
   it("keeps a compatibility file for every legacy route", () => {
     expect(new Set(legacyRoutes).size).toBe(legacyRoutes.length);
+    expect(legacyRoutes).not.toContain("checkout");
 
     for (const route of legacyRoutes) {
       expect(existsSync(join(publicDir, `${route}.html`)), `${route}.html`).toBe(true);
     }
+    expect(existsSync(join(publicDir, "checkout.html")), "checkout.html legacy fallback").toBe(true);
   });
 
   it("keeps admin and POS out of public indexing", () => {
@@ -39,7 +41,7 @@ describe("legacy route bridge", () => {
   });
 
   it("loads Google Ads config before the tracking helper on conversion pages", () => {
-    for (const route of ["checkout", "experiences", "members"]) {
+    for (const route of ["experiences", "members"]) {
       const html = readFileSync(join(publicDir, `${route}.html`), "utf8");
       const configIndex = html.indexOf('src="/ads-config.js"');
       const helperIndex = html.indexOf('src="ads-tracking.js');

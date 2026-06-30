@@ -16,7 +16,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verified latest package baseline through npm registry:
   - Next.js `16.2.9`
   - React `19.2.7`
-  - Motion `12.42.0`
+  - Motion `12.42.2`
   - Turbo `2.10.2`
   - TypeScript `6.0.3`
 - [x] Added `.gitignore` protection for generated/private artifacts.
@@ -129,6 +129,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Tried ESLint `10.6.0`; deferred because the current React lint plugin stack throws under the lint gate.
 - [x] Added order-state cleanup for Stripe async payment failures so they do not remain `payment_pending`.
 - [x] Added the consolidated production readiness checklist.
+- [x] Merged post-webhook readiness hardening PR #23 into `main` as merge commit `28e3e6d6181cb749c9d4d1cb359622750e5c68aa`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-2hg4drlf9-junyen-enterprises.vercel.app` (`dpl_J2xBVUm93d9Bp92a9zxogXduFbGP`).
+- [x] Re-ran post-merge route smoke tests for `https://web-2hg4drlf9-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Started branch `codex/next-checkout-convex-cutover` from clean `main`.
+- [x] Replaced the primary `/checkout` legacy rewrite with a Next.js App Router checkout page that reviews server totals first and fails closed when Convex is unconfigured.
+- [x] Added `/api/payments/stripe-checkout` so the browser can request a Convex-created Stripe Checkout Session by `orderRef` and idempotency key without sending totals.
+- [x] Added Convex schema/function typecheck steps to CI.
 
 ## In Progress
 
@@ -144,7 +151,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-checkout-route-cutover`.
 - [x] Verify, review, and ship `codex/convex-stripe-checkout-action`.
 - [x] Verify, review, and ship `codex/convex-stripe-webhook`.
-- [ ] Verify, review, and ship `codex/post-webhook-readiness-hardening`.
+- [x] Verify, review, and ship `codex/post-webhook-readiness-hardening`.
+- [ ] Verify, review, and ship `codex/next-checkout-convex-cutover`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -154,7 +162,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Convex Stripe HTTP webhook action.
 - [ ] Kaskade webhook/action handling.
 - [ ] Kaskade and Stripe Terminal server-authoritative actions.
-- [ ] Live checkout frontend cutover to Convex order refs and Stripe action.
+- [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
+- [ ] Disable `/checkout.html` legacy Supabase payment fallback after Convex/Stripe dashboard acceptance.
 - [ ] Admin/POS rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
@@ -181,4 +190,4 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
 - `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex Terminal/POS replacement.
 - The real Convex cloud project is still not linked in this worktree or Vercel. This branch uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` for local validation and commits generated types from that local pass.
-- Stripe Checkout session creation and webhook reconciliation now exist in Convex code, but they are not live until real Convex/Stripe envs, Stripe dashboard endpoint setup, and frontend cutover are complete.
+- Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.

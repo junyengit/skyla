@@ -45,12 +45,12 @@ As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-8vpbz5v7v-junyen-enterprises.vercel.app` from merge commit
-  `0eab79bab036d1eb7cba20063e205b1d4b0eb7d6`.
+  `https://web-2hg4drlf9-junyen-enterprises.vercel.app` from merge commit
+  `28e3e6d6181cb749c9d4d1cb359622750e5c68aa`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
-- The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
+- The Next app serves the new homepage and checkout route. It bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`. The old checkout remains available at `/checkout.html` during the payment cutover.
 
 ## Current Bun And Cleanup State
 
@@ -82,6 +82,7 @@ bun run typecheck
 bun run test:unit
 bun run build
 bun run convex:schema:typecheck
+bun run convex:functions:typecheck
 bun run security:artifacts
 bun run security:audit
 ```
@@ -102,12 +103,12 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
   calculates draft totals from selections only and persists Convex order drafts
-  when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present. It does not
-  create provider payments or power the live compatibility checkout yet.
+  when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 - `convex/payments.ts` adds the next Stripe Checkout action. It creates Stripe
   sessions from stored `orderRef` records only. `convex/http.ts` adds the
-  Stripe webhook route. They still need real Convex envs, Stripe envs, Stripe
-  dashboard endpoint setup, and frontend cutover before live use.
+  Stripe webhook route. `/api/payments/stripe-checkout` and the App Router
+  `/checkout` page are wired for this path, but live card payment still needs
+  real Convex envs, Stripe envs, and Stripe dashboard endpoint setup.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:

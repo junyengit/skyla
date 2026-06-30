@@ -37,6 +37,12 @@ jobs:
       - name: Unit tests
         run: bun run test:unit
 
+      - name: Convex schema typecheck
+        run: bun run convex:schema:typecheck
+
+      - name: Convex functions typecheck
+        run: bun run convex:functions:typecheck
+
       - name: Build
         run: bun run build
 
