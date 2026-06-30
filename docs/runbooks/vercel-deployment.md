@@ -26,10 +26,10 @@ root.
 As of June 30, 2026:
 
 - Recorded verified application deployment from `main` was READY at
-  `https://web-5rd41qfa5-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`.
+  `https://web-8vpbz5v7v-junyen-enterprises.vercel.app`.
+- Recorded verified deployment ID: `dpl_DqTuNvna51RPBqwgsZPQkaduhtth`.
 - Recorded verified merge commit:
-  `edbd1d80ad43f967680b9e96c1b60c253ed04a70`.
+  `0eab79bab036d1eb7cba20063e205b1d4b0eb7d6`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
