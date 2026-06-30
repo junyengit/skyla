@@ -95,6 +95,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added `convex/orderDrafts.ts` with checkout draft persistence, staff-gated POS sale draft persistence, idempotency checks, and read-back queries.
 - [x] Added shared record helpers that generate `SKYYYMM-XXXXXX` checkout refs and `SALEYYMMDD-XXXXXX` POS sale refs while omitting undefined fields before writes.
 - [x] Added cloud-free Convex helper tests plus `convex:test:unit` and `convex:functions:typecheck` gates.
+- [x] Merged persisted Convex draft PR #15 into `main` as merge commit `10b2751099aca72834ff2a33d8d4ccd105cdf3cb`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-j9xi2jyo8-junyen-enterprises.vercel.app` (`dpl_9hS72iV2sQKGYfNgvWCvgworBmao`).
+- [x] Re-ran post-merge route smoke tests for `https://web-j9xi2jyo8-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Verified production `/api/order-drafts/checkout` on `https://skydeckla.com` returns canonical totals and ignores browser-supplied totals after PR #15.
 
 ## In Progress
 
@@ -106,7 +110,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
 - [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
 - [x] Verify, review, and ship `codex/convex-order-spine`.
-- [ ] Verify, review, and ship `codex/convex-persist-order-drafts`.
+- [x] Verify, review, and ship `codex/convex-persist-order-drafts`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

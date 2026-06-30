@@ -287,16 +287,17 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified application production commit: `b1272b9112dbde4c83c74b07c8d6204ee98c2960`
-- Latest verified application production deployment: `https://web-d1efck3u8-junyen-enterprises.vercel.app`
-- Latest verified application production deployment ID: `dpl_FNnfuoY5KbLKG7WceuXuhycp8Q2r`
+- Latest verified application production commit: `10b2751099aca72834ff2a33d8d4ccd105cdf3cb`
+- Latest verified application production deployment: `https://web-j9xi2jyo8-junyen-enterprises.vercel.app`
+- Latest verified application production deployment ID: `dpl_9hS72iV2sQKGYfNgvWCvgworBmao`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
 Current order-spine state:
 
 - Merged foundation PR: `#13`
-- Active persisted-draft branch: `codex/convex-persist-order-drafts`
+- Merged persisted-draft PR: `#15`
+- Latest persisted-draft merge commit: `10b2751099aca72834ff2a33d8d4ccd105cdf3cb`
 - Existing artifacts: `convex/schema.ts`, `convex/orderDrafts.ts`, `convex/lib/*`, `convex/_generated/*`, `packages/payments`, `/api/order-drafts/checkout`
 - Convex package: `convex@1.42.1`
 - Persisted draft refs: checkout `SKYYYMM-XXXXXX`; POS `SALEYYMMDD-XXXXXX`
