@@ -1,0 +1,240 @@
+# Skyla Modernization Plan
+
+Last updated: 2026-06-30
+
+## Objective
+
+Move Skyla from a flat GitHub Pages static site with Supabase-era operational code into a modern, secure, maintainable Turborepo architecture on Vercel, using the latest verified core versions:
+
+- Next.js `16.2.9`
+- React `19.2.7`
+- Motion `12.42.0`
+- Turborepo `2.10.1`
+- TypeScript `6.0.3`
+
+The migration is intentionally in-place and staged. The current production site remains recoverable while the new Vercel app is built, previewed, validated, and cut over.
+
+## Current State
+
+Skyla currently runs as static files at the repository root. GitHub Pages deploys `main` from `/` to `https://skydeckla.com`, with `CNAME` pointing at the custom domain. Local work is ahead of production in the working tree and is not yet deployed.
+
+Current backend/data dependencies:
+
+- Browser data facade in `shared-data.js`
+- Supabase Auth for admin/POS
+- Supabase tables implied by code: `bookings`, `members`, `inquiries`, `config`
+- Supabase Edge Functions under `supabase/functions`
+- Stripe Checkout, Payment Element, Terminal, and webhooks
+- Kaskade/PharosGate crypto payment actions and webhook
+- EmailJS/Brevo confirmation emails
+- Meta Pixel and planned Google Ads conversion tracking
+
+Current operating gaps:
+
+- No repo-level README, runbooks, environment docs, CI, package manifest, lockfile, database migrations, or branch protection.
+- Sensitive local artifacts exist under `output/` and `tmp/`; these must not be committed or deployed.
+- Payment amounts and paid booking creation are too client-controlled.
+- Admin/POS access is enforced mostly in browser UI and assumed Supabase RLS.
+- Root deployment is direct-to-production through GitHub Pages.
+
+## Target Architecture
+
+```text
+skyla/
+  apps/
+    web/                  # Vercel project root, Next.js App Router
+      app/                # Public site, checkout, admin, POS routes
+      components/         # App-specific components and client islands
+      lib/                # App server/client helpers
+      public/             # Deployable static assets
+  packages/
+    config/               # Typed business/site constants
+    ui/                   # Shared UI primitives and icons
+    data/                 # Future Convex-facing data contracts
+    payments/             # Future payment order contracts
+  docs/
+    migration-plan.md
+    migration-progress.md
+    architecture.md
+    environment.md
+    runbooks/
+  scripts/
+    invoices/             # Sanitized reusable invoice scripts only, if retained
+  convex/                 # Future Convex schema/functions/actions
+  legacy-static/          # Future resting place for old root static site
+```
+
+The final app should use:
+
+- Vercel Git integration with Preview Deployments for every PR.
+- Vercel project root set to `apps/web`.
+- `turbo build` for monorepo builds.
+- Next.js App Router with server components by default and small client islands for Motion and interactive workflows.
+- Convex for canonical data, server-side authorization, payment order state, webhook/event ledgers, admin/POS workflows, and public lead submission.
+- Server-authoritative payment creation. The browser may choose products, but server code calculates and stores the order amount.
+
+## Execution Phases
+
+### Phase 0: Containment
+
+Status: started
+
+- Ignore local/generated/sensitive artifacts: `output/`, `tmp/`, logs, build outputs, local env files.
+- Keep these artifacts out of Vercel and GitHub.
+- Audit whether any sensitive artifacts were ever committed or publicly deployed.
+- Decide whether invoice scripts are productized; if so, move sanitized scripts to `scripts/invoices`.
+
+### Phase 1: Monorepo Foundation
+
+Status: started
+
+- Add root `package.json`, `pnpm-workspace.yaml`, `turbo.json`, and `tsconfig.base.json`.
+- Add `apps/web` as the Next.js/Vercel application.
+- Add `packages/config` and `packages/ui` as the first shared packages.
+- Copy current static assets into `apps/web/public/images`.
+- Add CI for install, lint, typecheck, and build.
+- Preserve legacy root static site until the new app is validated.
+
+### Phase 2: Documentation And Runbooks
+
+Status: in progress
+
+- Add `README.md` with project map and quickstart.
+- Add architecture docs for current and target systems.
+- Add environment docs with public vs secret variables.
+- Add runbooks for local development, Vercel deploys, GitHub workflow, payment validation, domain cutover, rollback, and incident response.
+- Add release checklist and migration progress tracker.
+
+### Phase 3: Public Site Rebuild
+
+Status: started
+
+- Rebuild the public homepage in Next.js with current brand assets.
+- Migrate About, Cafe, Experiences, Members, Privacy, and Terms into typed routes.
+- Use Motion sparingly for purposeful transitions, respecting reduced motion.
+- Keep SEO metadata, structured data, sitemap, and robots behavior in Next-native form.
+- Add `noindex` for admin and POS routes.
+
+### Phase 4: Secure Data And Payment Boundary
+
+Status: planned
+
+- Add server-side order model before accepting payment.
+- Payment server creates order with canonical pricing and expected amount.
+- Stripe/Kaskade actions create provider payments from stored orders.
+- Webhooks validate order ID, expected amount, currency, status, and idempotency before issuing tickets.
+- Add payment event ledger and webhook event ledger.
+- Remove client-created paid bookings.
+
+### Phase 5: Convex Migration
+
+Status: planned
+
+Target Convex tables:
+
+- `bookings`
+- `members`
+- `inquiries`
+- `config`
+- `orders`
+- `paymentEvents`
+- `webhookEvents`
+- `staffUsers` or auth role mapping
+
+Initial indexes:
+
+- `bookings.by_bookingRef`
+- `bookings.by_visitDate_status`
+- `bookings.by_createdAt`
+- `bookings.by_emailLower`
+- `orders.by_orderRef`
+- `orders.by_status_createdAt`
+- `paymentEvents.by_providerPaymentId`
+- `members.by_status_createdAt`
+- `inquiries.by_status_createdAt`
+- `config.by_key`
+
+Migration steps:
+
+1. Stand up Convex alongside Supabase.
+2. Import Supabase `bookings`, `members`, `inquiries`, and `config`.
+3. Preserve legacy `id`, `createdAt`, and raw `data` for auditability.
+4. Promote important fields to typed top-level fields.
+5. Replace `SkylaData` internals route-by-route.
+6. Port Supabase Edge Functions to Convex actions/HTTP actions.
+7. Update Stripe and Kaskade webhook URLs.
+8. Dual-run and reconcile counts.
+9. Cut over frontend to Convex.
+10. Disable Supabase writes/functions after verification.
+
+### Phase 6: Admin And POS Rebuild
+
+Status: planned
+
+- Rebuild admin and POS as authenticated Next routes.
+- Enforce authorization server-side in Convex queries/mutations/actions.
+- Remove fallback local password behavior.
+- Add staff roles: `admin`, `pos`, `viewer`.
+- Add audit logging for booking updates, check-in, POS reader setup, POS charge creation, refunds/cancellations, and config changes.
+- Split reader setup from daily POS charging and require elevated permission.
+
+### Phase 7: Vercel Setup And Domain Cutover
+
+Status: planned
+
+- Create/link a Vercel project for `apps/web`.
+- Set root directory to `apps/web`.
+- Use install/build commands compatible with the monorepo:
+  - Install: `pnpm install --frozen-lockfile`
+  - Build: `pnpm turbo build --filter=@skyla/web`
+- Add environment variables in Vercel for preview and production.
+- Deploy preview and run smoke tests.
+- Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
+- Update DNS only after Vercel production is verified.
+- Keep GitHub Pages live until Vercel production and rollback are confirmed.
+- Disable GitHub Pages only after explicit confirmation and a clean Vercel production cutover.
+
+### Phase 8: GitHub Hardening
+
+Status: planned
+
+- Protect `main`.
+- Require pull requests and CI.
+- Block force pushes.
+- Enable Dependabot security updates.
+- Keep secret scanning and push protection enabled.
+- Prefer signed commits when possible.
+- Use Vercel previews as the review surface.
+
+### Phase 9: Formal Security Review
+
+Status: planned
+
+Run a formal security scan after core migration. Focus areas:
+
+- Payment tampering
+- Webhook replay/idempotency
+- Staff auth and role bypass
+- Stored XSS through booking/member/inquiry/config fields
+- Sensitive artifact exposure
+- Tracking/privacy compliance
+- CDN/script supply chain
+- Rate limiting and abuse controls
+
+## Rollout Strategy
+
+1. Land monorepo foundation without changing production domain.
+2. Deploy Vercel preview for the new app.
+3. Rebuild public routes.
+4. Port payment/order flow behind feature flags.
+5. Port admin/POS behind authenticated routes.
+6. Migrate data to Convex and reconcile.
+7. Cut production domain to Vercel.
+8. Confirm production smoke tests.
+9. Disable old GitHub Pages/Supabase deployment surfaces only after confirmation.
+
+## Rollback Strategy
+
+- Before domain cutover, rollback is simply keeping GitHub Pages as production.
+- After domain cutover, rollback is DNS back to GitHub Pages or Vercel production rollback to the last known-good deployment.
+- Payment backend rollback must preserve order/payment ledgers and avoid double-ticket issuance.
