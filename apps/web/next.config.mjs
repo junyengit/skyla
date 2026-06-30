@@ -1,3 +1,5 @@
+import { legacyRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -9,18 +11,6 @@ const nextConfig = {
     ]
   },
   async rewrites() {
-    const legacyRoutes = [
-      "about",
-      "cafe",
-      "checkout",
-      "experiences",
-      "members",
-      "privacy",
-      "terms",
-      "admin",
-      "pos"
-    ];
-
     return [
       {
         source: "/index.html",
@@ -48,48 +38,29 @@ const nextConfig = {
         source: "/:path*",
         headers: securityHeaders
       },
-      {
-        source: "/admin",
-        headers: [
-          ...securityHeaders,
-          { key: "X-Robots-Tag", value: "noindex, nofollow" }
-        ]
-      },
-      {
-        source: "/admin.html",
-        headers: [
-          ...securityHeaders,
-          { key: "X-Robots-Tag", value: "noindex, nofollow" }
-        ]
-      },
-      {
-        source: "/admin/:path*",
-        headers: [
-          ...securityHeaders,
-          { key: "X-Robots-Tag", value: "noindex, nofollow" }
-        ]
-      },
-      {
-        source: "/pos",
-        headers: [
-          ...securityHeaders,
-          { key: "X-Robots-Tag", value: "noindex, nofollow" }
-        ]
-      },
-      {
-        source: "/pos.html",
-        headers: [
-          ...securityHeaders,
-          { key: "X-Robots-Tag", value: "noindex, nofollow" }
-        ]
-      },
-      {
-        source: "/pos/:path*",
-        headers: [
-          ...securityHeaders,
-          { key: "X-Robots-Tag", value: "noindex, nofollow" }
-        ]
-      }
+      ...noindexLegacyRoutes.flatMap((route) => [
+        {
+          source: `/${route}`,
+          headers: [
+            ...securityHeaders,
+            { key: "X-Robots-Tag", value: "noindex, nofollow" }
+          ]
+        },
+        {
+          source: `/${route}.html`,
+          headers: [
+            ...securityHeaders,
+            { key: "X-Robots-Tag", value: "noindex, nofollow" }
+          ]
+        },
+        {
+          source: `/${route}/:path*`,
+          headers: [
+            ...securityHeaders,
+            { key: "X-Robots-Tag", value: "noindex, nofollow" }
+          ]
+        }
+      ])
     ];
   }
 };

@@ -152,7 +152,7 @@ Move the repo from "static site plus new app" to "new app plus archived legacy s
 
 Initial actions:
 
-- Keep root legacy files until custom-domain smoke tests pass without DNS overrides.
+- Keep root legacy files until GitHub Pages rollback is explicitly retired.
 - Move old root HTML/CSS/JS to `legacy-static/public-site/` after rollback is no longer needed.
 - Keep `apps/web/public` compatibility files until their App Router replacements are live.
 - Deduplicate images so canonical assets live under `apps/web/public/images`.
@@ -238,7 +238,7 @@ Add safety rails before removing the old deployment surfaces.
 
 Initial actions:
 
-- Add Playwright route smoke tests for desktop and mobile.
+- Add route/header smoke tests for production and previews.
 - Add checkout/order unit tests around canonical pricing.
 - Add webhook idempotency tests.
 - Add admin/POS authorization tests.
@@ -252,18 +252,27 @@ Definition of done:
 - Production deploys have a repeatable smoke-test checklist.
 - Security findings are tracked and fixed or explicitly accepted.
 
+Baseline now in progress:
+
+- `pnpm test:unit` covers shared pricing/contact constants and the temporary legacy-route bridge.
+- `pnpm security:artifacts` blocks tracked generated artifacts, local env files, obvious provider keys, and private keys.
+- `pnpm security:audit` fails on high or critical dependency advisories across production and dev tooling.
+- `pnpm test:smoke` checks the route matrix and admin/POS `X-Robots-Tag` headers against a supplied deployment URL.
+- Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md` are present in repo config; GitHub dashboard protection remains a separate verification step.
+
 ## PR Ladder
 
 1. Roadmap and tracker docs.
-2. Bun canary experiment branch.
-3. Repo cleanup branch after custom-domain smoke stabilizes.
-4. App Router content routes.
-5. Convex scaffold and schema.
-6. Server-authoritative order/payment boundary.
-7. Members flow.
-8. Admin/POS rebuild.
-9. Supabase shutdown and legacy-static cleanup.
-10. GitHub Pages shutdown after explicit confirmation.
+2. QA/security baseline branch.
+3. Bun canary experiment branch.
+4. Repo cleanup branch after explicit GitHub Pages rollback retirement.
+5. App Router content routes.
+6. Convex scaffold and schema.
+7. Server-authoritative order/payment boundary.
+8. Members flow.
+9. Admin/POS rebuild.
+10. Supabase shutdown and legacy-static cleanup.
+11. GitHub Pages shutdown after explicit confirmation.
 
 ## Raw Operational Data For Agents
 
@@ -275,7 +284,7 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest docs commit observed during this roadmap start: `a653573b96479d65879f5f53902c01663215fc8e`
+- Current production commit observed after roadmap merge: `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
@@ -310,7 +319,7 @@ PATH="$CORE/node/bin:$CORE/bin:$PATH"
 ## Active Risks
 
 - Bun canary can introduce instability; adopt with a PR-sized rollback path.
-- Local DNS/browser caches can lag the Vercel nameserver cutover.
-- Root legacy files are still needed for rollback until custom-domain smoke tests settle.
+- Local DNS/browser caches can lag a nameserver cutover; the current apex and `www` smoke tests now pass without overrides.
+- Root legacy files are still needed for rollback until GitHub Pages rollback is explicitly retired.
 - Client-side payment/admin logic must not be treated as secure just because it is now served from Vercel.
 - Convex migration should be dual-run and reconciled before Supabase shutdown.

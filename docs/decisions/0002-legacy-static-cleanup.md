@@ -10,7 +10,6 @@ Proposed
 
 Root legacy static files should not be deleted immediately. They should be moved to `legacy-static/public-site/` or removed only after:
 
-- Vercel custom-domain smoke tests pass without DNS overrides.
 - GitHub Pages rollback is explicitly retired.
 - The equivalent public routes exist as App Router pages or intentional redirects.
 
@@ -21,7 +20,7 @@ The repo currently contains both:
 - root GitHub Pages static files
 - `apps/web/public` compatibility files used by Vercel
 
-That duplication is confusing, but it also provides rollback while the custom-domain cutover settles.
+That duplication is confusing, but it also provides rollback while the backend, payment, admin, POS, and route migrations finish. Vercel custom-domain smoke tests now pass without DNS overrides, so rollback retirement is the remaining cleanup gate.
 
 ## Consequences
 

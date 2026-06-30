@@ -55,12 +55,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed `skydeckla.com` nameservers now resolve to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - [x] Confirmed Vercel domain verification returns `configured_correctly` for both `skydeckla.com` and `www.skydeckla.com`.
 - [x] Confirmed direct Vercel-edge requests for `https://skydeckla.com/`, `https://skydeckla.com/checkout`, `https://www.skydeckla.com/`, and `https://www.skydeckla.com/checkout` return `200`.
+- [x] Merged Phase 2 roadmap PR #3 into `main` as commit `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`; current Vercel production deployment is `https://web-cy8ortmus-junyen-enterprises.vercel.app` (`dpl_CVsRPRSQCoEiMqbhM2FBizvvU13u`, READY).
+- [x] Re-ran custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`, including noindex headers for `/admin`, `/admin.html`, `/pos`, and `/pos.html`.
+- [x] Added a QA/security baseline branch with Vitest unit coverage, legacy-route compatibility tests, a live route smoke script, tracked artifact/secret guard, Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md`.
 
 ## In Progress
 
-- [ ] Re-run custom-domain smoke tests without DNS overrides after local OS/browser DNS caches stop returning stale GitHub Pages answers.
+- [x] Re-run custom-domain smoke tests without DNS overrides after local OS/browser DNS caches stop returning stale GitHub Pages answers.
 - [x] Review subagent audits for Convex/functionality, repo/assets cleanup, and QA/security.
-- [ ] Land the Phase 2 roadmap and Bun/Vercel runbook.
+- [x] Land the Phase 2 roadmap and Bun/Vercel runbook.
+- [ ] Land the QA/security baseline PR and confirm GitHub CI, CodeQL, and Vercel preview are green.
 - [ ] Create the Bun migration PR only after local canary install/checks are reproducible.
 
 ## Deferred Until Foundation Is Stable
@@ -78,6 +82,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Bridge legacy routes from Vercel to static compatibility files during cutover. This is a temporary reliability measure, not the final application architecture.
 - Do not commit or deploy `output/` or `tmp/`.
 - Do not disable GitHub Pages until Vercel production is verified and the user confirms the action.
+- Treat `pnpm check`, `pnpm security:artifacts`, and custom-domain smoke tests as the minimum baseline before merging migration PRs.
 
 ## Risks To Track
 
@@ -86,5 +91,5 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Old root static pages and new Next app coexist temporarily.
 - The GitHub Pages project URL redirects through the repository `CNAME`, so it is not a clean fallback after DNS cutover unless the Pages custom-domain setup changes.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
-- Immediately after the nameserver cutover, this Mac's system resolver still returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. Treat any GitHub Pages response as DNS/cache propagation until confirmed otherwise.
+- Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
