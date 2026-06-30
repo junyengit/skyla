@@ -1,42 +1,56 @@
-# Decision 0002: Retire Root Static Files After Rollback Window
+# Decision 0002: Remove Root Static Duplicates After Vercel Cutover
 
 Date: 2026-06-30
 
 ## Status
 
-Proposed
+Accepted for implementation in branch `codex/bun-canary-root-cleanup`.
 
 ## Decision
 
-Root legacy static files should not be deleted immediately. They should be moved to `legacy-static/public-site/` or removed only after:
+Root legacy static duplicates are removed from the active tree. The canonical
+static compatibility pages and images now live under `apps/web/public`, where
+the Vercel app serves them intentionally.
 
-- GitHub Pages rollback is explicitly retired.
-- The equivalent public routes exist as App Router pages or intentional redirects.
+Hosting rollback should use prior Vercel deployments, not the repository root
+or GitHub Pages static files.
 
 ## Context
 
-The repo currently contains both:
+Before this decision, the repo contained both:
 
 - root GitHub Pages static files
 - `apps/web/public` compatibility files used by Vercel
 
-That duplication is confusing, but it also provides rollback while the backend, payment, admin, POS, and route migrations finish. Vercel custom-domain smoke tests now pass without DNS overrides, so rollback retirement is the remaining cleanup gate.
+That duplication made it unclear which files were active and increased the risk
+of accidental edits to the wrong copy. Vercel custom-domain smoke tests now pass
+without DNS overrides, and production rollback can be handled by Vercel's prior
+deployment history.
+
+This decision does not remove the legacy compatibility bridge inside
+`apps/web/public`. It also does not remove Supabase functions, because payment,
+admin, POS, and data flows still need a verified Convex/server-authoritative
+replacement before those backend surfaces are disabled.
 
 ## Consequences
 
 Good:
 
-- Avoids breaking the old GitHub Pages deployment while it is still useful as rollback.
-- Gives the Next/Convex migration room to replace routes one by one.
-- Keeps SEO and legacy public links stable during the transition.
+- Makes the repository root readable again.
+- Prevents root and app-public copies from drifting.
+- Keeps SEO and legacy public links stable through the app-owned compatibility bridge.
+- Aligns the active asset boundary with the Vercel app.
 
 Risks:
 
-- The repo remains noisier until the cleanup phase.
-- Root and compatibility copies can drift if edited independently.
+- GitHub Pages root-static rollback is no longer available after this merges.
+- The `apps/web/public` compatibility bridge still carries legacy client-side
+  payment/admin risks until the App Router and Convex rebuilds replace it.
 
 Implementation rule:
 
 - Treat `apps/web/public/images/` as canonical active assets now.
-- Treat root `images/` as duplicate rollback/archive material.
-- Move root static files only in a dedicated cleanup PR.
+- Keep `apps/web/public` compatibility files until each route has a tested App
+  Router replacement or redirect.
+- Treat Supabase function removal as a later backend migration step, not a root
+  cleanup step.

@@ -10,8 +10,8 @@ Skyla is moving from a flat static site with browser-heavy business logic into a
 - Next.js owns public pages, checkout, admin, and POS.
 - Convex becomes the canonical database and server logic layer.
 - Stripe, Kaskade, email, admin, and POS actions become server-authoritative.
-- Legacy static files are kept only as a temporary compatibility and rollback bridge.
-- Bun is evaluated and adopted deliberately across local development, CI, and Vercel where it is stable enough for production.
+- Legacy static files are kept only as app-owned compatibility pages under `apps/web/public`.
+- Bun canary is adopted deliberately across local development, CI, and Vercel builds.
 
 The work should move in small PRs. Each PR should leave the site deployable, testable, and reversible.
 
@@ -24,7 +24,6 @@ flowchart LR
   vercel["Vercel project: junyen-enterprises/web"]
   next["apps/web Next.js App Router"]
   bridge["apps/web/public legacy bridge"]
-  legacy["Root legacy static site"]
   supabase["Supabase auth, tables, edge functions"]
   payments["Stripe / Kaskade / EmailJS / Brevo"]
 
@@ -34,21 +33,20 @@ flowchart LR
   next --> bridge
   bridge --> supabase
   bridge --> payments
-  legacy -. rollback only .-> domain
 ```
 
 Why this is okay short term:
 
 - It prevents broken public URLs during DNS cutover.
-- It keeps the old GitHub Pages site available as rollback.
 - It gives us a safe place to rebuild route-by-route instead of doing one risky rewrite.
+- Hosting rollback can use previous Vercel deployments.
 
 Why this is not the final state:
 
 - Checkout and paid booking creation are still too browser-controlled.
 - Admin and POS rely heavily on client-side behavior.
 - Supabase-era functions and data access are still outside the target architecture.
-- Root files make the repo harder to understand and easier to accidentally deploy.
+- Compatibility files in `apps/web/public` are still legacy code and should be replaced with typed routes.
 
 ## Target Shape
 
@@ -131,11 +129,10 @@ skyla/
     environment.md
     decisions/
     runbooks/
-  legacy-static/
-    public-site/       # old root pages after rollback window closes
   scripts/
     migrations/
     audits/
+    setup/
 ```
 
 ## Workstreams
@@ -148,12 +145,11 @@ Supporting detail:
 
 ### 1. Repository Cleanup
 
-Move the repo from "static site plus new app" to "new app plus archived legacy source."
+Move the repo from "static site plus new app" to "new app with explicit compatibility bridges."
 
 Initial actions:
 
-- Keep root legacy files until GitHub Pages rollback is explicitly retired.
-- Move old root HTML/CSS/JS to `legacy-static/public-site/` after rollback is no longer needed.
+- Remove root legacy duplicates after Vercel custom-domain cutover is verified.
 - Keep `apps/web/public` compatibility files until their App Router replacements are live.
 - Deduplicate images so canonical assets live under `apps/web/public/images`.
 - Keep `output/`, `tmp/`, generated PDFs, logs, local env files, and generated CSVs ignored.
@@ -175,6 +171,7 @@ Initial actions:
 - Replace `pnpm-lock.yaml` only after Bun install/build/test passes locally and in CI.
 - Configure Vercel with Bun-compatible install/build commands and `bunVersion` where supported.
 - Keep Node `24.x` documented while Next/Vercel function runtime behavior is validated.
+- Track Turbo's warning about Bun canary lockfile version 2 until that integration is resolved.
 
 Definition of done:
 
@@ -252,27 +249,27 @@ Definition of done:
 - Production deploys have a repeatable smoke-test checklist.
 - Security findings are tracked and fixed or explicitly accepted.
 
-Baseline now in progress:
+Baseline now in place:
 
-- `pnpm test:unit` covers shared pricing/contact constants and the temporary legacy-route bridge.
-- `pnpm security:artifacts` blocks tracked generated artifacts, local env files, obvious provider keys, and private keys.
-- `pnpm security:audit` fails on high or critical dependency advisories across production and dev tooling.
-- `pnpm test:smoke` checks the route matrix and admin/POS `X-Robots-Tag` headers against a supplied deployment URL.
+- `bun run test:unit` covers shared pricing/contact constants and the temporary legacy-route bridge.
+- `bun run security:artifacts` blocks tracked generated artifacts, local env files, obvious provider keys, and private keys.
+- `bun run security:audit` fails on high or critical dependency advisories across production and dev tooling.
+- `bun run test:smoke` checks the route matrix and admin/POS `X-Robots-Tag` headers against a supplied deployment URL.
 - Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md` are present in repo config; GitHub dashboard protection remains a separate verification step.
 
 ## PR Ladder
 
 1. Roadmap and tracker docs.
 2. QA/security baseline branch.
-3. Bun canary experiment branch.
-4. Repo cleanup branch after explicit GitHub Pages rollback retirement.
+3. Bun canary and root cleanup branch.
+4. App/public compatibility cleanup after App Router replacements.
 5. App Router content routes.
 6. Convex scaffold and schema.
 7. Server-authoritative order/payment boundary.
 8. Members flow.
 9. Admin/POS rebuild.
-10. Supabase shutdown and legacy-static cleanup.
-11. GitHub Pages shutdown after explicit confirmation.
+10. Supabase shutdown after Convex/payment verification.
+11. Compatibility bridge removal route-by-route.
 
 ## Raw Operational Data For Agents
 
@@ -284,7 +281,8 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- QA/security baseline production commit verified after merge: `7bfe12a6e3263bab1357b1fd28946873e29642e1`
+- Latest verified production commit before the Bun/root-cleanup branch: `47412f698045adab3b0523b53f829134dd2cf248`
+- Latest verified production deployment before the Bun/root-cleanup branch: `https://web-l7aei5nb9-junyen-enterprises.vercel.app`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
@@ -295,12 +293,13 @@ Current package baseline:
 - Motion `12.42.0`
 - Turborepo `2.10.1`
 - TypeScript `6.0.3`
-- Current package manager before Bun migration: `pnpm@11.9.0`
+- Package manager: Bun canary with text `bun.lock`
+- Last verified Bun revision: `1.4.0-canary.1+ffea69ae7`
 
 Useful verification commands:
 
 ```bash
-pnpm check
+PATH="$HOME/.bun/bin:$PATH" bun run check
 dig +short skydeckla.com NS
 dig +short skydeckla.com A
 dig +short www.skydeckla.com A
@@ -311,15 +310,16 @@ curl -I https://www.skydeckla.com
 Vercel CLI in this environment:
 
 ```bash
-CORE="/Users/jeung-yenlui/.cache/codex-runtimes/codex-primary-runtime/dependencies"
-PATH="$CORE/node/bin:$CORE/bin:$PATH"
-"$CORE/bin/pnpm" dlx vercel@latest ls web --scope junyen-enterprises
+PATH="$HOME/.bun/bin:$PATH"
+bunx vercel ls web --scope junyen-enterprises
 ```
 
 ## Active Risks
 
-- Bun canary can introduce instability; adopt with a PR-sized rollback path.
+- Bun canary can introduce instability; keep the pnpm rollback path documented
+  until a Vercel preview and production deployment prove the branch.
 - Local DNS/browser caches can lag a nameserver cutover; the current apex and `www` smoke tests now pass without overrides.
-- Root legacy files are still needed for rollback until GitHub Pages rollback is explicitly retired.
+- Root legacy files have been removed after Vercel cutover verification.
+- Compatibility pages in `apps/web/public` remain until App Router replacements are tested.
 - Client-side payment/admin logic must not be treated as secure just because it is now served from Vercel.
 - Convex migration should be dual-run and reconciled before Supabase shutdown.

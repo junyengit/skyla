@@ -22,6 +22,13 @@ export const metadata: Metadata = {
   },
   description:
     "360-degree rooftop views, cafe, private experiences, and ticketed visits above 6100 Wilshire in Los Angeles.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/images/favicon-32.png", sizes: "32x32", type: "image/png" }
+    ],
+    apple: "/images/apple-touch-icon.png"
+  },
   openGraph: {
     type: "website",
     siteName: "Sky LA",

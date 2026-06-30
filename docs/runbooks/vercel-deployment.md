@@ -7,26 +7,37 @@
 - Vercel team: `Junyen Enterprises` (`team_3kWPO8fPD6E7x39voGoNNeog`)
 - Vercel project: `web` (`prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`)
 - Framework preset: Next.js
-- Install command: `cd ../.. && pnpm install --frozen-lockfile`
-- Build command: `cd ../.. && pnpm turbo build --filter=@skyla/web`
+- Install command: `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`
+- Build command: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`
 - Output directory: leave as the Vercel Next.js default
-- Package manager: `pnpm@11.9.0`
+- Package manager: Bun canary with committed text `bun.lock`
+- Vercel Bun runtime: `bunVersion: "1.x"` in `apps/web/vercel.json`
 - Node.js version: `24.x`
 - Production branch: `main`
 
-These commands assume Vercel executes from the configured `apps/web` project root. If the Vercel project is configured from the repository root instead, omit `cd ../..`. Vercel can also infer Turborepo builds, but the explicit filtered build keeps the first deployment narrow.
+These commands assume Vercel executes from the configured `apps/web` project
+root. If the Vercel project is configured from the repository root instead,
+omit `cd ../..`. The install script upgrades Bun to canary during the build
+step, prints the exact revision, and runs a frozen install from the repository
+root.
 
 ## Current Production State
 
 As of June 30, 2026:
 
-- The most recently verified application production deployment from `main` is READY at `https://web-gq0o1xfqu-junyen-enterprises.vercel.app`.
-- Production deployment ID is `dpl_CUxoYMKy2kxzq3j5kY1M1TNn38um`.
-- Latest verified application commit is `7bfe12a6e3263bab1357b1fd28946873e29642e1`.
+- The most recently verified production deployment from `main` before this branch is READY at `https://web-l7aei5nb9-junyen-enterprises.vercel.app`.
+- Production deployment ID is `dpl_CU1KmDXUnwRTu7YDjo1BPywv8awp`.
+- Latest verified commit is `47412f698045adab3b0523b53f829134dd2cf248`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
+
+## Branch Deployment Changes
+
+- `apps/web/vercel.json` commits the Bun/Vercel install and build commands for this branch.
+- Root GitHub Pages static files are removed from the active tree in this branch.
+- Hosting rollback should use Vercel deployment rollback, not root static rollback.
 
 ## Temporary Legacy Bridge
 
@@ -59,7 +70,7 @@ Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never us
 
 1. Open a PR from the migration branch.
 2. Vercel creates a Preview deployment from the branch.
-3. GitHub CI runs `pnpm install --frozen-lockfile`, lint, typecheck, unit tests, build, tracked artifact guard, and dependency audit.
+3. GitHub CI runs `bun install --frozen-lockfile`, lint, typecheck, unit tests, build, tracked artifact guard, and dependency audit.
 4. Run smoke tests against the Preview deployment.
 5. Merge to `main`.
 6. Vercel deploys Production from `main`.
@@ -74,4 +85,6 @@ Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never us
 - Rollback path is documented.
 - Vercel DNS nameservers are active, Vercel domain verification passes for both domains, and custom-domain smoke tests pass without DNS overrides.
 
-Keep GitHub Pages live as rollback until backend/payment/admin/POS migration and explicit rollback retirement are complete. Disable GitHub Pages only after explicit confirmation.
+Use previous Vercel deployments as the hosting rollback path. Do not disable
+legacy Supabase functions/storage or payment webhooks until the Convex/payment
+replacement is verified and explicitly accepted.

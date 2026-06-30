@@ -62,6 +62,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed post-merge GitHub CI, CodeQL, Dependabot update jobs, and Pages workflow all passed on `main`.
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-gq0o1xfqu-junyen-enterprises.vercel.app` (`dpl_CUxoYMKy2kxzq3j5kY1M1TNn38um`).
 - [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Merged workflow dependency PRs for `actions/checkout@v7`, `pnpm/action-setup@v6`, and `actions/setup-node@v6`; latest verified production deployment is `https://web-l7aei5nb9-junyen-enterprises.vercel.app` (`dpl_CU1KmDXUnwRTu7YDjo1BPywv8awp`) from commit `47412f698045adab3b0523b53f829134dd2cf248`.
+- [x] Created branch `codex/bun-canary-root-cleanup`.
+- [x] Installed Bun canary locally and verified `1.4.0-canary.1+ffea69ae7`.
+- [x] Replaced pnpm workspace metadata with Bun workspace metadata and generated text `bun.lock`.
+- [x] Updated GitHub CI to `oven-sh/setup-bun@v2` with `bun-version: canary`.
+- [x] Added `apps/web/vercel.json` and `scripts/setup/vercel-install-bun-canary.sh` so Vercel installs/upgrades Bun canary during builds.
+- [x] Removed tracked duplicate root static files and root `images/`; active compatibility files remain under `apps/web/public`.
+- [x] Verified local Bun gates: `bun install --frozen-lockfile`, `bun run check`, `bun run security:audit`, Vercel install script, and Vercel build command simulation.
 
 ## In Progress
 
@@ -69,31 +77,34 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Review subagent audits for Convex/functionality, repo/assets cleanup, and QA/security.
 - [x] Land the Phase 2 roadmap and Bun/Vercel runbook.
 - [x] Land the QA/security baseline PR and confirm GitHub CI, CodeQL, and Vercel preview/production are green.
-- [ ] Create the Bun migration PR only after local canary install/checks are reproducible.
+- [x] Create the Bun migration PR only after local canary install/checks are reproducible.
+- [ ] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
+- [ ] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
 
 ## Deferred Until Foundation Is Stable
 
 - [ ] Convex implementation.
 - [ ] Stripe/Kaskade server-authoritative order flow.
 - [ ] Admin/POS rebuild.
-- [ ] Disable old GitHub Pages deployment.
+- [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
 ## Decisions
 
-- Keep legacy static files at repo root until Vercel app has parity and production cutover is complete.
+- Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
 - Use `apps/web` as the Vercel project root.
 - Bridge legacy routes from Vercel to static compatibility files during cutover. This is a temporary reliability measure, not the final application architecture.
 - Do not commit or deploy `output/` or `tmp/`.
-- Do not disable GitHub Pages until Vercel production is verified and the user confirms the action.
-- Treat `pnpm check`, `pnpm security:artifacts`, and custom-domain smoke tests as the minimum baseline before merging migration PRs.
+- Use previous Vercel deployments as the hosting rollback path; do not treat root GitHub Pages files as the active rollback path after cleanup merges.
+- Treat `bun run check`, `bun run security:audit`, `bun run security:artifacts`, and custom-domain smoke tests as the minimum baseline before merging migration PRs.
 
 ## Risks To Track
 
 - Current local working tree includes unrelated pre-existing content edits. Do not revert them.
 - The first Vercel CLI deployment was built from a dirty local worktree because legacy root files are modified locally. Use a clean Git-triggered deployment as the cutover candidate.
-- Old root static pages and new Next app coexist temporarily.
-- The GitHub Pages project URL redirects through the repository `CNAME`, so it is not a clean fallback after DNS cutover unless the Pages custom-domain setup changes.
+- Old root static pages have been removed from the active tree; compatibility pages still exist under `apps/web/public`.
+- Historical note: the GitHub Pages project URL redirected through the repository `CNAME` before this cleanup branch removed that file, so it was not a clean fallback after DNS cutover without Pages custom-domain changes.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
+- Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.1` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.

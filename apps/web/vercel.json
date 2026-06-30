@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "bunVersion": "1.x",
+  "installCommand": "cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh",
+  "buildCommand": "cd ../.. && export PATH=\"$HOME/.bun/bin:$PATH\" && bun --revision && bun run web:build"
+}
