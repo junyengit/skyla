@@ -2,25 +2,34 @@
   "name": "skyla",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "bun@1.4.0-canary.1",
   "engines": {
+    "bun": ">=1.4.0-canary.1",
     "node": "24.x"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "trustedDependencies": [
+    "sharp",
+    "unrs-resolver"
+  ],
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "pnpm test:unit",
+    "test": "bun run test:unit",
     "test:unit": "turbo test:unit",
     "test:smoke": "node scripts/smoke/route-smoke.mjs",
-    "security": "pnpm security:artifacts && pnpm security:audit",
+    "security": "bun run security:artifacts && bun run security:audit",
     "security:artifacts": "node scripts/security/check-tracked-artifacts.mjs",
-    "security:audit": "pnpm audit --audit-level=high",
-    "check": "turbo lint typecheck test:unit build && pnpm security:artifacts",
-    "web:dev": "pnpm --filter @skyla/web dev",
-    "web:build": "pnpm --filter @skyla/web build",
-    "web:start": "pnpm --filter @skyla/web start"
+    "security:audit": "bun audit --audit-level=high",
+    "check": "turbo lint typecheck test:unit build && bun run security:artifacts",
+    "web:dev": "bun run --cwd apps/web dev",
+    "web:build": "bun run --cwd apps/web build",
+    "web:start": "bun run --cwd apps/web start"
   },
   "devDependencies": {
     "turbo": "2.10.1",

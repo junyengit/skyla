@@ -12,34 +12,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 11.9.0
-
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: canary
+
+      - name: Bun version
+        run: bun --revision
 
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: bun run lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: bun run typecheck
 
       - name: Unit tests
-        run: pnpm test:unit
+        run: bun run test:unit
 
       - name: Build
-        run: pnpm build
+        run: bun run build
 
       - name: Tracked artifact guard
-        run: pnpm security:artifacts
+        run: bun run security:artifacts
 
       - name: Dependency audit
-        run: pnpm security:audit
+        run: bun run security:audit

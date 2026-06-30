@@ -19,11 +19,11 @@ export default function HomePage() {
         </Link>
         <div className="navLinks">
           <a href="#experience">Experience</a>
-          <Link href="/cafe">Cafe</Link>
-          <Link href="/experiences">Events</Link>
+          <Link href="/cafe" prefetch={false}>Cafe</Link>
+          <Link href="/experiences" prefetch={false}>Events</Link>
           <a href="#visit">Visit</a>
         </div>
-        <Link className="navCta" href="/checkout">
+        <Link className="navCta" href="/checkout" prefetch={false}>
           Buy Tickets
         </Link>
       </nav>
@@ -55,11 +55,11 @@ export default function HomePage() {
             Angeles from above Wilshire.
           </p>
           <div className="heroActions">
-            <Link className="primaryAction" href="/checkout">
+            <Link className="primaryAction" href="/checkout" prefetch={false}>
               Buy Tickets
               <ArrowRight size={18} />
             </Link>
-            <Link className="secondaryAction" href="/members">
+            <Link className="secondaryAction" href="/members" prefetch={false}>
               Membership
             </Link>
           </div>
@@ -135,8 +135,8 @@ export default function HomePage() {
         <p>{siteConfig.address.full}</p>
         <div className="footerLinks">
           <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms</Link>
+          <Link href="/privacy" prefetch={false}>Privacy</Link>
+          <Link href="/terms" prefetch={false}>Terms</Link>
         </div>
       </footer>
     </main>

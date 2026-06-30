@@ -2,7 +2,8 @@
 
 ## Goal
 
-Move `skydeckla.com` and `www.skydeckla.com` from GitHub Pages to Vercel with a clean rollback path.
+Keep `skydeckla.com` and `www.skydeckla.com` on Vercel with a clean rollback
+path through prior Vercel deployments.
 
 ## Current State
 
@@ -10,7 +11,10 @@ Move `skydeckla.com` and `www.skydeckla.com` from GitHub Pages to Vercel with a 
 - DNS host: Vercel nameservers `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Current Vercel verification reports both `skydeckla.com` and `www.skydeckla.com` as configured correctly.
 - Custom-domain smoke tests pass for the apex and `www` without DNS overrides.
-- Last known GitHub Pages rollback values are apex A records `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, plus `www.skydeckla.com` CNAME `junyengit.github.io.`
+- Historical GitHub Pages values were apex A records `185.199.108.153`,
+  `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, plus
+  `www.skydeckla.com` CNAME `junyengit.github.io.`. They are not the preferred
+  rollback path after root static cleanup.
 - Existing TXT records include `apple-domain-verification=UKchr7KlrHJiCids` and `brevo-code:bf64ac1498536c7d801c996cabb36ea8`. Preserve TXT records during any DNS change.
 - No AAAA records were observed. Do not add AAAA records for Vercel.
 
@@ -55,9 +59,9 @@ Use this if GoDaddy remains delegated to Vercel nameservers:
 1. Manage `skydeckla.com` and `www.skydeckla.com` in Vercel Project Settings > Domains.
 2. Preserve existing TXT records in Vercel DNS.
 3. Run production smoke tests after any deployment or DNS change:
-   - `SMOKE_BASE_URL=https://skydeckla.com pnpm test:smoke`
-   - `SMOKE_BASE_URL=https://www.skydeckla.com pnpm test:smoke`
-4. Keep GitHub Pages available until explicit rollback retirement.
+   - `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`
+   - `SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke`
+4. Keep the previous known-good Vercel production deployment available for rollback.
 
 ## Third-Party DNS Fallback
 
@@ -73,8 +77,8 @@ Use this only if moving from Vercel nameservers back to GoDaddy DNS or another D
 8. Do not add AAAA records.
 9. Verify Vercel domain status, HTTPS certificate issuance, and apex/`www` redirects.
 10. Smoke-test production.
-11. Keep GitHub Pages available until Vercel has served production cleanly for at least one DNS propagation window, preferably 24-48 hours.
-12. Disable GitHub Pages only after explicit confirmation.
+11. Keep the prior Vercel production deployment available until the new one has served production cleanly for at least one DNS propagation window, preferably 24-48 hours.
+12. Disable or alter legacy backend/payment surfaces only after explicit confirmation.
 
 Required records if using third-party DNS:
 
@@ -84,24 +88,31 @@ Required records if using third-party DNS:
 
 Remove the GitHub Pages apex A records when adding the Vercel A records. Preserve TXT, Brevo CNAME, and `pay` records.
 
-## GitHub Pages Rollback
+## Hosting Rollback
 
-Rollback to GitHub Pages by moving DNS hosting or records back to GitHub Pages values:
+Preferred rollback is Vercel rollback or promotion of the last known-good
+deployment. Use DNS rollback only as an emergency manual path.
+
+Historical GitHub Pages DNS values:
 
 - Apex A records: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
 - `www` CNAME: `junyengit.github.io.`
 
-Then verify HTTPS and redirects again after propagation.
+If emergency DNS rollback is used, verify HTTPS and redirects again after
+propagation.
 
-## GitHub Pages Shutdown
+## Legacy Surface Shutdown
 
-Do not disable GitHub Pages during the migration. Use it as rollback until backend/payment/admin/POS migration and explicit rollback retirement are complete.
+Root GitHub Pages static files are no longer the active rollback path after
+cleanup. Do not disable Supabase functions/storage or payment webhooks during
+the migration. Use them only until Convex, payment, admin, and POS replacements
+are verified.
 
-1. Keep the old DNS values recorded.
-2. After rollback is retired, open GitHub repository Settings > Pages.
-3. Prefer unpublishing the current Pages site first.
-4. Later, set Pages source to `None` when rollback is no longer needed.
-5. Do not delete the root static site files or `CNAME` until a separate cleanup phase.
+1. Keep the old DNS values recorded for incident response.
+2. Confirm Vercel production is serving `skydeckla.com` and `www.skydeckla.com`.
+3. Confirm smoke tests pass.
+4. Confirm payment/order/admin/POS flows are migrated or intentionally disabled.
+5. Confirm the previous Vercel deployment is available as hosting rollback.
 
 ## Verification
 

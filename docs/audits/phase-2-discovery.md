@@ -4,6 +4,10 @@ Last updated: 2026-06-30
 
 This file captures read-only subagent findings that should guide implementation. It is intentionally more direct than the roadmap: paths, risks, and test targets live here so future agents do not need to rediscover the same map.
 
+Snapshot note: these findings were captured before the Bun/root-cleanup branch.
+For current package-manager and root-layout state, use
+`docs/migration-progress.md` and the runbooks.
+
 ## Convex And Functionality Findings
 
 Current runtime reality:

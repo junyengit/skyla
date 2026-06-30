@@ -1,6 +1,8 @@
 # Skyla
 
-Skyla is now organized as a Turborepo with a Next.js application on Vercel and the legacy static site preserved during the cutover window.
+Skyla is organized as a Turborepo with a Next.js application on Vercel. The
+production domain is served by `apps/web`; old root-level static copies have
+been removed so the repository root is project control-plane space again.
 
 ## Repository Layout
 
@@ -12,50 +14,78 @@ docs/               Migration plan, runbooks, architecture notes
 docs/audits         Discovery notes and implementation evidence
 docs/decisions      Lightweight architecture decision records
 supabase/functions  Legacy Supabase Edge Functions kept until Convex cutover
-images/             Legacy static site images
+scripts/            Smoke, security, setup, and migration helpers
 ```
 
-The legacy GitHub Pages site still lives at the repository root during the migration. Do not remove it until the Vercel app has served the production domain cleanly and rollback is no longer needed.
+Static compatibility pages and active image assets live under
+`apps/web/public`. They keep current public routes working while the App Router,
+Convex, checkout, admin, and POS rebuilds happen route-by-route.
+
+```mermaid
+flowchart LR
+  domain["skydeckla.com"]
+  vercel["Vercel project: web"]
+  web["apps/web Next.js"]
+  bridge["apps/web/public compatibility pages"]
+  legacyBackend["Legacy Supabase functions"]
+  future["Convex + server-authoritative payments"]
+
+  domain --> vercel --> web
+  web --> bridge
+  bridge --> legacyBackend
+  web -. next migration slices .-> future
+```
 
 ## Current Hosting State
 
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- The QA/security baseline is merged. The most recently verified application production deployment is `https://web-gq0o1xfqu-junyen-enterprises.vercel.app` from commit `7bfe12a6e3263bab1357b1fd28946873e29642e1`.
+- The most recently verified production deployment before this branch is `https://web-l7aei5nb9-junyen-enterprises.vercel.app` from commit `47412f698045adab3b0523b53f829134dd2cf248`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
 
+## This Branch
+
+- Replaces pnpm with Bun canary and a committed text `bun.lock`.
+- Adds repo-owned Vercel install/build commands under `apps/web/vercel.json`.
+- Removes duplicate root GitHub Pages static files from the active tree after Vercel custom-domain cutover verification.
+- Keeps app-owned compatibility files in `apps/web/public`.
+- Uses Vercel deployment rollback for hosting rollback.
+
 ## Local Development
 
-Use the bundled or system `pnpm`.
+Use Bun canary. The last locally verified version is
+`1.4.0-canary.1+ffea69ae7`.
 
 ```bash
-pnpm install
-pnpm web:dev
+bun upgrade --canary
+bun install --frozen-lockfile
+bun run web:dev
 ```
 
-Use Node `24.x`; `.node-version` is included for version managers. The new app runs from `apps/web`. The legacy static site can still be served separately if needed.
+Use Node `24.x`; `.node-version` is included for version managers. The app runs
+from `apps/web`.
 
 ## Build And Checks
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test:unit
-pnpm build
-pnpm security:artifacts
-pnpm security:audit
+bun run lint
+bun run typecheck
+bun run test:unit
+bun run build
+bun run security:artifacts
+bun run security:audit
 ```
 
 For a full local gate that matches the migration baseline:
 
 ```bash
-pnpm check
-SMOKE_BASE_URL=https://skydeckla.com pnpm test:smoke
-SMOKE_BASE_URL=https://www.skydeckla.com pnpm test:smoke
+bun run check
+SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
+SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
 
 ## Deployment Direction
@@ -67,13 +97,17 @@ Target Vercel project root: `apps/web`.
 Recommended Vercel commands after project linking:
 
 ```bash
-cd ../.. && pnpm install --frozen-lockfile
-cd ../.. && pnpm turbo build --filter=@skyla/web
+cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh
+cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build
 ```
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.
 
-The Vercel production route matrix passes on the custom domains. Keep GitHub Pages available as rollback until the team explicitly retires it after the App Router, Convex, payment, admin, and POS migrations are complete. See [docs/phase-2-roadmap.md](docs/phase-2-roadmap.md) for the next migration phase and [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before disabling old deployments.
+The Vercel production route matrix passes on the custom domains. Keep previous
+Vercel deployments available as rollback while the App Router, Convex, payment,
+admin, and POS migrations continue. See [docs/phase-2-roadmap.md](docs/phase-2-roadmap.md)
+and [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before
+changing domains or disabling legacy backend surfaces.
 
 ## Sensitive Artifacts
 

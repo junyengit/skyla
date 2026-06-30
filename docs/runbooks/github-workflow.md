@@ -21,15 +21,20 @@
 
 ## Current Legacy Behavior
 
-Before cutover, GitHub Pages deploys the root static site from `main`. Do not rely on this as the long-term deployment path.
+The active hosting path is Vercel from `apps/web`. The old root static site has
+been removed from the active tree, so GitHub Pages is no longer the intended
+hosting rollback path.
 
-Until GitHub Pages is unpublished, merging to `main` can still publish root-level static file changes immediately. Treat changes to these paths as production-affecting:
+Treat changes to these paths as production-affecting:
 
-- `*.html`
-- `checkout.js`
-- `shared-data.js`
-- `ads-tracking.js`
-- `CNAME`
+- `apps/web/app/**`
+- `apps/web/public/**`
+- `apps/web/next.config.mjs`
+- `apps/web/vercel.json`
 - `supabase/**`
+- `convex/**`
+- `.github/workflows/**`
 
-Do not merge foundation-only work to `main` with root static or legacy Supabase changes unless those legacy production changes have been reviewed and are intended to ship before Vercel cutover.
+Do not merge legacy Supabase/payment changes unless they are reviewed as
+production-impacting. Supabase remains a gated legacy backend surface until the
+Convex/payment replacement is built and verified.
