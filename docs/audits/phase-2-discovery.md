@@ -192,8 +192,12 @@ P1 findings:
 
 P2 findings:
 
-- Bun is planned but not adopted. Current package manager is still `pnpm@11.9.0`, CI uses pnpm, `bun.lock` does not exist, and local `bun -v` failed in the current environment.
-- Dependency audit found one moderate advisory through `postcss@8.4.31` in the current lockfile.
+- Bun canary is now adopted. The repo uses a text `bun.lock`, CI installs
+  through `oven-sh/setup-bun@v2` with canary, and Vercel runs the repo-owned
+  Bun canary install/build commands from `apps/web/vercel.json`. Keep using
+  `PATH="$HOME/.bun/bin:$PATH"` locally when the shell cannot find `bun`.
+- Dependency audit is currently clean after pinning transitive `postcss` to
+  `8.5.16`.
 - No tracked `.env`, `output`, `tmp`, CSV, PDF, or log artifacts were found.
 - Public client keys exist in legacy browser files; they are not secrets, but should become environment-scoped and provider-domain-restricted.
 - POS reader registration is now bridged through `stripe-terminal` with a `setup-reader` action gated by `SKYLA_TERMINAL_SETUP_TOKEN`; Terminal charge creation still needs Convex/server-authoritative replacement.

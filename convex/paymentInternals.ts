@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
+import { stripeCheckoutOrderStatusAfterUnpaidOutcome } from "./lib/stripeWebhook";
 
 export const getCheckoutPaymentSnapshot = internalQuery({
   args: {
@@ -277,9 +278,9 @@ export const recordStripeCheckoutWebhook = internalMutation({
       createdAt: Date.now()
     });
 
-    if (args.outcome === "canceled" && order.status !== "paid") {
+    if (order.status !== "paid") {
       await ctx.db.patch(order._id, {
-        status: "expired",
+        status: stripeCheckoutOrderStatusAfterUnpaidOutcome(args.outcome),
         expectedProvider: "stripe",
         updatedAt: Date.now()
       });

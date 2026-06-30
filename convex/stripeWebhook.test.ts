@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  stripeCheckoutOrderStatusAfterUnpaidOutcome,
   stripeCheckoutOutcomeFromEvent,
   stripeWebhookTestSignature,
   verifyStripeWebhookSignature,
@@ -83,6 +84,11 @@ describe("Stripe webhook helpers", () => {
       amountCents: 8505,
       currency: "usd"
     });
+  });
+
+  it("maps unpaid Checkout outcomes to terminal order states", () => {
+    expect(stripeCheckoutOrderStatusAfterUnpaidOutcome("failed")).toBe("canceled");
+    expect(stripeCheckoutOrderStatusAfterUnpaidOutcome("canceled")).toBe("expired");
   });
 
   it("ignores unpaid, unsupported, and malformed events", () => {

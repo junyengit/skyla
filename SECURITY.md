@@ -21,14 +21,14 @@ The project is in a staged migration from legacy static/Supabase flows to Next.j
 Run before merging security-sensitive changes:
 
 ```bash
-pnpm check
-pnpm security:artifacts
-pnpm security:audit
+PATH="$HOME/.bun/bin:$PATH" bun run check
+PATH="$HOME/.bun/bin:$PATH" bun run security:artifacts
+PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 ```
 
 Run route smoke checks after deployments:
 
 ```bash
-SMOKE_BASE_URL=https://skydeckla.com pnpm test:smoke
-SMOKE_BASE_URL=https://www.skydeckla.com pnpm test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```

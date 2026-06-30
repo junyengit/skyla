@@ -119,6 +119,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added Convex `POST /stripe-webhook` HTTP action with raw-body Stripe signature verification.
 - [x] Added internal webhook reconciliation that dedupes Stripe event IDs and marks orders paid only after stored order/payment-event amount, currency, provider, and status checks pass.
 - [x] Added webhook helper tests for HMAC verification, timestamp tolerance, paid Checkout Session extraction, and ignored events.
+- [x] Merged Stripe webhook reconciliation PR #22 into `main` as merge commit `0eab79bab036d1eb7cba20063e205b1d4b0eb7d6`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-8vpbz5v7v-junyen-enterprises.vercel.app` (`dpl_DqTuNvna51RPBqwgsZPQkaduhtth`).
+- [x] Re-ran post-merge route smoke tests for `https://web-8vpbz5v7v-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Confirmed Vercel runtime warning/error logs had no matching production entries for the checked 30-minute window.
+- [x] Started branch `codex/post-webhook-readiness-hardening` for dependency/security cleanup and current-state documentation.
+- [x] Pinned transitive `postcss` to `8.5.16` after `bun audit` found a moderate advisory in `postcss <8.5.10`.
+- [x] Upgraded Motion to `12.42.2`.
+- [x] Tried ESLint `10.6.0`; deferred because the current React lint plugin stack throws under the lint gate.
+- [x] Added order-state cleanup for Stripe async payment failures so they do not remain `payment_pending`.
+- [x] Added the consolidated production readiness checklist.
 
 ## In Progress
 
@@ -133,7 +143,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-persist-order-drafts`.
 - [x] Verify, review, and ship `codex/convex-checkout-route-cutover`.
 - [x] Verify, review, and ship `codex/convex-stripe-checkout-action`.
-- [ ] Verify, review, and ship `codex/convex-stripe-webhook`.
+- [x] Verify, review, and ship `codex/convex-stripe-webhook`.
+- [ ] Verify, review, and ship `codex/post-webhook-readiness-hardening`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

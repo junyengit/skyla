@@ -15,7 +15,7 @@
     "@skyla/payments": "workspace:*",
     "@skyla/ui": "workspace:*",
     "convex": "^1.42.1",
-    "motion": "12.42.0",
+    "motion": "12.42.2",
     "next": "16.2.9",
     "react": "19.2.7",
     "react-dom": "19.2.7"

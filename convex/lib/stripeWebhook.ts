@@ -43,6 +43,10 @@ export type StripeCheckoutWebhookOutcome =
       raw: Record<string, unknown>;
     };
 
+export function stripeCheckoutOrderStatusAfterUnpaidOutcome(outcome: "failed" | "canceled"): "canceled" | "expired" {
+  return outcome === "failed" ? "canceled" : "expired";
+}
+
 type StripeCheckoutSessionObject = {
   id?: unknown;
   object?: unknown;
