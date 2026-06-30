@@ -23,7 +23,7 @@ safe for browser code, secret means dashboard/server only.
 | `CONVEX_URL` | no | local + Convex CLI | local/dev | Server-side Convex URL for local verification. | Must be HTTPS for cloud; localhost only for anonymous local testing. |
 | `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions. | Required before `payments.createStripeCheckoutSession` can run. |
 | `SKYLA_PAYMENT_RETURN_ORIGINS` | no | Convex | Production/Preview/Development | Comma-separated allowed origins for Stripe success/cancel URLs. | Required; example `https://skydeckla.com,https://www.skydeckla.com`. |
-| `STRIPE_WEBHOOK_SECRET` | no | Convex | Production/Preview/Development | Verifies Stripe webhook signatures. | Required before webhook cutover; not used by the current action slice. |
+| `STRIPE_WEBHOOK_SECRET` | no | Convex | Production/Preview/Development | Verifies Stripe webhook signatures for `POST /stripe-webhook`. | Required before webhook cutover. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | yes | Vercel | Production/Preview/Development | Browser-safe Stripe.js publishable key. | Needed only when frontend is wired to Stripe.js or embedded Checkout. |
 | `KASKADE_API_KEY` | no | Convex | Production/Preview/Development | Future Kaskade payment action secret. | Not ready; legacy bridge still exists. |
 | `SKYLA_TERMINAL_SETUP_TOKEN` | no | Supabase legacy, later Convex | Production only | One-time manager token for Stripe Terminal reader setup. | Legacy hardening is present; Terminal payment creation still needs replacement. |

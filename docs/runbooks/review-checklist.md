@@ -18,6 +18,8 @@ Use this after each major phase.
 - Payment actions accept stored refs only, not browser totals
 - Stripe return URLs are allowlisted by server/Convex env
 - Webhook work verifies signature, amount, currency, status, and idempotency
+- Stripe webhooks use raw request bodies before JSON parsing
+- Paid-order transitions require stored Convex order/payment-event reconciliation
 
 ## Product
 
@@ -50,6 +52,7 @@ Use this after each major phase.
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment
 - Stripe webhook secret is configured before paid-order completion moves to Convex
+- Stripe dashboard webhook endpoint points to the Convex site URL, not the old Supabase function
 - Kaskade and Terminal legacy payment paths stay enabled or explicitly disabled until replacements pass acceptance
 
 ## Why These Gates Exist

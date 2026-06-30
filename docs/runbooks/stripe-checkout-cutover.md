@@ -21,9 +21,13 @@ What changed in this slice:
   line items from that stored data, and records a `paymentEvents` ledger entry.
 - It marks the stored order as `payment_pending` with `expectedProvider:
   "stripe"` after Stripe returns a session.
+- Convex now has a `POST /stripe-webhook` HTTP action that verifies Stripe's
+  raw-body signature, dedupes event IDs, and marks stored orders paid only
+  after amount, currency, provider, and status reconciliation.
 
 This is not fully live yet. The public checkout page still needs a follow-up
-frontend cutover after the real Convex deployment and Stripe envs exist.
+frontend cutover after the real Convex deployment, Stripe envs, and Stripe
+dashboard webhook endpoint exist.
 
 ## Flow
 
@@ -33,7 +37,7 @@ sequenceDiagram
   participant Next as Next /api/order-drafts/checkout
   participant Convex as Convex orders
   participant Stripe as Stripe Checkout
-  participant Webhook as Future Convex webhook
+  participant Webhook as Convex POST /stripe-webhook
 
   Browser->>Next: package/adults/addons + idempotencyKey
   Next->>Convex: createCheckoutOrderDraft
@@ -57,7 +61,9 @@ of truth. Minimum required values:
 - Vercel: `NEXT_PUBLIC_CONVEX_URL`
 - Convex: `STRIPE_SECRET_KEY`
 - Convex: `SKYLA_PAYMENT_RETURN_ORIGINS`
-- Convex later webhook step: `STRIPE_WEBHOOK_SECRET`
+- Convex: `STRIPE_WEBHOOK_SECRET`
+- Stripe dashboard webhook endpoint:
+  `https://<convex-site-url>/stripe-webhook`
 
 ## Safe API Checks
 
@@ -97,7 +103,17 @@ Expected:
 - Legacy Supabase payment bridges still show client totals until the frontend
   cutover removes or disables them.
 
-3. Use Stripe test mode only after the real Convex deployment is linked. Use
+3. Confirm the webhook route exists after the real Convex deployment is linked:
+
+```bash
+curl -sS "https://<convex-site-url>/stripe-webhook"
+```
+
+Expected:
+
+- JSON response with `ok: true`
+
+4. Use Stripe test mode only after the real Convex deployment is linked. Use
    Stripe dashboard/test cards, never a real card, for the preview cutover.
 
 ## Acceptance Checklist
@@ -106,12 +122,18 @@ Expected:
 - [ ] Vercel preview has `NEXT_PUBLIC_CONVEX_URL`.
 - [ ] Convex env has `STRIPE_SECRET_KEY`.
 - [ ] Convex env has `SKYLA_PAYMENT_RETURN_ORIGINS`.
+- [ ] Convex env has `STRIPE_WEBHOOK_SECRET`.
+- [ ] Stripe dashboard has a test-mode endpoint pointing to Convex
+      `/stripe-webhook`.
 - [ ] Preview order draft POST returns `persisted: true`.
 - [ ] Stripe Checkout action rejects missing/incorrect `idempotencyKey`.
 - [ ] Stripe Checkout action rejects return URLs outside the allowlist.
 - [ ] Stripe Checkout action creates sessions from stored Convex totals only.
 - [ ] `paymentEvents` records Stripe session id, amount, currency, and idempotency key.
-- [ ] Webhook cutover is implemented before claiming paid orders are fully Convex-owned.
+- [ ] Webhook verifies raw-body signatures and records duplicate event IDs
+      idempotently.
+- [ ] Paid webhook events reconcile session id, order ref, amount, currency,
+      provider, and order status before marking the order paid.
 - [ ] Legacy Supabase Stripe/Kaskade/Terminal payment paths are disabled only after replacement acceptance.
 
 ## Rollback

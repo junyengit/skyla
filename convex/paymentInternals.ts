@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
 
 export const getCheckoutPaymentSnapshot = internalQuery({
@@ -106,3 +106,217 @@ export const recordStripeCheckoutSession = internalMutation({
     return { eventId, reused: false };
   }
 });
+
+export const recordStripeCheckoutWebhook = internalMutation({
+  args: {
+    providerEventId: v.string(),
+    eventType: v.string(),
+    outcome: v.union(v.literal("paid"), v.literal("failed"), v.literal("canceled"), v.literal("ignored")),
+    providerPaymentId: v.optional(v.string()),
+    orderRef: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.literal("usd")),
+    raw: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    const existingWebhook = await ctx.db
+      .query("webhookEvents")
+      .withIndex("by_provider_providerEventId", (q) =>
+        q.eq("provider", "stripe").eq("providerEventId", args.providerEventId)
+      )
+      .first();
+    if (existingWebhook) {
+      return {
+        status: existingWebhook.status,
+        duplicate: true,
+        orderRef: existingWebhook.orderRef
+      };
+    }
+
+    if (args.outcome === "ignored") {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "ignored",
+        orderRef: args.orderRef,
+        raw: args.raw
+      });
+      return { status: "ignored", duplicate: false, orderRef: args.orderRef };
+    }
+
+    if (!args.providerPaymentId || !args.orderRef) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "missing_provider_payment_or_order_ref" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+      .unique();
+    if (!order) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "order_not_found" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
+
+    const providerEvents = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_provider_providerPaymentId", (q) =>
+        q.eq("provider", "stripe").eq("providerPaymentId", args.providerPaymentId as string)
+      )
+      .collect();
+    const creationEvent = providerEvents.find(
+      (event) => event.orderRef === args.orderRef && event.status === "created"
+    );
+    if (!creationEvent) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "payment_session_not_created_by_convex" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
+
+    const amountCents = args.amountCents ?? creationEvent.amountCents;
+    const currency = args.currency ?? creationEvent.currency;
+    if (
+      order.totalCents !== amountCents ||
+      order.currency !== currency ||
+      creationEvent.amountCents !== amountCents ||
+      creationEvent.currency !== currency
+    ) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "amount_or_currency_mismatch" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
+    if (order.expectedProvider !== "stripe") {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "order_expected_provider_mismatch" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
+    if (order.status !== "payment_pending" && order.status !== "paid") {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "order_status_not_payable" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
+
+    if (args.outcome === "paid") {
+      const existingPaidEvent = providerEvents.find((event) => event.status === "paid");
+      if (!existingPaidEvent) {
+        await ctx.db.insert("paymentEvents", {
+          orderRef: args.orderRef,
+          provider: "stripe",
+          providerPaymentId: args.providerPaymentId,
+          idempotencyKey: creationEvent.idempotencyKey,
+          status: "paid",
+          currency,
+          amountCents,
+          rawEventId: args.providerEventId,
+          raw: args.raw,
+          createdAt: Date.now()
+        });
+      }
+
+      if (order.status !== "paid") {
+        await ctx.db.patch(order._id, {
+          status: "paid",
+          expectedProvider: "stripe",
+          updatedAt: Date.now()
+        });
+      }
+
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "processed",
+        orderRef: args.orderRef,
+        raw: args.raw
+      });
+      return { status: "processed", duplicate: false, orderRef: args.orderRef };
+    }
+
+    const providerStatus = args.outcome === "failed" ? "failed" : "canceled";
+    await ctx.db.insert("paymentEvents", {
+      orderRef: args.orderRef,
+      provider: "stripe",
+      providerPaymentId: args.providerPaymentId,
+      idempotencyKey: creationEvent.idempotencyKey,
+      status: providerStatus,
+      currency,
+      amountCents,
+      rawEventId: args.providerEventId,
+      raw: args.raw,
+      createdAt: Date.now()
+    });
+
+    if (args.outcome === "canceled" && order.status !== "paid") {
+      await ctx.db.patch(order._id, {
+        status: "expired",
+        expectedProvider: "stripe",
+        updatedAt: Date.now()
+      });
+    }
+
+    await insertWebhookEvent(ctx, {
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
+      status: "processed",
+      orderRef: args.orderRef,
+      raw: args.raw
+    });
+    return { status: "processed", duplicate: false, orderRef: args.orderRef };
+  }
+});
+
+async function insertWebhookEvent(
+  ctx: MutationCtx,
+  args: {
+    providerEventId: string;
+    eventType: string;
+    status: "processed" | "ignored" | "failed";
+    orderRef?: string;
+    raw?: unknown;
+  }
+) {
+  await ctx.db.insert("webhookEvents", withoutUndefined({
+    provider: "stripe",
+    providerEventId: args.providerEventId,
+    eventType: args.eventType,
+    processedAt: Date.now(),
+    status: args.status,
+    orderRef: args.orderRef,
+    raw: args.raw
+  }));
+}
+
+function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
+}

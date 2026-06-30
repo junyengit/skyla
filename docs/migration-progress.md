@@ -115,6 +115,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-5rd41qfa5-junyen-enterprises.vercel.app` (`dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`).
 - [x] Re-ran post-merge route smoke tests for `https://web-5rd41qfa5-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 - [x] Verified production `/api/order-drafts/checkout` still ignores browser `totalCents: 1` and returns `persisted: false` with `persistenceReason: "convex_unconfigured"` until Vercel receives `NEXT_PUBLIC_CONVEX_URL`.
+- [x] Started branch `codex/convex-stripe-webhook` for Stripe webhook reconciliation.
+- [x] Added Convex `POST /stripe-webhook` HTTP action with raw-body Stripe signature verification.
+- [x] Added internal webhook reconciliation that dedupes Stripe event IDs and marks orders paid only after stored order/payment-event amount, currency, provider, and status checks pass.
+- [x] Added webhook helper tests for HMAC verification, timestamp tolerance, paid Checkout Session extraction, and ignored events.
 
 ## In Progress
 
@@ -129,13 +133,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-persist-order-drafts`.
 - [x] Verify, review, and ship `codex/convex-checkout-route-cutover`.
 - [x] Verify, review, and ship `codex/convex-stripe-checkout-action`.
+- [ ] Verify, review, and ship `codex/convex-stripe-webhook`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
 
 - [x] Convex generated types and persisted draft mutations.
 - [ ] Real Convex cloud deployment link and Vercel env wiring.
-- [ ] Convex HTTP webhook actions.
+- [x] Convex Stripe HTTP webhook action.
+- [ ] Kaskade webhook/action handling.
 - [ ] Kaskade and Stripe Terminal server-authoritative actions.
 - [ ] Live checkout frontend cutover to Convex order refs and Stripe action.
 - [ ] Admin/POS rebuild.
@@ -162,6 +168,6 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.2` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
-- `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex/payment PR.
+- `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex Terminal/POS replacement.
 - The real Convex cloud project is still not linked in this worktree or Vercel. This branch uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` for local validation and commits generated types from that local pass.
-- Stripe Checkout session creation now exists in Convex code, but it is not live until real Convex/Stripe envs, frontend cutover, and webhook verification are complete.
+- Stripe Checkout session creation and webhook reconciliation now exist in Convex code, but they are not live until real Convex/Stripe envs, Stripe dashboard endpoint setup, and frontend cutover are complete.

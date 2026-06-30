@@ -105,8 +105,9 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
   when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present. It does not
   create provider payments or power the live compatibility checkout yet.
 - `convex/payments.ts` adds the next Stripe Checkout action. It creates Stripe
-  sessions from stored `orderRef` records only, but it still needs real Convex
-  envs, Stripe envs, frontend cutover, and webhook verification before live use.
+  sessions from stored `orderRef` records only. `convex/http.ts` adds the
+  Stripe webhook route. They still need real Convex envs, Stripe envs, Stripe
+  dashboard endpoint setup, and frontend cutover before live use.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:
