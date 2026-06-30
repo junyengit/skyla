@@ -6,8 +6,10 @@ Move `skydeckla.com` and `www.skydeckla.com` from GitHub Pages to Vercel with a 
 
 ## Current DNS Snapshot
 
-- Registrar/DNS host: GoDaddy nameservers `ns77.domaincontrol.com` and `ns78.domaincontrol.com`.
-- Current verification from this environment shows apex `skydeckla.com` has no visible A records and `www.skydeckla.com` still resolves through `junyengit.github.io.` before redirecting to the apex.
+- Registrar: GoDaddy.
+- DNS host: Vercel nameservers `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
+- Current Vercel verification reports both `skydeckla.com` and `www.skydeckla.com` as configured correctly.
+- External DNS and direct Vercel-edge checks route the apex and `www` to Vercel. Local OS/browser DNS caches may briefly retain old GitHub Pages answers after the nameserver switch.
 - Last known GitHub Pages rollback values are apex A records `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, plus `www.skydeckla.com` CNAME `junyengit.github.io.`
 - Existing TXT records include `apple-domain-verification=UKchr7KlrHJiCids` and `brevo-code:bf64ac1498536c7d801c996cabb36ea8`. Preserve TXT records during cutover.
 - No AAAA records were observed. Do not add AAAA records for Vercel.
@@ -16,7 +18,7 @@ Reconfirm this snapshot immediately before DNS changes.
 
 ## Vercel Domain State
 
-As of June 30, 2026, both `skydeckla.com` and `www.skydeckla.com` have been added to Vercel project `junyen-enterprises/web`, but verification is blocked on DNS changes.
+As of June 30, 2026, both `skydeckla.com` and `www.skydeckla.com` have been added to Vercel project `junyen-enterprises/web`, and Vercel reports both as configured correctly.
 
 Vercel reported these DNS targets for this project:
 
@@ -61,7 +63,7 @@ Verify these values in Vercel immediately before editing GoDaddy. If Vercel show
 
 ## Current Required GoDaddy Records
 
-Use these values unless Vercel Project Settings > Domains shows newer recommendations:
+If rolling DNS back from Vercel nameservers to third-party nameservers, use these values unless Vercel Project Settings > Domains shows newer recommendations:
 
 - `A` record: `@` -> `216.198.79.1`
 - `A` record: `@` -> `64.29.17.1`

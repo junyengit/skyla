@@ -20,12 +20,12 @@ These commands assume Vercel executes from the configured `apps/web` project roo
 
 As of June 30, 2026:
 
-- Production deployment from `main` is READY at `https://web-istczvmf1-junyen-enterprises.vercel.app`.
-- Production deployment ID is `dpl_FBG27TbZxzTzfQKgTy4LWaxKF35L`.
-- Latest merged production commit is `f3c99649ea87a9b94e40bdc3e7de35f1ea98e923`.
-- `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
+- Production deployment from `main` is READY at `https://web-hc38hldhg-junyen-enterprises.vercel.app`.
+- Production deployment ID is `dpl_3Q8VU3XvtK4DiiHbkJ9x8p21Wjb5`.
+- Latest merged production commit is `d8da1e3c8ac653f6143aa456debec84069b0ea60`.
+- `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL.
-- GoDaddy DNS is not yet valid for Vercel. Current checks show apex `skydeckla.com` is not resolving from this environment and `www.skydeckla.com` still points through GitHub Pages.
+- GoDaddy nameservers have been changed to Vercel nameservers. External DNS and direct Vercel-edge checks route to Vercel; local OS/browser DNS caches may briefly show stale GitHub Pages behavior.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
 
 ## Temporary Legacy Bridge

@@ -46,12 +46,15 @@ Finish the Vercel/Turborepo/Next.js foundation, keep the legacy static site reco
 - [x] Verified Vercel production route matrix on `https://web-istczvmf1-junyen-enterprises.vercel.app`: `/`, `/index.html`, `/about`, `/about.html`, `/cafe`, `/cafe.html`, `/experiences`, `/experiences.html`, `/checkout`, `/checkout.html`, `/members`, `/members.html`, `/privacy`, `/privacy.html`, `/terms`, `/terms.html`, `/admin`, `/admin.html`, `/pos`, `/pos.html`, `/robots.txt`, and `/sitemap.xml` returned `200`.
 - [x] Verified `/admin`, `/admin.html`, `/pos`, and `/pos.html` include `X-Robots-Tag: noindex, nofollow` on the Vercel production URL.
 - [x] Confirmed Vercel production URL is publicly reachable without Vercel Authentication.
+- [x] Pushed current-state documentation commit `d8da1e3c8ac653f6143aa456debec84069b0ea60` to `main`; GitHub CI and Pages workflow passed.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-hc38hldhg-junyen-enterprises.vercel.app` (`dpl_3Q8VU3XvtK4DiiHbkJ9x8p21Wjb5`).
+- [x] Confirmed `skydeckla.com` nameservers now resolve to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
+- [x] Confirmed Vercel domain verification returns `configured_correctly` for both `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed direct Vercel-edge requests for `https://skydeckla.com/`, `https://skydeckla.com/checkout`, `https://www.skydeckla.com/`, and `https://www.skydeckla.com/checkout` return `200`.
 
 ## In Progress
 
-- [ ] Save the GoDaddy DNS cutover records for `skydeckla.com` and `www.skydeckla.com`.
-- [ ] Verify Vercel domain status after DNS propagation.
-- [ ] Smoke-test `https://skydeckla.com` and `https://www.skydeckla.com` after Vercel verification passes.
+- [ ] Re-run custom-domain smoke tests without DNS overrides after local OS/browser DNS caches stop returning stale GitHub Pages answers.
 
 ## Deferred Until Foundation Is Stable
 
@@ -76,5 +79,5 @@ Finish the Vercel/Turborepo/Next.js foundation, keep the legacy static site reco
 - Old root static pages and new Next app coexist temporarily.
 - The GitHub Pages project URL redirects through the repository `CNAME`, so it is not a clean fallback after DNS cutover unless the Pages custom-domain setup changes.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
-- Current DNS checks show apex `skydeckla.com` is not resolving from this environment and `www.skydeckla.com` still points through GitHub Pages, so the public custom domain should be treated as mid-cutover until the GoDaddy records are corrected and Vercel verifies both domains.
+- Immediately after the nameserver cutover, this Mac's system resolver still returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. Treat any GitHub Pages response as DNS/cache propagation until confirmed otherwise.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.

@@ -16,7 +16,7 @@ The migration is intentionally in-place and staged. The current production site 
 
 ## Current State
 
-Skyla's public domain is mid-cutover. The Vercel production deployment is ready and route-compatible, but GoDaddy DNS still needs the Vercel records saved and verified. Current checks show apex `skydeckla.com` is not resolving from this environment and `www.skydeckla.com` still points through GitHub Pages before redirecting to the apex.
+Skyla's public domain has been moved to Vercel DNS and Vercel reports both `skydeckla.com` and `www.skydeckla.com` as configured correctly. The Vercel production deployment is ready and route-compatible. Immediately after the nameserver switch, local OS/browser DNS caches may still show stale GitHub Pages behavior, so keep rollback available until custom-domain smoke tests pass without DNS overrides.
 
 The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel.
 
@@ -188,7 +188,7 @@ Status: planned
 
 ### Phase 7: Vercel Setup And Domain Cutover
 
-Status: Vercel setup and route verification complete; DNS cutover pending GoDaddy record changes
+Status: Vercel setup, route verification, and Vercel domain verification complete; DNS cache propagation watch in progress
 
 - [x] Create/link a Vercel project for `apps/web`.
 - [x] Set root directory to `apps/web`.
@@ -199,7 +199,8 @@ Status: Vercel setup and route verification complete; DNS cutover pending GoDadd
 - [x] Deploy preview and production builds.
 - [x] Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
 - [x] Verify Vercel production route compatibility before custom-domain cutover.
-- [ ] Update GoDaddy DNS to Vercel records and verify both domains.
+- [x] Move GoDaddy nameservers to Vercel DNS and verify both domains in Vercel.
+- [ ] Re-run custom-domain smoke tests after stale local DNS caches clear.
 - Keep GitHub Pages live until Vercel production and rollback are confirmed.
 - Disable GitHub Pages only after explicit confirmation and a clean Vercel production cutover.
 

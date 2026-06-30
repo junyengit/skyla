@@ -20,9 +20,10 @@ The legacy GitHub Pages site still lives at the repository root during the migra
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Current Vercel production deployment is `https://web-istczvmf1-junyen-enterprises.vercel.app` from commit `f3c99649ea87a9b94e40bdc3e7de35f1ea98e923`.
-- Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached, but GoDaddy DNS still needs the Vercel records saved and verified before the custom domains are considered live.
-- Current DNS checks show `www.skydeckla.com` still resolving through GitHub Pages and apex `skydeckla.com` not resolving from this environment. Treat the public custom domain as mid-cutover until GoDaddy DNS is corrected.
+- Current Vercel production deployment is `https://web-hc38hldhg-junyen-enterprises.vercel.app` from commit `d8da1e3c8ac653f6143aa456debec84069b0ea60`.
+- Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
+- Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
+- Public DNS propagation may still be uneven immediately after the nameserver switch. External DNS and direct Vercel-edge checks route to Vercel, while local OS/browser DNS caches may briefly retain old GitHub Pages answers.
 - The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
 
 ## Local Development
@@ -59,7 +60,7 @@ cd ../.. && pnpm turbo build --filter=@skyla/web
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.
 
-The Vercel production route matrix has passed on the Vercel deployment URL, but the custom domain is not verified until GoDaddy DNS points to Vercel. See [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before changing domains or disabling old deployments.
+The Vercel production route matrix has passed on the Vercel deployment URL, and Vercel verifies the custom domains. Keep GitHub Pages available as rollback until public DNS cache behavior has settled and custom-domain smoke tests pass without DNS overrides. See [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before disabling old deployments.
 
 ## Sensitive Artifacts
 
