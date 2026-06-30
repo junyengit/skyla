@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { CafeItemKey, TicketPackageKey } from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 
@@ -94,6 +94,7 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
   const [draft, setDraft] = useState<PosDraftResponse | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const reviewVersionRef = useRef(0);
 
   const activeCafeItems = useMemo(
     () =>
@@ -116,6 +117,7 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
   }, 0);
 
   function resetReview() {
+    reviewVersionRef.current += 1;
     setDraft(null);
     setMessage(null);
     setIdempotencyKey(createIdempotencyKey());
@@ -147,7 +149,7 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
     const id =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? `custom:${crypto.randomUUID()}`
-        : `custom:${Date.now()}`;
+        : `custom:${idempotencyKey}:${cart.length}:${customName.trim() || "charge"}`;
     setCart((current) => [
       ...current,
       {
@@ -202,20 +204,26 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
     }
     setIsReviewing(true);
     setMessage(null);
+    const reviewVersion = reviewVersionRef.current;
+    const lines = cart.map(linePayload);
+    const email = customerEmail || undefined;
 
     try {
       const response = await fetch("/api/order-drafts/pos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lines: cart.map(linePayload),
-          customerEmail: customerEmail || undefined,
+          lines,
+          customerEmail: email,
           idempotencyKey
         })
       });
       const data = (await response.json()) as PosDraftResponse | { error?: string };
       if (!response.ok) {
         throw new Error("error" in data ? data.error ?? "Could not review this sale" : "Could not review this sale");
+      }
+      if (reviewVersion !== reviewVersionRef.current) {
+        return;
       }
       const nextDraft = data as PosDraftResponse;
       setDraft(nextDraft);

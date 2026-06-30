@@ -116,7 +116,6 @@ describe("/api/order-drafts/pos", () => {
         totalCents: 2900
       },
       customerEmail: "guest@example.com",
-      readerId: "tmr_123",
       lines: [
         {
           kind: "ticket",
@@ -134,7 +133,8 @@ describe("/api/order-drafts/pos", () => {
         {
           lines: [{ kind: "ticket", packageKey: "general", quantity: 1 }],
           customerEmail: "GUEST@EXAMPLE.COM",
-          readerId: "tmr_123",
+          readerId: "tmr_browser_supplied",
+          terminalLocationId: "tml_browser_supplied",
           idempotencyKey: "pos_20260704_abc123",
           totalCents: 1
         },
@@ -158,7 +158,6 @@ describe("/api/order-drafts/pos", () => {
       {
         lines: [{ kind: "ticket", packageKey: "general", quantity: 1 }],
         customerEmail: "guest@example.com",
-        readerId: "tmr_123",
         idempotencyKey: "pos_20260704_abc123"
       },
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }

@@ -5,16 +5,12 @@ import { makeFunctionReference } from "convex/server";
 type PosDraftInput = {
   lines?: unknown;
   customerEmail?: unknown;
-  readerId?: unknown;
-  terminalLocationId?: unknown;
   idempotencyKey?: unknown;
 };
 
 type PosDraftMutationArgs = {
   lines: PosSaleInput["lines"];
   customerEmail?: string;
-  readerId?: string;
-  terminalLocationId?: string;
   idempotencyKey: string;
 };
 
@@ -164,13 +160,11 @@ function normalizeInput(input: PosDraftInput) {
     throw new Error("POS sale can include at most 100 lines");
   }
 
-  return withoutUndefined({
-    lines: input.lines.map(normalizePosLine),
-    customerEmail: normalizeEmail(input.customerEmail),
-    readerId: optionalTrimmed(input.readerId, "readerId", 120),
-    terminalLocationId: optionalTrimmed(input.terminalLocationId, "terminalLocationId", 120),
-    idempotencyKey: normalizeIdempotencyKey(input.idempotencyKey)
-  });
+    return withoutUndefined({
+      lines: input.lines.map(normalizePosLine),
+      customerEmail: normalizeEmail(input.customerEmail),
+      idempotencyKey: normalizeIdempotencyKey(input.idempotencyKey)
+    });
 }
 
 function persistenceFailureStatus(message: string) {
@@ -204,8 +198,6 @@ export async function POST(request: Request) {
           withoutUndefined({
             lines: input.lines,
             customerEmail: input.customerEmail,
-            readerId: input.readerId,
-            terminalLocationId: input.terminalLocationId,
             idempotencyKey: input.idempotencyKey
           }),
           { url: deploymentUrl, token }

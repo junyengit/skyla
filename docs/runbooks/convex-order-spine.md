@@ -188,6 +188,24 @@ Expected response shape:
         "quantity": 2,
         "unitAmountCents": 3700,
         "lineTotalCents": 7400
+      },
+      {
+        "kind": "cafe",
+        "productKey": "b1",
+        "name": "Butter Croissant",
+        "quantity": 3,
+        "unitAmountCents": 600,
+        "lineTotalCents": 1800
+      },
+      {
+        "kind": "custom",
+        "name": "Service recovery",
+        "quantity": 1,
+        "unitAmountCents": 500,
+        "lineTotalCents": 500,
+        "metadata": {
+          "reason": "Manager approved"
+        }
       }
     ]
   }
@@ -198,8 +216,13 @@ If Convex is configured but the Next route does not receive a staff bearer
 token, it still returns the server-calculated draft and
 `persistenceReason: "staff_auth_required"`.
 
-With `NEXT_PUBLIC_CONVEX_URL` configured and `idempotencyKey` supplied, the same
-route calls `api.orderDrafts.createCheckoutOrderDraft` and returns:
+The POS draft route does not accept `readerId` or `terminalLocationId` from the
+browser. Those values must be derived or validated server-side before a future
+Terminal action can trust stored POS sale data.
+
+For checkout orders, with `NEXT_PUBLIC_CONVEX_URL` configured and
+`idempotencyKey` supplied, `/api/order-drafts/checkout` calls
+`api.orderDrafts.createCheckoutOrderDraft` and returns:
 
 ```json
 {
