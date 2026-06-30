@@ -287,15 +287,15 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified production commit: `07448b6e2a626a4b302056e5a155692ad2a9ba39`
-- Latest verified production deployment: `https://web-kham7clfu-junyen-enterprises.vercel.app`
-- Latest verified production deployment ID: `dpl_69k9h2zKNC7uAGDHzgZmHGT9p6wX`
+- Latest verified application production commit: `b1272b9112dbde4c83c74b07c8d6204ee98c2960`
+- Latest verified application production deployment: `https://web-d1efck3u8-junyen-enterprises.vercel.app`
+- Latest verified application production deployment ID: `dpl_FNnfuoY5KbLKG7WceuXuhycp8Q2r`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
-Current order-spine branch:
+Current order-spine state:
 
-- Branch: `codex/convex-order-spine`
+- Merged PR: `#13`
 - New artifacts: `convex/schema.ts`, `packages/payments`, `/api/order-drafts/checkout`
 - Convex package: `convex@1.42.1`
 - Not present yet: `convex.json`, `convex/_generated`, linked deployment, persisted order refs, provider actions, HTTP webhooks, live checkout cutover
