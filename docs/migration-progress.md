@@ -59,7 +59,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 ## In Progress
 
 - [ ] Re-run custom-domain smoke tests without DNS overrides after local OS/browser DNS caches stop returning stale GitHub Pages answers.
-- [ ] Review subagent audits for Convex/functionality, repo/assets cleanup, and QA/security.
+- [x] Review subagent audits for Convex/functionality, repo/assets cleanup, and QA/security.
 - [ ] Land the Phase 2 roadmap and Bun/Vercel runbook.
 - [ ] Create the Bun migration PR only after local canary install/checks are reproducible.
 

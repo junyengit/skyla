@@ -170,3 +170,36 @@ Priority route order:
 - POS retries reuse the same PaymentIntent.
 - Ticket, cafe, and custom POS sale lines are all persisted.
 - User-entered admin/member/inquiry fields are escaped in list/detail/export views.
+
+## QA And Security Findings
+
+P0 findings:
+
+- Payment creation is still client-authoritative. Browser code sends `amountCents` or `priceUsd` to backend functions, and the Supabase-era Stripe/Kaskade functions do not look up a server-owned order before creating provider payments.
+- Admin/POS authorization is not server-enforced yet. `/admin` and `/pos` are static bridge routes with `noindex` headers, not protected server routes.
+- Admin still has a local password fallback path.
+- Stripe Terminal function actions do not yet enforce explicit staff role checks at the server boundary.
+
+P1 findings:
+
+- Legacy bridge scripts have stored-XSS surfaces through `innerHTML` paths for announcement, booking table, checkout ticket/status, and POS catalog/cart rendering.
+- `apps/web/eslint.config.mjs` ignores `public/**/*.js`, so those bridge scripts are intentionally outside the current lint gate.
+- CI only covers install, lint, typecheck, and build. There are no committed unit, integration, e2e, or visual tests yet.
+- GitHub repo hardening is incomplete: `main` is not protected, rulesets are empty, Dependabot security updates and vulnerability alerts are disabled, and code scanning has no analysis.
+
+P2 findings:
+
+- Bun is planned but not adopted. Current package manager is still `pnpm@11.9.0`, CI uses pnpm, `bun.lock` does not exist, and local `bun -v` failed in the current environment.
+- Dependency audit found one moderate advisory through `postcss@8.4.31` in the current lockfile.
+- No tracked `.env`, `output`, `tmp`, CSV, PDF, or log artifacts were found.
+- Public client keys exist in legacy browser files; they are not secrets, but should become environment-scoped and provider-domain-restricted.
+- POS calls a `setup-reader` action that the current `stripe-terminal` function does not implement.
+- POS writes display-formatted `visitDate`, while admin "today" logic expects ISO date strings.
+
+Recommended first QA/security gates:
+
+1. Add unit tests around canonical pricing, order creation, webhook idempotency, role checks, and XSS escaping.
+2. Add Playwright route/header tests for `/`, legacy rewrites, `.html` compatibility, `/admin` and `/pos` `X-Robots-Tag`, desktop/mobile screenshots, console errors, and reduced motion.
+3. Add audit/security workflows: dependency audit, CodeQL, Dependabot, and redacted secret scanning.
+4. Harden GitHub: protect `main`, require PRs, require CI and Vercel preview, block force pushes/deletions, and add `CODEOWNERS` plus `SECURITY.md`.
+5. Track the POS `setup-reader` mismatch and date-format bug before POS rebuild or shutdown.
