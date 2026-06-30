@@ -1,2 +1,26 @@
 .DS_Store
 *.DS_Store
+
+# Local/generated artifacts. These may contain PII, hosted invoice links,
+# passport form drafts, logs, or other sensitive operational exports.
+output/
+tmp/
+*.log
+
+# Node / Turborepo / Next.js
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Vercel local project link
+.vercel/

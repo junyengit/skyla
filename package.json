@@ -1,0 +1,22 @@
+{
+  "name": "skyla",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "check": "turbo lint typecheck build",
+    "web:dev": "pnpm --filter @skyla/web dev",
+    "web:build": "pnpm --filter @skyla/web build",
+    "web:start": "pnpm --filter @skyla/web start"
+  },
+  "devDependencies": {
+    "turbo": "2.10.1"
+  }
+}
