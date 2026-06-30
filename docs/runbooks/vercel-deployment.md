@@ -20,12 +20,12 @@ These commands assume Vercel executes from the configured `apps/web` project roo
 
 As of June 30, 2026:
 
-- Production deployment from `main` is READY at `https://web-cy8ortmus-junyen-enterprises.vercel.app`.
-- Production deployment ID is `dpl_CVsRPRSQCoEiMqbhM2FBizvvU13u`.
-- Latest merged production commit is `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`.
+- The most recently verified application production deployment from `main` is READY at `https://web-gq0o1xfqu-junyen-enterprises.vercel.app`.
+- Production deployment ID is `dpl_CUxoYMKy2kxzq3j5kY1M1TNn38um`.
+- Latest verified application commit is `7bfe12a6e3263bab1357b1fd28946873e29642e1`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
-- GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests now pass without DNS overrides.
+- GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
 
 ## Temporary Legacy Bridge

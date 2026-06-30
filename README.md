@@ -22,10 +22,10 @@ The legacy GitHub Pages site still lives at the repository root during the migra
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Current Vercel production deployment is `https://web-cy8ortmus-junyen-enterprises.vercel.app` from commit `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`.
+- The QA/security baseline is merged. The most recently verified application production deployment is `https://web-gq0o1xfqu-junyen-enterprises.vercel.app` from commit `7bfe12a6e3263bab1357b1fd28946873e29642e1`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
-- Custom-domain smoke tests now pass on both the apex domain and `www` without DNS overrides.
+- Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
 
 ## Local Development
