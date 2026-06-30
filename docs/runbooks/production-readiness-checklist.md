@@ -9,23 +9,27 @@ The site is hosted on Vercel and the domain is pointed at Vercel. The public
 pages load, and smoke tests pass on both `skydeckla.com` and
 `www.skydeckla.com`.
 
-The new safer payment backend is partly built in Convex code: orders can be
-priced from server-owned data, Stripe Checkout sessions can be created from a
-stored `orderRef`, and Stripe webhooks can verify signatures before marking an
-order paid. The primary `/checkout` page now uses the Next.js App Router and
-fails closed until the real Convex deployment, Vercel env vars, and Stripe
-dashboard webhook endpoint are ready.
+The new safer payment backend is partly built in Convex code: orders and POS
+sale drafts can be priced from server-owned data, Stripe Checkout sessions can
+be created from a stored `orderRef`, and Stripe webhooks can verify signatures
+before marking an order paid. The primary `/checkout` page now uses the Next.js
+App Router and fails closed until the real Convex deployment, Vercel env vars,
+and Stripe dashboard webhook endpoint are ready.
 
-POS and admin are still legacy compatibility pages. The old static checkout is
-still reachable at `/checkout.html` while the team verifies the new App Router
-flow.
+Live POS and admin are still legacy compatibility pages. A native `/pos-next`
+draft page exists for server-priced sale review, but Terminal payment stays
+locked there until the Stripe Terminal backend charges from a stored `saleRef`.
+The old static checkout is still reachable at `/checkout.html` while the team
+verifies the new App Router flow.
 
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-06-30:
-  `https://web-2hg4drlf9-junyen-enterprises.vercel.app`
+  `https://web-qoge89yac-junyen-enterprises.vercel.app`
+- Production deployment ID checked on 2026-06-30:
+  `dpl_Ft1WbJraJzKNQRZKDTXnMKyhUDxo`
 - Custom domains checked on 2026-06-30:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -42,14 +46,17 @@ flowchart TD
   vercel["Vercel web project"]
   next["apps/web Next.js"]
   checkout["App Router checkout"]
+  posNext["App Router POS draft"]
   legacy["Legacy admin/POS + fallback pages"]
   supabase["Legacy Supabase functions"]
   convex["Convex order/payment code"]
   stripe["Stripe dashboard"]
 
   domain --> vercel --> next --> checkout
+  next --> posNext
   next --> legacy --> supabase
   checkout -. "needs env" .-> convex
+  posNext -. "needs staff auth" .-> convex
   convex -. "needs env + webhook endpoint" .-> stripe
 ```
 
@@ -59,7 +66,9 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 22-route smoke test.
 - Admin and POS are marked `noindex, nofollow`.
+- `/pos-next` is marked `noindex, nofollow`.
 - Admin and POS dark-theme text is high contrast.
+- `/pos-next` reviews a server-calculated POS total without using browser totals.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
 - Next.js `16.2.9`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
@@ -78,6 +87,8 @@ flowchart TD
   must be disabled after the App Router path passes preview/live acceptance.
 - POS still uses a legacy Terminal bridge where browser cart totals reach the
   backend.
+- `/pos-next` is not the live register yet because Terminal capture is still
+  locked until the backend accepts `saleRef` only.
 - Admin/POS are not rebuilt as protected App Router/Convex workflows yet.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
@@ -96,6 +107,8 @@ flowchart TD
   linked.
 - [ ] Add Google Ads public env vars only when ads are ready.
 - [ ] Keep secrets out of `NEXT_PUBLIC_*`.
+- [ ] Confirm `/pos-next` remains `X-Robots-Tag: noindex, nofollow` after every
+      preview and production deploy.
 
 ### Convex
 
@@ -121,8 +134,12 @@ flowchart TD
   `STRIPE_WEBHOOK_SECRET`.
 - [ ] Use Stripe test cards only until preview checkout passes.
 - [ ] Verify webhook delivery, duplicate replay behavior, amount mismatch
-  rejection, and order status transitions before live traffic.
+      rejection, and order status transitions before live traffic.
 - [ ] Create a separate live-mode endpoint only after test mode passes.
+- [ ] Do not use a real credit card during verification. Use Stripe test mode
+      cards and Stripe dashboard test webhooks until preview acceptance passes.
+- [ ] Replace the legacy Terminal create-intent path with a Convex action that
+      accepts `saleRef` only and reads the stored POS sale amount.
 
 ### GitHub
 
@@ -153,6 +170,8 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
    and start Stripe Checkout.
 5. Replace POS Terminal payment creation with a server-authoritative Convex
    action.
-6. Rebuild Admin and POS as protected App Router/Convex workflows.
-7. Migrate remaining Supabase data and disable legacy Supabase functions only
+6. Promote `/pos-next` into the live POS only after Terminal capture uses
+   stored `saleRef` totals.
+7. Rebuild Admin and POS as protected App Router/Convex workflows.
+8. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.

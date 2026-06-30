@@ -1,4 +1,4 @@
-import { legacyRoutes, noindexLegacyRoutes } from "../../apps/web/legacy-routes.mjs";
+import { legacyRoutes, noindexAppRoutes, noindexLegacyRoutes } from "../../apps/web/legacy-routes.mjs";
 
 const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? "https://www.skydeckla.com");
 
@@ -7,12 +7,16 @@ const routes = [
   "/index.html",
   "/checkout",
   "/checkout.html",
+  ...noindexAppRoutes.map((route) => `/${route}`),
   ...legacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`]),
   "/robots.txt",
   "/sitemap.xml"
 ];
 
-const noindexRoutes = noindexLegacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`]);
+const noindexRoutes = [
+  ...noindexAppRoutes.map((route) => `/${route}`),
+  ...noindexLegacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`])
+];
 
 const failures = [];
 

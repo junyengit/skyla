@@ -22,22 +22,28 @@ It is not a live payment cutover runbook yet.
 - `apps/web/app/api/order-drafts/checkout/route.ts`: a server route that accepts
   product selections, returns canonical totals, and calls Convex persistence
   when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
+- `apps/web/app/api/order-drafts/pos/route.ts`: a server route that accepts POS
+  selections, returns canonical ticket/cafe/custom totals, ignores browser
+  totals, and calls Convex persistence only when a staff bearer token,
+  `NEXT_PUBLIC_CONVEX_URL`, and `idempotencyKey` are present.
+- `apps/web/app/pos-next/page.tsx`: native staff POS draft review surface. It
+  reviews server totals but keeps Terminal payment locked.
 - `convex/payments.ts`: a Stripe Checkout action that creates a Checkout
   Session from a stored checkout `orderRef` and matching draft idempotency key.
 - `convex/paymentInternals.ts`: internal order snapshot and payment ledger
   mutations used by the Stripe action.
 
-The live compatibility checkout is not cut over to Convex yet. The backend can
-persist drafts, and the Next route is ready to use that path once the real
-Convex deployment URL is configured in Vercel. Stripe Checkout action and
-webhook reconciliation code now exist, but production payment creation still
-needs real Convex/Stripe envs, Stripe dashboard webhook setup, and frontend
-integration.
+The primary checkout route is cut over to the Next.js App Router, but deployed
+payment creation is still gated until the real Convex deployment URL and Stripe
+env vars are configured. The POS draft bridge now exists at `/pos-next`; live
+Terminal capture still needs a future Convex action that creates payment
+intents from a stored `saleRef`, not browser totals.
 
 ```mermaid
 flowchart LR
   browser["Browser checkout or POS UI"]
   nextRoute["Current Next draft route"]
+  posNext["/pos-next draft review"]
   pricing["@skyla/payments pricing"]
   convexMutation["Convex orderDrafts mutations"]
   convexTables["orders, orderLineItems, posSales, posSaleLines"]
@@ -45,6 +51,7 @@ flowchart LR
   futureProviders["Future Kaskade/Terminal actions"]
 
   browser --> nextRoute --> pricing
+  posNext --> nextRoute
   browser -. next cutover .-> convexMutation
   convexMutation --> pricing
   convexMutation --> convexTables
@@ -135,6 +142,61 @@ Expected response shape:
   }
 }
 ```
+
+Current POS draft API without Convex staff auth:
+
+```http
+POST /api/order-drafts/pos
+Content-Type: application/json
+
+{
+  "lines": [
+    { "kind": "ticket", "packageKey": "drink", "quantity": 2 },
+    { "kind": "cafe", "itemKey": "b1", "quantity": 3 },
+    {
+      "kind": "custom",
+      "name": "Service recovery",
+      "amountCents": 500,
+      "quantity": 1,
+      "reason": "Manager approved"
+    }
+  ],
+  "customerEmail": "guest@example.com",
+  "totalCents": 1
+}
+```
+
+Expected response shape:
+
+```json
+{
+  "persisted": false,
+  "persistenceReason": "convex_unconfigured",
+  "draft": {
+    "channel": "pos",
+    "status": "draft",
+    "currency": "usd",
+    "subtotalCents": 9700,
+    "feeCents": 0,
+    "totalCents": 9700,
+    "customerEmail": "guest@example.com",
+    "lines": [
+      {
+        "kind": "ticket",
+        "productKey": "drink",
+        "name": "Deck + Drink",
+        "quantity": 2,
+        "unitAmountCents": 3700,
+        "lineTotalCents": 7400
+      }
+    ]
+  }
+}
+```
+
+If Convex is configured but the Next route does not receive a staff bearer
+token, it still returns the server-calculated draft and
+`persistenceReason: "staff_auth_required"`.
 
 With `NEXT_PUBLIC_CONVEX_URL` configured and `idempotencyKey` supplied, the same
 route calls `api.orderDrafts.createCheckoutOrderDraft` and returns:
