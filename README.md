@@ -1,6 +1,6 @@
 # Skyla
 
-Skyla is being migrated from a flat GitHub Pages static site into a Turborepo-based Next.js application on Vercel.
+Skyla is now organized as a Turborepo with a Next.js application on Vercel and the legacy static site preserved during the cutover window.
 
 ## Repository Layout
 
@@ -13,7 +13,16 @@ supabase/functions  Legacy Supabase Edge Functions kept until Convex cutover
 images/             Legacy static site images
 ```
 
-The legacy GitHub Pages site still lives at the repository root during the migration. Do not remove it until the Vercel app has been deployed, smoke-tested, and the production domain has been cut over.
+The legacy GitHub Pages site still lives at the repository root during the migration. Do not remove it until the Vercel app has served the production domain cleanly and rollback is no longer needed.
+
+## Current Hosting State
+
+As of June 30, 2026:
+
+- GitHub Pages still serves `https://skydeckla.com` through GoDaddy DNS.
+- Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
+- Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached, but DNS has not been cut over yet.
+- The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
 
 ## Local Development
 
@@ -49,7 +58,7 @@ cd ../.. && pnpm turbo build --filter=@skyla/web
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.
 
-The current production site is still GitHub Pages at `https://skydeckla.com`. See [docs/migration-plan.md](docs/migration-plan.md) before changing domains or disabling old deployments.
+The current public domain is still on GitHub Pages until the Vercel route matrix passes and GoDaddy DNS is intentionally updated. See [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before changing domains or disabling old deployments.
 
 ## Sensitive Artifacts
 

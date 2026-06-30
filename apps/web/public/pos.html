@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png" />
+  <title>POS — Sky LA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pos.css?v=5" />
+</head>
+<body class="pos-body">
+
+  <!-- AUTH GATE -->
+  <div class="gate" id="gate">
+    <div class="gate__card">
+      <div class="gate__logo">Sky LA</div>
+      <div class="gate__sub">Point of Sale</div>
+      <div class="gate__lockicon">🔒</div>
+      <form class="gate__form" id="gate-form">
+        <input type="email" id="gate-email" class="gate__input" placeholder="Email" autocomplete="username" />
+        <input type="password" id="gate-input" class="gate__input" placeholder="Password" autocomplete="current-password" />
+        <button type="submit" class="gate__btn">Sign In</button>
+        <p class="gate__error" id="gate-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div class="pos" id="pos-app" style="display:none;">
+
+    <!-- TOP BAR -->
+    <header class="pos-top">
+      <div class="pos-top__brand">Sky&nbsp;LA <span>POS</span></div>
+      <div class="pos-reader" id="pos-reader">
+        <span class="pos-reader__dot" id="reader-dot"></span>
+        <span class="pos-reader__label" id="reader-label">Reader: not connected</span>
+        <button class="pos-reader__btn" id="reader-connect" type="button">Connect reader</button>
+        <button class="pos-reader__btn" id="reader-setup" type="button">Set up reader</button>
+        <label class="pos-reader__sim">
+          <input type="checkbox" id="reader-sim" /> Simulated
+        </label>
+      </div>
+      <a href="admin.html" class="pos-top__exit">Admin →</a>
+    </header>
+
+    <div class="pos-main">
+
+      <!-- LEFT: CATALOG -->
+      <section class="pos-catalog">
+        <div class="pos-tabs">
+          <button class="pos-tab is-active" data-tab="tickets" type="button">🎟 Walk-up Tickets</button>
+          <button class="pos-tab" data-tab="cafe" type="button">☕ Café</button>
+          <button class="pos-tab" data-tab="custom" type="button">Custom</button>
+        </div>
+
+        <div class="pos-grid" id="grid-tickets"></div>
+        <div class="pos-grid" id="grid-cafe" style="display:none;"></div>
+        <div class="pos-custom" id="grid-custom" style="display:none;">
+          <form class="custom-charge" id="custom-charge-form">
+            <label class="custom-charge__label" for="custom-charge-name">Item name</label>
+            <input class="custom-charge__input" id="custom-charge-name" autocomplete="off" placeholder="Custom charge" />
+            <label class="custom-charge__label" for="custom-charge-amount">Amount</label>
+            <div class="custom-charge__amount">
+              <span>$</span>
+              <input class="custom-charge__input" id="custom-charge-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" />
+            </div>
+            <button class="custom-charge__btn" type="submit">Add charge</button>
+            <p class="custom-charge__error" id="custom-charge-error"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- RIGHT: CART -->
+      <aside class="pos-cart">
+        <h2 class="pos-cart__title">Order</h2>
+        <div class="pos-cart__lines" id="cart-lines">
+          <p class="pos-cart__empty" id="cart-empty">Tap items to add them.</p>
+        </div>
+
+        <div class="pos-cart__foot">
+          <div class="pos-cart__row"><span>Subtotal</span><span id="cart-subtotal">$0.00</span></div>
+          <div class="pos-cart__row pos-cart__row--total"><span>Total</span><span id="cart-total">$0.00</span></div>
+
+          <input type="email" id="cart-email" class="pos-cart__email" placeholder="Customer email (optional — for ticket)" autocomplete="off" />
+
+          <button class="pos-cart__charge" id="cart-charge" type="button" disabled>Charge <span id="charge-amt"></span></button>
+          <button class="pos-cart__clear" id="cart-clear" type="button">Clear</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- READER PICKER -->
+  <div class="pos-pay" id="reader-picker">
+    <div class="pos-pay__card">
+      <h2>Choose a reader</h2>
+      <p id="picker-msg">Searching for readers on this network…</p>
+      <div class="reader-list" id="reader-list"></div>
+      <button class="pos-pay__cancel" id="picker-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- READER SETUP -->
+  <div class="pos-pay" id="reader-setup-panel">
+    <div class="pos-pay__card">
+      <h2>Set up Stripe reader</h2>
+      <p id="setup-msg">Enter the pairing code shown on the reader.</p>
+      <form class="reader-setup" id="reader-setup-form">
+        <label class="reader-setup__label" for="reader-code">Pairing code</label>
+        <input class="reader-setup__input" id="reader-code" autocomplete="off" placeholder="example: apple-tree-river" />
+        <label class="reader-setup__label" for="reader-name">Reader name</label>
+        <input class="reader-setup__input" id="reader-name" autocomplete="off" placeholder="Front desk reader" />
+        <button class="btn-gold" type="submit">Register reader</button>
+      </form>
+      <button class="pos-pay__cancel" id="setup-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- PAYMENT STATUS OVERLAY -->
+  <div class="pos-pay" id="pos-pay">
+    <div class="pos-pay__card">
+      <div class="pos-pay__spin" id="pay-spin"></div>
+      <div class="pos-pay__icon" id="pay-icon" style="display:none;"></div>
+      <h2 id="pay-title">Present card on the reader…</h2>
+      <p id="pay-msg">Ask the customer to tap, insert, or swipe.</p>
+      <div class="pos-pay__actions" id="pay-actions" style="display:none;">
+        <button class="btn-ghost" id="pay-print" type="button">🖨 Print</button>
+        <button class="btn-gold" id="pay-done" type="button">New Order</button>
+      </div>
+      <div class="pos-pay__actions" id="pay-retry-actions" style="display:none;">
+        <button class="btn-ghost" id="pay-cancel-retry" type="button">Cancel</button>
+        <button class="btn-gold" id="pay-retry" type="button">Try again</button>
+      </div>
+      <button class="pos-pay__cancel" id="pay-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Stripe Terminal SDK -->
+  <script src="https://js.stripe.com/terminal/v1/"></script>
+  <script src="shared-data.js?v=5"></script>
+  <script src="pos.js?v=5"></script>
+</body>
+</html>

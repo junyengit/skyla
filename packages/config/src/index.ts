@@ -12,13 +12,13 @@ export const ticketPackages = [
   {
     key: "general",
     name: "General Admission",
-    price: 19.99,
+    price: 29,
     description: "360-degree observation deck, indoor lounge, and timed entry."
   },
   {
     key: "drink",
     name: "Deck + Drink",
-    price: 24,
+    price: 37,
     description: "Observation deck access with one coffee or matcha voucher."
   }
 ] as const;

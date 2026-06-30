@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+  <title>Buy Tickets — Skyla Los Angeles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="checkout.css?v=12" />
+  <!-- Meta Pixel Code -->
+  <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '27223205867364422');
+  fbq('track', 'PageView');</script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27223205867364422&ev=PageView&noscript=1"/></noscript>
+  <!-- End Meta Pixel Code -->
+</head>
+<body class="checkout-page">
+
+  <!-- NAV -->
+  <nav class="nav scrolled" id="nav">
+    <a href="index.html" class="nav__logo">Sky LA</a>
+    <ul class="nav__links">
+      <li><a href="about.html">Best Space</a></li>
+      <li><a href="cafe.html">Café</a></li>
+      <li><a href="experiences.html">Experiences</a></li>
+      <li><a href="members.html">Members</a></li>
+      <li><a href="index.html#tickets">Tickets</a></li>
+      <li><a href="index.html#visit">Visit</a></li>
+    </ul>
+    <a href="index.html" class="nav__cta nav__cta--ghost">← Back</a>
+    <button class="nav__toggle" aria-label="Menu" onclick="this.closest('.nav').classList.toggle('open')">☰</button>
+  </nav>
+
+  <main class="checkout-main">
+
+    <!-- STEPS HEADER -->
+    <div class="checkout-steps">
+      <div class="checkout-step active" data-step="1">
+        <div class="checkout-step__num">1</div>
+        <div class="checkout-step__label">Package</div>
+      </div>
+      <div class="checkout-step__line"></div>
+      <div class="checkout-step" data-step="2">
+        <div class="checkout-step__num">2</div>
+        <div class="checkout-step__label">Date & Time</div>
+      </div>
+      <div class="checkout-step__line"></div>
+      <div class="checkout-step" data-step="3">
+        <div class="checkout-step__num">3</div>
+        <div class="checkout-step__label">Review</div>
+      </div>
+    </div>
+
+    <div class="checkout-layout">
+
+      <!-- LEFT: FORM STEPS -->
+      <div class="checkout-form">
+
+        <!-- STEP 1: PACKAGE -->
+        <div class="form-step active" id="step-1">
+          <h2 class="form-step__title">Select Your Package</h2>
+          <p class="form-step__sub">All tickets include full access to the observation deck and lounge.</p>
+
+          <div class="pkg-cards">
+
+            <label class="pkg-card" data-package="general" data-price="29">
+              <input type="radio" name="package" value="general" />
+              <div class="pkg-card__inner">
+                <div class="pkg-card__check"></div>
+                <div class="pkg-card__info">
+                  <div class="pkg-card__name">General Admission</div>
+                  <ul class="pkg-card__perks">
+                    <li>360° Observation Deck</li>
+                    <li>Indoor Lounge Access</li>
+                    <li>Timed Entry — Skip the Line</li>
+                  </ul>
+                </div>
+                <div class="pkg-card__price">$29<span>/person</span></div>
+              </div>
+            </label>
+
+            <label class="pkg-card pkg-card--featured" data-package="drink" data-price="37">
+              <input type="radio" name="package" value="drink" />
+              <div class="pkg-card__badge">Best Value</div>
+              <div class="pkg-card__inner">
+                <div class="pkg-card__check"></div>
+                <div class="pkg-card__info">
+                  <div class="pkg-card__name">Deck + Drink</div>
+                  <ul class="pkg-card__perks">
+                    <li>360° Observation Deck</li>
+                    <li>Indoor Lounge Access</li>
+                    <li>1 Handcrafted Drink — Coffee or Matcha</li>
+                    <li>Hot or Iced — Your Choice at the Café</li>
+                  </ul>
+                </div>
+                <div class="pkg-card__price">$37<span>/person</span></div>
+              </div>
+            </label>
+
+          </div>
+
+          <!-- PREMIUM EXPERIENCES -->
+          <div class="premium-divider">
+            <span>Premium Experiences — Coming Soon</span>
+          </div>
+
+          <div class="exp-pkg-cards">
+
+            <label class="exp-pkg-card exp-pkg-card--soon" data-package="date-night" data-price="98" data-soon="1">
+              <span class="exp-pkg-card__soon">Coming Soon</span>
+              <input type="radio" name="package" value="date-night" disabled />
+              <div class="exp-pkg-card__inner">
+                <div class="exp-pkg-card__check"></div>
+                <div class="exp-pkg-card__thumb">
+                  <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=180&q=80&fit=crop" alt="Date Night" />
+                </div>
+                <div class="exp-pkg-card__info">
+                  <div class="exp-pkg-card__name">Date Night Experience <span class="exp-pkg-tag">For Two</span></div>
+                  <ul class="exp-pkg-card__perks">
+                    <li>Reserved window seats · Priority entry</li>
+                    <li>Champagne for two on arrival</li>
+                    <li>Charcuterie board + dessert + keepsake photo</li>
+                  </ul>
+                </div>
+                <div class="exp-pkg-card__price">$98<span>/person</span></div>
+              </div>
+            </label>
+
+            <label class="exp-pkg-card exp-pkg-card--prestige exp-pkg-card--soon" data-package="champagne-room" data-price="0" data-room-fee="350" data-soon="1">
+              <span class="exp-pkg-card__soon">Coming Soon</span>
+              <input type="radio" name="package" value="champagne-room" disabled />
+              <div class="exp-pkg-card__inner">
+                <div class="exp-pkg-card__check"></div>
+                <div class="exp-pkg-card__thumb">
+                  <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=180&q=80&fit=crop" alt="Champagne Room" />
+                </div>
+                <div class="exp-pkg-card__info">
+                  <div class="exp-pkg-card__name">Champagne Room <span class="exp-pkg-tag exp-pkg-tag--gold">2–8 Guests</span></div>
+                  <ul class="exp-pkg-card__perks">
+                    <li>Private room · Full champagne bottle service</li>
+                    <li>Caviar &amp; small bites · Dedicated personal host</li>
+                    <li>Entry to Skyla included — no ticket required</li>
+                  </ul>
+                </div>
+                <div class="exp-pkg-card__price">$350<span>room</span></div>
+              </div>
+            </label>
+
+            <label class="exp-pkg-card exp-pkg-card--soon" data-package="family-suite" data-price="0" data-room-fee="250" data-soon="1">
+              <span class="exp-pkg-card__soon">Coming Soon</span>
+              <input type="radio" name="package" value="family-suite" disabled />
+              <div class="exp-pkg-card__inner">
+                <div class="exp-pkg-card__check"></div>
+                <div class="exp-pkg-card__thumb">
+                  <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=180&q=80&fit=crop" alt="Family Suite" />
+                </div>
+                <div class="exp-pkg-card__info">
+                  <div class="exp-pkg-card__name">Family Suite <span class="exp-pkg-tag">Up to 12</span></div>
+                  <ul class="exp-pkg-card__perks">
+                    <li>Private enclosed room · Dedicated waitress</li>
+                    <li>Family &amp; kids menu · Custom beverages</li>
+                    <li>Standard tickets still required per guest</li>
+                  </ul>
+                </div>
+                <div class="exp-pkg-card__price">$250<span>room</span></div>
+              </div>
+            </label>
+
+          </div>
+
+          <!-- GUESTS -->
+          <div class="guest-selector">
+            <h3 class="guest-selector__label">Number of Guests</h3>
+            <div class="guest-rows">
+              <div class="guest-row">
+                <div class="guest-row__info">
+                  <span class="guest-row__type">Adults</span>
+                  <span class="guest-row__sub">Ages 13+</span>
+                </div>
+                <div class="qty-control">
+                  <button class="qty-btn" data-type="adults" data-action="minus">−</button>
+                  <span class="qty-value" id="adults-count">2</span>
+                  <button class="qty-btn" data-type="adults" data-action="plus">+</button>
+                </div>
+              </div>
+              <div class="guest-row">
+                <div class="guest-row__info">
+                  <span class="guest-row__type">Children</span>
+                  <span class="guest-row__sub">Ages 4–12 (50% off)</span>
+                </div>
+                <div class="qty-control">
+                  <button class="qty-btn" data-type="children" data-action="minus">−</button>
+                  <span class="qty-value" id="children-count">0</span>
+                  <button class="qty-btn" data-type="children" data-action="plus">+</button>
+                </div>
+              </div>
+              <div class="guest-row">
+                <div class="guest-row__info">
+                  <span class="guest-row__type">Infants</span>
+                  <span class="guest-row__sub">Ages 0–3 (Free)</span>
+                </div>
+                <div class="qty-control">
+                  <button class="qty-btn" data-type="infants" data-action="minus">−</button>
+                  <span class="qty-value" id="infants-count">0</span>
+                  <button class="qty-btn" data-type="infants" data-action="plus">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EMAIL FOR TICKET DELIVERY -->
+          <div class="email-delivery-section">
+            <div class="email-delivery-header">
+              <div class="email-delivery-icon">✉</div>
+              <div>
+                <div class="email-delivery-title">Email Address</div>
+                <div class="email-delivery-sub">Your tickets will be sent here immediately after purchase</div>
+              </div>
+            </div>
+            <input type="email" id="booking-email" class="email-delivery-input" placeholder="your@email.com" autocomplete="email" />
+          </div>
+
+          <button class="btn btn--primary btn--step" onclick="goToStep(2)">Continue to Date & Time →</button>
+        </div>
+
+        <!-- STEP 2: DATE & TIME -->
+        <div class="form-step" id="step-2">
+          <h2 class="form-step__title">Choose Your Date & Time</h2>
+          <p class="form-step__sub">Select a date and preferred entry window.</p>
+
+          <div class="date-picker-section">
+            <label class="field-label">Visit Date</label>
+            <input type="date" id="visit-date" class="date-input" min="" />
+          </div>
+
+          <div class="time-slots-section">
+            <label class="field-label">Entry Time</label>
+            <p class="field-hint">Choose your timed entry window (visit as long as you'd like)</p>
+            <div class="time-slots" id="time-slots">
+              <button class="time-slot" data-time="9:00 AM">9:00 AM</button>
+              <button class="time-slot" data-time="10:00 AM">10:00 AM</button>
+              <button class="time-slot" data-time="11:00 AM">11:00 AM</button>
+              <button class="time-slot" data-time="12:00 PM">12:00 PM</button>
+              <button class="time-slot" data-time="1:00 PM">1:00 PM</button>
+              <button class="time-slot" data-time="2:00 PM">2:00 PM</button>
+              <button class="time-slot" data-time="3:00 PM">3:00 PM</button>
+              <button class="time-slot" data-time="4:00 PM">4:00 PM</button>
+              <button class="time-slot time-slot--popular" data-time="5:00 PM">5:00 PM <span class="slot-tag">Golden Hour</span></button>
+              <button class="time-slot time-slot--popular" data-time="6:00 PM">6:00 PM <span class="slot-tag">Sunset</span></button>
+              <button class="time-slot" data-time="7:00 PM">7:00 PM</button>
+              <button class="time-slot" data-time="8:00 PM">8:00 PM</button>
+              <button class="time-slot" data-time="9:00 PM">9:00 PM</button>
+              <button class="time-slot" data-time="10:00 PM">10:00 PM</button>
+              <button class="time-slot" data-time="11:00 PM">11:00 PM <span class="slot-tag slot-tag--dim">Last Entry</span></button>
+            </div>
+          </div>
+
+          <div class="step-nav">
+            <button class="btn btn--ghost btn--step" onclick="goToStep(1)">← Back</button>
+            <button class="btn btn--primary btn--step" onclick="goToStep(3)">Review Order →</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: REVIEW -->
+        <div class="form-step" id="step-3">
+          <h2 class="form-step__title">Review Your Order</h2>
+          <p class="form-step__sub">Almost there — confirm your details before checkout.</p>
+
+          <div class="review-box" id="review-box">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="payment-form">
+            <h3 class="payment-form__title">
+              <span>🔒</span> Your Details
+            </h3>
+
+            <div class="stripe-notice" id="pay-notice">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Secure checkout &mdash; <strong>Stripe</strong> not connected yet. This creates a booking without charging (demo).
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label>First Name</label>
+                <input type="text" id="pay-first" placeholder="Jane" autocomplete="given-name" />
+              </div>
+              <div class="form-field">
+                <label>Last Name</label>
+                <input type="text" id="pay-last" placeholder="Smith" autocomplete="family-name" />
+              </div>
+            </div>
+
+            <!-- PAYMENT METHOD -->
+            <div class="pay-method" id="pay-method">
+              <label class="pay-method__opt is-active">
+                <input type="radio" name="paymethod" value="card" checked />
+                <span class="pay-method__icon">💳</span>
+                <span class="pay-method__label">Card</span>
+              </label>
+              <label class="pay-method__opt">
+                <input type="radio" name="paymethod" value="crypto" />
+                <span class="pay-method__icon">₿</span>
+                <span class="pay-method__label">Crypto</span>
+              </label>
+            </div>
+
+            <div class="crypto-currency-field" id="crypto-currency-field" style="display:none;">
+              <label class="crypto-currency-label">Choose your coin</label>
+              <div class="crypto-select-wrap">
+                <select id="crypto-currency" class="crypto-select">
+                  <option value="btc">₿ &nbsp;Bitcoin · BTC</option>
+                  <option value="eth">Ξ &nbsp;Ethereum · ETH</option>
+                  <option value="usdttrc20">₮ &nbsp;Tether · USDT (TRC-20)</option>
+                  <option value="usdc">＄ &nbsp;USD Coin · USDC</option>
+                  <option value="ltc">Ł &nbsp;Litecoin · LTC</option>
+                  <option value="sol">◎ &nbsp;Solana · SOL</option>
+                  <option value="doge">Ð &nbsp;Dogecoin · DOGE</option>
+                  <option value="xrp">✕ &nbsp;XRP</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- EMBEDDED CARD FORM (Stripe Payment Element) — drops down under Card -->
+            <div class="stripe-inline" id="stripe-inline" hidden>
+              <div class="stripe-inline__head">
+                <span class="stripe-inline__title">💳 Card Details</span>
+                <span class="stripe-inline__secure">🔒 Secured by Stripe</span>
+              </div>
+              <div id="stripe-payment-element"></div>
+              <p class="stripe-pay-error" id="stripe-pay-error"></p>
+            </div>
+          </div>
+
+          <div class="step-nav">
+            <button class="btn btn--ghost btn--step" onclick="goToStep(2)">← Back</button>
+            <button class="btn btn--gold btn--step btn--confirm" onclick="confirmOrder()">
+              🔒 Confirm & Pay — <span id="final-total">$0.00</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: ORDER SUMMARY -->
+      <aside class="order-summary" id="order-summary">
+        <div class="order-summary__inner">
+          <h3 class="order-summary__title">Order Summary</h3>
+
+          <div class="summary-img">
+            <img src="images/building.jpg" alt="Sky LA at 6100 Wilshire Blvd" />
+          </div>
+
+          <div class="summary-location">
+            <div class="summary-location__icon">📍</div>
+            <div>
+              <div class="summary-location__name">Skyla Los Angeles</div>
+              <div class="summary-location__addr">6100 Wilshire Blvd, Top Floor</div>
+            </div>
+          </div>
+
+          <div class="summary-lines" id="summary-lines">
+            <div class="summary-line">
+              <span id="summary-pkg-name">— Select a package</span>
+              <span id="summary-pkg-price">$0.00</span>
+            </div>
+          </div>
+
+          <div class="summary-divider"></div>
+
+          <div class="summary-addons-block" id="summary-addons-block"></div>
+
+          <div class="summary-totals">
+            <div class="summary-line summary-line--subtotal">
+              <span>Subtotal</span>
+              <span id="summary-subtotal">$0.00</span>
+            </div>
+            <div class="summary-line summary-line--fees">
+              <span>Booking Fee</span>
+              <span id="summary-fees">$0.00</span>
+            </div>
+            <div class="summary-line summary-line--total">
+              <span>Total</span>
+              <span id="summary-total">$0.00</span>
+            </div>
+          </div>
+
+          <div class="summary-note">
+            <span>🔒</span> Secure checkout. Tickets delivered by email.
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- TICKET CONFIRMATION MODAL -->
+  <div class="ticket-modal-overlay" id="ticket-modal">
+    <div class="ticket-modal-inner">
+      <div class="ticket-modal-header">
+        <div class="ticket-modal-check">✓</div>
+        <h2>You're Booked!</h2>
+        <p id="confirm-status">Your confirmation is on its way.</p>
+      </div>
+
+      <!-- TICKET CARD — populated by JS -->
+      <div id="ticket-wrap"></div>
+
+      <div class="ticket-modal-actions">
+        <button class="btn btn--ghost" onclick="printTicket()">🖨&nbsp; Print Ticket</button>
+        <a href="index.html" class="btn btn--gold">Done</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRYPTO PAYMENT MODAL -->
+  <div class="crypto-modal-overlay" id="crypto-modal">
+    <div class="crypto-modal">
+      <button class="crypto-modal__close" onclick="closeCryptoModal()" aria-label="Cancel">✕</button>
+
+      <div class="crypto-modal__head">
+        <div class="crypto-modal__coin" id="crypto-coin">₿</div>
+        <h2>Pay with <span id="crypto-cur-name">Bitcoin</span></h2>
+        <p>Send the exact amount below to the address. Your ticket is issued automatically once the payment confirms.</p>
+      </div>
+
+      <div class="crypto-amount">
+        <div class="crypto-amount__value" id="crypto-amount">—</div>
+        <div class="crypto-amount__usd" id="crypto-usd">≈ $0.00</div>
+      </div>
+
+      <div class="crypto-qr" id="crypto-qr"></div>
+
+      <div class="crypto-addr-label">Send to this address</div>
+      <div class="crypto-addr">
+        <code id="crypto-address">—</code>
+        <button class="crypto-copy" id="crypto-copy" onclick="copyCryptoAddress()">Copy</button>
+      </div>
+
+      <div class="crypto-status" id="crypto-status">
+        <span class="crypto-status__dot"></span>
+        <span id="crypto-status-text">Waiting for payment…</span>
+      </div>
+
+      <div class="crypto-timer" id="crypto-timer"></div>
+    </div>
+  </div>
+
+  <!-- Stripe.js SDK -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <!-- EmailJS — client-side email delivery for booking confirmations (no backend) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="shared-data.js?v=5"></script>
+  <script src="checkout.js?v=8"></script>
+</body>
+</html>
