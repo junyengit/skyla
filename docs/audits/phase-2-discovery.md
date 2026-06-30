@@ -184,8 +184,8 @@ P1 findings:
 
 - Legacy bridge scripts have stored-XSS surfaces through `innerHTML` paths for announcement, booking table, checkout ticket/status, and POS catalog/cart rendering.
 - `apps/web/eslint.config.mjs` ignores `public/**/*.js`, so those bridge scripts are intentionally outside the current lint gate.
-- CI only covers install, lint, typecheck, and build. There are no committed unit, integration, e2e, or visual tests yet.
-- GitHub repo hardening is incomplete: `main` is not protected, rulesets are empty, Dependabot security updates and vulnerability alerts are disabled, and code scanning has no analysis.
+- CI now includes unit tests and the tracked artifact guard on the QA/security baseline branch, but integration, e2e, and visual tests are still pending.
+- GitHub repo hardening is partially implemented in code with Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md`; dashboard-side branch protection, rulesets, vulnerability alerts, and required checks still need confirmation.
 
 P2 findings:
 
@@ -198,8 +198,8 @@ P2 findings:
 
 Recommended first QA/security gates:
 
-1. Add unit tests around canonical pricing, order creation, webhook idempotency, role checks, and XSS escaping.
-2. Add Playwright route/header tests for `/`, legacy rewrites, `.html` compatibility, `/admin` and `/pos` `X-Robots-Tag`, desktop/mobile screenshots, console errors, and reduced motion.
-3. Add audit/security workflows: dependency audit, CodeQL, Dependabot, and redacted secret scanning.
-4. Harden GitHub: protect `main`, require PRs, require CI and Vercel preview, block force pushes/deletions, and add `CODEOWNERS` plus `SECURITY.md`.
+1. Keep and extend unit tests around canonical pricing, order creation, webhook idempotency, role checks, and XSS escaping.
+2. Extend the route smoke script into Playwright desktop/mobile checks for screenshots, console errors, and reduced motion.
+3. Keep dependency audit, CodeQL, Dependabot, and tracked artifact/secret scanning wired into CI.
+4. Harden GitHub dashboard settings: protect `main`, require PRs, require CI and Vercel preview, block force pushes/deletions, and confirm vulnerability alerts.
 5. Track the POS `setup-reader` mismatch and date-format bug before POS rebuild or shutdown.

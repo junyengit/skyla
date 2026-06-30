@@ -11,12 +11,19 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "check": "turbo lint typecheck build",
+    "test": "pnpm test:unit",
+    "test:unit": "turbo test:unit",
+    "test:smoke": "node scripts/smoke/route-smoke.mjs",
+    "security": "pnpm security:artifacts && pnpm security:audit",
+    "security:artifacts": "node scripts/security/check-tracked-artifacts.mjs",
+    "security:audit": "pnpm audit --audit-level=high",
+    "check": "turbo lint typecheck test:unit build && pnpm security:artifacts",
     "web:dev": "pnpm --filter @skyla/web dev",
     "web:build": "pnpm --filter @skyla/web build",
     "web:start": "pnpm --filter @skyla/web start"
   },
   "devDependencies": {
-    "turbo": "2.10.1"
+    "turbo": "2.10.1",
+    "vitest": "4.1.9"
   }
 }

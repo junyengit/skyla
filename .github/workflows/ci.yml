@@ -32,5 +32,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Unit tests
+        run: pnpm test:unit
+
       - name: Build
         run: pnpm build
+
+      - name: Tracked artifact guard
+        run: pnpm security:artifacts
+
+      - name: Dependency audit
+        run: pnpm security:audit

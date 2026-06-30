@@ -16,7 +16,7 @@ The migration is intentionally in-place and staged. The current production site 
 
 ## Current State
 
-Skyla's public domain has been moved to Vercel DNS and Vercel reports both `skydeckla.com` and `www.skydeckla.com` as configured correctly. The Vercel production deployment is ready and route-compatible. Immediately after the nameserver switch, local OS/browser DNS caches may still show stale GitHub Pages behavior, so keep rollback available until custom-domain smoke tests pass without DNS overrides.
+Skyla's public domain has been moved to Vercel DNS and Vercel reports both `skydeckla.com` and `www.skydeckla.com` as configured correctly. The Vercel production deployment is ready and route-compatible. Custom-domain smoke tests now pass for both apex and `www` without DNS overrides. Keep GitHub Pages rollback available until the team explicitly retires it after the App Router, Convex, payment, admin, and POS migrations are complete.
 
 The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel.
 
@@ -41,8 +41,8 @@ Remaining operating gaps:
 - Database migrations and environment documentation still need to be completed with the Convex and payment rebuild.
 - Payment amounts and paid booking creation are too client-controlled.
 - Admin/POS access is enforced mostly in browser UI and assumed Supabase RLS.
-- Branch protection, Dependabot/security automation, and formal security review are still pending.
-- Old GitHub Pages and Supabase deployment surfaces must remain available for rollback until Vercel custom-domain cutover and backend migration are verified.
+- Branch protection and formal security review are still pending; Dependabot, CodeQL, CODEOWNERS, and baseline security scripts are being added in the QA/security baseline branch.
+- Old GitHub Pages and Supabase deployment surfaces must remain available for rollback until backend migration and explicit retirement are complete.
 
 ## Target Architecture
 
@@ -188,7 +188,7 @@ Status: planned
 
 ### Phase 7: Vercel Setup And Domain Cutover
 
-Status: Vercel setup, route verification, and Vercel domain verification complete; DNS cache propagation watch in progress
+Status: Vercel setup, route verification, Vercel domain verification, and custom-domain smoke tests complete
 
 - [x] Create/link a Vercel project for `apps/web`.
 - [x] Set root directory to `apps/web`.
@@ -200,18 +200,21 @@ Status: Vercel setup, route verification, and Vercel domain verification complet
 - [x] Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
 - [x] Verify Vercel production route compatibility before custom-domain cutover.
 - [x] Move GoDaddy nameservers to Vercel DNS and verify both domains in Vercel.
-- [ ] Re-run custom-domain smoke tests after stale local DNS caches clear.
-- Keep GitHub Pages live until Vercel production and rollback are confirmed.
-- Disable GitHub Pages only after explicit confirmation and a clean Vercel production cutover.
+- [x] Re-run custom-domain smoke tests after stale local DNS caches clear.
+- Keep GitHub Pages live until explicit rollback retirement after backend/payment/admin/POS migration.
+- Disable GitHub Pages only after explicit confirmation.
 
 ### Phase 8: GitHub Hardening
 
-Status: planned
+Status: partially implemented in repo config; dashboard enforcement still pending
 
 - Protect `main`.
 - Require pull requests and CI.
 - Block force pushes.
 - Enable Dependabot security updates.
+- Add CodeQL scanning.
+- Add CODEOWNERS and security reporting policy.
+- Run tracked artifact and obvious secret scanning in CI.
 - Keep secret scanning and push protection enabled.
 - Prefer signed commits when possible.
 - Use Vercel previews as the review surface.
@@ -239,8 +242,8 @@ Run a formal security scan after core migration. Focus areas:
 4. Port payment/order flow behind feature flags.
 5. Port admin/POS behind authenticated routes.
 6. Migrate data to Convex and reconcile.
-7. Cut production domain to Vercel.
-8. Confirm production smoke tests.
+7. Production domain has been cut over to Vercel.
+8. Production smoke tests are confirmed on apex and `www`.
 9. Disable old GitHub Pages/Supabase deployment surfaces only after confirmation.
 
 ## Rollback Strategy

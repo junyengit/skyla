@@ -20,12 +20,12 @@ These commands assume Vercel executes from the configured `apps/web` project roo
 
 As of June 30, 2026:
 
-- Production deployment from `main` is READY at `https://web-hc38hldhg-junyen-enterprises.vercel.app`.
-- Production deployment ID is `dpl_3Q8VU3XvtK4DiiHbkJ9x8p21Wjb5`.
-- Latest merged production commit is `d8da1e3c8ac653f6143aa456debec84069b0ea60`.
+- Production deployment from `main` is READY at `https://web-cy8ortmus-junyen-enterprises.vercel.app`.
+- Production deployment ID is `dpl_CVsRPRSQCoEiMqbhM2FBizvvU13u`.
+- Latest merged production commit is `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
-- Vercel production route compatibility is verified on the deployment URL.
-- GoDaddy nameservers have been changed to Vercel nameservers. External DNS and direct Vercel-edge checks route to Vercel; local OS/browser DNS caches may briefly show stale GitHub Pages behavior.
+- Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
+- GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests now pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
 
 ## Temporary Legacy Bridge
@@ -59,19 +59,19 @@ Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never us
 
 1. Open a PR from the migration branch.
 2. Vercel creates a Preview deployment from the branch.
-3. GitHub CI runs `pnpm install --frozen-lockfile`, lint, typecheck, and build.
+3. GitHub CI runs `pnpm install --frozen-lockfile`, lint, typecheck, unit tests, build, tracked artifact guard, and dependency audit.
 4. Run smoke tests against the Preview deployment.
 5. Merge to `main`.
 6. Vercel deploys Production from `main`.
 
 ## Domain Cutover
 
-Do not consider `skydeckla.com` cut over to Vercel until:
+`skydeckla.com` and `www.skydeckla.com` are currently cut over to Vercel DNS. Before making future domain or deployment changes, confirm:
 
 - The Vercel production deployment is green.
 - The homepage, ticket path, member path, legal pages, admin gate, POS gate, robots, and sitemap load.
 - Payment/order flows have been verified or intentionally disabled behind a safe placeholder.
 - Rollback path is documented.
-- GoDaddy DNS has the Vercel apex A records and `www` CNAME, and Vercel domain verification passes for both domains.
+- Vercel DNS nameservers are active, Vercel domain verification passes for both domains, and custom-domain smoke tests pass without DNS overrides.
 
-Keep GitHub Pages live until Vercel production is verified. Disable GitHub Pages only after explicit confirmation.
+Keep GitHub Pages live as rollback until backend/payment/admin/POS migration and explicit rollback retirement are complete. Disable GitHub Pages only after explicit confirmation.
