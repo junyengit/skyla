@@ -301,11 +301,16 @@ Current order-spine state:
 - Existing artifacts: `convex/schema.ts`, `convex/orderDrafts.ts`, `convex/lib/*`, `convex/_generated/*`, `packages/payments`, `/api/order-drafts/checkout`
 - Convex package: `convex@1.42.1`
 - Persisted draft refs: checkout `SKYYYMM-XXXXXX`; POS `SALEYYMMDD-XXXXXX`
+- Checkout route behavior: `/api/order-drafts/checkout` returns transient
+  canonical totals without Convex envs, and persists through Convex when
+  `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 - Local Convex validation: anonymous local deployment at `http://127.0.0.1:3210` when `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` is run
+- Vercel env status checked on 2026-06-30: no environment variables configured for `junyen-enterprises/web`
 - Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, provider actions, HTTP webhooks, live checkout cutover
 - Live compatibility checkout still uses `apps/web/public/checkout.html` and legacy Supabase/payment bridges.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
 - Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
+- Convex env gate: `bun run convex:env:check`
 - Deployment-linked Convex gate after project linking: `bun run convex:codegen`
 
 Current package baseline:

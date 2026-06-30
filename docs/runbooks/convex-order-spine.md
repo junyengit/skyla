@@ -20,11 +20,13 @@ It is not a live payment cutover runbook yet.
 - `convex/_generated`: generated Convex API/server/data-model types from local
   anonymous Convex validation.
 - `apps/web/app/api/order-drafts/checkout/route.ts`: a server route that accepts
-  product selections and returns canonical totals.
+  product selections, returns canonical totals, and calls Convex persistence
+  when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 
-The Next route and live compatibility checkout are not cut over to Convex yet.
-The backend can now persist drafts, but production payment creation still needs
-the real Convex deployment, provider actions, and frontend integration.
+The live compatibility checkout is not cut over to Convex yet. The backend can
+persist drafts, and the Next route is ready to use that path once the real
+Convex deployment URL is configured in Vercel. Production payment creation still
+needs provider actions and frontend integration.
 
 ```mermaid
 flowchart LR
@@ -69,7 +71,7 @@ Current canonical package prices:
 | `champagne-room` | Champagne Room | 0 plus room fee | no |
 | `family-suite` | Family Suite | 0 plus room fee | no |
 
-Current transient Next order draft API:
+Current Next order draft API without Convex envs:
 
 ```http
 POST /api/order-drafts/checkout
@@ -118,6 +120,35 @@ Expected response shape:
         "quantity": 1,
         "unitAmountCents": 800,
         "lineTotalCents": 800
+      }
+    ]
+  }
+}
+```
+
+With `NEXT_PUBLIC_CONVEX_URL` configured and `idempotencyKey` supplied, the same
+route calls `api.orderDrafts.createCheckoutOrderDraft` and returns:
+
+```json
+{
+  "persisted": true,
+  "orderRef": "SKY2607-ABC123",
+  "draft": {
+    "channel": "online",
+    "status": "draft",
+    "currency": "usd",
+    "subtotalCents": 8100,
+    "feeCents": 405,
+    "totalCents": 8505,
+    "orderRef": "SKY2607-ABC123",
+    "lines": [
+      {
+        "kind": "ticket",
+        "productKey": "general",
+        "name": "General Admission",
+        "quantity": 2,
+        "unitAmountCents": 2900,
+        "lineTotalCents": 5800
       }
     ]
   }

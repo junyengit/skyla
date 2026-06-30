@@ -99,6 +99,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-j9xi2jyo8-junyen-enterprises.vercel.app` (`dpl_9hS72iV2sQKGYfNgvWCvgworBmao`).
 - [x] Re-ran post-merge route smoke tests for `https://web-j9xi2jyo8-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 - [x] Verified production `/api/order-drafts/checkout` on `https://skydeckla.com` returns canonical totals and ignores browser-supplied totals after PR #15.
+- [x] Verified Vercel project `junyen-enterprises/web` currently has no configured environment variables, so real Convex persistence is still gated on dashboard/env setup.
+- [x] Started branch `codex/convex-checkout-route-cutover` to make `/api/order-drafts/checkout` persist through Convex when `NEXT_PUBLIC_CONVEX_URL` and `idempotencyKey` are present.
 
 ## In Progress
 
@@ -111,6 +113,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
 - [x] Verify, review, and ship `codex/convex-order-spine`.
 - [x] Verify, review, and ship `codex/convex-persist-order-drafts`.
+- [ ] Verify, review, and ship `codex/convex-checkout-route-cutover`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
