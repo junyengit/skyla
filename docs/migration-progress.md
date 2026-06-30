@@ -58,13 +58,17 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Merged Phase 2 roadmap PR #3 into `main` as commit `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`; current Vercel production deployment is `https://web-cy8ortmus-junyen-enterprises.vercel.app` (`dpl_CVsRPRSQCoEiMqbhM2FBizvvU13u`, READY).
 - [x] Re-ran custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`, including noindex headers for `/admin`, `/admin.html`, `/pos`, and `/pos.html`.
 - [x] Added a QA/security baseline branch with Vitest unit coverage, legacy-route compatibility tests, a live route smoke script, tracked artifact/secret guard, Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md`.
+- [x] Merged QA/security baseline PR #4 into `main` as commit `7bfe12a6e3263bab1357b1fd28946873e29642e1`.
+- [x] Confirmed post-merge GitHub CI, CodeQL, Dependabot update jobs, and Pages workflow all passed on `main`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-gq0o1xfqu-junyen-enterprises.vercel.app` (`dpl_CUxoYMKy2kxzq3j5kY1M1TNn38um`).
+- [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 
 ## In Progress
 
 - [x] Re-run custom-domain smoke tests without DNS overrides after local OS/browser DNS caches stop returning stale GitHub Pages answers.
 - [x] Review subagent audits for Convex/functionality, repo/assets cleanup, and QA/security.
 - [x] Land the Phase 2 roadmap and Bun/Vercel runbook.
-- [ ] Land the QA/security baseline PR and confirm GitHub CI, CodeQL, and Vercel preview are green.
+- [x] Land the QA/security baseline PR and confirm GitHub CI, CodeQL, and Vercel preview/production are green.
 - [ ] Create the Bun migration PR only after local canary install/checks are reproducible.
 
 ## Deferred Until Foundation Is Stable

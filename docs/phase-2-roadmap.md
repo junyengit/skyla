@@ -284,7 +284,7 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Current production commit observed after roadmap merge: `6891fc5acd444f8ad1c63c0cf90a7740b1a72ff9`
+- QA/security baseline production commit verified after merge: `7bfe12a6e3263bab1357b1fd28946873e29642e1`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
