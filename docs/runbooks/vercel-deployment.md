@@ -4,6 +4,8 @@
 
 - Monorepo root: repository root
 - Vercel project root directory: `apps/web`
+- Vercel team: `Junyen Enterprises` (`team_3kWPO8fPD6E7x39voGoNNeog`)
+- Vercel project: `web` (`prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`)
 - Framework preset: Next.js
 - Install command: `cd ../.. && pnpm install --frozen-lockfile`
 - Build command: `cd ../.. && pnpm turbo build --filter=@skyla/web`

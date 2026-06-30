@@ -29,10 +29,13 @@ Build and validate the Vercel/Turborepo/Next.js foundation for Skyla, document t
 - [x] Incorporated Vercel/domain research into runbooks.
 - [x] Opened the local Next app in Helium at `http://127.0.0.1:3000`; dev server returned `GET / 200`.
 - [x] Reviewed subagent findings and fixed clean-checkout package exports, Node pinning, TypeScript artifact ignores, Vercel command clarity, GitHub Pages merge risk, and Turbo task ordering.
+- [x] Created Vercel project `junyen-enterprises/web` for `apps/web` with project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`.
+- [x] Deployed first Vercel build: `https://web-fwlmziond-junyen-enterprises.vercel.app` (`dpl_DE5YnDKHuuZ4rNcFewuCLYWAeCjH`, READY).
+- [x] Opened the Vercel deployment in Helium; homepage rendered successfully.
 
 ## In Progress
 
-- [ ] Deploy or prepare Vercel project setup.
+- [ ] Push a follow-up commit and verify a clean Git-triggered Vercel deployment without `gitDirty: 1`.
 - [ ] Review major work for accuracy.
 
 ## Deferred Until Foundation Is Stable
@@ -54,6 +57,7 @@ Build and validate the Vercel/Turborepo/Next.js foundation for Skyla, document t
 ## Risks To Track
 
 - Current local working tree includes unrelated pre-existing content edits. Do not revert them.
+- The first Vercel CLI deployment was built from a dirty local worktree because legacy root files are modified locally. Use a clean Git-triggered deployment as the cutover candidate.
 - Old root static pages and new Next app coexist temporarily.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
