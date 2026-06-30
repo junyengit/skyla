@@ -12,20 +12,20 @@ pages load, and smoke tests pass on both `skydeckla.com` and
 The new safer payment backend is partly built in Convex code: orders can be
 priced from server-owned data, Stripe Checkout sessions can be created from a
 stored `orderRef`, and Stripe webhooks can verify signatures before marking an
-order paid. That safer path is not live yet because the real Convex deployment,
-Vercel env vars, Stripe dashboard webhook endpoint, and checkout frontend
-cutover are still missing.
+order paid. The primary `/checkout` page now uses the Next.js App Router and
+fails closed until the real Convex deployment, Vercel env vars, and Stripe
+dashboard webhook endpoint are ready.
 
-The live checkout, POS, and admin pages are still legacy compatibility pages.
-They are intentionally kept online while the safer App Router/Convex rebuild
-continues.
+POS and admin are still legacy compatibility pages. The old static checkout is
+still reachable at `/checkout.html` while the team verifies the new App Router
+flow.
 
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-06-30:
-  `https://web-8vpbz5v7v-junyen-enterprises.vercel.app`
+  `https://web-2hg4drlf9-junyen-enterprises.vercel.app`
 - Custom domains checked on 2026-06-30:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -41,13 +41,15 @@ flowchart TD
   domain["skydeckla.com / www"]
   vercel["Vercel web project"]
   next["apps/web Next.js"]
-  legacy["Legacy compatibility pages"]
+  checkout["App Router checkout"]
+  legacy["Legacy admin/POS + fallback pages"]
   supabase["Legacy Supabase functions"]
   convex["Convex order/payment code"]
   stripe["Stripe dashboard"]
 
-  domain --> vercel --> next --> legacy --> supabase
-  next -. "next cutover" .-> convex
+  domain --> vercel --> next --> checkout
+  next --> legacy --> supabase
+  checkout -. "needs env" .-> convex
   convex -. "needs env + webhook endpoint" .-> stripe
 ```
 
@@ -70,7 +72,10 @@ flowchart TD
   backend.
 - Convex cloud is not linked yet.
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
-- The public checkout page still uses legacy Supabase payment creation.
+- `/checkout` is the new App Router checkout, but live card payment is gated
+  until Convex and Stripe dashboard envs exist.
+- `/checkout.html` still contains the legacy Supabase payment creation path and
+  must be disabled after the App Router path passes preview/live acceptance.
 - POS still uses a legacy Terminal bridge where browser cart totals reach the
   backend.
 - Admin/POS are not rebuilt as protected App Router/Convex workflows yet.
@@ -144,8 +149,8 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
 2. Verify preview checkout draft persistence returns `persisted: true`.
 3. Create Stripe test webhook endpoint and set Convex Stripe env vars.
-4. Wire the checkout frontend to the Convex `orderRef` + Stripe Checkout
-   action.
+4. Set Convex/Vercel env vars so the App Router checkout can persist orders
+   and start Stripe Checkout.
 5. Replace POS Terminal payment creation with a server-authoritative Convex
    action.
 6. Rebuild Admin and POS as protected App Router/Convex workflows.

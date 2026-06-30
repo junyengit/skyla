@@ -5,6 +5,8 @@ const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? "https://www.skydeckla.com
 const routes = [
   "/",
   "/index.html",
+  "/checkout",
+  "/checkout.html",
   ...legacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`]),
   "/robots.txt",
   "/sitemap.xml"

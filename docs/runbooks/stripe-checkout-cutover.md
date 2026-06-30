@@ -25,9 +25,11 @@ What changed in this slice:
   raw-body signature, dedupes event IDs, and marks stored orders paid only
   after amount, currency, provider, and status reconciliation.
 
-This is not fully live yet. The public checkout page still needs a follow-up
-frontend cutover after the real Convex deployment, Stripe envs, and Stripe
-dashboard webhook endpoint exist.
+The primary `/checkout` page now uses the App Router and calls the server draft
+route first. It shows a closed payment state until the real Convex deployment,
+Stripe envs, and Stripe dashboard webhook endpoint exist. The old static
+checkout remains at `/checkout.html` only as a legacy fallback/reference during
+the cutover.
 
 ## Flow
 
@@ -42,12 +44,14 @@ sequenceDiagram
   Browser->>Next: package/adults/addons + idempotencyKey
   Next->>Convex: createCheckoutOrderDraft
   Convex-->>Next: stored orderRef + canonical total
-  Browser->>Convex: createStripeCheckoutSession(orderRef, idempotencyKey, return URLs)
+  Browser->>Next: start Stripe Checkout(orderRef, idempotencyKey)
+  Next->>Convex: createStripeCheckoutSession(orderRef, idempotencyKey, return URLs)
   Convex->>Convex: read stored order + line items
   Convex->>Stripe: create Checkout Session with stored amount
   Stripe-->>Convex: session id + hosted URL
   Convex->>Convex: record paymentEvents + payment_pending
-  Convex-->>Browser: Stripe hosted URL
+  Convex-->>Next: Stripe hosted URL
+  Next-->>Browser: Stripe hosted URL
   Browser->>Stripe: complete payment
   Stripe-->>Webhook: payment event
   Webhook->>Convex: verify signature, amount, currency, status, idempotency
@@ -100,8 +104,9 @@ rg -n "createStripeCheckoutSession|amountCents|totalCents|line_items" convex app
 Expected:
 
 - New Convex action accepts `orderRef`, not `amountCents`.
-- Legacy Supabase payment bridges still show client totals until the frontend
-  cutover removes or disables them.
+- `/checkout` calls the Next/Convex route.
+- `/checkout.html`, POS, and old Supabase payment bridges still show legacy
+  client-total behavior until those compatibility paths are disabled.
 
 3. Confirm the webhook route exists after the real Convex deployment is linked:
 
@@ -126,6 +131,7 @@ Expected:
 - [ ] Stripe dashboard has a test-mode endpoint pointing to Convex
       `/stripe-webhook`.
 - [ ] Preview order draft POST returns `persisted: true`.
+- [ ] `/checkout` shows a persisted `orderRef` after review.
 - [ ] Stripe Checkout action rejects missing/incorrect `idempotencyKey`.
 - [ ] Stripe Checkout action rejects return URLs outside the allowlist.
 - [ ] Stripe Checkout action creates sessions from stored Convex totals only.
@@ -134,6 +140,8 @@ Expected:
       idempotently.
 - [ ] Paid webhook events reconcile session id, order ref, amount, currency,
       provider, and order status before marking the order paid.
+- [ ] Home page checkout links resolve to the App Router `/checkout` page, not
+      the legacy static rewrite.
 - [ ] Legacy Supabase Stripe/Kaskade/Terminal payment paths are disabled only after replacement acceptance.
 
 ## Rollback
