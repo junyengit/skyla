@@ -25,11 +25,11 @@ root.
 
 As of June 30, 2026:
 
-- The latest verified application deployment from `main` before this branch is
-  READY at `https://web-4zohzd1eu-junyen-enterprises.vercel.app`.
-- Latest verified deployment ID is `dpl_H1DxbFYsoagAToBKv6bLWhA4gu5H`.
+- The latest verified application deployment from `main` is READY at
+  `https://web-5rd41qfa5-junyen-enterprises.vercel.app`.
+- Latest verified deployment ID is `dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`.
 - Latest verified merge commit is
-  `25340de194ca88280f379a16f2617952e70c41b9`.
+  `edbd1d80ad43f967680b9e96c1b60c253ed04a70`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.

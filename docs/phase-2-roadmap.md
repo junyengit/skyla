@@ -287,9 +287,9 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified application production commit: `25340de194ca88280f379a16f2617952e70c41b9`
-- Latest verified application production deployment: `https://web-4zohzd1eu-junyen-enterprises.vercel.app`
-- Latest verified application production deployment ID: `dpl_H1DxbFYsoagAToBKv6bLWhA4gu5H`
+- Latest verified application production commit: `edbd1d80ad43f967680b9e96c1b60c253ed04a70`
+- Latest verified application production deployment: `https://web-5rd41qfa5-junyen-enterprises.vercel.app`
+- Latest verified application production deployment ID: `dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
@@ -302,8 +302,9 @@ Current order-spine state:
 - Latest checkout route cutover merge commit: `fa0274541a822c6b09f4c3bfd629a16f1bea3425`
 - Merged post-checkout-route state PR: `#18`
 - Latest post-checkout-route state merge commit: `25340de194ca88280f379a16f2617952e70c41b9`
-- Existing artifacts: `convex/schema.ts`, `convex/orderDrafts.ts`, `convex/lib/*`, `convex/_generated/*`, `packages/payments`, `/api/order-drafts/checkout`
-- Current branch adds: `convex/payments.ts`, `convex/paymentInternals.ts`, `convex/lib/stripeCheckout.ts`, `convex/stripeCheckout.test.ts`
+- Merged Stripe Checkout action PR: `#19`
+- Latest Stripe Checkout action merge commit: `edbd1d80ad43f967680b9e96c1b60c253ed04a70`
+- Existing artifacts: `convex/schema.ts`, `convex/orderDrafts.ts`, `convex/paymentInternals.ts`, `convex/payments.ts`, `convex/lib/*`, `convex/_generated/*`, `packages/payments`, `/api/order-drafts/checkout`
 - Convex package: `convex@1.42.1`
 - Persisted draft refs: checkout `SKYYYMM-XXXXXX`; POS `SALEYYMMDD-XXXXXX`
 - Checkout route behavior: `/api/order-drafts/checkout` returns transient
