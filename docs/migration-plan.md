@@ -16,7 +16,9 @@ The migration is intentionally in-place and staged. The current production site 
 
 ## Current State
 
-Skyla currently runs as static files at the repository root. GitHub Pages deploys `main` from `/` to `https://skydeckla.com`, with `CNAME` pointing at the custom domain. Local work is ahead of production in the working tree and is not yet deployed.
+Skyla's public domain currently runs from GitHub Pages static files at the repository root. GitHub Pages deploys `main` from `/` to `https://skydeckla.com`, with `CNAME` pointing at the custom domain.
+
+The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel. GoDaddy DNS remains on GitHub Pages until the Vercel route matrix passes and DNS is intentionally cut over.
 
 Current backend/data dependencies:
 
@@ -77,7 +79,7 @@ The final app should use:
 
 ### Phase 0: Containment
 
-Status: started
+Status: complete for foundation; continue monitoring
 
 - Ignore local/generated/sensitive artifacts: `output/`, `tmp/`, logs, build outputs, local env files.
 - Keep these artifacts out of Vercel and GitHub.
@@ -86,7 +88,7 @@ Status: started
 
 ### Phase 1: Monorepo Foundation
 
-Status: started
+Status: complete
 
 - Add root `package.json`, `pnpm-workspace.yaml`, `turbo.json`, and `tsconfig.base.json`.
 - Add `apps/web` as the Next.js/Vercel application.
@@ -97,7 +99,7 @@ Status: started
 
 ### Phase 2: Documentation And Runbooks
 
-Status: in progress
+Status: current for foundation and cutover; expand as Convex/payments/admin work lands
 
 - Add `README.md` with project map and quickstart.
 - Add architecture docs for current and target systems.
@@ -107,10 +109,11 @@ Status: in progress
 
 ### Phase 3: Public Site Rebuild
 
-Status: started
+Status: in progress
 
 - Rebuild the public homepage in Next.js with current brand assets.
 - Migrate About, Cafe, Experiences, Members, Privacy, and Terms into typed routes.
+- Temporary state: Vercel bridges existing public routes to static compatibility pages in `apps/web/public` so DNS cutover does not create 404s while full App Router pages are rebuilt.
 - Use Motion sparingly for purposeful transitions, respecting reduced motion.
 - Keep SEO metadata, structured data, sitemap, and robots behavior in Next-native form.
 - Add `noindex` for admin and POS routes.
@@ -180,17 +183,17 @@ Status: planned
 
 ### Phase 7: Vercel Setup And Domain Cutover
 
-Status: planned
+Status: Vercel setup complete; DNS cutover pending route verification
 
-- Create/link a Vercel project for `apps/web`.
-- Set root directory to `apps/web`.
-- Use install/build commands compatible with the monorepo:
+- [x] Create/link a Vercel project for `apps/web`.
+- [x] Set root directory to `apps/web`.
+- [x] Use install/build commands compatible with the monorepo:
   - Install: `pnpm install --frozen-lockfile`
   - Build: `pnpm turbo build --filter=@skyla/web`
-- Add environment variables in Vercel for preview and production.
-- Deploy preview and run smoke tests.
-- Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
-- Update DNS only after Vercel production is verified.
+- [ ] Add production environment variables as migrated server flows require them.
+- [x] Deploy preview and production builds.
+- [x] Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
+- [ ] Update DNS only after Vercel production is verified.
 - Keep GitHub Pages live until Vercel production and rollback are confirmed.
 - Disable GitHub Pages only after explicit confirmation and a clean Vercel production cutover.
 

@@ -19,12 +19,13 @@ export default function HomePage() {
         </Link>
         <div className="navLinks">
           <a href="#experience">Experience</a>
-          <a href="#tickets">Tickets</a>
+          <Link href="/cafe">Cafe</Link>
+          <Link href="/experiences">Events</Link>
           <a href="#visit">Visit</a>
         </div>
-        <a className="navCta" href="#tickets">
+        <Link className="navCta" href="/checkout">
           Buy Tickets
-        </a>
+        </Link>
       </nav>
 
       <section className="hero">
@@ -49,57 +50,57 @@ export default function HomePage() {
             <span>Above It All</span>
           </h1>
           <p className="heroCopy">
-            A quieter, sharper rebuild of Sky LA starts here: the public venue
-            site, ticketing, POS, admin, payments, and data layer moving into a
-            typed Next.js and Vercel architecture.
+            Step into a top-floor lounge with 360-degree city views, timed deck
+            access, private rooms, cafe service, and a calmer way to take in Los
+            Angeles from above Wilshire.
           </p>
           <div className="heroActions">
-            <a className="primaryAction" href="#tickets">
-              Plan a Visit
+            <Link className="primaryAction" href="/checkout">
+              Buy Tickets
               <ArrowRight size={18} />
-            </a>
-            <a className="secondaryAction" href="#architecture">
-              View Migration
-            </a>
+            </Link>
+            <Link className="secondaryAction" href="/members">
+              Membership
+            </Link>
           </div>
         </MotionHero>
       </section>
 
       <section className="section intro" id="experience">
         <div>
-          <p className="sectionLabel">Architecture in flight</p>
-          <h2>A safer foundation without a risky big bang.</h2>
+          <p className="sectionLabel">Observation lounge</p>
+          <h2>A cinematic room for the city in every direction.</h2>
         </div>
         <p>
-          The current GitHub Pages site stays intact while the Vercel app grows
-          beside it. Pages, payments, and operations can be migrated slice by
-          slice with preview deployments and rollback points.
+          Sky LA pairs open-air skyline moments with an indoor lounge, cafe
+          service, and intimate rooms for dates, families, teams, and private
+          celebrations above Museum Row.
         </p>
       </section>
 
       <section className="featureGrid" id="architecture">
         <article>
           <Sparkles size={24} />
-          <h3>Next.js app router</h3>
+          <h3>Rooftop views</h3>
           <p>
-            Static marketing pages become typed server components with focused
-            client islands for Motion, checkout, admin, and POS interactions.
+            Timed visits include observation deck access, indoor lounge seating,
+            and skyline views from the Hollywood Hills to Downtown.
           </p>
         </article>
         <article>
           <ShieldCheck size={24} />
-          <h3>Server authority</h3>
+          <h3>Hosted entry</h3>
           <p>
-            Payment amounts, booking creation, POS actions, and webhooks move
-            out of client trust and into server-side order flows.
+            Ticketed arrival windows help keep the room composed, comfortable,
+            and easy for staff to welcome guests with care.
           </p>
         </article>
         <article>
           <CalendarDays size={24} />
-          <h3>Preview-first workflow</h3>
+          <h3>Private moments</h3>
           <p>
-            Vercel previews, GitHub checks, branch protection, and documented
-            runbooks replace direct-to-production edits.
+            Reserve premium experiences, member gatherings, and private rooms
+            when the occasion calls for a quieter corner above the city.
           </p>
         </article>
       </section>
@@ -115,8 +116,8 @@ export default function HomePage() {
 
       <section className="tickets" id="tickets">
         <div>
-          <p className="sectionLabel">Ticket model</p>
-          <h2>Canonical pricing is moving server-side.</h2>
+          <p className="sectionLabel">Tickets</p>
+          <h2>Choose the visit that fits the afternoon.</h2>
         </div>
         <div className="ticketList">
           {ticketPackages.map((ticket) => (
@@ -132,7 +133,11 @@ export default function HomePage() {
       <footer className="footer" id="visit">
         <span>Sky LA</span>
         <p>{siteConfig.address.full}</p>
-        <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
+        <div className="footerLinks">
+          <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+        </div>
       </footer>
     </main>
   );

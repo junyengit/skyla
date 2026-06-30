@@ -16,6 +16,21 @@
 
 These commands assume Vercel executes from the configured `apps/web` project root. If the Vercel project is configured from the repository root instead, omit `cd ../..`. Vercel can also infer Turborepo builds, but the explicit filtered build keeps the first deployment narrow.
 
+## Current Production State
+
+As of June 30, 2026:
+
+- Production deployment from `main` is READY at `https://web-qft9c4zja-junyen-enterprises.vercel.app`.
+- Latest merged production commit before the route-compatibility follow-up is `950ae150ec897afd5457b79ce61c5529142a1edb`.
+- `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
+- GoDaddy DNS still points the public domain to GitHub Pages until the route matrix passes and DNS is intentionally updated.
+
+## Temporary Legacy Bridge
+
+During cutover, `apps/web` includes static compatibility files in `apps/web/public` for existing public routes. `next.config.mjs` rewrites extensionless URLs such as `/checkout` and `/members` to their `.html` compatibility files.
+
+Keep the bridge until the equivalent App Router routes are rebuilt with server-authoritative payments, Convex data access, and authenticated admin/POS flows.
+
 ## Setup Flow
 
 1. Link or create one Vercel project for `@skyla/web`.
@@ -51,7 +66,7 @@ Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never us
 Do not point `skydeckla.com` to Vercel until:
 
 - The Vercel production deployment is green.
-- The homepage, ticket path, legal pages, admin gate, and POS gate load.
+- The homepage, ticket path, member path, legal pages, admin gate, POS gate, robots, and sitemap load.
 - Payment/order flows have been verified or intentionally disabled behind a safe placeholder.
 - Rollback path is documented.
 
