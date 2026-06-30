@@ -66,6 +66,9 @@ Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never us
 - Feature flags: payments enabled, crypto enabled, admin/POS enabled, and migration/legacy mode.
 - Operations config: booking recipient emails, sender domains, terminal location IDs, and webhook URLs.
 
+For Convex-specific dashboard setup and verification, use
+`docs/runbooks/convex-deployment.md`.
+
 Google Ads public env vars used by the compatibility bridge:
 
 ```bash
