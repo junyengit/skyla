@@ -19,9 +19,10 @@ The legacy GitHub Pages site still lives at the repository root during the migra
 
 As of June 30, 2026:
 
-- GitHub Pages still serves `https://skydeckla.com` through GoDaddy DNS.
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached, but DNS has not been cut over yet.
+- Current Vercel production deployment is `https://web-istczvmf1-junyen-enterprises.vercel.app` from commit `f3c99649ea87a9b94e40bdc3e7de35f1ea98e923`.
+- Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached, but GoDaddy DNS still needs the Vercel records saved and verified before the custom domains are considered live.
+- Current DNS checks show `www.skydeckla.com` still resolving through GitHub Pages and apex `skydeckla.com` not resolving from this environment. Treat the public custom domain as mid-cutover until GoDaddy DNS is corrected.
 - The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
 
 ## Local Development
@@ -58,7 +59,7 @@ cd ../.. && pnpm turbo build --filter=@skyla/web
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.
 
-The current public domain is still on GitHub Pages until the Vercel route matrix passes and GoDaddy DNS is intentionally updated. See [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before changing domains or disabling old deployments.
+The Vercel production route matrix has passed on the Vercel deployment URL, but the custom domain is not verified until GoDaddy DNS points to Vercel. See [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before changing domains or disabling old deployments.
 
 ## Sensitive Artifacts
 

@@ -40,12 +40,18 @@ Finish the Vercel/Turborepo/Next.js foundation, keep the legacy static site reco
 - [x] Added `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
 - [x] Confirmed GoDaddy DNS is still on GitHub Pages and canceled an unsaved DNS edit before route readiness.
 - [x] Added Vercel compatibility coverage for legacy public routes and `.html` files in `apps/web/public`.
+- [x] Merged route-compatibility PR #2 into `main` with merge commit `f3c99649ea87a9b94e40bdc3e7de35f1ea98e923`.
+- [x] Confirmed GitHub CI passed on `main` for `f3c99649ea87a9b94e40bdc3e7de35f1ea98e923`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-istczvmf1-junyen-enterprises.vercel.app` (`dpl_FBG27TbZxzTzfQKgTy4LWaxKF35L`).
+- [x] Verified Vercel production route matrix on `https://web-istczvmf1-junyen-enterprises.vercel.app`: `/`, `/index.html`, `/about`, `/about.html`, `/cafe`, `/cafe.html`, `/experiences`, `/experiences.html`, `/checkout`, `/checkout.html`, `/members`, `/members.html`, `/privacy`, `/privacy.html`, `/terms`, `/terms.html`, `/admin`, `/admin.html`, `/pos`, `/pos.html`, `/robots.txt`, and `/sitemap.xml` returned `200`.
+- [x] Verified `/admin`, `/admin.html`, `/pos`, and `/pos.html` include `X-Robots-Tag: noindex, nofollow` on the Vercel production URL.
+- [x] Confirmed Vercel production URL is publicly reachable without Vercel Authentication.
 
 ## In Progress
 
-- [ ] Deploy the route-compatibility follow-up to Vercel production.
-- [ ] Verify Vercel production paths: `/`, `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, `/pos`, `/robots.txt`, and `/sitemap.xml`.
-- [ ] Cut GoDaddy DNS to Vercel only after the path matrix passes.
+- [ ] Save the GoDaddy DNS cutover records for `skydeckla.com` and `www.skydeckla.com`.
+- [ ] Verify Vercel domain status after DNS propagation.
+- [ ] Smoke-test `https://skydeckla.com` and `https://www.skydeckla.com` after Vercel verification passes.
 
 ## Deferred Until Foundation Is Stable
 
@@ -70,4 +76,5 @@ Finish the Vercel/Turborepo/Next.js foundation, keep the legacy static site reco
 - Old root static pages and new Next app coexist temporarily.
 - The GitHub Pages project URL redirects through the repository `CNAME`, so it is not a clean fallback after DNS cutover unless the Pages custom-domain setup changes.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
+- Current DNS checks show apex `skydeckla.com` is not resolving from this environment and `www.skydeckla.com` still points through GitHub Pages, so the public custom domain should be treated as mid-cutover until the GoDaddy records are corrected and Vercel verifies both domains.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.

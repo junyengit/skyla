@@ -16,9 +16,9 @@ The migration is intentionally in-place and staged. The current production site 
 
 ## Current State
 
-Skyla's public domain currently runs from GitHub Pages static files at the repository root. GitHub Pages deploys `main` from `/` to `https://skydeckla.com`, with `CNAME` pointing at the custom domain.
+Skyla's public domain is mid-cutover. The Vercel production deployment is ready and route-compatible, but GoDaddy DNS still needs the Vercel records saved and verified. Current checks show apex `skydeckla.com` is not resolving from this environment and `www.skydeckla.com` still points through GitHub Pages before redirecting to the apex.
 
-The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel. GoDaddy DNS remains on GitHub Pages until the Vercel route matrix passes and DNS is intentionally cut over.
+The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel.
 
 Current backend/data dependencies:
 
@@ -31,13 +31,18 @@ Current backend/data dependencies:
 - EmailJS/Brevo confirmation emails
 - Meta Pixel and planned Google Ads conversion tracking
 
-Current operating gaps:
+Resolved foundation gaps:
 
-- No repo-level README, runbooks, environment docs, CI, package manifest, lockfile, database migrations, or branch protection.
-- Sensitive local artifacts exist under `output/` and `tmp/`; these must not be committed or deployed.
+- Repo-level README, runbooks, CI, package manifest, lockfile, Turborepo config, and initial Vercel project setup now exist on `main`.
+- Sensitive local artifact paths such as `output/` and `tmp/` are ignored and must stay out of Git and Vercel.
+
+Remaining operating gaps:
+
+- Database migrations and environment documentation still need to be completed with the Convex and payment rebuild.
 - Payment amounts and paid booking creation are too client-controlled.
 - Admin/POS access is enforced mostly in browser UI and assumed Supabase RLS.
-- Root deployment is direct-to-production through GitHub Pages.
+- Branch protection, Dependabot/security automation, and formal security review are still pending.
+- Old GitHub Pages and Supabase deployment surfaces must remain available for rollback until Vercel custom-domain cutover and backend migration are verified.
 
 ## Target Architecture
 
@@ -183,7 +188,7 @@ Status: planned
 
 ### Phase 7: Vercel Setup And Domain Cutover
 
-Status: Vercel setup complete; DNS cutover pending route verification
+Status: Vercel setup and route verification complete; DNS cutover pending GoDaddy record changes
 
 - [x] Create/link a Vercel project for `apps/web`.
 - [x] Set root directory to `apps/web`.
@@ -193,7 +198,8 @@ Status: Vercel setup complete; DNS cutover pending route verification
 - [ ] Add production environment variables as migrated server flows require them.
 - [x] Deploy preview and production builds.
 - [x] Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.
-- [ ] Update DNS only after Vercel production is verified.
+- [x] Verify Vercel production route compatibility before custom-domain cutover.
+- [ ] Update GoDaddy DNS to Vercel records and verify both domains.
 - Keep GitHub Pages live until Vercel production and rollback are confirmed.
 - Disable GitHub Pages only after explicit confirmation and a clean Vercel production cutover.
 

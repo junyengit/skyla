@@ -20,10 +20,13 @@ These commands assume Vercel executes from the configured `apps/web` project roo
 
 As of June 30, 2026:
 
-- Production deployment from `main` is READY at `https://web-qft9c4zja-junyen-enterprises.vercel.app`.
-- Latest merged production commit before the route-compatibility follow-up is `950ae150ec897afd5457b79ce61c5529142a1edb`.
+- Production deployment from `main` is READY at `https://web-istczvmf1-junyen-enterprises.vercel.app`.
+- Production deployment ID is `dpl_FBG27TbZxzTzfQKgTy4LWaxKF35L`.
+- Latest merged production commit is `f3c99649ea87a9b94e40bdc3e7de35f1ea98e923`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
-- GoDaddy DNS still points the public domain to GitHub Pages until the route matrix passes and DNS is intentionally updated.
+- Vercel production route compatibility is verified on the deployment URL.
+- GoDaddy DNS is not yet valid for Vercel. Current checks show apex `skydeckla.com` is not resolving from this environment and `www.skydeckla.com` still points through GitHub Pages.
+- Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
 
 ## Temporary Legacy Bridge
 
@@ -63,11 +66,12 @@ Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never us
 
 ## Domain Cutover
 
-Do not point `skydeckla.com` to Vercel until:
+Do not consider `skydeckla.com` cut over to Vercel until:
 
 - The Vercel production deployment is green.
 - The homepage, ticket path, member path, legal pages, admin gate, POS gate, robots, and sitemap load.
 - Payment/order flows have been verified or intentionally disabled behind a safe placeholder.
 - Rollback path is documented.
+- GoDaddy DNS has the Vercel apex A records and `www` CNAME, and Vercel domain verification passes for both domains.
 
 Keep GitHub Pages live until Vercel production is verified. Disable GitHub Pages only after explicit confirmation.
