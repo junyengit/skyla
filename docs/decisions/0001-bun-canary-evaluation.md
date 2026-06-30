@@ -4,7 +4,7 @@ Date: 2026-06-30
 
 ## Status
 
-Accepted for implementation in branch `codex/bun-canary-root-cleanup`.
+Accepted and merged in PR #10.
 
 ## Decision
 

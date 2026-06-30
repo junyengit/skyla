@@ -41,17 +41,17 @@ flowchart LR
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- The most recently verified production deployment before this branch is `https://web-l7aei5nb9-junyen-enterprises.vercel.app` from commit `47412f698045adab3b0523b53f829134dd2cf248`.
+- The most recently verified production deployment is `https://web-8rstxz73f-junyen-enterprises.vercel.app` from merge commit `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - The Next app serves the new homepage and bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`.
 
-## This Branch
+## Current Bun And Cleanup State
 
-- Replaces pnpm with Bun canary and a committed text `bun.lock`.
-- Adds repo-owned Vercel install/build commands under `apps/web/vercel.json`.
-- Removes duplicate root GitHub Pages static files from the active tree after Vercel custom-domain cutover verification.
+- pnpm has been replaced with Bun canary and a committed text `bun.lock`.
+- Repo-owned Vercel install/build commands live under `apps/web/vercel.json`.
+- Duplicate root GitHub Pages static files have been removed from the active tree after Vercel custom-domain cutover verification.
 - Keeps app-owned compatibility files in `apps/web/public`.
 - Uses Vercel deployment rollback for hosting rollback.
 

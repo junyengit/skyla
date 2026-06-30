@@ -25,18 +25,18 @@ root.
 
 As of June 30, 2026:
 
-- The most recently verified production deployment from `main` before this branch is READY at `https://web-l7aei5nb9-junyen-enterprises.vercel.app`.
-- Production deployment ID is `dpl_CU1KmDXUnwRTu7YDjo1BPywv8awp`.
-- Latest verified commit is `47412f698045adab3b0523b53f829134dd2cf248`.
+- The most recently verified production deployment from `main` is READY at `https://web-8rstxz73f-junyen-enterprises.vercel.app`.
+- Production deployment ID is `dpl_HskCqFwWBx2UNRZevq7KXp89wWHi`.
+- Latest verified commit is `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
 
-## Branch Deployment Changes
+## Bun Deployment Changes
 
-- `apps/web/vercel.json` commits the Bun/Vercel install and build commands for this branch.
-- Root GitHub Pages static files are removed from the active tree in this branch.
+- `apps/web/vercel.json` commits the Bun/Vercel install and build commands.
+- Root GitHub Pages static files are removed from the active tree.
 - Hosting rollback should use Vercel deployment rollback, not root static rollback.
 
 ## Temporary Legacy Bridge

@@ -70,6 +70,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added `apps/web/vercel.json` and `scripts/setup/vercel-install-bun-canary.sh` so Vercel installs/upgrades Bun canary during builds.
 - [x] Removed tracked duplicate root static files and root `images/`; active compatibility files remain under `apps/web/public`.
 - [x] Verified local Bun gates: `bun install --frozen-lockfile`, `bun run check`, `bun run security:audit`, Vercel install script, and Vercel build command simulation.
+- [x] Merged Bun/root-cleanup PR #10 into `main` as merge commit `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-8rstxz73f-junyen-enterprises.vercel.app` (`dpl_HskCqFwWBx2UNRZevq7KXp89wWHi`).
+- [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 
 ## In Progress
 
@@ -78,8 +81,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Land the Phase 2 roadmap and Bun/Vercel runbook.
 - [x] Land the QA/security baseline PR and confirm GitHub CI, CodeQL, and Vercel preview/production are green.
 - [x] Create the Bun migration PR only after local canary install/checks are reproducible.
-- [ ] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
-- [ ] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
+- [x] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
+- [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
 
 ## Deferred Until Foundation Is Stable
 
