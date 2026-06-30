@@ -32,10 +32,10 @@ Build and validate the Vercel/Turborepo/Next.js foundation for Skyla, document t
 - [x] Created Vercel project `junyen-enterprises/web` for `apps/web` with project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`.
 - [x] Deployed first Vercel build: `https://web-fwlmziond-junyen-enterprises.vercel.app` (`dpl_DE5YnDKHuuZ4rNcFewuCLYWAeCjH`, READY).
 - [x] Opened the Vercel deployment in Helium; homepage rendered successfully.
+- [x] Verified clean Git-triggered Vercel deployment: `https://web-h6lacs7d4-junyen-enterprises.vercel.app` (`dpl_4qMAwUAUTPhpmEGmbfW2bfBHFJzu`, READY, branch `codex/next-vercel-turbo-migration`, commit `cbd9b80`).
 
 ## In Progress
 
-- [ ] Push a follow-up commit and verify a clean Git-triggered Vercel deployment without `gitDirty: 1`.
 - [ ] Review major work for accuracy.
 
 ## Deferred Until Foundation Is Stable
