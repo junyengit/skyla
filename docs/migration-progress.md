@@ -86,6 +86,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added `convex/schema.ts` for target products, orders, POS sales, payment/webhook ledgers, promoted legacy records, staff, config, and audit data.
 - [x] Added `/api/order-drafts/checkout` to return server-calculated draft totals without creating provider payments.
 - [x] Added unit coverage proving browser-supplied totals are ignored and inactive packages are rejected.
+- [x] Merged Convex order spine PR #13 into `main` as merge commit `b1272b9112dbde4c83c74b07c8d6204ee98c2960`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-d1efck3u8-junyen-enterprises.vercel.app` (`dpl_FNnfuoY5KbLKG7WceuXuhycp8Q2r`).
+- [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Verified production `/api/order-drafts/checkout` returns canonical totals and ignores browser-supplied totals.
 
 ## In Progress
 
@@ -96,12 +100,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Create the Bun migration PR only after local canary install/checks are reproducible.
 - [x] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
 - [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
-- [ ] Verify, review, and ship `codex/convex-order-spine`.
+- [x] Verify, review, and ship `codex/convex-order-spine`.
 - [ ] Link the real Convex deployment and run committed generated API/server types in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
 
-- [ ] Convex implementation.
+- [ ] Convex deployment, generated types, and persisted mutations/actions.
 - [ ] Stripe/Kaskade server-authoritative order flow.
 - [ ] Admin/POS rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
