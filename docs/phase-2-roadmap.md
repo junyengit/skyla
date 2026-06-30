@@ -191,8 +191,12 @@ Initial tables:
 - `inquiries`
 - `config`
 - `orders`
+- `orderLineItems`
+- `posSales`
+- `posSaleLines`
 - `paymentEvents`
 - `webhookEvents`
+- `products`
 - `staffUsers`
 - `auditEvents`
 
@@ -252,6 +256,8 @@ Definition of done:
 Baseline now in place:
 
 - `bun run test:unit` covers shared pricing/contact constants and the temporary legacy-route bridge.
+- `@skyla/payments` now covers canonical checkout and POS draft calculations; browser-supplied totals are ignored by contract tests.
+- `bun run convex:schema:typecheck` checks `convex/schema.ts` without requiring a linked Convex deployment.
 - `bun run security:artifacts` blocks tracked generated artifacts, local env files, obvious provider keys, and private keys.
 - `bun run security:audit` fails on high or critical dependency advisories across production and dev tooling.
 - `bun run test:smoke` checks the route matrix and admin/POS `X-Robots-Tag` headers against a supplied deployment URL.
@@ -281,10 +287,21 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Bun/root-cleanup application commit: `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`
-- Bun/root-cleanup application deployment: `https://web-8rstxz73f-junyen-enterprises.vercel.app`
+- Latest verified production commit: `07448b6e2a626a4b302056e5a155692ad2a9ba39`
+- Latest verified production deployment: `https://web-kham7clfu-junyen-enterprises.vercel.app`
+- Latest verified production deployment ID: `dpl_69k9h2zKNC7uAGDHzgZmHGT9p6wX`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
+
+Current order-spine branch:
+
+- Branch: `codex/convex-order-spine`
+- New artifacts: `convex/schema.ts`, `packages/payments`, `/api/order-drafts/checkout`
+- Convex package: `convex@1.42.1`
+- Not present yet: `convex.json`, `convex/_generated`, linked deployment, persisted order refs, provider actions, HTTP webhooks, live checkout cutover
+- Live compatibility checkout still uses `apps/web/public/checkout.html` and legacy Supabase/payment bridges.
+- Local no-deployment Convex gate: `bun run convex:schema:typecheck`
+- Deployment-linked Convex gate after project linking: `bun run convex:codegen`
 
 Current package baseline:
 
@@ -300,6 +317,7 @@ Useful verification commands:
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bun run check
+PATH="$HOME/.bun/bin:$PATH" bun run convex:schema:typecheck
 dig +short skydeckla.com NS
 dig +short skydeckla.com A
 dig +short www.skydeckla.com A

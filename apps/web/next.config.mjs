@@ -4,7 +4,7 @@ import { legacyRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@skyla/config", "@skyla/ui"],
+  transpilePackages: ["@skyla/config", "@skyla/payments", "@skyla/ui"],
   images: {
     remotePatterns: [
       new URL("https://api.qrserver.com/**")

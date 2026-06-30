@@ -23,16 +23,22 @@
     "test": "bun run test:unit",
     "test:unit": "turbo test:unit",
     "test:smoke": "node scripts/smoke/route-smoke.mjs",
+    "convex:schema:typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck convex/schema.ts",
+    "convex:codegen": "convex codegen --typecheck enable",
     "security": "bun run security:artifacts && bun run security:audit",
     "security:artifacts": "node scripts/security/check-tracked-artifacts.mjs",
     "security:audit": "bun audit --audit-level=high",
-    "check": "turbo lint typecheck test:unit build && bun run security:artifacts",
+    "check": "turbo lint typecheck test:unit build && bun run convex:schema:typecheck && bun run security:artifacts",
     "web:dev": "bun run --cwd apps/web dev",
     "web:build": "bun run --cwd apps/web build",
     "web:start": "bun run --cwd apps/web start"
   },
   "devDependencies": {
+    "typescript": "6.0.3",
     "turbo": "2.10.1",
     "vitest": "4.1.9"
+  },
+  "dependencies": {
+    "convex": "^1.42.1"
   }
 }

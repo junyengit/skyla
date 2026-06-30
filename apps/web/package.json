@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@skyla/config": "workspace:*",
+    "@skyla/payments": "workspace:*",
     "@skyla/ui": "workspace:*",
     "motion": "12.42.0",
     "next": "16.2.9",
