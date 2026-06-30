@@ -9,7 +9,9 @@ been removed so the repository root is project control-plane space again.
 ```text
 apps/web            Next.js App Router application for Vercel
 packages/config     Shared site/business constants
+packages/payments   Server-authoritative pricing and order draft contracts
 packages/ui         Shared UI primitives and icons
+convex/             Target Convex backend schema and future functions
 docs/               Migration plan, runbooks, architecture notes
 docs/audits         Discovery notes and implementation evidence
 docs/decisions      Lightweight architecture decision records
@@ -42,7 +44,7 @@ flowchart LR
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- The Bun/root-cleanup application deployment was verified at `https://web-8rstxz73f-junyen-enterprises.vercel.app` from merge commit `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
+- The latest verified production deployment is `https://web-kham7clfu-junyen-enterprises.vercel.app` from merge commit `07448b6e2a626a4b302056e5a155692ad2a9ba39`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
@@ -77,6 +79,7 @@ bun run lint
 bun run typecheck
 bun run test:unit
 bun run build
+bun run convex:schema:typecheck
 bun run security:artifacts
 bun run security:audit
 ```
@@ -94,6 +97,7 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 - Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
 - Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Daily POS reader connection and charges still use the existing staff-authenticated bridge.
+- `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout` establish the first server-authoritative pricing/order spine. This route calculates draft totals from selections only; it does not create provider payments or write Convex records yet.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 ## Deployment Direction

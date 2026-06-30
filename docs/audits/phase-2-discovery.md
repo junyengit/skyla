@@ -60,9 +60,8 @@ Recommended Convex indexes:
 - `bookings.by_emailLower`
 - `orders.by_orderRef`
 - `orders.by_status_createdAt`
-- `orders.by_providerPaymentId`
-- `paymentEvents.by_provider_event`
-- `webhookEvents.by_provider_eventId`
+- `paymentEvents.by_provider_providerPaymentId`
+- `webhookEvents.by_provider_providerEventId`
 - `memberApplications.by_status_createdAt`
 - `inquiries.by_status_createdAt`
 - `staffUsers.by_subject`

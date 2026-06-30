@@ -77,6 +77,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Ported Google Ads conversion tracking into `apps/web/public` with a Vercel env-backed `/ads-config.js` route and tests.
 - [x] Moved Google Ads campaign docs/import CSVs under `docs/marketing/google-ads` and kept the security artifact guard narrow.
 - [x] Added a guarded `setup-reader` bridge in the legacy Stripe Terminal function requiring `SKYLA_TERMINAL_SETUP_TOKEN`.
+- [x] Merged bridge-hardening PR #12 into `main` as merge commit `07448b6e2a626a4b302056e5a155692ad2a9ba39`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-kham7clfu-junyen-enterprises.vercel.app` (`dpl_69k9h2zKNC7uAGDHzgZmHGT9p6wX`).
+- [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Verified production browser/console spot checks for `/`, `/checkout.html`, `/experiences.html`, `/members.html`, `/pos.html`, and `/ads-config.js`.
+- [x] Started branch `codex/convex-order-spine` from `origin/main` for the first Convex/server-authoritative order slice.
+- [x] Added `@skyla/payments` with canonical checkout and POS draft calculations.
+- [x] Added `convex/schema.ts` for target products, orders, POS sales, payment/webhook ledgers, promoted legacy records, staff, config, and audit data.
+- [x] Added `/api/order-drafts/checkout` to return server-calculated draft totals without creating provider payments.
+- [x] Added unit coverage proving browser-supplied totals are ignored and inactive packages are rejected.
 
 ## In Progress
 
@@ -87,8 +96,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Create the Bun migration PR only after local canary install/checks are reproducible.
 - [x] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
 - [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
-- [ ] Verify, review, and ship `codex/ads-pos-convex-prep`.
-- [ ] Start the Convex schema/order-authority PR after bridge-hardening lands.
+- [ ] Verify, review, and ship `codex/convex-order-spine`.
+- [ ] Link the real Convex deployment and run committed generated API/server types in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
 
@@ -119,3 +128,4 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.1` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
 - `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex/payment PR.
+- `convex codegen --typecheck enable` requires a linked `CONVEX_DEPLOYMENT`; this branch uses `bun run convex:schema:typecheck` as the local no-deployment gate and documents codegen as the next deployment-linked step.

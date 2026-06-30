@@ -166,7 +166,8 @@ Initial indexes:
 - `bookings.by_emailLower`
 - `orders.by_orderRef`
 - `orders.by_status_createdAt`
-- `paymentEvents.by_providerPaymentId`
+- `paymentEvents.by_provider_providerPaymentId`
+- `webhookEvents.by_provider_providerEventId`
 - `members.by_status_createdAt`
 - `inquiries.by_status_createdAt`
 - `config.by_key`
