@@ -111,6 +111,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added `paymentEvents.idempotencyKey` so Stripe session creation retries can be recorded without duplicate ledger rows.
 - [x] Raised admin/POS dark-theme text contrast for easier reading.
 - [x] Added environment, Stripe cutover, and decision docs for both human operators and future agents.
+- [x] Merged Stripe Checkout action PR #19 into `main` as merge commit `edbd1d80ad43f967680b9e96c1b60c253ed04a70`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-5rd41qfa5-junyen-enterprises.vercel.app` (`dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`).
+- [x] Re-ran post-merge route smoke tests for `https://web-5rd41qfa5-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Verified production `/api/order-drafts/checkout` still ignores browser `totalCents: 1` and returns `persisted: false` with `persistenceReason: "convex_unconfigured"` until Vercel receives `NEXT_PUBLIC_CONVEX_URL`.
 
 ## In Progress
 
@@ -124,7 +128,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-order-spine`.
 - [x] Verify, review, and ship `codex/convex-persist-order-drafts`.
 - [x] Verify, review, and ship `codex/convex-checkout-route-cutover`.
-- [ ] Verify, review, and ship `codex/convex-stripe-checkout-action`.
+- [x] Verify, review, and ship `codex/convex-stripe-checkout-action`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
