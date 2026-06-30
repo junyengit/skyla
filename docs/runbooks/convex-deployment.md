@@ -70,6 +70,7 @@ The value should look like `https://<deployment>.convex.cloud`.
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_PAYMENT_RETURN_ORIGINS "https://skydeckla.com,https://www.skydeckla.com"
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
 ```
 
 Use Stripe test-mode values for Preview/Development. Do not paste secret values
@@ -139,11 +140,14 @@ these are true:
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and Production
 - Convex has `STRIPE_SECRET_KEY`
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS`
+- Convex has `STRIPE_WEBHOOK_SECRET`
+- Stripe dashboard has a test-mode webhook endpoint for
+  `https://<convex-site-url>/stripe-webhook`
 - Preview `/api/order-drafts/checkout` returns `persisted: true`
 - `bun run check` passes
 - `bun run security:audit` passes
 - A Stripe test-mode checkout can be created from a stored `orderRef`
-- Webhook work is planned and not confused with session creation
+- Webhook signature/reconciliation tests pass
 
 Rollback is simple at this stage: leave the order draft route enabled and do
 not call `payments.createStripeCheckoutSession` from the frontend.
@@ -155,6 +159,7 @@ not call `payments.createStripeCheckoutSession` from the frontend.
   returns ready and a preview POST returns `persisted: true`.
 - `NEXT_PUBLIC_CONVEX_URL` is safe to expose; Convex auth and function guards
   still enforce protected staff flows server-side.
-- Stripe Checkout session creation now exists as a Convex action, but it is not
-  live until the env and frontend cutover gates above pass.
-- Kaskade, Terminal, and webhook actions are still separate work.
+- Stripe Checkout session creation and webhook reconciliation now exist in
+  Convex code, but they are not live until the env, Stripe dashboard, and
+  frontend cutover gates above pass.
+- Kaskade and Terminal actions are still separate work.

@@ -14,6 +14,7 @@ The committed artifacts now include:
   from stored checkout `orderRef` records only.
 - `paymentInternals.ts`: internal order snapshot and payment-event ledger
   functions used by payment actions.
+- `http.ts`: HTTP route for Stripe webhooks at `POST /stripe-webhook`.
 - `lib/`: shared auth and draft-persistence helpers.
 - `_generated/`: generated Convex API/server/data-model types from local
   anonymous Convex validation.
@@ -39,13 +40,13 @@ bun run convex:codegen
 ```
 
 No production checkout/POS traffic is cut over by this directory yet. The
-Stripe Checkout action exists, but the public compatibility checkout still uses
-the legacy bridge until real Convex/Stripe envs and webhooks are verified. The
-next backend slices should:
+Stripe Checkout action and webhook route exist, but the public compatibility
+checkout still uses the legacy bridge until real Convex/Stripe envs, Stripe
+dashboard webhook setup, and frontend cutover are verified. The next backend
+slices should:
 
 1. Create or link the real Convex deployment.
-2. Add webhook HTTP actions with idempotency and expected amount checks.
-3. Add Kaskade and Terminal provider actions that accept only `orderRef` or
+2. Add Kaskade and Terminal provider actions that accept only `orderRef` or
    `saleRef`, never browser totals.
-4. Move the Next checkout/POS flows from compatibility pages to persisted
+3. Move the Next checkout/POS flows from compatibility pages to persisted
    Convex draft refs.

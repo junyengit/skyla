@@ -29,9 +29,10 @@ It is not a live payment cutover runbook yet.
 
 The live compatibility checkout is not cut over to Convex yet. The backend can
 persist drafts, and the Next route is ready to use that path once the real
-Convex deployment URL is configured in Vercel. A Stripe Checkout action now
-exists, but production payment creation still needs real Convex/Stripe envs,
-frontend integration, and webhook verification.
+Convex deployment URL is configured in Vercel. Stripe Checkout action and
+webhook reconciliation code now exist, but production payment creation still
+needs real Convex/Stripe envs, Stripe dashboard webhook setup, and frontend
+integration.
 
 ```mermaid
 flowchart LR
@@ -65,8 +66,8 @@ package, guest count, and add-ons, but the server calculates:
 
 Provider actions must create payment sessions or intents from a stored
 `orderRef` or `saleRef`, not from a browser-supplied amount. The current Stripe
-Checkout action follows this rule; Kaskade, Terminal, and webhooks are still
-future slices.
+Checkout action and Stripe webhook route follow this rule; Kaskade and Terminal
+are still future slices.
 
 ## Agent Data
 
@@ -267,6 +268,27 @@ Required Convex env:
 See [stripe-checkout-cutover.md](stripe-checkout-cutover.md) before wiring the
 frontend to this action.
 
+## Stripe Webhook Route
+
+HTTP route:
+
+```text
+POST /stripe-webhook
+```
+
+Rules:
+
+- The route verifies Stripe's raw-body signature before JSON parsing.
+- It dedupes by `webhookEvents.providerEventId`.
+- Unsupported events are recorded as ignored.
+- Paid Checkout Session events only mark an order paid after Convex reconciles
+  the session ID, order ref, amount, currency, expected provider, and order
+  status against stored order/payment rows.
+
+Required Convex env:
+
+- `STRIPE_WEBHOOK_SECRET`
+
 ## Local Validation
 
 Use this on any branch, even before the real Convex deployment is linked:
@@ -293,9 +315,8 @@ bun run convex:codegen
 ## Next Steps
 
 1. Link a real Convex deployment and set Vercel env vars for it.
-2. Add webhook HTTP actions that verify signatures, expected amounts, currency,
-   status, and idempotency.
-3. Add Kaskade/Terminal actions that only accept stored refs.
-4. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
+2. Add Kaskade/Terminal actions that only accept stored refs.
+3. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
    action.
+4. Add the Stripe dashboard endpoint for the Convex webhook.
 5. Dual-run against Supabase and reconcile before cutover.
