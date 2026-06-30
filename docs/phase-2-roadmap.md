@@ -281,8 +281,8 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified production commit: `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`
-- Latest verified production deployment: `https://web-8rstxz73f-junyen-enterprises.vercel.app`
+- Bun/root-cleanup application commit: `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`
+- Bun/root-cleanup application deployment: `https://web-8rstxz73f-junyen-enterprises.vercel.app`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 

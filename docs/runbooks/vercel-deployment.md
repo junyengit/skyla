@@ -25,9 +25,9 @@ root.
 
 As of June 30, 2026:
 
-- The most recently verified production deployment from `main` is READY at `https://web-8rstxz73f-junyen-enterprises.vercel.app`.
-- Production deployment ID is `dpl_HskCqFwWBx2UNRZevq7KXp89wWHi`.
-- Latest verified commit is `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
+- The Bun/root-cleanup application deployment from `main` is READY at `https://web-8rstxz73f-junyen-enterprises.vercel.app`.
+- Bun/root-cleanup deployment ID is `dpl_HskCqFwWBx2UNRZevq7KXp89wWHi`.
+- Bun/root-cleanup merge commit is `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
