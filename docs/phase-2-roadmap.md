@@ -295,12 +295,16 @@ Current verified Vercel data:
 
 Current order-spine state:
 
-- Merged PR: `#13`
-- New artifacts: `convex/schema.ts`, `packages/payments`, `/api/order-drafts/checkout`
+- Merged foundation PR: `#13`
+- Active persisted-draft branch: `codex/convex-persist-order-drafts`
+- Existing artifacts: `convex/schema.ts`, `convex/orderDrafts.ts`, `convex/lib/*`, `convex/_generated/*`, `packages/payments`, `/api/order-drafts/checkout`
 - Convex package: `convex@1.42.1`
-- Not present yet: `convex.json`, `convex/_generated`, linked deployment, persisted order refs, provider actions, HTTP webhooks, live checkout cutover
+- Persisted draft refs: checkout `SKYYYMM-XXXXXX`; POS `SALEYYMMDD-XXXXXX`
+- Local Convex validation: anonymous local deployment at `http://127.0.0.1:3210` when `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` is run
+- Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, provider actions, HTTP webhooks, live checkout cutover
 - Live compatibility checkout still uses `apps/web/public/checkout.html` and legacy Supabase/payment bridges.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
+- Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
 - Deployment-linked Convex gate after project linking: `bun run convex:codegen`
 
 Current package baseline:
@@ -318,6 +322,9 @@ Useful verification commands:
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun run convex:schema:typecheck
+PATH="$HOME/.bun/bin:$PATH" bun run convex:test:unit
+PATH="$HOME/.bun/bin:$PATH" bun run convex:functions:typecheck
+PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
 dig +short skydeckla.com NS
 dig +short skydeckla.com A
 dig +short www.skydeckla.com A
