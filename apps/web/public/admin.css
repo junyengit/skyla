@@ -11,9 +11,9 @@
   --gold:      #c9a84c;
   --gold-lt:   #e8c97a;
   --white:     #ffffff;
-  --off-white: #e8eaed;
-  --gray:      #7a7f8a;
-  --gray-lt:   #b0b4be;
+  --off-white: #ffffff;
+  --gray:      #d4d8df;
+  --gray-lt:   #f2f4f8;
   --green:     #3d9e6e;
   --red:       #c0392b;
   --amber:     #d4860f;
@@ -39,6 +39,7 @@ body.admin-body {
 
 a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: var(--font); border: none; }
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.78); opacity: 1; }
 
 /* ── ANNOUNCEMENT (public pages) ── */
 .site-announcement {

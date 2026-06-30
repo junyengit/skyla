@@ -25,9 +25,11 @@ root.
 
 As of June 30, 2026:
 
-- The Bun/root-cleanup application deployment from `main` is READY at `https://web-8rstxz73f-junyen-enterprises.vercel.app`.
-- Bun/root-cleanup deployment ID is `dpl_HskCqFwWBx2UNRZevq7KXp89wWHi`.
-- Bun/root-cleanup merge commit is `b321c4b70d13116bfd95b4fa0f4c39bb811f8fcc`.
+- The latest verified application deployment from `main` before this branch is
+  READY at `https://web-4zohzd1eu-junyen-enterprises.vercel.app`.
+- Latest verified deployment ID is `dpl_H1DxbFYsoagAToBKv6bLWhA4gu5H`.
+- Latest verified merge commit is
+  `25340de194ca88280f379a16f2617952e70c41b9`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -56,18 +58,19 @@ Keep the bridge until the equivalent App Router routes are rebuilt with server-a
 7. Merge to `main` only after CI and preview pass.
 8. Let Vercel deploy production from `main`.
 
-## Environment Buckets
+## Environment
 
 Public client variables may use the `NEXT_PUBLIC_` prefix. Secrets must never use that prefix.
 
-- Public client config: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_GOOGLE_ADS_TAG_ID`, Google Ads conversion IDs, Meta Pixel IDs, and public Stripe publishable keys.
-- Server secrets: Stripe secret keys, webhook signing secrets, Kaskade secrets, `SKYLA_TERMINAL_SETUP_TOKEN` for one-time Stripe Terminal reader registration, email provider secrets, and future Convex deployment/admin secrets.
-- Transition-only backend variables: Supabase URL, anon key, and service-role key only while legacy flows remain. Do not give Preview production service-role access.
-- Feature flags: payments enabled, crypto enabled, admin/POS enabled, and migration/legacy mode.
-- Operations config: booking recipient emails, sender domains, terminal location IDs, and webhook URLs.
+Use [../reference/environment.md](../reference/environment.md) as the detailed
+matrix for public variables, server secrets, transition variables, owner
+systems, and readiness gates.
 
 For Convex-specific dashboard setup and verification, use
-`docs/runbooks/convex-deployment.md`.
+[convex-deployment.md](convex-deployment.md).
+
+For Stripe Checkout cutover, use
+[stripe-checkout-cutover.md](stripe-checkout-cutover.md).
 
 Google Ads public env vars used by the compatibility bridge:
 

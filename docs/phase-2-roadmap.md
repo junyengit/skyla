@@ -287,9 +287,9 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified application production commit: `fa0274541a822c6b09f4c3bfd629a16f1bea3425`
-- Latest verified application production deployment: `https://web-8dy8csodv-junyen-enterprises.vercel.app`
-- Latest verified application production deployment ID: `dpl_C7Gbju2B9Rq1YXirHo9JM1S36NCJ`
+- Latest verified application production commit: `25340de194ca88280f379a16f2617952e70c41b9`
+- Latest verified application production deployment: `https://web-4zohzd1eu-junyen-enterprises.vercel.app`
+- Latest verified application production deployment ID: `dpl_H1DxbFYsoagAToBKv6bLWhA4gu5H`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 
@@ -300,7 +300,10 @@ Current order-spine state:
 - Latest persisted-draft merge commit: `10b2751099aca72834ff2a33d8d4ccd105cdf3cb`
 - Merged checkout route cutover PR: `#17`
 - Latest checkout route cutover merge commit: `fa0274541a822c6b09f4c3bfd629a16f1bea3425`
+- Merged post-checkout-route state PR: `#18`
+- Latest post-checkout-route state merge commit: `25340de194ca88280f379a16f2617952e70c41b9`
 - Existing artifacts: `convex/schema.ts`, `convex/orderDrafts.ts`, `convex/lib/*`, `convex/_generated/*`, `packages/payments`, `/api/order-drafts/checkout`
+- Current branch adds: `convex/payments.ts`, `convex/paymentInternals.ts`, `convex/lib/stripeCheckout.ts`, `convex/stripeCheckout.test.ts`
 - Convex package: `convex@1.42.1`
 - Persisted draft refs: checkout `SKYYYMM-XXXXXX`; POS `SALEYYMMDD-XXXXXX`
 - Checkout route behavior: `/api/order-drafts/checkout` returns transient
@@ -308,7 +311,8 @@ Current order-spine state:
   `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 - Local Convex validation: anonymous local deployment at `http://127.0.0.1:3210` when `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` is run
 - Vercel env status checked on 2026-06-30: no environment variables configured for `junyen-enterprises/web`
-- Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, provider actions, HTTP webhooks, live checkout cutover
+- Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, HTTP webhooks, live checkout cutover
+- Stripe Checkout action status: local code exists and is server-authoritative by stored `orderRef`, but it is not wired to the live checkout page yet.
 - Live compatibility checkout still uses `apps/web/public/checkout.html` and legacy Supabase/payment bridges.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
 - Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
@@ -320,7 +324,7 @@ Current package baseline:
 - Next.js `16.2.9`
 - React `19.2.7`
 - Motion `12.42.0`
-- Turborepo `2.10.1`
+- Turborepo `2.10.2`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
 - Last verified Bun revision: `1.4.0-canary.1+ffea69ae7`

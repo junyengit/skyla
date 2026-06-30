@@ -65,7 +65,17 @@ printf '%s' "$CONVEX_URL" | PATH="$HOME/.bun/bin:$PATH" bunx vercel env add NEXT
 
 The value should look like `https://<deployment>.convex.cloud`.
 
-5. Pull local web envs if you want the Next route to use Convex locally:
+5. Add Stripe action envs to Convex before testing payment creation:
+
+```bash
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_PAYMENT_RETURN_ORIGINS "https://skydeckla.com,https://www.skydeckla.com"
+```
+
+Use Stripe test-mode values for Preview/Development. Do not paste secret values
+into PRs, logs, or docs.
+
+6. Pull local web envs if you want the Next route to use Convex locally:
 
 ```bash
 cd apps/web
@@ -120,6 +130,24 @@ Expected response markers:
 - totals are canonical: subtotal `8100`, fee `405`, total `8505`
 - the fake `totalCents: 1` is ignored
 
+## Before Stripe Cutover
+
+Do not wire the public checkout page to Stripe through Convex until all of
+these are true:
+
+- `bun run convex:env:check` reports `readyForCloudPersistence: true`
+- Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and Production
+- Convex has `STRIPE_SECRET_KEY`
+- Convex has `SKYLA_PAYMENT_RETURN_ORIGINS`
+- Preview `/api/order-drafts/checkout` returns `persisted: true`
+- `bun run check` passes
+- `bun run security:audit` passes
+- A Stripe test-mode checkout can be created from a stored `orderRef`
+- Webhook work is planned and not confused with session creation
+
+Rollback is simple at this stage: leave the order draft route enabled and do
+not call `payments.createStripeCheckoutSession` from the frontend.
+
 ## Agent Notes
 
 - Do not set Vercel production to an anonymous local Convex URL.
@@ -127,5 +155,6 @@ Expected response markers:
   returns ready and a preview POST returns `persisted: true`.
 - `NEXT_PUBLIC_CONVEX_URL` is safe to expose; Convex auth and function guards
   still enforce protected staff flows server-side.
-- Provider payment actions are still separate work. This runbook only covers
-  order draft persistence wiring.
+- Stripe Checkout session creation now exists as a Convex action, but it is not
+  live until the env and frontend cutover gates above pass.
+- Kaskade, Terminal, and webhook actions are still separate work.

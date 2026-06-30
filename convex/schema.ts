@@ -118,6 +118,7 @@ export default defineSchema({
     saleRef: v.optional(v.string()),
     provider: paymentProvider,
     providerPaymentId: v.string(),
+    idempotencyKey: v.optional(v.string()),
     status: paymentStatus,
     currency,
     amountCents: v.number(),
@@ -128,6 +129,7 @@ export default defineSchema({
     .index("by_orderRef", ["orderRef"])
     .index("by_saleRef", ["saleRef"])
     .index("by_provider_providerPaymentId", ["provider", "providerPaymentId"])
+    .index("by_provider_idempotencyKey", ["provider", "idempotencyKey"])
     .index("by_provider_status_createdAt", ["provider", "status", "createdAt"]),
 
   webhookEvents: defineTable({

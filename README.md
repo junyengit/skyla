@@ -44,7 +44,9 @@ flowchart LR
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- The latest verified application production deployment is `https://web-d1efck3u8-junyen-enterprises.vercel.app` from merge commit `b1272b9112dbde4c83c74b07c8d6204ee98c2960`.
+- The latest verified application production deployment before this branch is
+  `https://web-4zohzd1eu-junyen-enterprises.vercel.app` from merge commit
+  `25340de194ca88280f379a16f2617952e70c41b9`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
@@ -97,8 +99,21 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 - Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
 - Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Daily POS reader connection and charges still use the existing staff-authenticated bridge.
-- `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout` establish the first server-authoritative pricing/order spine. This route calculates draft totals from selections only; it does not create provider payments, write Convex records, or power the live compatibility checkout yet.
+- `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
+  establish the first server-authoritative pricing/order spine. This route
+  calculates draft totals from selections only and persists Convex order drafts
+  when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present. It does not
+  create provider payments or power the live compatibility checkout yet.
+- `convex/payments.ts` adds the next Stripe Checkout action. It creates Stripe
+  sessions from stored `orderRef` records only, but it still needs real Convex
+  envs, Stripe envs, frontend cutover, and webhook verification before live use.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
+
+Useful operator references:
+
+- [Environment Reference](docs/reference/environment.md)
+- [Stripe Checkout Cutover Runbook](docs/runbooks/stripe-checkout-cutover.md)
+- [Convex Deployment Runbook](docs/runbooks/convex-deployment.md)
 
 ## Deployment Direction
 

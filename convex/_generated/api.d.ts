@@ -10,7 +10,10 @@
 
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
+import type * as lib_stripeCheckout from "../lib/stripeCheckout.js";
 import type * as orderDrafts from "../orderDrafts.js";
+import type * as paymentInternals from "../paymentInternals.js";
+import type * as payments from "../payments.js";
 
 import type {
   ApiFromModules,
@@ -21,7 +24,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
+  "lib/stripeCheckout": typeof lib_stripeCheckout;
   orderDrafts: typeof orderDrafts;
+  paymentInternals: typeof paymentInternals;
+  payments: typeof payments;
 }>;
 
 /**
