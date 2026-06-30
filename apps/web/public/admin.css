@@ -12,8 +12,8 @@
   --gold-lt:   #e8c97a;
   --white:     #ffffff;
   --off-white: #ffffff;
-  --gray:      #d4d8df;
-  --gray-lt:   #f2f4f8;
+  --gray:      #f5f7fb;
+  --gray-lt:   #ffffff;
   --green:     #3d9e6e;
   --red:       #c0392b;
   --amber:     #d4860f;
@@ -35,6 +35,13 @@ body.admin-body {
   color: var(--off-white);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+}
+
+body.admin-body input,
+body.admin-body textarea,
+body.admin-body select,
+body.admin-body button {
+  color: var(--white);
 }
 
 a { text-decoration: none; color: inherit; }

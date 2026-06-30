@@ -31,6 +31,11 @@ Stripe envs, and Stripe dashboard webhook endpoint exist. The old static
 checkout remains at `/checkout.html` only as a legacy fallback/reference during
 the cutover.
 
+POS is a separate payment surface. `/pos-next` can review server-priced POS sale
+drafts, but Terminal payment is intentionally locked there. Do not treat POS as
+cut over until the Terminal backend creates payment intents from stored
+`saleRef` records only.
+
 ## Flow
 
 ```mermaid
@@ -121,6 +126,33 @@ Expected:
 4. Use Stripe test mode only after the real Convex deployment is linked. Use
    Stripe dashboard/test cards, never a real card, for the preview cutover.
 
+5. Confirm the POS draft route ignores browser totals:
+
+```bash
+curl -sS -X POST "$PREVIEW_URL/api/order-drafts/pos" \
+  -H 'content-type: application/json' \
+  --data '{
+    "lines": [
+      { "kind": "ticket", "packageKey": "drink", "quantity": 2 },
+      { "kind": "cafe", "itemKey": "b1", "quantity": 3 },
+      {
+        "kind": "custom",
+        "name": "Service recovery",
+        "amountCents": 500,
+        "reason": "Manager approved"
+      }
+    ],
+    "idempotencyKey": "pos_20260704_api_check",
+    "totalCents": 1
+  }'
+```
+
+Expected:
+
+- total is `9700`, not `1`
+- `persisted` is `false` until staff auth and Convex are configured
+- Terminal payment remains locked until the `saleRef` action exists
+
 ## Acceptance Checklist
 
 - [ ] Convex cloud project is linked.
@@ -143,6 +175,9 @@ Expected:
 - [ ] Home page checkout links resolve to the App Router `/checkout` page, not
       the legacy static rewrite.
 - [ ] Legacy Supabase Stripe/Kaskade/Terminal payment paths are disabled only after replacement acceptance.
+- [ ] POS Terminal create-intent accepts `saleRef` only before `/pos-next` replaces
+      the live `/pos` path.
+- [ ] No real cards are used during preview verification.
 
 ## Rollback
 

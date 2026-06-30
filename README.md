@@ -45,12 +45,16 @@ As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-2hg4drlf9-junyen-enterprises.vercel.app` from merge commit
-  `28e3e6d6181cb749c9d4d1cb359622750e5c68aa`.
+  `https://web-qoge89yac-junyen-enterprises.vercel.app` from merge commit
+  `a9557cae76b635bb9f3221e071d785381d47ab8b`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
-- The Next app serves the new homepage and checkout route. It bridges legacy routes from `/about`, `/cafe`, `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to static compatibility pages in `apps/web/public`. The old checkout remains available at `/checkout.html` during the payment cutover.
+- The Next app serves the new homepage, checkout route, and `/pos-next` draft
+  review route. It bridges legacy routes from `/about`, `/cafe`,
+  `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to
+  static compatibility pages in `apps/web/public`. The old checkout remains
+  available at `/checkout.html` during the payment cutover.
 
 ## Current Bun And Cleanup State
 
@@ -109,6 +113,10 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
   Stripe webhook route. `/api/payments/stripe-checkout` and the App Router
   `/checkout` page are wired for this path, but live card payment still needs
   real Convex envs, Stripe envs, and Stripe dashboard endpoint setup.
+- `/api/order-drafts/pos` and `/pos-next` add a native POS draft review path.
+  It prices ticket, cafe, and custom POS lines on the server and ignores browser
+  totals. Terminal payment remains locked there until the next backend action
+  creates Stripe Terminal intents from stored `saleRef` records only.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:

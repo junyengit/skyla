@@ -136,6 +136,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Replaced the primary `/checkout` legacy rewrite with a Next.js App Router checkout page that reviews server totals first and fails closed when Convex is unconfigured.
 - [x] Added `/api/payments/stripe-checkout` so the browser can request a Convex-created Stripe Checkout Session by `orderRef` and idempotency key without sending totals.
 - [x] Added Convex schema/function typecheck steps to CI.
+- [x] Merged Next checkout cutover PR #24 into `main` as merge commit `a9557cae76b635bb9f3221e071d785381d47ab8b`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-qoge89yac-junyen-enterprises.vercel.app` (`dpl_Ft1WbJraJzKNQRZKDTXnMKyhUDxo`).
+- [x] Re-ran post-merge route smoke tests for `https://web-qoge89yac-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
+- [x] Verified production `/api/order-drafts/checkout` still ignores browser `totalCents: 1` and returns `persisted: false` with `persistenceReason: "convex_unconfigured"` until Vercel receives `NEXT_PUBLIC_CONVEX_URL`.
+- [x] Verified production `/api/payments/stripe-checkout` fails closed with `503` and `code: "convex_unconfigured"` when Convex is not configured.
+- [x] Started branch `codex/pos-next-draft-spine` for a code-only POS sale draft bridge.
+- [x] Added `/api/order-drafts/pos`, which accepts POS selections only, recalculates ticket/cafe/custom totals on the server, ignores browser totals, and only attempts Convex persistence when a staff bearer token and idempotency key are present.
+- [x] Added native `/pos-next` App Router staff draft screen with high-contrast white text, server-total review, and locked Terminal payment.
+- [x] Extended staff noindex coverage and smoke checks to `/pos-next`.
+- [x] Raised legacy admin/POS dark-theme text contrast again so active staff surfaces read white-on-black while the rebuild continues.
 
 ## In Progress
 
@@ -152,7 +162,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-stripe-checkout-action`.
 - [x] Verify, review, and ship `codex/convex-stripe-webhook`.
 - [x] Verify, review, and ship `codex/post-webhook-readiness-hardening`.
-- [ ] Verify, review, and ship `codex/next-checkout-convex-cutover`.
+- [x] Verify, review, and ship `codex/next-checkout-convex-cutover`.
+- [ ] Verify, review, and ship `codex/pos-next-draft-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -163,8 +174,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Kaskade webhook/action handling.
 - [ ] Kaskade and Stripe Terminal server-authoritative actions.
 - [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
+- [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
 - [ ] Disable `/checkout.html` legacy Supabase payment fallback after Convex/Stripe dashboard acceptance.
-- [ ] Admin/POS rebuild.
+- [ ] Live POS Terminal capture from stored `saleRef` only.
+- [ ] Admin/POS protected App Router rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 

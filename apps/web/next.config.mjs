@@ -1,4 +1,4 @@
-import { legacyRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
+import { legacyRoutes, noindexAppRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
@@ -48,6 +48,22 @@ const nextConfig = {
         },
         {
           source: `/${route}.html`,
+          headers: [
+            ...securityHeaders,
+            { key: "X-Robots-Tag", value: "noindex, nofollow" }
+          ]
+        },
+        {
+          source: `/${route}/:path*`,
+          headers: [
+            ...securityHeaders,
+            { key: "X-Robots-Tag", value: "noindex, nofollow" }
+          ]
+        }
+      ]),
+      ...noindexAppRoutes.flatMap((route) => [
+        {
+          source: `/${route}`,
           headers: [
             ...securityHeaders,
             { key: "X-Robots-Tag", value: "noindex, nofollow" }

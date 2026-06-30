@@ -2,12 +2,18 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --bg: #0c0d10; --panel: #14161b; --panel2: #1b1e24; --line: #2a2e36;
-  --gold: #c9a84c; --gold-soft: #d8be73; --text: #ffffff; --muted: #d4d8df;
+  --gold: #c9a84c; --gold-soft: #d8be73; --text: #ffffff; --muted: #f5f7fb;
 }
 body.pos-body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg); color: var(--text);
   height: 100vh; overflow: hidden;
+}
+body.pos-body input,
+body.pos-body textarea,
+body.pos-body select,
+body.pos-body button {
+  color: var(--text);
 }
 input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.78); opacity: 1; }
 

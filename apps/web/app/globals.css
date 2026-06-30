@@ -719,3 +719,390 @@ h3 {
     align-items: flex-start;
   }
 }
+
+.posNextPage {
+  min-height: 100svh;
+  background: #050506;
+  color: #fff;
+  overflow-x: hidden;
+  padding: 18px clamp(14px, 3vw, 34px) 28px;
+}
+
+.posNextHeader {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  width: min(1280px, 100%);
+  margin-inline: auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.posNextHeader nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.posNextHeader nav a,
+.posNextStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.posNextStatus {
+  color: var(--green);
+}
+
+.posNextShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.38fr);
+  gap: 18px;
+  width: min(1280px, 100%);
+  margin: 18px auto 0;
+  align-items: stretch;
+}
+
+.posNextCatalog,
+.posNextCart {
+  min-width: 0;
+  width: 100%;
+  min-height: calc(100svh - 128px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(14, 15, 18, 0.96);
+}
+
+.posNextCatalog {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.posNextToolbar {
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.posNextToolbar button,
+.posNextItem,
+.posNextStepper button,
+.posNextCustom button,
+.posNextActions button {
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.posNextToolbar button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 16px;
+  font-weight: 800;
+}
+
+.posNextToolbar button.isActive {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #15120a;
+}
+
+.posNextGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 12px;
+  align-content: start;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.posNextItem {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 16px;
+  text-align: left;
+}
+
+.posNextItem:hover {
+  border-color: var(--gold);
+}
+
+.posNextItem span {
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.posNextItem strong {
+  color: var(--gold-strong);
+  font-size: 1.12rem;
+}
+
+.posNextCustom {
+  width: min(520px, calc(100% - 32px));
+  display: grid;
+  gap: 14px;
+  align-self: start;
+  margin: 16px;
+}
+
+.posNextCustom label,
+.posNextEmail {
+  display: grid;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.posNextCustom input,
+.posNextEmail input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  font: inherit;
+  padding: 0 14px;
+}
+
+.posNextCustom input::placeholder,
+.posNextEmail input::placeholder {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.posNextCart {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.posNextCartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.posNextCartHeader p {
+  margin: 0 0 6px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.posNextCartHeader h2 {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.posNextCartHeader svg {
+  color: var(--green);
+}
+
+.posNextLines {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 18px;
+}
+
+.posNextEmpty {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+  color: #fff;
+  text-align: center;
+}
+
+.posNextLine,
+.posNextReviewedLine,
+.posNextTotals div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.posNextLine {
+  min-height: 68px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.posNextLine strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.posNextLine span {
+  display: block;
+  margin-top: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
+.posNextStepper {
+  display: grid;
+  grid-template-columns: 34px 32px 34px;
+  align-items: center;
+  text-align: center;
+}
+
+.posNextStepper button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.posNextEmail,
+.posNextTotals,
+.posNextReviewed,
+.posNextMessage,
+.posNextActions {
+  margin-inline: 18px;
+}
+
+.posNextEmail {
+  margin-top: 12px;
+}
+
+.posNextTotals {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.posNextTotals span {
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.posNextTotals strong {
+  color: var(--gold-strong);
+  text-align: right;
+}
+
+.posNextReviewed {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(141, 216, 178, 0.24);
+  border-radius: 8px;
+  background: rgba(141, 216, 178, 0.06);
+}
+
+.posNextReviewedLine {
+  color: #fff;
+  font-size: 0.86rem;
+}
+
+.posNextMessage {
+  margin-top: 14px;
+  color: #fff;
+  line-height: 1.45;
+}
+
+.posNextActions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 18px;
+}
+
+.posNextActions .primaryAction,
+.posNextActions .secondaryAction {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  gap: 8px;
+}
+
+.posNextActions .primaryAction:disabled,
+.posNextActions .secondaryAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 980px) {
+  .posNextHeader,
+  .posNextShell {
+    grid-template-columns: 1fr;
+  }
+
+  .posNextHeader {
+    padding-bottom: 14px;
+  }
+
+  .posNextHeader nav,
+  .posNextStatus {
+    justify-self: start;
+  }
+
+  .posNextCatalog,
+  .posNextCart {
+    min-height: auto;
+  }
+
+  .posNextToolbar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .posNextToolbar button {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .posNextHeader nav {
+    flex-wrap: wrap;
+  }
+
+  .posNextGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .posNextTotals div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .posNextTotals strong {
+    text-align: left;
+  }
+}
