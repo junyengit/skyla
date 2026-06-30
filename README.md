@@ -9,6 +9,8 @@ apps/web            Next.js App Router application for Vercel
 packages/config     Shared site/business constants
 packages/ui         Shared UI primitives and icons
 docs/               Migration plan, runbooks, architecture notes
+docs/audits         Discovery notes and implementation evidence
+docs/decisions      Lightweight architecture decision records
 supabase/functions  Legacy Supabase Edge Functions kept until Convex cutover
 images/             Legacy static site images
 ```
@@ -60,7 +62,7 @@ cd ../.. && pnpm turbo build --filter=@skyla/web
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.
 
-The Vercel production route matrix has passed on the Vercel deployment URL, and Vercel verifies the custom domains. Keep GitHub Pages available as rollback until public DNS cache behavior has settled and custom-domain smoke tests pass without DNS overrides. See [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before disabling old deployments.
+The Vercel production route matrix has passed on the Vercel deployment URL, and Vercel verifies the custom domains. Keep GitHub Pages available as rollback until public DNS cache behavior has settled and custom-domain smoke tests pass without DNS overrides. See [docs/phase-2-roadmap.md](docs/phase-2-roadmap.md) for the next migration phase and [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before disabling old deployments.
 
 ## Sensitive Artifacts
 
