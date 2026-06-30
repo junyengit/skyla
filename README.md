@@ -44,7 +44,7 @@ flowchart LR
 As of June 30, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- The latest verified application production deployment is
+- Recorded verified application production deployment:
   `https://web-5rd41qfa5-junyen-enterprises.vercel.app` from merge commit
   `edbd1d80ad43f967680b9e96c1b60c253ed04a70`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.

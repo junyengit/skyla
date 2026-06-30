@@ -25,10 +25,10 @@ root.
 
 As of June 30, 2026:
 
-- The latest verified application deployment from `main` is READY at
+- Recorded verified application deployment from `main` was READY at
   `https://web-5rd41qfa5-junyen-enterprises.vercel.app`.
-- Latest verified deployment ID is `dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`.
-- Latest verified merge commit is
+- Recorded verified deployment ID: `dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`.
+- Recorded verified merge commit:
   `edbd1d80ad43f967680b9e96c1b60c253ed04a70`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain.
