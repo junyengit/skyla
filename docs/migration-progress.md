@@ -2,9 +2,13 @@
 
 This file is the durable scratchpad for the migration. Update it whenever a task starts, finishes, or is deferred.
 
-## Active Goal
+## Completed Foundation Goal
 
 Finish the Vercel/Turborepo/Next.js foundation, keep the legacy static site recoverable, make the Vercel production deployment route-compatible with current public paths, then cut over `skydeckla.com` only after verification.
+
+## Active Phase 2 Goal
+
+Clean and reorganize the repository around the new Turborepo architecture, adopt Bun canary deliberately, migrate functionality into Next.js and Convex, make docs useful for humans and agents, add meaningful QA/security coverage, and ship through reviewed PRs.
 
 ## Current Status
 
@@ -55,6 +59,9 @@ Finish the Vercel/Turborepo/Next.js foundation, keep the legacy static site reco
 ## In Progress
 
 - [ ] Re-run custom-domain smoke tests without DNS overrides after local OS/browser DNS caches stop returning stale GitHub Pages answers.
+- [x] Review subagent audits for Convex/functionality, repo/assets cleanup, and QA/security.
+- [ ] Land the Phase 2 roadmap and Bun/Vercel runbook.
+- [ ] Create the Bun migration PR only after local canary install/checks are reproducible.
 
 ## Deferred Until Foundation Is Stable
 
