@@ -90,6 +90,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-d1efck3u8-junyen-enterprises.vercel.app` (`dpl_FNnfuoY5KbLKG7WceuXuhycp8Q2r`).
 - [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 - [x] Verified production `/api/order-drafts/checkout` returns canonical totals and ignores browser-supplied totals.
+- [x] Started branch `codex/convex-persist-order-drafts` from clean `main` for persisted Convex checkout/POS draft refs.
+- [x] Added committed Convex generated API/server/data-model types from anonymous local Convex validation.
+- [x] Added `convex/orderDrafts.ts` with checkout draft persistence, staff-gated POS sale draft persistence, idempotency checks, and read-back queries.
+- [x] Added shared record helpers that generate `SKYYYMM-XXXXXX` checkout refs and `SALEYYMMDD-XXXXXX` POS sale refs while omitting undefined fields before writes.
+- [x] Added cloud-free Convex helper tests plus `convex:test:unit` and `convex:functions:typecheck` gates.
 
 ## In Progress
 
@@ -101,11 +106,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Open the Bun/root-cleanup PR and verify GitHub CI plus Vercel preview.
 - [x] Smoke-test the Vercel preview with `SMOKE_BASE_URL=<preview-url> bun run test:smoke`.
 - [x] Verify, review, and ship `codex/convex-order-spine`.
-- [ ] Link the real Convex deployment and run committed generated API/server types in a follow-up PR.
+- [ ] Verify, review, and ship `codex/convex-persist-order-drafts`.
+- [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
 
-- [ ] Convex deployment, generated types, and persisted mutations/actions.
+- [x] Convex generated types and persisted draft mutations.
+- [ ] Real Convex cloud deployment link and Vercel env wiring.
+- [ ] Convex provider actions and HTTP webhook actions.
 - [ ] Stripe/Kaskade server-authoritative order flow.
 - [ ] Admin/POS rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
@@ -132,4 +140,4 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.1` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
 - `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex/payment PR.
-- `convex codegen --typecheck enable` requires a linked `CONVEX_DEPLOYMENT`; this branch uses `bun run convex:schema:typecheck` as the local no-deployment gate and documents codegen as the next deployment-linked step.
+- The real Convex cloud project is still not linked in this worktree or Vercel. This branch uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` for local validation and commits generated types from that local pass.

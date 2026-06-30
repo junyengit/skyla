@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { createCheckoutOrderDraft, createPosSaleDraft } from "./order";
+import {
+  checkoutOrderLineRecords,
+  checkoutOrderRecord,
+  orderRefFromId,
+  posSaleLineRecords,
+  posSaleRecord,
+  saleRefFromId
+} from "./records";
 
 describe("createCheckoutOrderDraft", () => {
   it("calculates canonical ticket, child, addon, fee, and total cents", () => {
@@ -99,5 +107,106 @@ describe("createPosSaleDraft", () => {
         lines: [{ kind: "custom", name: "Manual charge", amountCents: 500, reason: "" }]
       })
     ).toThrow("Custom charge requires a reason");
+  });
+});
+
+describe("stored order records", () => {
+  it("maps checkout drafts into stable order and line records", () => {
+    const draft = createCheckoutOrderDraft({
+      packageKey: "general",
+      adults: 2,
+      children: 1,
+      addons: { matcha: 1 },
+      customerEmail: "Guest@Example.com",
+      visitDate: "2026-07-04",
+      entryTime: "15:00"
+    });
+    const now = Date.UTC(2026, 6, 4, 12);
+    const orderRef = orderRefFromId("abc123", now);
+    const record = checkoutOrderRecord(draft, {
+      orderRef,
+      now,
+      source: "unit-test",
+      idempotencyKey: "idem_checkout_123",
+      draftFingerprint: "v1:fingerprint"
+    });
+    const lines = checkoutOrderLineRecords(orderRef, draft.lines);
+
+    expect(record).toMatchObject({
+      orderRef: "SKY2607-ABC123",
+      channel: "online",
+      status: "draft",
+      subtotalCents: 8100,
+      feeCents: 405,
+      totalCents: 8505,
+      customerEmailLower: "guest@example.com",
+      visitDate: "2026-07-04",
+      entryTime: "15:00",
+      source: "unit-test",
+      idempotencyKey: "idem_checkout_123",
+      draftFingerprint: "v1:fingerprint",
+      createdAt: now,
+      updatedAt: now
+    });
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toEqual(expect.objectContaining({ orderRef, kind: "ticket", lineTotalCents: 5800 }));
+  });
+
+  it("maps POS drafts into staff-attributed sale and line records", () => {
+    const draft = createPosSaleDraft({
+      actorRole: "pos",
+      lines: [
+        { kind: "ticket", packageKey: "drink", quantity: 1 },
+        { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
+      ],
+      customerEmail: "STAFFSALE@EXAMPLE.COM"
+    });
+    const now = Date.UTC(2026, 6, 4, 12);
+    const saleRef = saleRefFromId("sale-id", now);
+    const record = posSaleRecord(draft, {
+      saleRef,
+      now,
+      staffUserId: "staff_123",
+      readerId: "tmr_reader_123",
+      terminalLocationId: "tml_location_123",
+      idempotencyKey: "idem_pos_12345",
+      draftFingerprint: "v1:posfinger"
+    });
+    const lines = posSaleLineRecords(saleRef, draft.lines);
+
+    expect(record).toMatchObject({
+      saleRef: "SALE260704-SALEID",
+      status: "draft",
+      subtotalCents: 4200,
+      feeCents: 0,
+      totalCents: 4200,
+      staffUserId: "staff_123",
+      customerEmailLower: "staffsale@example.com",
+      readerId: "tmr_reader_123",
+      terminalLocationId: "tml_location_123",
+      idempotencyKey: "idem_pos_12345",
+      draftFingerprint: "v1:posfinger",
+      createdAt: now,
+      updatedAt: now
+    });
+    expect(lines).toEqual([
+      expect.objectContaining({ saleRef, kind: "ticket", lineTotalCents: 3700 }),
+      expect.objectContaining({ saleRef, kind: "custom", lineTotalCents: 500, metadata: { reason: "Guest requested locker" } })
+    ]);
+  });
+
+  it("omits absent optional fields instead of storing undefined", () => {
+    const draft = createCheckoutOrderDraft({ packageKey: "general", adults: 1 });
+    const record = checkoutOrderRecord(draft, {
+      orderRef: orderRefFromId("abc123", Date.UTC(2026, 6, 4)),
+      now: 123
+    });
+    const [line] = checkoutOrderLineRecords(record.orderRef, draft.lines);
+
+    expect(Object.hasOwn(record, "customerEmailLower")).toBe(false);
+    expect(Object.hasOwn(record, "visitDate")).toBe(false);
+    expect(Object.hasOwn(record, "entryTime")).toBe(false);
+    expect(Object.hasOwn(record, "source")).toBe(false);
+    expect(Object.hasOwn(line, "metadata")).toBe(false);
   });
 });

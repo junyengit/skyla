@@ -53,11 +53,14 @@ export default defineSchema({
     visitDate: v.optional(v.string()),
     entryTime: v.optional(v.string()),
     source: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    draftFingerprint: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     rawLegacy: v.optional(v.any())
   })
     .index("by_orderRef", ["orderRef"])
+    .index("by_channel_idempotencyKey", ["channel", "idempotencyKey"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_channel_status_createdAt", ["channel", "status", "createdAt"])
     .index("by_customerEmail_createdAt", ["customerEmailLower", "createdAt"]),
@@ -81,15 +84,19 @@ export default defineSchema({
     status: orderStatus,
     currency,
     subtotalCents: v.number(),
+    feeCents: v.number(),
     totalCents: v.number(),
     staffUserId: v.optional(v.id("staffUsers")),
     customerEmailLower: v.optional(v.string()),
     readerId: v.optional(v.string()),
     terminalLocationId: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    draftFingerprint: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number()
   })
     .index("by_saleRef", ["saleRef"])
+    .index("by_staff_idempotencyKey", ["staffUserId", "idempotencyKey"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_staff_createdAt", ["staffUserId", "createdAt"]),
 
