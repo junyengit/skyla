@@ -37,6 +37,9 @@ flowchart TD
 
 ## Required Dashboard State
 
+As of July 1, 2026, production correctly returns `convex_unconfigured` for this
+route because Vercel is not wired to a real Convex deployment yet.
+
 - Vercel has `NEXT_PUBLIC_CONVEX_URL`.
 - Convex has `STRIPE_SECRET_KEY`.
 - Staff auth provider is configured for Convex.
