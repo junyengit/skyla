@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 
+import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
+import { requireStaffUser } from "./lib/auth";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
+import type { StripeTerminalSnapshot } from "./lib/stripeTerminal";
 import { stripeCheckoutOrderStatusAfterUnpaidOutcome } from "./lib/stripeWebhook";
 
 export const getCheckoutPaymentSnapshot = internalQuery({
@@ -102,6 +105,135 @@ export const recordStripeCheckoutSession = internalMutation({
       status: "payment_pending",
       expectedProvider: "stripe",
       updatedAt: now
+    });
+
+    return { eventId, reused: false };
+  }
+});
+
+export const getPosTerminalPaymentSnapshot = internalQuery({
+  args: {
+    saleRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (ctx, args): Promise<StripeTerminalSnapshot & { actorStaffUserId: Id<"staffUsers"> }> => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
+    const idempotencyKey = args.idempotencyKey.trim();
+    if (!idempotencyKey) {
+      throw new Error("POS sale idempotency key is required");
+    }
+
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .unique();
+    if (!sale || sale.idempotencyKey !== idempotencyKey) {
+      throw new Error("POS sale was not found for this payment attempt");
+    }
+    if (sale.status !== "draft" && sale.status !== "payment_pending") {
+      throw new Error(`POS sale cannot create a Terminal intent from status ${sale.status}`);
+    }
+    if (staffUser.role !== "admin" && sale.staffUserId && sale.staffUserId !== staffUser._id) {
+      throw new Error("POS sale belongs to a different staff user");
+    }
+
+    const lines = await ctx.db
+      .query("posSaleLines")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .collect();
+
+    return {
+      actorStaffUserId: staffUser._id,
+      saleRef: sale.saleRef,
+      currency: sale.currency,
+      subtotalCents: sale.subtotalCents,
+      feeCents: sale.feeCents,
+      totalCents: sale.totalCents,
+      customerEmailLower: sale.customerEmailLower,
+      readerId: sale.readerId,
+      terminalLocationId: sale.terminalLocationId,
+      lines: lines.map((line) => ({
+        name: line.name,
+        quantity: line.quantity,
+        unitAmountCents: line.unitAmountCents,
+        lineTotalCents: line.lineTotalCents
+      }))
+    };
+  }
+});
+
+export const recordStripeTerminalPaymentIntent = internalMutation({
+  args: {
+    saleRef: v.string(),
+    providerPaymentId: v.string(),
+    idempotencyKey: v.string(),
+    amountCents: v.number(),
+    currency: v.literal("usd"),
+    actorStaffUserId: v.id("staffUsers"),
+    raw: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    const existingEvent = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_provider_idempotencyKey", (q) =>
+        q.eq("provider", "terminal").eq("idempotencyKey", args.idempotencyKey)
+      )
+      .first();
+
+    if (existingEvent) {
+      if (
+        existingEvent.saleRef !== args.saleRef ||
+        existingEvent.providerPaymentId !== args.providerPaymentId ||
+        existingEvent.amountCents !== args.amountCents ||
+        existingEvent.currency !== args.currency
+      ) {
+        throw new Error("Stripe Terminal idempotency key was reused for a different payment");
+      }
+      return { eventId: existingEvent._id, reused: true };
+    }
+
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .unique();
+    if (!sale) {
+      throw new Error("POS sale disappeared before payment recording");
+    }
+    if (sale.totalCents !== args.amountCents || sale.currency !== args.currency) {
+      throw new Error("Stripe Terminal amount does not match the stored POS sale");
+    }
+    if (sale.status !== "draft" && sale.status !== "payment_pending") {
+      throw new Error(`POS sale cannot record a Terminal intent from status ${sale.status}`);
+    }
+
+    const now = Date.now();
+    const eventId = await ctx.db.insert("paymentEvents", {
+      saleRef: args.saleRef,
+      provider: "terminal",
+      providerPaymentId: args.providerPaymentId,
+      idempotencyKey: args.idempotencyKey,
+      status: "requires_payment",
+      currency: args.currency,
+      amountCents: args.amountCents,
+      raw: args.raw,
+      createdAt: now
+    });
+
+    await ctx.db.patch(sale._id, {
+      status: "payment_pending",
+      updatedAt: now
+    });
+
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: args.actorStaffUserId,
+      action: "pos.terminalIntent.create",
+      entityType: "posSale",
+      entityRef: args.saleRef,
+      metadata: {
+        amountCents: args.amountCents,
+        providerPaymentId: args.providerPaymentId
+      },
+      createdAt: now
     });
 
     return { eventId, reused: false };

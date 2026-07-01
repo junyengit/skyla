@@ -12,6 +12,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
 import type * as lib_stripeCheckout from "../lib/stripeCheckout.js";
+import type * as lib_stripeTerminal from "../lib/stripeTerminal.js";
 import type * as lib_stripeWebhook from "../lib/stripeWebhook.js";
 import type * as orderDrafts from "../orderDrafts.js";
 import type * as paymentInternals from "../paymentInternals.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
   "lib/stripeCheckout": typeof lib_stripeCheckout;
+  "lib/stripeTerminal": typeof lib_stripeTerminal;
   "lib/stripeWebhook": typeof lib_stripeWebhook;
   orderDrafts: typeof orderDrafts;
   paymentInternals: typeof paymentInternals;

@@ -146,6 +146,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added native `/pos-next` App Router staff draft screen with high-contrast white text, server-total review, and locked Terminal payment.
 - [x] Extended staff noindex coverage and smoke checks to `/pos-next`.
 - [x] Raised legacy admin/POS dark-theme text contrast again so active staff surfaces read white-on-black while the rebuild continues.
+- [x] Merged POS draft spine PR #25 into `main` as merge commit `49b6f2645df90ad76ff64e2069cb0963040f3e4d`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-dhnis3o2h-junyen-enterprises.vercel.app` (`dpl_31kaRK2yL5n56PgrQ7jeLXuRgY5F`).
+- [x] Re-ran post-merge route smoke tests for `https://web-dhnis3o2h-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
+- [x] Verified production `/api/order-drafts/pos` ignores spoofed POS totals, reader IDs, and Terminal location IDs.
+- [x] Started branch `codex/terminal-sale-ref-hardening` for Stripe/card API hardening and POS Terminal sale-ref work.
+- [x] Added a staff-authenticated Convex Stripe Terminal action that creates PaymentIntents from stored POS `saleRef` records and matching idempotency keys only.
+- [x] Added `/api/payments/stripe-terminal`, which forwards a staff bearer token to Convex and accepts only `saleRef` plus `idempotencyKey`.
+- [x] Disabled legacy browser-authoritative Stripe card checkout on `/checkout.html`; the App Router `/checkout` is now the card path.
+- [x] Added fail-closed defaults to the repo copy of legacy Supabase Stripe Checkout and Terminal payment creation functions.
 
 ## In Progress
 
@@ -163,7 +172,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-stripe-webhook`.
 - [x] Verify, review, and ship `codex/post-webhook-readiness-hardening`.
 - [x] Verify, review, and ship `codex/next-checkout-convex-cutover`.
-- [ ] Verify, review, and ship `codex/pos-next-draft-spine`.
+- [x] Verify, review, and ship `codex/pos-next-draft-spine`.
+- [ ] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -172,11 +182,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Real Convex cloud deployment link and Vercel env wiring.
 - [x] Convex Stripe HTTP webhook action.
 - [ ] Kaskade webhook/action handling.
-- [ ] Kaskade and Stripe Terminal server-authoritative actions.
+- [ ] Kaskade server-authoritative action.
+- [x] Stripe Terminal sale-ref PaymentIntent action and Next route.
 - [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
 - [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
-- [ ] Disable `/checkout.html` legacy Supabase payment fallback after Convex/Stripe dashboard acceptance.
-- [ ] Live POS Terminal capture from stored `saleRef` only.
+- [x] Disable `/checkout.html` legacy Stripe card fallback in the Vercel-served compatibility page.
+- [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
+- [ ] Live POS Terminal reader collection and capture from stored `saleRef` only.
 - [ ] Admin/POS protected App Router rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
@@ -201,6 +213,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.2` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
-- `setup-reader` is now token-gated, but Terminal payment intent creation is still a legacy Supabase function that accepts client totals. Full server authority still requires the Convex Terminal/POS replacement.
+- The active branch adds the Convex Terminal/POS replacement that creates Stripe Terminal PaymentIntents from stored `saleRef` records only. Live reader collection still needs staff auth wiring and dashboard/env acceptance before `/pos-next` can replace `/pos`.
 - The real Convex cloud project is still not linked in this worktree or Vercel. This branch uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` for local validation and commits generated types from that local pass.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
+- Repository copies of legacy Supabase Stripe Checkout and Terminal functions now fail closed unless explicitly re-enabled by transition env vars, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import {
@@ -12,6 +13,13 @@ import {
   type StripeCheckoutSessionResponse,
   type StripeCheckoutSnapshot
 } from "./lib/stripeCheckout";
+import {
+  buildStripeTerminalPaymentIntentRequest,
+  sanitizeStripeTerminalPaymentIntent,
+  stripeTerminalErrorMessage,
+  type StripeTerminalPaymentIntentResponse,
+  type StripeTerminalSnapshot
+} from "./lib/stripeTerminal";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -38,11 +46,12 @@ export const createStripeCheckoutSession = action({
       cancelUrl: assertStripeReturnOriginAllowed(args.cancelUrl, "cancelUrl", allowedReturnOrigins)
     });
 
-    const session = await stripeFormPost(request.endpoint, {
+    const session = await stripeFormPost<StripeCheckoutSessionResponse>(request.endpoint, {
       secretKey,
       apiVersion: request.apiVersion,
       idempotencyKey: request.idempotencyKey,
-      body: request.body
+      body: request.body,
+      errorMessage: stripeSessionErrorMessage
     });
     const sessionId = session.id;
     const sessionUrl = session.url;
@@ -76,15 +85,80 @@ export const createStripeCheckoutSession = action({
   }
 });
 
-async function stripeFormPost(
+export const createStripeTerminalPaymentIntent = action({
+  args: {
+    saleRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (ctx, args) => {
+    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+    if (!secretKey) {
+      throw new Error("STRIPE_SECRET_KEY is not configured");
+    }
+
+    const snapshot: StripeTerminalSnapshot & { actorStaffUserId: Id<"staffUsers"> } = await ctx.runQuery(
+      internal.paymentInternals.getPosTerminalPaymentSnapshot,
+      {
+        saleRef: args.saleRef,
+        idempotencyKey: args.idempotencyKey
+      }
+    );
+    const request = buildStripeTerminalPaymentIntentRequest(snapshot);
+
+    const intent = await stripeFormPost<StripeTerminalPaymentIntentResponse>(request.endpoint, {
+      secretKey,
+      apiVersion: request.apiVersion,
+      idempotencyKey: request.idempotencyKey,
+      body: request.body,
+      errorMessage: stripeTerminalErrorMessage
+    });
+    const paymentIntentId = intent.id;
+    if (typeof paymentIntentId !== "string" || !paymentIntentId) {
+      throw new Error("Stripe did not return a Terminal PaymentIntent id");
+    }
+    const clientSecret = intent.client_secret;
+    if (typeof clientSecret !== "string" || !clientSecret) {
+      throw new Error("Stripe did not return a Terminal PaymentIntent client secret");
+    }
+    if (intent.amount !== undefined && intent.amount !== snapshot.totalCents) {
+      throw new Error("Stripe returned a Terminal PaymentIntent for the wrong amount");
+    }
+    if (intent.currency !== undefined && intent.currency !== snapshot.currency) {
+      throw new Error("Stripe returned a Terminal PaymentIntent for the wrong currency");
+    }
+
+    await ctx.runMutation(internal.paymentInternals.recordStripeTerminalPaymentIntent, {
+      saleRef: snapshot.saleRef,
+      providerPaymentId: paymentIntentId,
+      idempotencyKey: request.idempotencyKey,
+      amountCents: snapshot.totalCents,
+      currency: snapshot.currency,
+      actorStaffUserId: snapshot.actorStaffUserId,
+      raw: sanitizeStripeTerminalPaymentIntent(intent)
+    });
+
+    return {
+      saleRef: snapshot.saleRef,
+      provider: "terminal" as const,
+      paymentIntentId,
+      clientSecret,
+      amountCents: snapshot.totalCents,
+      currency: snapshot.currency,
+      status: intent.status ?? "requires_payment"
+    };
+  }
+});
+
+async function stripeFormPost<T extends { error?: { message?: string } }>(
   endpoint: string,
   options: {
     secretKey: string;
     apiVersion: string;
     idempotencyKey: string;
     body: URLSearchParams;
+    errorMessage: (data: T) => string;
   }
-): Promise<StripeCheckoutSessionResponse> {
+): Promise<T> {
   const response = await fetch(`${stripeApiBaseUrl}${endpoint}`, {
     method: "POST",
     headers: {
@@ -95,9 +169,9 @@ async function stripeFormPost(
     },
     body: options.body
   });
-  const data = (await response.json()) as StripeCheckoutSessionResponse;
+  const data = (await response.json()) as T;
   if (!response.ok) {
-    throw new Error(stripeSessionErrorMessage(data));
+    throw new Error(options.errorMessage(data));
   }
   return data;
 }

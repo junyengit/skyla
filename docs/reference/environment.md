@@ -21,12 +21,14 @@ safe for browser code, secret means dashboard/server only.
 | `NEXT_PUBLIC_CONVEX_URL` | yes | Vercel | Production/Preview/Development | Lets Next routes call the linked Convex deployment. | Required for persisted checkout drafts from Vercel. |
 | `CONVEX_DEPLOYMENT` | no | local + Convex CLI | local/dev | Links local codegen to the real Convex project. | Must not be `anonymous:*` for cloud readiness. |
 | `CONVEX_URL` | no | local + Convex CLI | local/dev | Server-side Convex URL for local verification. | Must be HTTPS for cloud; localhost only for anonymous local testing. |
-| `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions. | Required before `payments.createStripeCheckoutSession` can run. |
+| `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions and Stripe Terminal PaymentIntents. | Required before `payments.createStripeCheckoutSession` or `payments.createStripeTerminalPaymentIntent` can run. |
 | `SKYLA_PAYMENT_RETURN_ORIGINS` | no | Convex | Production/Preview/Development | Comma-separated allowed origins for Stripe success/cancel URLs. | Required; example `https://skydeckla.com,https://www.skydeckla.com`. |
 | `STRIPE_WEBHOOK_SECRET` | no | Convex | Production/Preview/Development | Verifies Stripe webhook signatures for `POST /stripe-webhook`. | Required before webhook cutover. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | yes | Vercel | Production/Preview/Development | Browser-safe Stripe.js publishable key. | Needed only when frontend is wired to Stripe.js or embedded Checkout. |
 | `KASKADE_API_KEY` | no | Convex | Production/Preview/Development | Future Kaskade payment action secret. | Not ready; legacy bridge still exists. |
 | `SKYLA_TERMINAL_SETUP_TOKEN` | no | Supabase legacy, later Convex | Production only | One-time manager token for Stripe Terminal reader setup. | Legacy hardening is present; Terminal payment creation still needs replacement. |
+| `SKYLA_ENABLE_LEGACY_BROWSER_PAYMENTS` | no | Supabase legacy only | Transition only | Emergency opt-in for the old browser-authoritative Supabase Stripe Checkout create/update actions. | Leave unset/false; repo code fails closed by default. |
+| `SKYLA_ENABLE_LEGACY_TERMINAL_BRIDGE` | no | Supabase legacy only | Transition only | Emergency opt-in for the old browser-reachable Supabase Terminal connection/list/create-intent bridge. | Leave unset/false; repo code fails closed by default. |
 | `SUPABASE_URL` | mixed | Vercel/Supabase legacy | Transition only | Keeps compatibility pages talking to legacy Supabase. | Keep only until Convex replacements are accepted. |
 | `SUPABASE_ANON_KEY` | yes-ish | Vercel/Supabase legacy | Transition only | Legacy browser reads/writes through existing bridge. | Do not add service-role powers to browser paths. |
 | `SUPABASE_SERVICE_ROLE_KEY` | no | server only | Transition only | Legacy server migration/admin tasks. | Never expose to `NEXT_PUBLIC_*`; avoid Preview production access. |

@@ -454,12 +454,11 @@ function buildReview() {
 }
 
 // ── PAYMENTS (Stripe) ────────────────────────────────────────────────────────
-// Once the Supabase `stripe-checkout` function is deployed + secret is set,
-// flip this to true. While false, checkout creates the booking directly (demo,
-// no real charge) so the site keeps working.
-const STRIPE_ENABLED = true;
-// Publishable key is safe to expose in the browser (Stripe.js needs it).
-const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TjP6tGiz0M8uKyj8TpIyvFLrpV8SIcAAGBNinwfwRhFcNvPSKlNnUYGlOTlotoyIjoiD9KoHnl8aoxRcq1JBY0W00JOthe7gO';
+// Legacy browser-authoritative Stripe creation is intentionally disabled. Use
+// the App Router `/checkout` flow, which prices orders on the server and calls
+// Convex/Stripe from stored order refs only.
+const STRIPE_ENABLED = false;
+const STRIPE_PUBLISHABLE_KEY = '';
 let _stripe = null, _stripeElements = null, _stripeCtx = null;
 
 function setBtnBusy(label) {
@@ -520,18 +519,16 @@ async function confirmOrder() {
     const { booking, ticketData } = buildBookingPayload();
     return startCryptoCheckout(booking, ticketData);
   }
-  if (STRIPE_ENABLED) {
-    // Card form is already dropped down inline — just confirm it
-    return submitStripePayment();
+  if (method === 'card') {
+    if (STRIPE_ENABLED) {
+      // Card form is already dropped down inline — just confirm it
+      return submitStripePayment();
+    }
+    flashError('step-3', 'Card checkout has moved to the secure /checkout flow. Please use the main booking page.');
+    return;
   }
 
-  // Demo mode — no real payment, create the booking directly
-  const { booking, ticketData } = buildBookingPayload();
-  setBtnBusy('Processing…');
-  if (typeof SkylaData !== 'undefined') SkylaData.addBooking(booking);
-  const emailStatus = await sendConfirmationEmail(ticketData);
-  clearBtnBusy();
-  showTicket({ ...ticketData, emailStatus });
+  flashError('step-3', 'Choose a supported payment method to continue.');
 }
 
 // When Stripe is live, reflect it in the payment step UI
@@ -542,8 +539,27 @@ function applyStripeUI() {
       `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` +
       ` Pay securely by card right here — handled by <strong>Stripe</strong>. We never see or store your card details.`;
   }
+  setConfirmButtonTotalLabel('🔒 Pay Securely —');
+}
+
+function applyCardUnavailableUI() {
+  const notice = document.getElementById('pay-notice');
+  if (notice) {
+    notice.innerHTML =
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` +
+      ` Card checkout has moved to the new secure server-priced flow at <strong>/checkout</strong>.`;
+  }
+  setConfirmButtonTotalLabel('Card Checkout Unavailable —');
+}
+
+function setConfirmButtonTotalLabel(label) {
   const btn = document.querySelector('.btn--confirm');
-  if (btn) btn.innerHTML = `🔒 Pay Securely — <span id="final-total">${document.getElementById('final-total')?.textContent || '$0.00'}</span>`;
+  if (!btn) return;
+  const totalText = document.getElementById('final-total')?.textContent || '$0.00';
+  const total = document.createElement('span');
+  total.id = 'final-total';
+  total.textContent = totalText;
+  btn.replaceChildren(document.createTextNode(`${label} `), total);
 }
 
 // Redirect the customer to Stripe's hosted, PCI-compliant payment page
@@ -961,8 +977,8 @@ function updatePayMethodUI() {
       ` Pay in Bitcoin, Ethereum, USDT &amp; more. Your ticket is issued the moment the payment confirms.`;
   } else if (STRIPE_ENABLED) {
     applyStripeUI();
-  } else if (btn) {
-    btn.innerHTML = `🔒 Confirm &amp; Pay — <span id="final-total">${total}</span>`;
+  } else {
+    applyCardUnavailableUI();
   }
 }
 
