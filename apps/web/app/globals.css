@@ -868,7 +868,8 @@ h3 {
 }
 
 .posNextCustom label,
-.posNextEmail {
+.posNextEmail,
+.posNextTerminalSetup label {
   display: grid;
   gap: 8px;
   color: #fff;
@@ -878,7 +879,8 @@ h3 {
 }
 
 .posNextCustom input,
-.posNextEmail input {
+.posNextEmail input,
+.posNextTerminalSetup input {
   width: 100%;
   min-height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -890,7 +892,8 @@ h3 {
 }
 
 .posNextCustom input::placeholder,
-.posNextEmail input::placeholder {
+.posNextEmail input::placeholder,
+.posNextTerminalSetup input::placeholder {
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -983,6 +986,7 @@ h3 {
 }
 
 .posNextEmail,
+.posNextTerminalSetup,
 .posNextTotals,
 .posNextReviewed,
 .posNextMessage,
@@ -992,6 +996,17 @@ h3 {
 
 .posNextEmail {
   margin-top: 12px;
+}
+
+.posNextTerminalSetup {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.posNextTerminalSetup label:first-child {
+  grid-column: 1 / -1;
 }
 
 .posNextTotals {
@@ -1104,5 +1119,13 @@ h3 {
 
   .posNextTotals strong {
     text-align: left;
+  }
+
+  .posNextTerminalSetup {
+    grid-template-columns: 1fr;
+  }
+
+  .posNextTerminalSetup label:first-child {
+    grid-column: auto;
   }
 }

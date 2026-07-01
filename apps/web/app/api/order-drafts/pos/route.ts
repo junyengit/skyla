@@ -5,12 +5,16 @@ import { makeFunctionReference } from "convex/server";
 type PosDraftInput = {
   lines?: unknown;
   customerEmail?: unknown;
+  readerId?: unknown;
+  terminalLocationId?: unknown;
   idempotencyKey?: unknown;
 };
 
 type PosDraftMutationArgs = {
   lines: PosSaleInput["lines"];
   customerEmail?: string;
+  readerId?: string;
+  terminalLocationId?: string;
   idempotencyKey: string;
 };
 
@@ -118,6 +122,22 @@ function normalizeIdempotencyKey(value: unknown) {
   return key;
 }
 
+function normalizeReaderId(value: unknown) {
+  const readerId = optionalTrimmed(value, "readerId", 120);
+  if (readerId && !/^tmr_[A-Za-z0-9_]+$/.test(readerId)) {
+    throw new Error("readerId must be a Stripe Terminal reader id");
+  }
+  return readerId;
+}
+
+function normalizeTerminalLocationId(value: unknown) {
+  const terminalLocationId = optionalTrimmed(value, "terminalLocationId", 120);
+  if (terminalLocationId && !/^tml_[A-Za-z0-9_]+$/.test(terminalLocationId)) {
+    throw new Error("terminalLocationId must be a Stripe Terminal location id");
+  }
+  return terminalLocationId;
+}
+
 function normalizePosLine(value: unknown): PosSaleInput["lines"][number] {
   const line = assertObject(value, "line");
   const kind = line.kind;
@@ -163,6 +183,8 @@ function normalizeInput(input: PosDraftInput) {
     return withoutUndefined({
       lines: input.lines.map(normalizePosLine),
       customerEmail: normalizeEmail(input.customerEmail),
+      readerId: normalizeReaderId(input.readerId),
+      terminalLocationId: normalizeTerminalLocationId(input.terminalLocationId),
       idempotencyKey: normalizeIdempotencyKey(input.idempotencyKey)
     });
 }
@@ -198,6 +220,8 @@ export async function POST(request: Request) {
           withoutUndefined({
             lines: input.lines,
             customerEmail: input.customerEmail,
+            readerId: input.readerId,
+            terminalLocationId: input.terminalLocationId,
             idempotencyKey: input.idempotencyKey
           }),
           { url: deploymentUrl, token }

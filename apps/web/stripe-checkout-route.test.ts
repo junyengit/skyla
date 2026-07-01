@@ -54,6 +54,23 @@ describe("/api/payments/stripe-checkout", () => {
     expect(fetchActionMock).not.toHaveBeenCalled();
   });
 
+  it("surfaces server configuration failures as unavailable", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    fetchActionMock.mockRejectedValueOnce(new Error("STRIPE_SECRET_KEY is not configured"));
+
+    const response = await POST(
+      request({
+        orderRef: "SKY2607-ABC123",
+        idempotencyKey: "checkout_20260704_abc123"
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "STRIPE_SECRET_KEY is not configured"
+    });
+  });
+
   it("starts Stripe Checkout through the Convex action with generated return URLs", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     fetchActionMock.mockResolvedValueOnce({

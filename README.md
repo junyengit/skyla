@@ -67,7 +67,7 @@ As of July 1, 2026:
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+ffea69ae7`.
+`1.4.0-canary.1+52a1ddf07`.
 
 ```bash
 bun upgrade --canary
@@ -117,7 +117,8 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
   It prices ticket, cafe, and custom POS lines on the server and ignores browser
   totals. The backend action now creates Stripe Terminal intents from stored
   `saleRef` records only, but Terminal payment remains locked in the UI until
-  dashboard envs, staff auth, and test-reader acceptance are complete.
+  dashboard envs, staff auth, test-reader acceptance, and final Stripe
+  reconciliation are complete.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:

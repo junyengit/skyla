@@ -24,6 +24,7 @@ safe for browser code, secret means dashboard/server only.
 | `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions and Stripe Terminal PaymentIntents. | Required before `payments.createStripeCheckoutSession` or `payments.createStripeTerminalPaymentIntent` can run. |
 | `SKYLA_PAYMENT_RETURN_ORIGINS` | no | Convex | Production/Preview/Development | Comma-separated allowed origins for Stripe success/cancel URLs. | Required; example `https://skydeckla.com,https://www.skydeckla.com`. |
 | `STRIPE_WEBHOOK_SECRET` | no | Convex | Production/Preview/Development | Verifies Stripe webhook signatures for `POST /stripe-webhook`. | Required before webhook cutover. |
+| `SKYLA_TERMINAL_READER_REGISTRY` | no | Convex | Production/Preview/Development | Comma-separated trusted Stripe Terminal readers, optionally paired to locations as `tmr_reader@tml_location`. | Required before `/pos-next` can persist a reader or process a reader handoff. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | yes | Vercel | Production/Preview/Development | Browser-safe Stripe.js publishable key. | Needed only when frontend is wired to Stripe.js or embedded Checkout. |
 | `KASKADE_API_KEY` | no | Convex | Production/Preview/Development | Future Kaskade payment action secret. | Not ready; legacy bridge still exists. |
 | `SKYLA_TERMINAL_SETUP_TOKEN` | no | Supabase legacy, later Convex | Production only | One-time manager token for Stripe Terminal reader setup. | Legacy setup hardening is present; Terminal payment creation is replaced in repo code but the live reader flow still needs Convex envs and UI acceptance. |
@@ -54,6 +55,25 @@ Bad:
 - `https://skydeckla.com/checkout`
 - `http://skydeckla.com`
 - `https://example.com`
+
+## Terminal Reader Registry
+
+`SKYLA_TERMINAL_READER_REGISTRY` is a Convex-only allowlist. The POS screen can
+send a reader selector, but Convex stores it only when the reader is in this
+registry.
+
+```text
+tmr_frontdesk@tml_lobby,tmr_bar@tml_rooftop
+```
+
+Good:
+
+- `tmr_frontdesk@tml_lobby`
+- `tmr_frontdesk`
+
+Use the paired `reader@location` form when possible. If a location is paired in
+the registry, browser-sent locations must match it; if no registry is set,
+reader persistence fails closed.
 
 ## Raw Agent Checks
 

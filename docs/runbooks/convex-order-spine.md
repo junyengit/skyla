@@ -27,17 +27,20 @@ It is not a live payment cutover runbook yet.
   totals, and calls Convex persistence only when a staff bearer token,
   `NEXT_PUBLIC_CONVEX_URL`, and `idempotencyKey` are present.
 - `apps/web/app/pos-next/page.tsx`: native staff POS draft review surface. It
-  reviews server totals but keeps Terminal payment locked.
+  reviews server totals and can hand a persisted sale to the server-driven
+  Terminal route once Convex, staff auth, and a stored reader are configured.
 - `convex/payments.ts`: a Stripe Checkout action that creates a Checkout
   Session from a stored checkout `orderRef` and matching draft idempotency key.
+- `convex/payments.ts`: Stripe Terminal actions that create a card-present
+  PaymentIntent from a stored POS `saleRef` and process it on the stored reader.
 - `convex/paymentInternals.ts`: internal order snapshot and payment ledger
   mutations used by the Stripe action.
 
 The primary checkout route is cut over to the Next.js App Router, but deployed
 payment creation is still gated until the real Convex deployment URL and Stripe
 env vars are configured. The POS draft bridge now exists at `/pos-next`; live
-Terminal capture still needs a future Convex action that creates payment
-intents from a stored `saleRef`, not browser totals.
+Terminal capture still needs real staff auth, test-reader acceptance, and final
+Stripe reconciliation before it can replace the legacy register.
 
 ```mermaid
 flowchart LR
@@ -48,7 +51,8 @@ flowchart LR
   convexMutation["Convex orderDrafts mutations"]
   convexTables["orders, orderLineItems, posSales, posSaleLines"]
   stripe["Stripe Checkout action"]
-  futureProviders["Future Kaskade/Terminal actions"]
+  terminal["Stripe Terminal actions"]
+  futureProviders["Future Kaskade action"]
 
   browser --> nextRoute --> pricing
   posNext --> nextRoute
@@ -56,6 +60,7 @@ flowchart LR
   convexMutation --> pricing
   convexMutation --> convexTables
   convexTables -. orderRef only .-> stripe
+  convexTables -. saleRef only .-> terminal
   convexTables -. refs only .-> futureProviders
 ```
 
@@ -73,8 +78,9 @@ package, guest count, and add-ons, but the server calculates:
 
 Provider actions must create payment sessions or intents from a stored
 `orderRef` or `saleRef`, not from a browser-supplied amount. The current Stripe
-Checkout action and Stripe webhook route follow this rule; Kaskade and Terminal
-are still future slices.
+Checkout action, Stripe webhook route, and Terminal `saleRef` actions follow
+this rule; Kaskade and Terminal final paid reconciliation are still future
+slices.
 
 ## Agent Data
 
@@ -216,9 +222,10 @@ If Convex is configured but the Next route does not receive a staff bearer
 token, it still returns the server-calculated draft and
 `persistenceReason: "staff_auth_required"`.
 
-The POS draft route does not accept `readerId` or `terminalLocationId` from the
-browser. Those values must be derived or validated server-side before a future
-Terminal action can trust stored POS sale data.
+The POS draft route accepts `readerId` and `terminalLocationId` only as a staff
+selector. Convex validates that selector against
+`SKYLA_TERMINAL_READER_REGISTRY` before storing it, and the later Terminal action
+trusts only the stored sale reader.
 
 For checkout orders, with `NEXT_PUBLIC_CONVEX_URL` configured and
 `idempotencyKey` supplied, `/api/order-drafts/checkout` calls
@@ -400,8 +407,10 @@ bun run convex:codegen
 ## Next Steps
 
 1. Link a real Convex deployment and set Vercel env vars for it.
-2. Add Kaskade/Terminal actions that only accept stored refs.
-3. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
+2. Add Kaskade actions that only accept stored refs.
+3. Accept the server-driven Stripe Terminal reader path with a test reader and
+   final payment reconciliation.
+4. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
    action.
-4. Add the Stripe dashboard endpoint for the Convex webhook.
-5. Dual-run against Supabase and reconcile before cutover.
+5. Add the Stripe dashboard endpoint for the Convex webhook.
+6. Dual-run against Supabase and reconcile before cutover.

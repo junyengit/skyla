@@ -30,6 +30,25 @@ export type StripeTerminalIntentRequest = {
   body: URLSearchParams;
 };
 
+export type StripeTerminalProcessSnapshot = {
+  saleRef: string;
+  paymentIntentId: string;
+  readerId: string;
+  amountCents: number;
+  currency: "usd";
+};
+
+export type StripeTerminalProcessRequestSnapshot = StripeTerminalProcessSnapshot & {
+  processAttempt: number;
+};
+
+export type StripeTerminalReaderProcessRequest = {
+  endpoint: string;
+  apiVersion: typeof stripeApiVersion;
+  idempotencyKey: string;
+  body: URLSearchParams;
+};
+
 export type StripeTerminalPaymentIntentResponse = {
   id?: string;
   object?: string;
@@ -45,12 +64,64 @@ export type StripeTerminalPaymentIntentResponse = {
   [key: string]: unknown;
 };
 
+export type StripeTerminalReaderAction = {
+  type?: string;
+  status?: string;
+  failure_code?: string | null;
+  failure_message?: string | null;
+  process_payment_intent?: {
+    payment_intent?: string;
+    process_config?: {
+      enable_customer_cancellation?: boolean;
+    };
+  };
+  [key: string]: unknown;
+};
+
+export type StripeTerminalReaderProcessResponse = {
+  id?: string;
+  object?: string;
+  status?: string;
+  location?: string;
+  action?: StripeTerminalReaderAction | null;
+  error?: {
+    message?: string;
+    type?: string;
+    code?: string;
+  };
+  [key: string]: unknown;
+};
+
 export function stripeTerminalIntentIdempotencyKey(saleRef: string) {
   const ref = saleRef.trim();
   if (!ref) {
     throw new Error("saleRef is required");
   }
   return `skyla:terminal-intent:${ref}`;
+}
+
+export function stripeTerminalProcessIdempotencyKey(
+  saleRef: string,
+  paymentIntentId: string,
+  readerId: string,
+  processAttempt: number
+) {
+  const ref = saleRef.trim();
+  const intent = paymentIntentId.trim();
+  const reader = readerId.trim();
+  if (!ref) {
+    throw new Error("saleRef is required");
+  }
+  if (!intent) {
+    throw new Error("paymentIntentId is required");
+  }
+  if (!reader) {
+    throw new Error("readerId is required");
+  }
+  if (!Number.isInteger(processAttempt) || processAttempt < 1) {
+    throw new Error("processAttempt must be a positive integer");
+  }
+  return `skyla:terminal-process:${ref}:${intent}:${reader}:attempt-${processAttempt}`;
 }
 
 export function buildStripeTerminalPaymentIntentRequest(
@@ -85,6 +156,28 @@ export function buildStripeTerminalPaymentIntentRequest(
   };
 }
 
+export function buildStripeTerminalReaderProcessRequest(
+  snapshot: StripeTerminalProcessRequestSnapshot
+): StripeTerminalReaderProcessRequest {
+  assertStripeTerminalProcessSnapshot(snapshot);
+
+  const params = new URLSearchParams();
+  params.set("payment_intent", snapshot.paymentIntentId);
+  params.set("process_config[enable_customer_cancellation]", "true");
+
+  return {
+    endpoint: `/terminal/readers/${encodeURIComponent(snapshot.readerId)}/process_payment_intent`,
+    apiVersion: stripeApiVersion,
+    idempotencyKey: stripeTerminalProcessIdempotencyKey(
+      snapshot.saleRef,
+      snapshot.paymentIntentId,
+      snapshot.readerId,
+      snapshot.processAttempt
+    ),
+    body: params
+  };
+}
+
 export function assertStripeTerminalSnapshot(snapshot: StripeTerminalSnapshot) {
   if (snapshot.currency !== "usd") {
     throw new Error("Stripe Terminal currently supports USD POS sales only");
@@ -108,8 +201,33 @@ export function assertStripeTerminalSnapshot(snapshot: StripeTerminalSnapshot) {
   }
 }
 
+export function assertStripeTerminalProcessSnapshot(snapshot: StripeTerminalProcessRequestSnapshot) {
+  if (snapshot.currency !== "usd") {
+    throw new Error("Stripe Terminal reader processing supports USD POS sales only");
+  }
+  if (!Number.isInteger(snapshot.amountCents) || snapshot.amountCents < 50) {
+    throw new Error("Stripe Terminal reader processing amount must be at least 50 cents");
+  }
+  if (!snapshot.paymentIntentId.trim()) {
+    throw new Error("Stripe Terminal PaymentIntent id is required");
+  }
+  if (!snapshot.readerId.trim()) {
+    throw new Error("Stripe Terminal reader id is required");
+  }
+  if (!/^tmr_[A-Za-z0-9_]+$/.test(snapshot.readerId.trim())) {
+    throw new Error("Stripe Terminal reader id must look like tmr_...");
+  }
+  if (!Number.isInteger(snapshot.processAttempt) || snapshot.processAttempt < 1) {
+    throw new Error("Stripe Terminal reader process attempt must be a positive integer");
+  }
+}
+
 export function stripeTerminalErrorMessage(data: StripeTerminalPaymentIntentResponse) {
   return data.error?.message ?? "Stripe Terminal PaymentIntent request failed";
+}
+
+export function stripeTerminalReaderErrorMessage(data: StripeTerminalReaderProcessResponse) {
+  return data.error?.message ?? "Stripe Terminal reader process request failed";
 }
 
 export function sanitizeStripeTerminalPaymentIntent(data: StripeTerminalPaymentIntentResponse) {
@@ -121,6 +239,55 @@ export function sanitizeStripeTerminalPaymentIntent(data: StripeTerminalPaymentI
     currency: stringValue(data.currency),
     metadata: data.metadata
   });
+}
+
+export function sanitizeStripeTerminalReaderProcess(data: StripeTerminalReaderProcessResponse) {
+  const action = data.action ?? undefined;
+  return withoutUndefined({
+    id: stringValue(data.id),
+    object: stringValue(data.object),
+    status: stringValue(data.status),
+    location: stringValue(data.location),
+    action: action
+      ? withoutUndefined({
+          type: stringValue(action.type),
+          status: stringValue(action.status),
+          failure_code: stringValue(action.failure_code),
+          failure_message: stringValue(action.failure_message),
+          payment_intent: stringValue(action.process_payment_intent?.payment_intent),
+          customer_cancellation: booleanValue(
+            action.process_payment_intent?.process_config?.enable_customer_cancellation
+          )
+        })
+      : undefined
+  });
+}
+
+export function stripeTerminalReaderPaymentStatus(data: StripeTerminalReaderProcessResponse) {
+  if (data.action?.status === "failed") {
+    return "failed" as const;
+  }
+  return "processing" as const;
+}
+
+export function stripeTerminalReaderPaymentIntentId(data: StripeTerminalReaderProcessResponse) {
+  return stringValue(data.action?.process_payment_intent?.payment_intent);
+}
+
+export function assertStripeTerminalReaderProcessResult(
+  data: StripeTerminalReaderProcessResponse,
+  expectedPaymentIntentId: string
+) {
+  if (data.action?.type !== "process_payment_intent") {
+    throw new Error("Stripe reader did not start a PaymentIntent process action");
+  }
+  const paymentIntentId = stripeTerminalReaderPaymentIntentId(data);
+  if (!paymentIntentId) {
+    throw new Error("Stripe reader did not echo the PaymentIntent being processed");
+  }
+  if (paymentIntentId !== expectedPaymentIntentId) {
+    throw new Error("Stripe reader returned a different PaymentIntent");
+  }
 }
 
 function normalizeLine(line: StripeTerminalLine) {
@@ -147,6 +314,10 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function booleanValue(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): T {

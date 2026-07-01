@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertStripeTerminalReaderProcessResult,
   buildStripeTerminalPaymentIntentRequest,
-  stripeTerminalIntentIdempotencyKey
+  buildStripeTerminalReaderProcessRequest,
+  stripeTerminalIntentIdempotencyKey,
+  stripeTerminalReaderPaymentStatus,
+  stripeTerminalProcessIdempotencyKey
 } from "./lib/stripeTerminal";
 
 const snapshot = {
@@ -85,5 +89,107 @@ describe("Stripe Terminal helpers", () => {
       "skyla:terminal-intent:POS2607-ABC123"
     );
     expect(() => stripeTerminalIntentIdempotencyKey("   ")).toThrow("saleRef is required");
+  });
+
+  it("builds a server-driven reader process request for a stored reader and intent", () => {
+    const request = buildStripeTerminalReaderProcessRequest({
+      saleRef: "POS2607-ABC123",
+      paymentIntentId: "pi_test_123",
+      readerId: "tmr_test_123",
+      processAttempt: 1,
+      amountCents: 8550,
+      currency: "usd"
+    });
+
+    expect(request.endpoint).toBe("/terminal/readers/tmr_test_123/process_payment_intent");
+    expect(request.idempotencyKey).toBe(
+      "skyla:terminal-process:POS2607-ABC123:pi_test_123:tmr_test_123:attempt-1"
+    );
+    expect(request.body.get("payment_intent")).toBe("pi_test_123");
+    expect(request.body.get("process_config[enable_customer_cancellation]")).toBe("true");
+  });
+
+  it("rejects malformed reader process snapshots before Stripe", () => {
+    expect(() =>
+      buildStripeTerminalReaderProcessRequest({
+        saleRef: "POS2607-ABC123",
+        paymentIntentId: "pi_test_123",
+        readerId: "reader_from_browser",
+        processAttempt: 1,
+        amountCents: 8550,
+        currency: "usd"
+      })
+    ).toThrow("Stripe Terminal reader id must look like tmr_");
+
+    expect(() =>
+      buildStripeTerminalReaderProcessRequest({
+        saleRef: "POS2607-ABC123",
+        paymentIntentId: "",
+        readerId: "tmr_test_123",
+        processAttempt: 1,
+        amountCents: 8550,
+        currency: "usd"
+      })
+    ).toThrow("Stripe Terminal PaymentIntent id is required");
+  });
+
+  it("keeps reader-process idempotency separate from intent creation", () => {
+    expect(stripeTerminalProcessIdempotencyKey("POS2607-ABC123", "pi_test_123", "tmr_test_123", 2)).toBe(
+      "skyla:terminal-process:POS2607-ABC123:pi_test_123:tmr_test_123:attempt-2"
+    );
+    expect(() => stripeTerminalProcessIdempotencyKey("POS2607-ABC123", "", "tmr_test_123", 1)).toThrow(
+      "paymentIntentId is required"
+    );
+    expect(() => stripeTerminalProcessIdempotencyKey("POS2607-ABC123", "pi_test_123", "tmr_test_123", 0)).toThrow(
+      "processAttempt must be a positive integer"
+    );
+  });
+
+  it("does not treat reader handoff as paid without later reconciliation", () => {
+    expect(stripeTerminalReaderPaymentStatus({ action: { status: "succeeded" } })).toBe("processing");
+    expect(stripeTerminalReaderPaymentStatus({ action: { status: "in_progress" } })).toBe("processing");
+    expect(stripeTerminalReaderPaymentStatus({ action: { status: "failed" } })).toBe("failed");
+  });
+
+  it("requires Stripe to echo the intended process_payment_intent action", () => {
+    expect(() =>
+      assertStripeTerminalReaderProcessResult(
+        { action: { status: "in_progress" } },
+        "pi_test_123"
+      )
+    ).toThrow("Stripe reader did not start a PaymentIntent process action");
+
+    expect(() =>
+      assertStripeTerminalReaderProcessResult(
+        { action: { type: "process_payment_intent", status: "in_progress" } },
+        "pi_test_123"
+      )
+    ).toThrow("Stripe reader did not echo the PaymentIntent");
+
+    expect(() =>
+      assertStripeTerminalReaderProcessResult(
+        {
+          action: {
+            type: "process_payment_intent",
+            status: "in_progress",
+            process_payment_intent: { payment_intent: "pi_other" }
+          }
+        },
+        "pi_test_123"
+      )
+    ).toThrow("Stripe reader returned a different PaymentIntent");
+
+    expect(() =>
+      assertStripeTerminalReaderProcessResult(
+        {
+          action: {
+            type: "process_payment_intent",
+            status: "in_progress",
+            process_payment_intent: { payment_intent: "pi_test_123" }
+          }
+        },
+        "pi_test_123"
+      )
+    ).not.toThrow();
   });
 });

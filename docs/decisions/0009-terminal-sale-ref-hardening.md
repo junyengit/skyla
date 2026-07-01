@@ -61,7 +61,7 @@ sequenceDiagram
   Convex->>Stripe: create card_present PaymentIntent
   Stripe-->>Convex: PaymentIntent id + client secret
   Convex->>Convex: record paymentEvents + payment_pending
-  Convex-->>Next: paymentIntentId + clientSecret + stored amount
+  Convex-->>Next: paymentIntentId + stored amount
   Next-->>Staff: amount from Convex, not browser
 ```
 
@@ -72,6 +72,6 @@ sequenceDiagram
 - The repo copy of legacy Supabase Terminal bridge returns `410` by default for
   browser-reachable runtime actions.
 - A real POS cutover still needs staff auth, Convex envs, Stripe test reader
-  verification, and UI wiring to collect/process the Convex-created intent.
+  verification, and final payment reconciliation after reader processing.
 - Any already deployed Supabase functions must still be disabled or redeployed
   from the fail-closed repo code.

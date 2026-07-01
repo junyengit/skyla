@@ -79,8 +79,11 @@ export async function POST(request: Request) {
     return Response.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not start Stripe Checkout";
-    const status =
-      message.includes("is required") || message.includes("origin is not allowed") ? 400 : 502;
+    const status = message.includes("is required") || message.includes("origin is not allowed")
+      ? 400
+      : message.toLowerCase().includes("not configured")
+        ? 503
+        : 502;
 
     return Response.json({ error: message }, { status });
   }

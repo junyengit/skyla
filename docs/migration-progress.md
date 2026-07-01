@@ -64,7 +64,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 - [x] Merged workflow dependency PRs for `actions/checkout@v7`, `pnpm/action-setup@v6`, and `actions/setup-node@v6`; latest verified production deployment is `https://web-l7aei5nb9-junyen-enterprises.vercel.app` (`dpl_CU1KmDXUnwRTu7YDjo1BPywv8awp`) from commit `47412f698045adab3b0523b53f829134dd2cf248`.
 - [x] Created branch `codex/bun-canary-root-cleanup`.
-- [x] Installed Bun canary locally and verified `1.4.0-canary.1+ffea69ae7`.
+- [x] Installed Bun canary locally and verified `1.4.0-canary.1+52a1ddf07`.
 - [x] Replaced pnpm workspace metadata with Bun workspace metadata and generated text `bun.lock`.
 - [x] Updated GitHub CI to `oven-sh/setup-bun@v2` with `bun-version: canary`.
 - [x] Added `apps/web/vercel.json` and `scripts/setup/vercel-install-bun-canary.sh` so Vercel installs/upgrades Bun canary during builds.
@@ -161,6 +161,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verified production `/api/order-drafts/pos` ignores spoofed POS totals, reader IDs, and Terminal location IDs; two `general` tickets returned the server catalog total of `5800` cents.
 - [x] Verified production `/api/payments/stripe-checkout` and `/api/payments/stripe-terminal` fail closed with `503` and `code: "convex_unconfigured"` until the real Convex deployment URL is wired.
 - [x] Refreshed merged-main dependency and quality gates: `bun run check`, `bun audit --audit-level=high`, `bun outdated --recursive`, and anonymous Convex function typecheck.
+- [x] Started branch `codex/pos-terminal-reader-process` for server-driven Stripe Terminal reader handoff from stored POS sale refs.
 
 ## In Progress
 
@@ -180,6 +181,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/next-checkout-convex-cutover`.
 - [x] Verify, review, and ship `codex/pos-next-draft-spine`.
 - [x] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
+- [ ] Verify, review, and ship `codex/pos-terminal-reader-process`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -194,7 +196,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
 - [x] Disable `/checkout.html` legacy Stripe card fallback in the Vercel-served compatibility page.
 - [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
-- [ ] Live POS Terminal reader collection and capture from stored `saleRef` only.
+- [ ] Live POS Terminal reader processing and final paid reconciliation from stored `saleRef` only.
 - [ ] Admin/POS protected App Router rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
@@ -220,6 +222,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.2` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
 - Shipped code now creates Stripe Terminal PaymentIntents from stored `saleRef` records only. Live reader collection still needs staff auth wiring and dashboard/env acceptance before `/pos-next` can replace `/pos`.
+- The reader-processing work adds server-driven reader processing for stored POS sales. It still does not mark sales paid until a later Stripe webhook or polling reconciliation slice confirms final success.
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
 - Repository copies of legacy Supabase Stripe Checkout and Terminal functions now fail closed unless explicitly re-enabled by transition env vars, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.
