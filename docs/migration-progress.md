@@ -155,6 +155,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added `/api/payments/stripe-terminal`, which forwards a staff bearer token to Convex and accepts only `saleRef` plus `idempotencyKey`.
 - [x] Disabled legacy browser-authoritative Stripe card checkout on `/checkout.html`; the App Router `/checkout` is now the card path.
 - [x] Added fail-closed defaults to the repo copy of legacy Supabase Stripe Checkout and Terminal payment creation functions.
+- [x] Merged Terminal sale-ref hardening PR #26 into `main` as merge commit `910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-cem3bs58o-junyen-enterprises.vercel.app` (`dpl_6zSPMN5i5S4FNjUwePhN697qs76P`).
+- [x] Re-ran post-merge route smoke tests for `https://web-cem3bs58o-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
+- [x] Verified production `/api/order-drafts/pos` ignores spoofed POS totals, reader IDs, and Terminal location IDs; two `general` tickets returned the server catalog total of `5800` cents.
+- [x] Verified production `/api/payments/stripe-checkout` and `/api/payments/stripe-terminal` fail closed with `503` and `code: "convex_unconfigured"` until the real Convex deployment URL is wired.
+- [x] Refreshed merged-main dependency and quality gates: `bun run check`, `bun audit --audit-level=high`, `bun outdated --recursive`, and anonymous Convex function typecheck.
 
 ## In Progress
 
@@ -173,7 +179,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/post-webhook-readiness-hardening`.
 - [x] Verify, review, and ship `codex/next-checkout-convex-cutover`.
 - [x] Verify, review, and ship `codex/pos-next-draft-spine`.
-- [ ] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
+- [x] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -213,7 +219,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.2` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
-- The active branch adds the Convex Terminal/POS replacement that creates Stripe Terminal PaymentIntents from stored `saleRef` records only. Live reader collection still needs staff auth wiring and dashboard/env acceptance before `/pos-next` can replace `/pos`.
-- The real Convex cloud project is still not linked in this worktree or Vercel. This branch uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` for local validation and commits generated types from that local pass.
+- Shipped code now creates Stripe Terminal PaymentIntents from stored `saleRef` records only. Live reader collection still needs staff auth wiring and dashboard/env acceptance before `/pos-next` can replace `/pos`.
+- The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
 - Repository copies of legacy Supabase Stripe Checkout and Terminal functions now fail closed unless explicitly re-enabled by transition env vars, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.

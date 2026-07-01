@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted in `codex/terminal-sale-ref-hardening`.
+Accepted and shipped in PR #26, merged to `main` as
+`910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`.
+
+Production deployment `dpl_6zSPMN5i5S4FNjUwePhN697qs76P` is live at
+`https://web-cem3bs58o-junyen-enterprises.vercel.app`.
 
 ## Plain-English Version
 

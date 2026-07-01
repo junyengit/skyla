@@ -41,12 +41,12 @@ flowchart LR
 
 ## Current Hosting State
 
-As of June 30, 2026:
+As of July 1, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-qoge89yac-junyen-enterprises.vercel.app` from merge commit
-  `a9557cae76b635bb9f3221e071d785381d47ab8b`.
+  `https://web-cem3bs58o-junyen-enterprises.vercel.app` from merge commit
+  `910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
@@ -103,7 +103,7 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 
 - Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
-- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Daily POS reader connection and charges still use the existing staff-authenticated bridge.
+- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; `/pos-next` still needs staff auth, Convex envs, and reader collection wiring before it replaces the live register.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
   calculates draft totals from selections only and persists Convex order drafts
@@ -115,8 +115,9 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
   real Convex envs, Stripe envs, and Stripe dashboard endpoint setup.
 - `/api/order-drafts/pos` and `/pos-next` add a native POS draft review path.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser
-  totals. Terminal payment remains locked there until the next backend action
-  creates Stripe Terminal intents from stored `saleRef` records only.
+  totals. The backend action now creates Stripe Terminal intents from stored
+  `saleRef` records only, but Terminal payment remains locked in the UI until
+  dashboard envs, staff auth, and test-reader acceptance are complete.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:

@@ -29,16 +29,21 @@ from Vercel.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Production deployment checked on 2026-06-30:
-  `https://web-dhnis3o2h-junyen-enterprises.vercel.app`
-- Production deployment ID checked on 2026-06-30:
-  `dpl_31kaRK2yL5n56PgrQ7jeLXuRgY5F`
-- Custom domains checked on 2026-06-30:
+- Production deployment checked on 2026-07-01:
+  `https://web-cem3bs58o-junyen-enterprises.vercel.app`
+- Production deployment ID checked on 2026-07-01:
+  `dpl_6zSPMN5i5S4FNjUwePhN697qs76P`
+- Merge commit checked on 2026-07-01:
+  `910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`
+- Custom domains checked on 2026-07-01:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel env vars checked on 2026-06-30: none configured.
+- Live API behavior checked on 2026-07-01: payment routes return
+  `convex_unconfigured`, so the production app is still not wired to real
+  Convex payment execution.
 - Bun checked locally: `1.4.0-canary.1+ffea69ae7`
-- Dependency audit: clean after the `postcss@8.5.16` override.
+- Dependency audit checked on 2026-07-01: clean after the `postcss@8.5.16`
+  override.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
   compatible.
@@ -67,13 +72,20 @@ flowchart TD
 
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
-- Vercel production and both custom domains pass the 22-route smoke test.
+- Vercel production and both custom domains pass the 23-route smoke test.
+- GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
+  deployment checks passed for the Terminal sale-ref hardening merge.
 - Admin and POS are marked `noindex, nofollow`.
 - `/pos-next` is marked `noindex, nofollow`.
 - Admin and POS dark-theme text is high contrast.
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
+- Production `/api/payments/stripe-checkout` and
+  `/api/payments/stripe-terminal` currently fail closed with
+  `convex_unconfigured` until Convex is connected.
+- Production `/api/order-drafts/pos` ignores spoofed browser totals and returns
+  the server catalog total.
 - The repo copy of legacy Supabase Stripe Checkout and Terminal payment
   creation fails closed by default.
 - `/checkout.html` no longer enables legacy Stripe card creation from browser
@@ -86,8 +98,8 @@ flowchart TD
 
 ## Still Not Safe To Call Complete
 
-- Vercel has no env vars yet, so the deployed app cannot call a real Convex
-  backend.
+- The deployed app still behaves as though Convex is unconfigured, so live
+  checkout/POS payment execution remains intentionally blocked.
 - Convex cloud is not linked yet.
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
 - `/checkout` is the new App Router checkout, but live card payment is gated
@@ -170,6 +182,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun audit
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-cem3bs58o-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
