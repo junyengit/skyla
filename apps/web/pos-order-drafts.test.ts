@@ -37,12 +37,15 @@ describe("/api/order-drafts/pos", () => {
           { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1 },
           { kind: "custom", name: "Service recovery", amountCents: 500, quantity: 1, reason: "Manager approved" }
         ],
-        customerEmail: "GUEST@EXAMPLE.COM"
+        customerEmail: "GUEST@EXAMPLE.COM",
+        readerId: "tmr_browser_supplied",
+        terminalLocationId: "tml_browser_supplied"
       })
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json();
+    expect(body).toMatchObject({
       persisted: false,
       persistenceReason: "convex_unconfigured",
       draft: {
@@ -78,6 +81,8 @@ describe("/api/order-drafts/pos", () => {
         ]
       }
     });
+    expect(body.draft).not.toHaveProperty("readerId");
+    expect(body.draft).not.toHaveProperty("terminalLocationId");
     expect(fetchMutationMock).not.toHaveBeenCalled();
   });
 
@@ -116,6 +121,8 @@ describe("/api/order-drafts/pos", () => {
         totalCents: 2900
       },
       customerEmail: "guest@example.com",
+      readerId: "tmr_browser_supplied",
+      terminalLocationId: "tml_browser_supplied",
       lines: [
         {
           kind: "ticket",
@@ -148,6 +155,8 @@ describe("/api/order-drafts/pos", () => {
       saleRef: "SALE260704-ABC123",
       draft: {
         saleRef: "SALE260704-ABC123",
+        readerId: "tmr_browser_supplied",
+        terminalLocationId: "tml_browser_supplied",
         subtotalCents: 2900,
         feeCents: 0,
         totalCents: 2900
@@ -158,6 +167,8 @@ describe("/api/order-drafts/pos", () => {
       {
         lines: [{ kind: "ticket", packageKey: "general", quantity: 1 }],
         customerEmail: "guest@example.com",
+        readerId: "tmr_browser_supplied",
+        terminalLocationId: "tml_browser_supplied",
         idempotencyKey: "pos_20260704_abc123"
       },
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }

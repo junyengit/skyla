@@ -41,7 +41,7 @@ from Vercel.
 - Live API behavior checked on 2026-07-01: payment routes return
   `convex_unconfigured`, so the production app is still not wired to real
   Convex payment execution.
-- Bun checked locally: `1.4.0-canary.1+ffea69ae7`
+- Bun checked locally: `1.4.0-canary.1+52a1ddf07`
 - Dependency audit checked on 2026-07-01: clean after the `postcss@8.5.16`
   override.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
@@ -81,6 +81,11 @@ flowchart TD
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
+- The POS Terminal reader handoff uses the stored sale/reader, requires the
+  Convex `SKYLA_TERMINAL_READER_REGISTRY`, and keeps the sale pending until
+  Stripe final confirmation.
+- Stored readers are rechecked against the registry at payment time, and
+  duplicate in-flight reader handoffs are rejected by a short reservation lock.
 - Production `/api/payments/stripe-checkout` and
   `/api/payments/stripe-terminal` currently fail closed with
   `convex_unconfigured` until Convex is connected.
@@ -108,8 +113,9 @@ flowchart TD
   redeployed from the fail-closed repo code in the Supabase dashboard.
 - POS legacy reader connection and charge UI should stay disabled while the
   `/pos-next` staff-authenticated Terminal flow is accepted.
-- `/pos-next` is not the live register yet because reader collection/capture is
-  not wired to the new `saleRef` action in the UI.
+- `/pos-next` is not the live register yet because reader processing still needs
+  real Convex/staff auth/Stripe test-reader acceptance plus final paid
+  reconciliation.
 - Admin/POS are not rebuilt as protected App Router/Convex workflows yet.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
@@ -127,6 +133,8 @@ flowchart TD
 - [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Preview and Production after Convex is
   linked.
 - [ ] Add Google Ads public env vars only when ads are ready.
+- [ ] Add Convex `SKYLA_TERMINAL_READER_REGISTRY` before testing `/pos-next`
+      reader handoff.
 - [ ] Keep secrets out of `NEXT_PUBLIC_*`.
 - [ ] Confirm `/pos-next` remains `X-Robots-Tag: noindex, nofollow` after every
       preview and production deploy.
@@ -139,6 +147,8 @@ flowchart TD
 - [ ] Set `SKYLA_PAYMENT_RETURN_ORIGINS` to
   `https://skydeckla.com,https://www.skydeckla.com`.
 - [ ] Set `STRIPE_WEBHOOK_SECRET` after creating the Stripe endpoint.
+- [ ] Set `SKYLA_TERMINAL_READER_REGISTRY` with the Stripe test-reader IDs and
+      locations that staff are allowed to use.
 - [ ] Run `bun run convex:env:check`.
 - [ ] Run `bun run convex:codegen`.
 
@@ -194,10 +204,11 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 3. Create Stripe test webhook endpoint and set Convex Stripe env vars.
 4. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-5. Wire POS Terminal reader collection to the server-authoritative Convex
-   action.
-6. Promote `/pos-next` into the live POS only after Terminal capture uses
+5. Wire and accept POS Terminal reader processing from stored `saleRef` and
+   stored reader IDs.
+6. Add Stripe Terminal final paid reconciliation through webhook or polling.
+7. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-7. Rebuild Admin and POS as protected App Router/Convex workflows.
-8. Migrate remaining Supabase data and disable legacy Supabase functions only
+8. Rebuild Admin and POS as protected App Router/Convex workflows.
+9. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.

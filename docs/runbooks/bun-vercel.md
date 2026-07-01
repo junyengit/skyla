@@ -16,7 +16,7 @@ The desired end state is:
 ## Current State
 
 - The repo uses Bun canary with a committed text `bun.lock`.
-- Last verified local Bun revision: `1.4.0-canary.1+ffea69ae7`.
+- Last verified local Bun revision: `1.4.0-canary.1+52a1ddf07`.
 - CI uses `oven-sh/setup-bun@v2` with `bun-version: canary`.
 - Vercel project `junyen-enterprises/web` is configured for `apps/web`.
 - Vercel install/build commands are committed in `apps/web/vercel.json`.

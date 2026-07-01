@@ -4,8 +4,18 @@ import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
-import type { StripeTerminalSnapshot } from "./lib/stripeTerminal";
+import {
+  stripeTerminalIntentIdempotencyKey,
+  stripeTerminalProcessIdempotencyKey,
+  type StripeTerminalProcessSnapshot,
+  type StripeTerminalSnapshot
+} from "./lib/stripeTerminal";
 import { stripeCheckoutOrderStatusAfterUnpaidOutcome } from "./lib/stripeWebhook";
+import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
+
+declare const process: { env: Record<string, string | undefined> };
+
+const terminalProcessReservationTtlMs = 2 * 60 * 1000;
 
 export const getCheckoutPaymentSnapshot = internalQuery({
   args: {
@@ -141,6 +151,10 @@ export const getPosTerminalPaymentSnapshot = internalQuery({
       .query("posSaleLines")
       .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
       .collect();
+    const authorizedReader = authorizeTerminalReaderSelection(
+      { readerId: sale.readerId, terminalLocationId: sale.terminalLocationId },
+      process.env.SKYLA_TERMINAL_READER_REGISTRY
+    );
 
     return {
       actorStaffUserId: staffUser._id,
@@ -150,8 +164,8 @@ export const getPosTerminalPaymentSnapshot = internalQuery({
       feeCents: sale.feeCents,
       totalCents: sale.totalCents,
       customerEmailLower: sale.customerEmailLower,
-      readerId: sale.readerId,
-      terminalLocationId: sale.terminalLocationId,
+      readerId: authorizedReader.readerId,
+      terminalLocationId: authorizedReader.terminalLocationId,
       lines: lines.map((line) => ({
         name: line.name,
         quantity: line.quantity,
@@ -239,6 +253,253 @@ export const recordStripeTerminalPaymentIntent = internalMutation({
     return { eventId, reused: false };
   }
 });
+
+export const getStripeTerminalReaderProcessSnapshot = internalQuery({
+  args: {
+    saleRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<StripeTerminalProcessSnapshot & { actorStaffUserId: Id<"staffUsers"> }> => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
+    const idempotencyKey = args.idempotencyKey.trim();
+    if (!idempotencyKey) {
+      throw new Error("POS sale idempotency key is required");
+    }
+
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .unique();
+    if (!sale || sale.idempotencyKey !== idempotencyKey) {
+      throw new Error("POS sale was not found for this reader process attempt");
+    }
+    if (sale.status !== "payment_pending") {
+      throw new Error(`POS sale cannot be sent to a Terminal reader from status ${sale.status}`);
+    }
+    if (staffUser.role !== "admin" && sale.staffUserId && sale.staffUserId !== staffUser._id) {
+      throw new Error("POS sale belongs to a different staff user");
+    }
+    if (!sale.readerId) {
+      throw new Error("POS sale does not have a stored Terminal reader");
+    }
+    const authorizedReader = authorizeTerminalReaderSelection(
+      { readerId: sale.readerId, terminalLocationId: sale.terminalLocationId },
+      process.env.SKYLA_TERMINAL_READER_REGISTRY
+    );
+
+    const terminalEvent = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_provider_idempotencyKey", (q) =>
+        q.eq("provider", "terminal").eq("idempotencyKey", stripeTerminalIntentIdempotencyKey(sale.saleRef))
+      )
+      .first();
+    if (!terminalEvent || terminalEvent.saleRef !== sale.saleRef) {
+      throw new Error("Terminal PaymentIntent was not created for this POS sale");
+    }
+    if (
+      terminalEvent.status !== "requires_payment" &&
+      terminalEvent.status !== "failed"
+    ) {
+      throw new Error(`Terminal PaymentIntent cannot be processed from status ${terminalEvent.status}`);
+    }
+    if (terminalEvent.amountCents !== sale.totalCents || terminalEvent.currency !== sale.currency) {
+      throw new Error("Terminal PaymentIntent amount does not match the stored POS sale");
+    }
+
+    return {
+      actorStaffUserId: staffUser._id,
+      saleRef: sale.saleRef,
+      paymentIntentId: terminalEvent.providerPaymentId,
+      readerId: authorizedReader.readerId!,
+      amountCents: sale.totalCents,
+      currency: sale.currency
+    };
+  }
+});
+
+export const reserveStripeTerminalReaderProcessAttempt = internalMutation({
+  args: {
+    saleRef: v.string(),
+    providerPaymentId: v.string(),
+    readerId: v.string(),
+    amountCents: v.number(),
+    currency: v.literal("usd")
+  },
+  handler: async (ctx, args) => {
+    const providerEvents = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_provider_providerPaymentId", (q) =>
+        q.eq("provider", "terminal").eq("providerPaymentId", args.providerPaymentId)
+      )
+      .collect();
+    const terminalEvent = providerEvents.find((event) => event.saleRef === args.saleRef);
+    if (!terminalEvent) {
+      throw new Error("Terminal PaymentIntent event was not found for reader processing");
+    }
+    if (
+      terminalEvent.status !== "requires_payment" &&
+      terminalEvent.status !== "failed"
+    ) {
+      throw new Error(`Terminal PaymentIntent cannot be processed from status ${terminalEvent.status}`);
+    }
+    if (terminalEvent.amountCents !== args.amountCents || terminalEvent.currency !== args.currency) {
+      throw new Error("Terminal reader process amount does not match the payment event");
+    }
+
+    const now = Date.now();
+    const existingRaw = terminalRawBase(terminalEvent.raw);
+    if (terminalRawHasActiveProcessReservation(existingRaw, now)) {
+      throw new Error("Terminal reader process attempt is already in progress");
+    }
+
+    const processAttempt = terminalRawLastProcessAttempt(existingRaw) + 1;
+    const processIdempotencyKey = stripeTerminalProcessIdempotencyKey(
+      args.saleRef,
+      args.providerPaymentId,
+      args.readerId,
+      processAttempt
+    );
+    await ctx.db.patch(terminalEvent._id, {
+      raw: {
+        ...existingRaw,
+        readerProcessAttempt: processAttempt,
+        readerProcessIdempotencyKey: processIdempotencyKey,
+        readerProcessReservedAt: now
+      }
+    });
+
+    return { processAttempt, processIdempotencyKey };
+  }
+});
+
+export const recordStripeTerminalReaderProcess = internalMutation({
+  args: {
+    saleRef: v.string(),
+    providerPaymentId: v.string(),
+    readerId: v.string(),
+    amountCents: v.number(),
+    currency: v.literal("usd"),
+    processAttempt: v.number(),
+    processIdempotencyKey: v.string(),
+    status: v.union(v.literal("processing"), v.literal("paid"), v.literal("failed")),
+    actorStaffUserId: v.id("staffUsers"),
+    raw: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    const providerEvents = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_provider_providerPaymentId", (q) =>
+        q.eq("provider", "terminal").eq("providerPaymentId", args.providerPaymentId)
+      )
+      .collect();
+    const terminalEvent = providerEvents.find((event) => event.saleRef === args.saleRef);
+    if (!terminalEvent) {
+      throw new Error("Terminal PaymentIntent event was not found for reader processing");
+    }
+    if (terminalEvent.amountCents !== args.amountCents || terminalEvent.currency !== args.currency) {
+      throw new Error("Terminal reader process amount does not match the payment event");
+    }
+
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .unique();
+    if (!sale) {
+      throw new Error("POS sale disappeared before reader processing was recorded");
+    }
+    if (sale.totalCents !== args.amountCents || sale.currency !== args.currency) {
+      throw new Error("Terminal reader process amount does not match the stored POS sale");
+    }
+    if (sale.readerId !== args.readerId) {
+      throw new Error("Terminal reader process does not match the stored reader");
+    }
+
+    const now = Date.now();
+    const existingRaw = terminalRawBase(terminalEvent.raw);
+    if (existingRaw.readerProcessAttempt !== args.processAttempt) {
+      throw new Error("Terminal reader process attempt was not reserved");
+    }
+    if (existingRaw.readerProcessIdempotencyKey !== args.processIdempotencyKey) {
+      throw new Error("Terminal reader process idempotency key was not reserved");
+    }
+    const nextRaw = {
+      ...existingRaw,
+      readerProcessRecordedAt: now,
+      ...(args.raw === undefined ? {} : { readerProcess: args.raw })
+    };
+    await ctx.db.patch(terminalEvent._id, {
+      status: args.status,
+      raw: nextRaw
+    });
+
+    if (args.status === "paid") {
+      await ctx.db.patch(sale._id, {
+        status: "paid",
+        updatedAt: now
+      });
+    } else {
+      await ctx.db.patch(sale._id, {
+        status: "payment_pending",
+        updatedAt: now
+      });
+    }
+
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: args.actorStaffUserId,
+      action: "pos.terminalReader.process",
+      entityType: "posSale",
+      entityRef: args.saleRef,
+      metadata: {
+        amountCents: args.amountCents,
+        providerPaymentId: args.providerPaymentId,
+        readerId: args.readerId,
+        processAttempt: args.processAttempt,
+        status: args.status
+      },
+      createdAt: now
+    });
+
+    return { eventId: terminalEvent._id, status: args.status };
+  }
+});
+
+function terminalRawBase(raw: unknown): Record<string, unknown> {
+  if (raw === undefined || raw === null) {
+    return {};
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    const record = raw as Record<string, unknown>;
+    if (
+      "paymentIntent" in record ||
+      "readerProcess" in record ||
+      "readerProcessAttempt" in record ||
+      "readerProcessIdempotencyKey" in record
+    ) {
+      return record;
+    }
+  }
+  return { paymentIntent: raw };
+}
+
+function terminalRawLastProcessAttempt(raw: unknown) {
+  const base = terminalRawBase(raw);
+  const attempt = base.readerProcessAttempt;
+  return typeof attempt === "number" && Number.isInteger(attempt) && attempt > 0 ? attempt : 0;
+}
+
+function terminalRawHasActiveProcessReservation(base: Record<string, unknown>, now: number) {
+  const reservedAt = base.readerProcessReservedAt;
+  if (typeof reservedAt !== "number" || !Number.isFinite(reservedAt)) {
+    return false;
+  }
+  const recordedAt = base.readerProcessRecordedAt;
+  const hasRecordedThisReservation =
+    typeof recordedAt === "number" && Number.isFinite(recordedAt) && recordedAt >= reservedAt;
+  return !hasRecordedThisReservation && now - reservedAt < terminalProcessReservationTtlMs;
+}
 
 export const recordStripeCheckoutWebhook = internalMutation({
   args: {

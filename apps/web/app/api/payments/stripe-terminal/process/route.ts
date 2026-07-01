@@ -1,31 +1,33 @@
 import { fetchAction } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 
-type StripeTerminalRequest = {
+type StripeTerminalProcessRequest = {
   saleRef?: unknown;
   idempotencyKey?: unknown;
 };
 
-type StripeTerminalActionArgs = {
+type StripeTerminalProcessActionArgs = {
   saleRef: string;
   idempotencyKey: string;
 };
 
-type StripeTerminalActionResult = {
+type StripeTerminalProcessActionResult = {
   saleRef: string;
   provider: "terminal";
   paymentIntentId: string;
-  clientSecret: string;
+  readerId: string;
   amountCents: number;
   currency: "usd";
-  status: string;
+  status: "processing" | "failed";
+  readerStatus: string;
+  readerActionStatus: string;
 };
 
-const createStripeTerminalPaymentIntentAction = makeFunctionReference<
+const processStripeTerminalPaymentIntentAction = makeFunctionReference<
   "action",
-  StripeTerminalActionArgs,
-  StripeTerminalActionResult
->("payments:createStripeTerminalPaymentIntent");
+  StripeTerminalProcessActionArgs,
+  StripeTerminalProcessActionResult
+>("payments:processStripeTerminalPaymentIntent");
 
 function convexUrl() {
   return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
@@ -47,17 +49,6 @@ function requiredString(value: unknown, label: string) {
   return value.trim();
 }
 
-function toPublicTerminalResult(result: StripeTerminalActionResult) {
-  return {
-    saleRef: result.saleRef,
-    provider: result.provider,
-    paymentIntentId: result.paymentIntentId,
-    amountCents: result.amountCents,
-    currency: result.currency,
-    status: result.status
-  };
-}
-
 function paymentFailureStatus(message: string) {
   const normalized = message.toLowerCase();
   if (message.includes("is required")) {
@@ -72,7 +63,7 @@ function paymentFailureStatus(message: string) {
   if (normalized.includes("different staff user")) {
     return 403;
   }
-  if (normalized.includes("not found") || normalized.includes("cannot create")) {
+  if (normalized.includes("not found") || normalized.includes("cannot") || normalized.includes("not have")) {
     return 409;
   }
   return 502;
@@ -84,7 +75,7 @@ export async function POST(request: Request) {
     if (!deploymentUrl) {
       return Response.json(
         {
-          error: "Convex is not configured for Stripe Terminal",
+          error: "Convex is not configured for Stripe Terminal reader processing",
           code: "convex_unconfigured"
         },
         { status: 503 }
@@ -95,19 +86,19 @@ export async function POST(request: Request) {
     if (!token) {
       return Response.json(
         {
-          error: "Staff authentication is required for Stripe Terminal",
+          error: "Staff authentication is required for Stripe Terminal reader processing",
           code: "staff_auth_required"
         },
         { status: 401 }
       );
     }
 
-    const input = (await request.json()) as StripeTerminalRequest;
+    const input = (await request.json()) as StripeTerminalProcessRequest;
     const saleRef = requiredString(input.saleRef, "saleRef");
     const idempotencyKey = requiredString(input.idempotencyKey, "idempotencyKey");
 
     const result = await fetchAction(
-      createStripeTerminalPaymentIntentAction,
+      processStripeTerminalPaymentIntentAction,
       {
         saleRef,
         idempotencyKey
@@ -115,9 +106,9 @@ export async function POST(request: Request) {
       { url: deploymentUrl, token }
     );
 
-    return Response.json(toPublicTerminalResult(result));
+    return Response.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not start Stripe Terminal payment";
+    const message = error instanceof Error ? error.message : "Could not process Stripe Terminal payment";
     return Response.json({ error: message }, { status: paymentFailureStatus(message) });
   }
 }

@@ -14,10 +14,17 @@ import {
   type StripeCheckoutSnapshot
 } from "./lib/stripeCheckout";
 import {
+  assertStripeTerminalReaderProcessResult,
   buildStripeTerminalPaymentIntentRequest,
+  buildStripeTerminalReaderProcessRequest,
   sanitizeStripeTerminalPaymentIntent,
+  sanitizeStripeTerminalReaderProcess,
+  stripeTerminalReaderErrorMessage,
+  stripeTerminalReaderPaymentStatus,
   stripeTerminalErrorMessage,
   type StripeTerminalPaymentIntentResponse,
+  type StripeTerminalProcessSnapshot,
+  type StripeTerminalReaderProcessResponse,
   type StripeTerminalSnapshot
 } from "./lib/stripeTerminal";
 
@@ -145,6 +152,78 @@ export const createStripeTerminalPaymentIntent = action({
       amountCents: snapshot.totalCents,
       currency: snapshot.currency,
       status: intent.status ?? "requires_payment"
+    };
+  }
+});
+
+export const processStripeTerminalPaymentIntent = action({
+  args: {
+    saleRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (ctx, args) => {
+    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+    if (!secretKey) {
+      throw new Error("STRIPE_SECRET_KEY is not configured");
+    }
+
+    const snapshot: StripeTerminalProcessSnapshot & { actorStaffUserId: Id<"staffUsers"> } =
+      await ctx.runQuery(internal.paymentInternals.getStripeTerminalReaderProcessSnapshot, {
+        saleRef: args.saleRef,
+        idempotencyKey: args.idempotencyKey
+      });
+    const reservedAttempt = await ctx.runMutation(internal.paymentInternals.reserveStripeTerminalReaderProcessAttempt, {
+      saleRef: snapshot.saleRef,
+      providerPaymentId: snapshot.paymentIntentId,
+      readerId: snapshot.readerId,
+      amountCents: snapshot.amountCents,
+      currency: snapshot.currency
+    });
+    const request = buildStripeTerminalReaderProcessRequest({
+      ...snapshot,
+      processAttempt: reservedAttempt.processAttempt
+    });
+
+    const reader = await stripeFormPost<StripeTerminalReaderProcessResponse>(request.endpoint, {
+      secretKey,
+      apiVersion: request.apiVersion,
+      idempotencyKey: request.idempotencyKey,
+      body: request.body,
+      errorMessage: stripeTerminalReaderErrorMessage
+    });
+    const readerId = reader.id;
+    if (typeof readerId !== "string" || !readerId) {
+      throw new Error("Stripe did not return a Terminal reader id");
+    }
+    if (readerId !== snapshot.readerId) {
+      throw new Error("Stripe returned a different Terminal reader");
+    }
+    assertStripeTerminalReaderProcessResult(reader, snapshot.paymentIntentId);
+    const status = stripeTerminalReaderPaymentStatus(reader);
+
+    await ctx.runMutation(internal.paymentInternals.recordStripeTerminalReaderProcess, {
+      saleRef: snapshot.saleRef,
+      providerPaymentId: snapshot.paymentIntentId,
+      readerId: snapshot.readerId,
+      amountCents: snapshot.amountCents,
+      currency: snapshot.currency,
+      processAttempt: reservedAttempt.processAttempt,
+      processIdempotencyKey: reservedAttempt.processIdempotencyKey,
+      status,
+      actorStaffUserId: snapshot.actorStaffUserId,
+      raw: sanitizeStripeTerminalReaderProcess(reader)
+    });
+
+    return {
+      saleRef: snapshot.saleRef,
+      provider: "terminal" as const,
+      paymentIntentId: snapshot.paymentIntentId,
+      readerId: snapshot.readerId,
+      amountCents: snapshot.amountCents,
+      currency: snapshot.currency,
+      status,
+      readerStatus: reader.status ?? "unknown",
+      readerActionStatus: reader.action?.status ?? "unknown"
     };
   }
 });

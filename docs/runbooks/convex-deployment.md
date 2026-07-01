@@ -71,6 +71,7 @@ The value should look like `https://<deployment>.convex.cloud`.
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_PAYMENT_RETURN_ORIGINS "https://skydeckla.com,https://www.skydeckla.com"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_TERMINAL_READER_REGISTRY "tmr_frontdesk@tml_lobby"
 ```
 
 Use Stripe test-mode values for Preview/Development. Do not paste secret values

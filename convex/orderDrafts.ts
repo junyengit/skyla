@@ -11,6 +11,9 @@ import {
   normalizeIdempotencyKey,
   posSaleDraftResult
 } from "./lib/orderDraftPersistence";
+import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
+
+declare const process: { env: Record<string, string | undefined> };
 
 const ticketPackageKey = v.union(
   v.literal("general"),
@@ -153,7 +156,16 @@ export const createPosSaleDraft = mutation({
   handler: async (ctx, args) => {
     const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
     const now = Date.now();
-    const pendingWrite = buildPosSaleDraftWrite(args, {
+    const authorizedReader = authorizeTerminalReaderSelection(
+      { readerId: args.readerId, terminalLocationId: args.terminalLocationId },
+      process.env.SKYLA_TERMINAL_READER_REGISTRY
+    );
+    const authorizedArgs = {
+      ...args,
+      readerId: authorizedReader.readerId,
+      terminalLocationId: authorizedReader.terminalLocationId
+    };
+    const pendingWrite = buildPosSaleDraftWrite(authorizedArgs, {
       saleRef: "pending",
       now,
       staffUserId: staffUser._id,
@@ -177,7 +189,7 @@ export const createPosSaleDraft = mutation({
 
     const saleId = await ctx.db.insert("posSales", pendingWrite.sale);
     const saleRef = saleRefFromId(saleId, now);
-    const write = buildPosSaleDraftWrite(args, {
+    const write = buildPosSaleDraftWrite(authorizedArgs, {
       saleRef,
       now,
       staffUserId: staffUser._id,

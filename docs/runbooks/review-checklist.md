@@ -61,6 +61,7 @@ Use this after each major phase.
   return `410` unless an explicit transition env var re-enables them
 - Convex has `STRIPE_SECRET_KEY` in the correct environment
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
+- Convex has `SKYLA_TERMINAL_READER_REGISTRY` before POS reader handoff testing
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment
 - Stripe webhook secret is configured before paid-order completion moves to Convex
 - Stripe dashboard webhook endpoint points to the Convex site URL, not the old Supabase function
