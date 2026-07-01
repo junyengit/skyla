@@ -17,6 +17,9 @@ Use this after each major phase.
 - No new client-trusted payment authority
 - Payment actions accept stored refs only, not browser totals
 - Stripe return URLs are allowlisted by server/Convex env
+- Stripe Terminal accepts stored `saleRef` and idempotency key only
+- Staff-only payment routes forward bearer auth to Convex and fail closed
+  without it
 - Webhook work verifies signature, amount, currency, status, and idempotency
 - Stripe webhooks use raw request bodies before JSON parsing
 - Paid-order transitions require stored Convex order/payment-event reconciliation
@@ -29,6 +32,9 @@ Use this after each major phase.
 - Ticket path is safe
 - Admin and POS text remains high-contrast on the dark background
 - Admin/POS are not indexed
+- `/pos-next` is not indexed
+- Legacy `/checkout.html` card payment stays disabled while `/checkout` is the
+  card path
 - Motion respects reduced motion
 - Legacy route bridge still covers `/about`, `/cafe`, `/experiences`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos`
 
@@ -48,6 +54,11 @@ Use this after each major phase.
 - Preview checkout draft POST returns `persisted: true` before payment cutover
 - Stripe Checkout action takes `orderRef` and draft `idempotencyKey`
 - Stripe Checkout action does not accept `amountCents`, `currency`, or line items from the browser
+- `/api/payments/stripe-terminal` takes `saleRef` and draft `idempotencyKey`
+- `/api/payments/stripe-terminal` does not accept `amountCents`, `readerId`, or
+  `terminalLocationId` from the browser
+- Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation
+  return `410` unless an explicit transition env var re-enables them
 - Convex has `STRIPE_SECRET_KEY` in the correct environment
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment

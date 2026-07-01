@@ -2,7 +2,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --bg: #0c0d10; --panel: #14161b; --panel2: #1b1e24; --line: #2a2e36;
-  --gold: #c9a84c; --gold-soft: #d8be73; --text: #ffffff; --muted: #f5f7fb;
+  --gold: #c9a84c; --gold-soft: #d8be73; --text: #ffffff; --muted: #ffffff;
 }
 body.pos-body {
   font-family: 'Inter', system-ui, sans-serif;

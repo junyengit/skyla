@@ -28,13 +28,13 @@ What changed in this slice:
 The primary `/checkout` page now uses the App Router and calls the server draft
 route first. It shows a closed payment state until the real Convex deployment,
 Stripe envs, and Stripe dashboard webhook endpoint exist. The old static
-checkout remains at `/checkout.html` only as a legacy fallback/reference during
-the cutover.
+checkout remains at `/checkout.html` only as a legacy reference during the
+cutover; its Stripe card creation path is disabled in code.
 
 POS is a separate payment surface. `/pos-next` can review server-priced POS sale
-drafts, but Terminal payment is intentionally locked there. Do not treat POS as
-cut over until the Terminal backend creates payment intents from stored
-`saleRef` records only.
+drafts, and the Terminal backend now creates payment intents from stored
+`saleRef` records only. Do not treat POS as cut over until the staff UI can
+collect/process those intents on a real test reader.
 
 ## Flow
 
@@ -110,8 +110,8 @@ Expected:
 
 - New Convex action accepts `orderRef`, not `amountCents`.
 - `/checkout` calls the Next/Convex route.
-- `/checkout.html`, POS, and old Supabase payment bridges still show legacy
-  client-total behavior until those compatibility paths are disabled.
+- `/checkout.html` has `STRIPE_ENABLED = false`.
+- Old Supabase payment creation actions return `410` by default in repo code.
 
 3. Confirm the webhook route exists after the real Convex deployment is linked:
 
@@ -151,7 +151,29 @@ Expected:
 
 - total is `9700`, not `1`
 - `persisted` is `false` until staff auth and Convex are configured
-- Terminal payment remains locked until the `saleRef` action exists
+- Terminal payment requires a stored `saleRef`
+
+6. Confirm the Terminal route ignores browser totals:
+
+```bash
+curl -sS -X POST "$PREVIEW_URL/api/payments/stripe-terminal" \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $STAFF_TEST_JWT" \
+  --data '{
+    "saleRef": "SALE260704-ABC123",
+    "idempotencyKey": "pos_20260704_api_check",
+    "amountCents": 1,
+    "readerId": "tmr_browser_supplied"
+  }'
+```
+
+Expected before Convex is wired:
+
+- `503` with `code: "convex_unconfigured"`, or `401` if no staff token is sent
+
+Expected after Convex is wired:
+
+- amount comes back from stored Convex sale data, not `amountCents: 1`
 
 ## Acceptance Checklist
 
@@ -174,9 +196,14 @@ Expected:
       provider, and order status before marking the order paid.
 - [ ] Home page checkout links resolve to the App Router `/checkout` page, not
       the legacy static rewrite.
-- [ ] Legacy Supabase Stripe/Kaskade/Terminal payment paths are disabled only after replacement acceptance.
-- [ ] POS Terminal create-intent accepts `saleRef` only before `/pos-next` replaces
-      the live `/pos` path.
+- [x] Legacy Supabase Stripe card and Terminal payment creation fail closed by
+      default in repo code.
+- [ ] Confirm any already deployed legacy Supabase functions are redeployed from
+      fail-closed code or disabled in the dashboard.
+- [x] POS Terminal create-intent accepts `saleRef` only before `/pos-next`
+      replaces the live `/pos` path.
+- [ ] `/pos-next` can collect/process the Convex-created PaymentIntent on a
+      Stripe test reader.
 - [ ] No real cards are used during preview verification.
 
 ## Rollback

@@ -12,24 +12,27 @@ pages load, and smoke tests pass on both `skydeckla.com` and
 The new safer payment backend is partly built in Convex code: orders and POS
 sale drafts can be priced from server-owned data, Stripe Checkout sessions can
 be created from a stored `orderRef`, and Stripe webhooks can verify signatures
-before marking an order paid. The primary `/checkout` page now uses the Next.js
-App Router and fails closed until the real Convex deployment, Vercel env vars,
-and Stripe dashboard webhook endpoint are ready.
+before marking an order paid. Stripe Terminal PaymentIntents can now be created
+from a stored POS `saleRef` only. The primary `/checkout` page now uses the
+Next.js App Router and fails closed until the real Convex deployment, Vercel
+env vars, and Stripe dashboard webhook endpoint are ready.
 
 Live POS and admin are still legacy compatibility pages. A native `/pos-next`
-draft page exists for server-priced sale review, but Terminal payment stays
-locked there until the Stripe Terminal backend charges from a stored `saleRef`.
-The old static checkout is still reachable at `/checkout.html` while the team
-verifies the new App Router flow.
+draft page exists for server-priced sale review, and the repo now has the
+server-authoritative Terminal action, but reader collection is still locked
+until staff auth, Convex envs, and Stripe Terminal acceptance are complete. The
+old static checkout is still reachable at `/checkout.html`, but its Stripe card
+creation path is disabled in code so it cannot mint browser-priced card charges
+from Vercel.
 
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-06-30:
-  `https://web-qoge89yac-junyen-enterprises.vercel.app`
+  `https://web-dhnis3o2h-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-06-30:
-  `dpl_Ft1WbJraJzKNQRZKDTXnMKyhUDxo`
+  `dpl_31kaRK2yL5n56PgrQ7jeLXuRgY5F`
 - Custom domains checked on 2026-06-30:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -69,6 +72,12 @@ flowchart TD
 - `/pos-next` is marked `noindex, nofollow`.
 - Admin and POS dark-theme text is high contrast.
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
+- `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
+  requires a staff bearer token, and forwards to Convex.
+- The repo copy of legacy Supabase Stripe Checkout and Terminal payment
+  creation fails closed by default.
+- `/checkout.html` no longer enables legacy Stripe card creation from browser
+  totals.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
 - Next.js `16.2.9`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
@@ -83,12 +92,12 @@ flowchart TD
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
 - `/checkout` is the new App Router checkout, but live card payment is gated
   until Convex and Stripe dashboard envs exist.
-- `/checkout.html` still contains the legacy Supabase payment creation path and
-  must be disabled after the App Router path passes preview/live acceptance.
-- POS still uses a legacy Terminal bridge where browser cart totals reach the
-  backend.
-- `/pos-next` is not the live register yet because Terminal capture is still
-  locked until the backend accepts `saleRef` only.
+- Any already deployed Supabase Stripe functions must still be disabled or
+  redeployed from the fail-closed repo code in the Supabase dashboard.
+- POS legacy reader connection and charge UI should stay disabled while the
+  `/pos-next` staff-authenticated Terminal flow is accepted.
+- `/pos-next` is not the live register yet because reader collection/capture is
+  not wired to the new `saleRef` action in the UI.
 - Admin/POS are not rebuilt as protected App Router/Convex workflows yet.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
@@ -138,8 +147,12 @@ flowchart TD
 - [ ] Create a separate live-mode endpoint only after test mode passes.
 - [ ] Do not use a real credit card during verification. Use Stripe test mode
       cards and Stripe dashboard test webhooks until preview acceptance passes.
-- [ ] Replace the legacy Terminal create-intent path with a Convex action that
-      accepts `saleRef` only and reads the stored POS sale amount.
+- [x] Replace the legacy Terminal create-intent path in repo code with a Convex
+      action that accepts `saleRef` only and reads the stored POS sale amount.
+- [ ] Wire the POS UI to collect/process that Convex-created PaymentIntent on a
+      real Stripe test reader.
+- [ ] Disable or redeploy legacy Supabase Stripe functions so any live old
+      functions inherit the fail-closed behavior.
 
 ### GitHub
 
@@ -168,7 +181,7 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 3. Create Stripe test webhook endpoint and set Convex Stripe env vars.
 4. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-5. Replace POS Terminal payment creation with a server-authoritative Convex
+5. Wire POS Terminal reader collection to the server-authoritative Convex
    action.
 6. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.

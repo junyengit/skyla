@@ -12,6 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "jsr:@supabase/server@^1";
 
 const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+const LEGACY_BROWSER_PAYMENTS_ENABLED = Deno.env.get("SKYLA_ENABLE_LEGACY_BROWSER_PAYMENTS") === "true";
 const STRIPE_API = "https://api.stripe.com/v1";
 
 const CORS = {
@@ -45,6 +46,16 @@ async function handle(req: Request) {
   try {
     if (!STRIPE_SECRET) return json({ error: "STRIPE_SECRET_KEY not set" }, 500);
     const payload = await req.json();
+    const disabledPaymentActions = new Set(["create", "payment-intent", "update-intent"]);
+    if (disabledPaymentActions.has(payload.action) && !LEGACY_BROWSER_PAYMENTS_ENABLED) {
+      return json(
+        {
+          error:
+            "Legacy browser-authoritative Stripe payment creation is disabled. Use the Next.js/Convex checkout flow."
+        },
+        410
+      );
+    }
 
     if (payload.action === "create") {
       const { amountCents, currency = "usd", description, bookingRef, email, successUrl, cancelUrl } = payload;

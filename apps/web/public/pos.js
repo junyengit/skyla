@@ -23,6 +23,7 @@ async function authenticate(email, pwd) {
 let terminal = null;
 let connectedReader = null;
 const cart = {};   // key → { id, name, price, qty, kind, packageKey }
+const LEGACY_TERMINAL_PAYMENTS_ENABLED = false;
 
 const fmt = (cents) => `$${(cents / 100).toFixed(2)}`;
 const dollarsToCents = (d) => Math.round(d * 100);
@@ -221,6 +222,9 @@ async function fetchConnectionToken() {
   return data.secret;
 }
 function initTerminal() {
+  if (!LEGACY_TERMINAL_PAYMENTS_ENABLED) {
+    throw new Error('Legacy Terminal payments have moved to the server-authoritative POS flow.');
+  }
   if (terminal) return terminal;
   terminal = StripeTerminal.create({
     onFetchConnectionToken: fetchConnectionToken,
@@ -239,9 +243,9 @@ function setReaderStatus(connected, label) {
 
 // Discover readers and let the operator pick (you run two — café + door)
 async function connectReader() {
-  initTerminal();
   openPicker('Searching for readers on this network…');
   try {
+    initTerminal();
     const simulated = allowSimulatedReader() && document.getElementById('reader-sim').checked;
     if (!simulated) await hydrateTerminalLocation();
     const config = { simulated };
@@ -337,6 +341,10 @@ let _lastSale = null;
 let _charge = null;   // { clientSecret } — kept so a retry reuses the SAME PaymentIntent (no double charge)
 
 async function charge() {
+  if (!LEGACY_TERMINAL_PAYMENTS_ENABLED) {
+    alert('Card-present payments are moving to the secure /pos-next flow and are disabled on this legacy POS screen.');
+    return;
+  }
   if (!connectedReader) { alert('Connect a reader first (top right).'); return; }
   const total = cartTotalCents();
   if (total < 50) return;

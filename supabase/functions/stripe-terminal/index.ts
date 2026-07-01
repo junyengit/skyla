@@ -16,6 +16,7 @@ import { withSupabase } from "jsr:@supabase/server@^1";
 
 const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const TERMINAL_SETUP_TOKEN = Deno.env.get("SKYLA_TERMINAL_SETUP_TOKEN") ?? "";
+const LEGACY_TERMINAL_BRIDGE_ENABLED = Deno.env.get("SKYLA_ENABLE_LEGACY_TERMINAL_BRIDGE") === "true";
 const STRIPE_API = "https://api.stripe.com/v1";
 const DEFAULT_LOCATION_NAME = "Skyla Los Angeles";
 const DEFAULT_ADDRESS = {
@@ -80,6 +81,16 @@ async function handle(req: Request) {
   try {
     if (!STRIPE_SECRET) return json({ error: "STRIPE_SECRET_KEY not set" }, 500);
     const payload = await req.json();
+    const disabledBridgeActions = new Set(["connection-token", "list-locations", "list-readers", "create-intent"]);
+    if (disabledBridgeActions.has(payload.action) && !LEGACY_TERMINAL_BRIDGE_ENABLED) {
+      return json(
+        {
+          error:
+            "Legacy Stripe Terminal bridge is disabled. Use the Next.js/Convex POS saleRef payment flow."
+        },
+        410
+      );
+    }
 
     // Token the Terminal JS SDK exchanges to connect to readers.
     // Passing a location scopes the token to readers at that venue (best practice).
