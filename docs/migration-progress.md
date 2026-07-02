@@ -295,6 +295,29 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Expanded the native admin member projection so new Convex member
       applications can show applicant name, email, phone, source, bio, tier,
       status, and timestamps instead of only a thin email/tier summary.
+- [x] Merged native member application PR #42 into `main` as merge commit
+      `0219a838e879c7f611c35d5c19dba06476de7ce7`; Vercel production deployment
+      `https://web-b474ddr4i-junyen-enterprises.vercel.app`
+      (`dpl_6ENBkgnH2iUZXmkGFgki68ueatq7`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed main CI, main CodeQL, Vercel production, and GitHub Pages
+      workflows passed after PR #42.
+- [x] Re-ran post-merge route smokes against
+      `https://web-b474ddr4i-junyen-enterprises.vercel.app`,
+      `https://skydeckla.com`, and `https://www.skydeckla.com`; each passed
+      the 23-route matrix.
+- [x] Re-ran post-merge payment smokes against the same three bases; each passed
+      with checkout total `8505` cents, POS total `9700` cents, and Stripe
+      execution routes failing closed instead of exposing payment secrets.
+- [x] Probed `/api/members/applications` with an empty no-write payload on the
+      latest Vercel deployment, apex domain, and `www`; each returned `503` with
+      `code: "convex_unconfigured"`, so the public member path is safely blocked
+      until the real Convex deployment URL is set.
+- [x] Confirmed Vercel grouped runtime errors found no production errors in the
+      checked 2-hour window after the PR #42 deployment and smoke probes.
+- [x] Visually checked local `/admin`, `/pos-next`, `/pos`, and `/admin.html` in
+      Helium; staff/admin surfaces remain readable with white text on
+      black/dark panels.
 
 ## In Progress
 
@@ -325,7 +348,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/post-payment-smoke-production-state`.
 - [x] Verify, review, and ship `codex/github-main-protection-state`.
 - [x] Verify, review, and ship `codex/post-github-hardening-production-state`.
-- [ ] Verify, review, and ship `codex/native-member-application-spine`.
+- [x] Verify, review, and ship `codex/native-member-application-spine`.
+- [ ] Verify, review, and ship `codex/post-member-application-production-state`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
