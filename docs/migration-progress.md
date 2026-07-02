@@ -196,6 +196,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Removed repo support for re-enabling legacy browser-authoritative Stripe Checkout and Terminal charge creation; retired legacy payment flags are now blocked by the tracked artifact/security guard.
 - [x] Ran the dependency sweep. `bun outdated --recursive` now reports only `eslint@10.6.0`; the upgrade is intentionally held because the latest available `eslint-plugin-react@7.37.5` crashes under ESLint 10 through Next's lint config.
 - [x] Tightened `/admin` and `/pos-next` text contrast so labels and secondary text render white on the black staff surfaces.
+- [x] Merged native admin config PR #33 into `main` as merge commit `be24d917c418d00f81847ba33b1ea965c6dbc5a9`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-4jzsjm853-junyen-enterprises.vercel.app` (`dpl_5N2NVHBtKbYPEtVBRW5PXdUQuT7J`), aliased to `skydeckla.com` and `www.skydeckla.com`.
+- [x] Re-ran post-merge route smoke tests for `https://web-4jzsjm853-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
+- [x] Verified production API probes across all three bases: spoofed checkout totals return canonical `8505` cents, spoofed POS totals/reader/location return canonical `9700` cents with no transient reader/location fields, and authenticated payment/admin routes fail closed with `convex_unconfigured` while Convex envs are absent.
+- [x] Confirmed Vercel production logs had no error entries for the checked 30-minute window.
 
 ## In Progress
 
@@ -219,7 +224,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/payment-hosting-qa-and-contrast`.
 - [x] Verify, review, and ship `codex/native-admin-ops-spine`.
 - [x] Verify, review, and ship `codex/native-admin-actions-spine`.
-- [ ] Verify, review, and ship `codex/admin-config-spine`.
+- [x] Verify, review, and ship `codex/admin-config-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
