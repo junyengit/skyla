@@ -38,11 +38,11 @@ do not cut over the public form until the dashboard setup below is done.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-dx2w057ld-junyen-enterprises.vercel.app`
+  `https://web-gg92osnfi-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_CXUMt9K85LoXBcJAUcSiqYhuzTjE`
+  `dpl_6PW4HQNh9LF2XKqt92Tx1ENDZxDt`
 - Merge commit checked on 2026-07-02:
-  `2c05f867cced89d8d14f712928a6ec704a446644`
+  `37df37c9c20194fa67e93847b5b9cbb8a76092d1`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -60,8 +60,8 @@ do not cut over the public form until the dashboard setup below is done.
   blocked.
 - GitHub CodeQL alerts checked on 2026-07-02 after the PR #40 `main` scan:
   no open alerts.
-- Live API behavior checked on 2026-07-02 across the apex domain and `www`
-  with `bun run test:payments`:
+- Live API behavior checked on 2026-07-02 across the current Vercel production
+  deployment, apex domain, and `www` with `bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
   - Spoofed POS total/reader/location returned canonical server total `9700`
@@ -80,7 +80,8 @@ do not cut over the public form until the dashboard setup below is done.
   `/api/members/applications` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no production error/fatal logs in the checked 24-hour window.
+  no production error/fatal logs for deployment
+  `dpl_6PW4HQNh9LF2XKqt92Tx1ENDZxDt` in the checked 1-hour window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -116,8 +117,9 @@ flowchart TD
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
-- The 23-route smoke test passed on 2026-07-02 for `https://skydeckla.com` and
-  `https://www.skydeckla.com`.
+- The 23-route smoke test passed on 2026-07-02 for
+  `https://web-gg92osnfi-junyen-enterprises.vercel.app`,
+  `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL open-alert list is empty.
@@ -368,13 +370,13 @@ PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-dx2w057ld-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-gg92osnfi-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
-PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-dx2w057ld-junyen-enterprises.vercel.app bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-gg92osnfi-junyen-enterprises.vercel.app bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
-PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=https://web-dx2w057ld-junyen-enterprises.vercel.app,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
+PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=https://web-gg92osnfi-junyen-enterprises.vercel.app,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
 PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/member-applications-route.test.ts convex/memberApplications.test.ts
 ```
 
