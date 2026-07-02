@@ -26,17 +26,20 @@ root.
 As of July 2, 2026:
 
 - Recorded verified application deployment from `main` was READY at
-  `https://web-dqay6ls9s-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_FqPrQ97E6sdaaZ5Tqv8gBjMU2vaD`.
+  `https://web-51jx64rul-junyen-enterprises.vercel.app`.
+- Recorded verified deployment ID: `dpl_Fz2YSWNMiagFgUXmHcrCoUpxj73B`.
 - Recorded verified merge commit:
-  `28290519ce164bfed71832f8a978acb15fa699ac`.
+  `18646de9a636c50fc470ffabc83f6d212884db15`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
-- Vercel currently has no project environment variables configured.
-- Stripe Checkout and Terminal create/process routes currently fail closed with
-  `convex_unconfigured` until the real Convex deployment URL is added.
+- Production payment routes currently fail closed with `convex_unconfigured`
+  until the real Convex deployment URL is added and Stripe dashboard secrets are
+  configured in Convex.
+- The latest production build logs show Vercel installing Bun canary
+  `1.4.0-canary.1+eba370b69`, detecting Next.js `16.2.10`, and deploying from
+  Git commit `18646de`.
 
 ## Bun Deployment Changes
 
@@ -93,8 +96,11 @@ Leave any conversion env var blank to keep that event disabled. Do not hard-code
 2. Vercel creates a Preview deployment from the branch.
 3. GitHub CI runs `bun install --frozen-lockfile`, lint, typecheck, unit tests, build, tracked artifact guard, and dependency audit.
 4. Run smoke tests against the Preview deployment.
-5. Merge to `main`.
-6. Vercel deploys Production from `main`.
+5. Run `bun run test:payments` against the Preview deployment when the change
+   touches checkout, POS, Stripe, Kaskade, Supabase functions, or Convex payment
+   code.
+6. Merge to `main`.
+7. Vercel deploys Production from `main`.
 
 ## Domain Cutover
 
@@ -103,6 +109,8 @@ Leave any conversion env var blank to keep that event disabled. Do not hard-code
 - The Vercel production deployment is green.
 - The homepage, ticket path, member path, legal pages, admin gate, POS gate, robots, and sitemap load.
 - Payment/order flows have been verified or intentionally disabled behind a safe placeholder.
+- `bun run test:payments` passes on the production deployment URL, apex domain,
+  and `www` domain.
 - Rollback path is documented.
 - Vercel DNS nameservers are active, Vercel domain verification passes for both domains, and custom-domain smoke tests pass without DNS overrides.
 

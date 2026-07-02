@@ -33,23 +33,25 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-2vvwavkz2-junyen-enterprises.vercel.app`
+  `https://web-51jx64rul-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_EnTbyZLcqo49NK6adc6Eag3Vn7k6`
+  `dpl_Fz2YSWNMiagFgUXmHcrCoUpxj73B`
 - Merge commit checked on 2026-07-02:
-  `2b0b422f29f71deca52e0802f8235ba773b9c565`
+  `18646de9a636c50fc470ffabc83f6d212884db15`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel env status checked on 2026-07-02: no project environment variables
-  are configured for `junyen-enterprises/web`.
+- Vercel/Convex env behavior checked on 2026-07-02: production still behaves
+  as Convex-unconfigured, so checkout/POS execution is safely blocked. A prior
+  direct Vercel env check also found no project env vars; recheck the dashboard
+  before assuming that is still the literal env-list state.
 - GitHub branch protection checked on 2026-07-02: `main` is not protected yet
   (`gh api repos/junyengit/skyla/branches/main/protection` returns `404`).
 - Live API behavior checked on 2026-07-02 across the apex domain, `www`, and the
-  latest Vercel deployment URL:
-  - Spoofed checkout total `1` cent returned canonical server total `8610`
+  latest Vercel deployment URL with `bun run test:payments`:
+  - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
-  - Spoofed POS total/reader/location returned canonical server total `4200`
+  - Spoofed POS total/reader/location returned canonical server total `9700`
     cents for the probe payload and no reader/location fields in the transient
     draft.
   - `/api/payments/stripe-checkout`,
@@ -60,8 +62,9 @@ from Vercel.
   - `/api/payments/stripe-terminal` returned `401 staff_auth_required` before
     Convex configuration when no staff token was provided.
   - No response exposed a Stripe `clientSecret`.
-- Vercel runtime errors checked on 2026-07-02: no grouped runtime errors in the
-  last 2 hours.
+- Vercel production runtime errors checked on 2026-07-02 for deployment
+  `dpl_Fz2YSWNMiagFgUXmHcrCoUpxj73B`: no error or fatal logs in the checked
+  2-hour window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -94,8 +97,12 @@ flowchart TD
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
+- The 23-route smoke test passed on 2026-07-02 for
+  `https://web-51jx64rul-junyen-enterprises.vercel.app`,
+  `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for PR #33, the native admin config merge.
+  deployment checks passed for PR #37, the Terminal webhook reconciliation
+  merge.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
   `noindex, nofollow` in the current code path.
@@ -120,6 +127,8 @@ flowchart TD
   `convex_unconfigured` until Convex is connected. Terminal payment routes
   require staff bearer auth first, then fail closed with `convex_unconfigured`
   until Convex is connected.
+- `bun run test:payments` now checks the payment API fail-closed behavior on
+  any supplied base URL without using a real card or writing Convex data.
 - `/api/admin/bookings/status` and `/api/admin/members/status` require staff
   bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
@@ -127,6 +136,9 @@ flowchart TD
   the server catalog total.
 - The repo copy of legacy Supabase Stripe Checkout and Terminal payment
   creation returns `410` permanently.
+- The compatibility checkout no longer offers Kaskade/crypto, and the repo copy
+  of legacy Supabase Kaskade payment/webhook functions now returns `410`
+  permanently.
 - `/checkout.html` no longer enables legacy Stripe card creation from browser
   totals.
 - No raw card number/CVC collection was found in the app code.
@@ -149,9 +161,10 @@ flowchart TD
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
 - `/checkout` is the new App Router checkout, but live card payment is gated
   until Convex and Stripe dashboard envs exist.
-- Any already deployed Supabase Stripe functions must still be disabled or
+- Any already deployed Supabase payment functions must still be disabled or
   redeployed from the permanently fail-closed repo code in the Supabase
-  dashboard.
+  dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
+  `kaskade-payment`, and `kaskade-webhook`.
 - POS legacy reader connection and charge UI should stay disabled while the
   `/pos-next` staff-authenticated Terminal flow is accepted.
 - `/pos-next` is not the live register yet because reader processing and signed
@@ -172,15 +185,18 @@ flowchart TD
 
 - [ ] Confirm project root is `apps/web`.
 - [ ] Confirm Production Branch is `main`.
+- [ ] After every merge, record the production deployment URL, deployment ID,
+      commit SHA, and aliases for `skydeckla.com` and `www.skydeckla.com`.
 - [ ] Confirm install command is
   `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`.
 - [ ] Confirm build command is
   `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`.
 - [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Preview and Production after Convex is
-  linked.
+      linked.
+- [ ] Confirm only public browser config is in Vercel. Stripe secrets,
+      webhook secrets, staff bootstrap token, and Terminal reader registry
+      belong in Convex, not `NEXT_PUBLIC_*`.
 - [ ] Add Google Ads public env vars only when ads are ready.
-- [ ] Add Convex `SKYLA_TERMINAL_READER_REGISTRY` before testing `/pos-next`
-      reader handoff.
 - [ ] Keep secrets out of `NEXT_PUBLIC_*`.
 - [ ] Confirm `/pos-next` remains `X-Robots-Tag: noindex, nofollow` after every
       preview and production deploy.
@@ -220,6 +236,9 @@ flowchart TD
 
 ### Stripe
 
+- [ ] Record the Stripe mode (`test` or `live`), endpoint ID, endpoint URL,
+      subscribed events, and signing-secret rotation date for each webhook
+      endpoint.
 - [ ] Create a test-mode webhook endpoint:
   `https://<convex-site-url>/stripe-webhook`.
 - [ ] Subscribe it to:
@@ -248,6 +267,23 @@ flowchart TD
 - [ ] Disable or redeploy legacy Supabase Stripe functions so any live old
       functions inherit the fail-closed behavior.
 
+### Supabase Legacy
+
+- [ ] In Supabase Edge Functions, confirm whether `stripe-checkout` is deployed.
+      It should be disabled or redeployed from the repo copy that returns `410`
+      for browser-authoritative payment creation.
+- [ ] In Supabase Edge Functions, confirm whether `stripe-terminal` is deployed.
+      It should be disabled or redeployed from the repo copy that returns `410`
+      for browser-authoritative Terminal charges.
+- [ ] In Supabase Edge Functions, confirm whether `stripe-webhook` is deployed.
+      Stripe dashboard endpoints should point to Convex, not Supabase, before
+      this legacy webhook is removed.
+- [ ] In Supabase Edge Functions, confirm whether `kaskade-payment` and
+      `kaskade-webhook` are deployed. They should be disabled or redeployed from
+      the repo copies that return `410`.
+- [ ] Record the deployed status, last deployment time, and rollback decision
+      for each legacy function before deleting anything.
+
 ### GitHub
 
 - [ ] Protect `main`.
@@ -267,9 +303,12 @@ PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-2vvwavkz2-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-51jx64rul-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-51jx64rul-junyen-enterprises.vercel.app bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 ```
 
 Current dependency note:
@@ -312,6 +351,8 @@ What has been done:
   the browser sends.
 - The current live site does not have the secret Convex/Stripe settings yet, so
   card-payment APIs stop safely instead of trying to charge.
+- There is now a repeatable payment smoke command to check that fail-closed
+  behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
 - Admin, POS, and `/pos-next` use high-contrast dark staff screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations plus
   booking/member status buttons; `/admin.html` remains as a fallback for the

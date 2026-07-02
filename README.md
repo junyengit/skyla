@@ -45,14 +45,14 @@ As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-dqay6ls9s-junyen-enterprises.vercel.app` from merge commit
-  `28290519ce164bfed71832f8a978acb15fa699ac`.
+  `https://web-51jx64rul-junyen-enterprises.vercel.app` from merge commit
+  `18646de9a636c50fc470ffabc83f6d212884db15`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
-- Vercel still has no project environment variables configured. That is why
-  payment execution intentionally stops with `convex_unconfigured` until the real
-  Convex and Stripe dashboard setup is finished.
+- Production still behaves as Convex-unconfigured. That is why payment execution
+  intentionally stops with `convex_unconfigured` until the real Convex and
+  Stripe dashboard setup is finished.
 - The Next app serves the new homepage, checkout route, and `/pos-next` draft
   review route. It bridges legacy routes from `/about`, `/cafe`,
   `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to
@@ -100,6 +100,8 @@ For a full local gate that matches the migration baseline:
 bun run check
 SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
+PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
+PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 ```
 
 ## Current Bridge Notes
@@ -124,7 +126,12 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
   stored Terminal payment event. Live Terminal payment remains gated until
   Vercel/Convex envs, staff auth, Stripe dashboard endpoint setup, and
   test-reader acceptance are complete.
-- Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
+- Legacy browser-authoritative Kaskade/crypto checkout is disabled in the
+  compatibility checkout and retired in the repo copy of the Supabase functions.
+- Supabase functions remain legacy transition surfaces until Convex,
+  server-authoritative payment creation, admin, and POS replacements are
+  verified and the dashboard deployments are disabled or redeployed from the
+  fail-closed repo copies.
 
 Useful operator references:
 
