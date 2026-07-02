@@ -54,7 +54,10 @@ As of July 1, 2026, production correctly returns `convex_unconfigured` for this
 route because Vercel is not wired to a real Convex deployment yet.
 
 - Vercel has `NEXT_PUBLIC_CONVEX_URL`.
-- Convex has `STRIPE_SECRET_KEY`.
+- Convex has `SKYLA_STRIPE_MODE` set to `test` for preview/test-reader
+  acceptance.
+- Convex has `STRIPE_SECRET_KEY`, and its `sk_test_` or `sk_live_` prefix
+  matches `SKYLA_STRIPE_MODE`.
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` with entries like
   `tmr_frontdesk@tml_lobby`.
 - Staff auth provider is configured for Convex.

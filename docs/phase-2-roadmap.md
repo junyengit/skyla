@@ -318,9 +318,9 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified app/member/staff-contrast production commit: `aa1b7d6fdd9d613605d57429a1554982d0587eae`
-- Recorded verified app/member/staff-contrast production deployment: `https://web-4dgb61b60-junyen-enterprises.vercel.app`
-- Recorded verified app/member/staff-contrast production deployment ID: `dpl_Fk9fhLYJ67PuuWn3Z7jJBz3UPCTm`
+- Recorded verified production-readiness commit: `59b62f56e8018e38f57f28f19a30e599abdd0e8d`
+- Recorded verified production-readiness deployment: `https://web-k2mvfzmip-junyen-enterprises.vercel.app`
+- Recorded verified production-readiness deployment ID: `dpl_24ZzQNr3tuWGb51n5wZy8qjZdHMm`
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed; the visible `/members` form remains on the compatibility
@@ -329,6 +329,11 @@ Current verified Vercel data:
 - Staff contrast state: `/admin`, `/admin.html`, `/pos-next`, and `/pos` use
   dark staff surfaces with readable white text; legacy `admin.html` and `pos`
   now reference bumped CSS cache keys.
+- Production-readiness smoke PR: `#45`
+- Production-readiness state: `bun run test:production-readiness` bundles the
+  route matrix, no-write payment probes, member application no-write probe, and
+  staff stylesheet cache-key check for custom domains plus an optional Vercel
+  deployment URL.
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and

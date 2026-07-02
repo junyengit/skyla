@@ -27,6 +27,7 @@ import {
   type StripeTerminalReaderProcessResponse,
   type StripeTerminalSnapshot
 } from "./lib/stripeTerminal";
+import { assertStripeSecretMode, parseStripeMode } from "./lib/stripeMode";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -38,10 +39,7 @@ export const createStripeCheckoutSession = action({
     cancelUrl: v.string()
   },
   handler: async (ctx, args) => {
-    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY is not configured");
-    }
+    const secretKey = stripeSecretKey();
     const allowedReturnOrigins = parseStripeReturnOriginAllowlist(process.env.SKYLA_PAYMENT_RETURN_ORIGINS);
 
     const snapshot: StripeCheckoutSnapshot = await ctx.runQuery(internal.paymentInternals.getCheckoutPaymentSnapshot, {
@@ -98,10 +96,7 @@ export const createStripeTerminalPaymentIntent = action({
     idempotencyKey: v.string()
   },
   handler: async (ctx, args) => {
-    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY is not configured");
-    }
+    const secretKey = stripeSecretKey();
 
     const snapshot: StripeTerminalSnapshot & { actorStaffUserId: Id<"staffUsers"> } = await ctx.runQuery(
       internal.paymentInternals.getPosTerminalPaymentSnapshot,
@@ -123,8 +118,7 @@ export const createStripeTerminalPaymentIntent = action({
     if (typeof paymentIntentId !== "string" || !paymentIntentId) {
       throw new Error("Stripe did not return a Terminal PaymentIntent id");
     }
-    const clientSecret = intent.client_secret;
-    if (typeof clientSecret !== "string" || !clientSecret) {
+    if (typeof intent.client_secret !== "string" || !intent.client_secret) {
       throw new Error("Stripe did not return a Terminal PaymentIntent client secret");
     }
     if (intent.amount !== undefined && intent.amount !== snapshot.totalCents) {
@@ -148,7 +142,6 @@ export const createStripeTerminalPaymentIntent = action({
       saleRef: snapshot.saleRef,
       provider: "terminal" as const,
       paymentIntentId,
-      clientSecret,
       amountCents: snapshot.totalCents,
       currency: snapshot.currency,
       status: intent.status ?? "requires_payment"
@@ -162,10 +155,7 @@ export const processStripeTerminalPaymentIntent = action({
     idempotencyKey: v.string()
   },
   handler: async (ctx, args) => {
-    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY is not configured");
-    }
+    const secretKey = stripeSecretKey();
 
     const snapshot: StripeTerminalProcessSnapshot & { actorStaffUserId: Id<"staffUsers"> } =
       await ctx.runQuery(internal.paymentInternals.getStripeTerminalReaderProcessSnapshot, {
@@ -253,4 +243,13 @@ async function stripeFormPost<T extends { error?: { message?: string } }>(
     throw new Error(options.errorMessage(data));
   }
   return data;
+}
+
+function stripeSecretKey() {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+  assertStripeSecretMode(secretKey, parseStripeMode(process.env.SKYLA_STRIPE_MODE));
+  return secretKey;
 }

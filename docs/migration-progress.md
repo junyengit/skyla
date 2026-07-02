@@ -326,6 +326,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed PR #44 main CI, main CodeQL, Vercel production, GitHub Pages,
       route smokes, payment smokes, no-write member API probes, Vercel runtime
       errors, and Helium staff contrast checks after deployment.
+- [x] Merged production-readiness smoke PR #45 into `main` as merge commit
+      `59b62f56e8018e38f57f28f19a30e599abdd0e8d`; Vercel production deployment
+      `https://web-k2mvfzmip-junyen-enterprises.vercel.app`
+      (`dpl_24ZzQNr3tuWGb51n5wZy8qjZdHMm`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed Vercel reports no grouped production runtime errors in the
+      checked 24-hour window after PR #45, and no production error/fatal logs
+      in the checked 2-hour window.
+- [x] Started `codex/payment-hosting-readability-check` to refresh staff
+      contrast cache keys, remove Terminal `clientSecret` from the public
+      Convex action result, require explicit `SKYLA_STRIPE_MODE`, hard-close
+      the legacy Supabase Stripe webhook repo copy, route static public ticket
+      links to `/checkout`, and document the DNS TXT/dashboard follow-up.
 
 ## In Progress
 
@@ -359,7 +372,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/native-member-application-spine`.
 - [x] Verify, review, and ship `codex/post-member-application-production-state`.
 - [x] Verify, review, and ship `codex/staff-contrast-cache-bust`.
-- [ ] Verify, review, and ship `codex/production-readiness-smoke`.
+- [x] Verify, review, and ship `codex/production-readiness-smoke`.
+- [ ] Verify, review, and ship `codex/payment-hosting-readability-check`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

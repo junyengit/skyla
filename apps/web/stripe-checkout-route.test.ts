@@ -56,7 +56,7 @@ describe("/api/payments/stripe-checkout", () => {
 
   it("surfaces server configuration failures as unavailable", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchActionMock.mockRejectedValueOnce(new Error("STRIPE_SECRET_KEY is not configured"));
+    fetchActionMock.mockRejectedValueOnce(new Error("SKYLA_STRIPE_MODE is not configured"));
 
     const response = await POST(
       request({
@@ -67,7 +67,7 @@ describe("/api/payments/stripe-checkout", () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
-      error: "STRIPE_SECRET_KEY is not configured"
+      error: "SKYLA_STRIPE_MODE is not configured"
     });
   });
 

@@ -30,6 +30,7 @@ const env = { ...fileEnv, ...process.env };
 const deployment = env.CONVEX_DEPLOYMENT ?? "";
 const publicUrl = env.NEXT_PUBLIC_CONVEX_URL ?? "";
 const serverUrl = env.CONVEX_URL ?? "";
+const stripeMode = env.SKYLA_STRIPE_MODE ?? "";
 const stripeSecretKey = env.STRIPE_SECRET_KEY ?? "";
 const stripeReturnOrigins = env.SKYLA_PAYMENT_RETURN_ORIGINS ?? "";
 const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
@@ -58,10 +59,18 @@ const checks = [
     note: serverUrl ? "useful for local server-side checks; production should prefer NEXT_PUBLIC_CONVEX_URL" : undefined
   },
   {
+    name: "SKYLA_STRIPE_MODE",
+    present: Boolean(stripeMode),
+    ok: stripeMode === "test" || stripeMode === "live",
+    note: stripeMode ? "must match the Stripe key and webhook mode" : undefined
+  },
+  {
     name: "STRIPE_SECRET_KEY",
     present: Boolean(stripeSecretKey),
-    ok: /^sk_(test|live)_/.test(stripeSecretKey),
-    note: stripeSecretKey ? "required by Convex Stripe payment actions" : undefined
+    ok: /^sk_(test|live)_/.test(stripeSecretKey) &&
+      (stripeMode === "test" ? stripeSecretKey.startsWith("sk_test_") : true) &&
+      (stripeMode === "live" ? stripeSecretKey.startsWith("sk_live_") : true),
+    note: stripeSecretKey ? "required by Convex Stripe payment actions and must match SKYLA_STRIPE_MODE" : undefined
   },
   {
     name: "SKYLA_PAYMENT_RETURN_ORIGINS",
@@ -95,10 +104,10 @@ const checks = [
 const output = {
   filesChecked: files,
   readyForCloudPersistence: checks[0].ok && checks[1].ok,
-  readyForStripeCheckout: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok,
-  readyForStripeWebhook: checks[0].ok && checks[5].ok,
-  readyForTerminalReaderHandoff: checks[0].ok && checks[1].ok && checks[3].ok && checks[6].ok,
-  readyForStaffBootstrap: checks[0].ok && checks[7].ok,
+  readyForStripeCheckout: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[5].ok,
+  readyForStripeWebhook: checks[0].ok && checks[3].ok && checks[6].ok,
+  readyForTerminalReaderHandoff: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[7].ok,
+  readyForStaffBootstrap: checks[0].ok && checks[8].ok,
   checks
 };
 

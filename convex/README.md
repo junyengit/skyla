@@ -46,8 +46,9 @@ bun run convex:codegen
 No production checkout/POS payment traffic is cut over yet. The Stripe Checkout
 action, Terminal sale-ref action, reader-processing action, Checkout webhook
 reconciliation, and Terminal PaymentIntent webhook reconciliation exist, but
-they stay gated until real Convex/Stripe envs, staff auth, Stripe dashboard
-webhook setup, and preview acceptance are verified. The next backend slices
+they stay gated until real Convex/Stripe envs, explicit `SKYLA_STRIPE_MODE`,
+staff auth, Stripe dashboard webhook setup, and preview acceptance are
+verified. The next backend slices
 should:
 
 1. Create or link the real Convex deployment.

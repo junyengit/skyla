@@ -44,16 +44,16 @@ flowchart LR
 As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Recorded verified app/member/staff-contrast production deployment:
-  `https://web-4dgb61b60-junyen-enterprises.vercel.app` from merge commit
-  `aa1b7d6fdd9d613605d57429a1554982d0587eae`.
+- Recorded verified production-readiness deployment:
+  `https://web-k2mvfzmip-junyen-enterprises.vercel.app` from merge commit
+  `59b62f56e8018e38f57f28f19a30e599abdd0e8d`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
   pushes, branch deletion, and unresolved conversations are blocked.
-- GitHub CI, CodeQL, Pages, and Vercel checks passed after PR #44 reached
+- GitHub CI, CodeQL, Pages, and Vercel checks passed after PR #45 reached
   `main`; CodeQL open alerts checked after the PR #40 `main` scan: none open.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
@@ -122,7 +122,9 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   sessions from stored `orderRef` records only. `convex/http.ts` adds the
   Stripe webhook route. `/api/payments/stripe-checkout` and the App Router
   `/checkout` page are wired for this path, but live card payment still needs
-  real Convex envs, Stripe envs, and Stripe dashboard endpoint setup.
+  real Convex envs, Stripe envs, and Stripe dashboard endpoint setup. Convex
+  also requires `SKYLA_STRIPE_MODE` so test keys/webhooks and live
+  keys/webhooks cannot be mixed silently.
 - `/api/order-drafts/pos` and `/pos-next` add a native POS draft review path.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser
   totals. The backend now creates Stripe Terminal intents and sends them to the
@@ -133,6 +135,8 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   test-reader acceptance are complete.
 - Legacy browser-authoritative Kaskade/crypto checkout is disabled in the
   compatibility checkout and retired in the repo copy of the Supabase functions.
+- Public static page CTAs now point to `/checkout`, the App Router checkout
+  path; `/checkout.html` remains only as a disabled compatibility artifact.
 - Supabase functions remain legacy transition surfaces until Convex,
   server-authoritative payment creation, admin, and POS replacements are
   verified and the dashboard deployments are disabled or redeployed from the

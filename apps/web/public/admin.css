@@ -38,6 +38,25 @@ body.admin-body {
   min-height: 100vh;
 }
 
+:where(body.admin-body) :where(
+  .gate__card,
+  .admin-shell,
+  .admin-main,
+  .admin-section,
+  .dash-panel,
+  .table-wrap,
+  .pricing-card,
+  .pricing-extra,
+  .settings-block,
+  .checkin-scan,
+  .checkin-card,
+  .mem-bio-box,
+  .confirm-box,
+  .toast
+) :where(h1, h2, h3, h4, p, span, label, small, strong, em, li, th, td, div) {
+  color: var(--white);
+}
+
 body.admin-body .admin-shell,
 body.admin-body .admin-main,
 body.admin-body .admin-section,

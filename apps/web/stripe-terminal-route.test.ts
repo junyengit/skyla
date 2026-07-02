@@ -77,7 +77,7 @@ describe("/api/payments/stripe-terminal", () => {
 
   it("surfaces server configuration failures as unavailable", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchActionMock.mockRejectedValueOnce(new Error("STRIPE_SECRET_KEY is not configured"));
+    fetchActionMock.mockRejectedValueOnce(new Error("STRIPE_SECRET_KEY does not match SKYLA_STRIPE_MODE"));
 
     const response = await CREATE_POST(
       request(
@@ -91,7 +91,7 @@ describe("/api/payments/stripe-terminal", () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
-      error: "STRIPE_SECRET_KEY is not configured"
+      error: "STRIPE_SECRET_KEY does not match SKYLA_STRIPE_MODE"
     });
   });
 
@@ -101,7 +101,6 @@ describe("/api/payments/stripe-terminal", () => {
       saleRef: "SALE260704-ABC123",
       provider: "terminal",
       paymentIntentId: "pi_test_123",
-      clientSecret: "pi_test_123_secret_abc",
       amountCents: 2900,
       currency: "usd",
       status: "requires_payment_method"

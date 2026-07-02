@@ -68,7 +68,8 @@ Use [docs/reference/environment.md](../reference/environment.md) as the source
 of truth. Minimum required values:
 
 - Vercel: `NEXT_PUBLIC_CONVEX_URL`
-- Convex: `STRIPE_SECRET_KEY`
+- Convex: `SKYLA_STRIPE_MODE`
+- Convex: `STRIPE_SECRET_KEY` matching `SKYLA_STRIPE_MODE`
 - Convex: `SKYLA_PAYMENT_RETURN_ORIGINS`
 - Convex: `STRIPE_WEBHOOK_SECRET`
 - Stripe dashboard webhook endpoint:
@@ -179,7 +180,10 @@ Expected after Convex is wired:
 
 - [ ] Convex cloud project is linked.
 - [ ] Vercel preview has `NEXT_PUBLIC_CONVEX_URL`.
-- [ ] Convex env has `STRIPE_SECRET_KEY`.
+- [ ] Convex env has `SKYLA_STRIPE_MODE` set to `test` until preview
+      acceptance passes.
+- [ ] Convex env has `STRIPE_SECRET_KEY`, and its prefix matches
+      `SKYLA_STRIPE_MODE`.
 - [ ] Convex env has `SKYLA_PAYMENT_RETURN_ORIGINS`.
 - [ ] Convex env has `STRIPE_WEBHOOK_SECRET`.
 - [ ] Stripe dashboard has a test-mode endpoint pointing to Convex

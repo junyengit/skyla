@@ -21,7 +21,8 @@ safe for browser code, secret means dashboard/server only.
 | `NEXT_PUBLIC_CONVEX_URL` | yes | Vercel | Production/Preview/Development | Lets Next routes call the linked Convex deployment. | Required for persisted checkout drafts from Vercel. |
 | `CONVEX_DEPLOYMENT` | no | local + Convex CLI | local/dev | Links local codegen to the real Convex project. | Must not be `anonymous:*` for cloud readiness. |
 | `CONVEX_URL` | no | local + Convex CLI | local/dev | Server-side Convex URL for local verification. | Must be HTTPS for cloud; localhost only for anonymous local testing. |
-| `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions and Stripe Terminal PaymentIntents. | Required before `payments.createStripeCheckoutSession` or `payments.createStripeTerminalPaymentIntent` can run. |
+| `SKYLA_STRIPE_MODE` | no | Convex | Production/Preview/Development | Required Stripe mode guard. Use `test` for preview/test acceptance and `live` only after live cutover is approved. | Required before any Stripe Checkout, Terminal, or webhook action can run. |
+| `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions and Stripe Terminal PaymentIntents. Must match `SKYLA_STRIPE_MODE` (`sk_test_` for `test`, `sk_live_` for `live`). | Required before `payments.createStripeCheckoutSession` or `payments.createStripeTerminalPaymentIntent` can run. |
 | `SKYLA_PAYMENT_RETURN_ORIGINS` | no | Convex | Production/Preview/Development | Comma-separated allowed origins for Stripe success/cancel URLs. | Required; example `https://skydeckla.com,https://www.skydeckla.com`. |
 | `STRIPE_WEBHOOK_SECRET` | no | Convex | Production/Preview/Development | Verifies Stripe webhook signatures for Checkout order reconciliation and Terminal POS sale reconciliation at `POST /stripe-webhook`. | Required before webhook cutover. |
 | `SKYLA_TERMINAL_READER_REGISTRY` | no | Convex | Production/Preview/Development | Comma-separated trusted Stripe Terminal readers, optionally paired to locations as `tmr_reader@tml_location`. | Required before `/pos-next` can persist a reader or process a reader handoff. |
@@ -54,6 +55,13 @@ Bad:
 - `https://skydeckla.com/checkout`
 - `http://skydeckla.com`
 - `https://example.com`
+
+## Stripe Mode
+
+`SKYLA_STRIPE_MODE` is a safety latch, not just documentation. Convex payment
+actions reject a Stripe secret key whose prefix does not match the mode, and
+the Convex Stripe webhook rejects events whose `livemode` flag does not match.
+Use `test` until preview checkout and POS Terminal acceptance pass.
 
 ## Terminal Reader Registry
 

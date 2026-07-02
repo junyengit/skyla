@@ -293,6 +293,7 @@ export const getOperationsSnapshot = query({
         role: staffUser.role
       },
       readiness: {
+        stripeMode: envConfigured("SKYLA_STRIPE_MODE"),
         stripeSecret: envConfigured("STRIPE_SECRET_KEY"),
         stripeWebhookSecret: envConfigured("STRIPE_WEBHOOK_SECRET"),
         terminalReaderRegistry: envConfigured("SKYLA_TERMINAL_READER_REGISTRY"),
