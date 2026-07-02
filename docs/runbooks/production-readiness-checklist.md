@@ -33,11 +33,11 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-g8ev04o2t-junyen-enterprises.vercel.app`
+  `https://web-2vvwavkz2-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_8kjPLDfvRvJ2PszV2rKUbet6KBD9`
+  `dpl_EnTbyZLcqo49NK6adc6Eag3Vn7k6`
 - Merge commit checked on 2026-07-02:
-  `1af5633779f52683ac7ca04ef1171f307e62cbea`
+  `2b0b422f29f71deca52e0802f8235ba773b9c565`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -261,7 +261,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-g8ev04o2t-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-2vvwavkz2-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```

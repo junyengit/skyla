@@ -212,6 +212,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verified live payment probes across all three bases: spoofed checkout totals return canonical `8610` cents, spoofed POS totals/reader/location return canonical `4200` cents with no transient reader/location fields, Stripe Checkout/Terminal execution fails closed with `convex_unconfigured`, Terminal requires staff auth first, and no response exposes `clientSecret`.
 - [x] Confirmed Vercel reports no grouped runtime errors for the project in the checked 2-hour window.
 - [x] Opened readiness PR #35 and confirmed GitHub CI, CodeQL, and Vercel preview checks passed before merge.
+- [x] Merged readiness PR #35 into `main` as merge commit
+      `2b0b422f29f71deca52e0802f8235ba773b9c565`; Vercel production deployment
+      `https://web-2vvwavkz2-junyen-enterprises.vercel.app`
+      (`dpl_EnTbyZLcqo49NK6adc6Eag3Vn7k6`) is READY and the post-merge
+      route/payment probes match the fail-closed state above.
 
 ## In Progress
 
