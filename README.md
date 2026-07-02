@@ -44,10 +44,10 @@ flowchart LR
 As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest verified app-code production deployment before this POS route slice:
-  `https://web-aaow8lg0e-junyen-enterprises.vercel.app` from merge commit
-  `e5e4b75b477b7ffef20f5279a97491024fcb5cab` (PR #61,
-  deployment `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`).
+- Latest verified app-code production deployment:
+  `https://web-g6cp2p7an-junyen-enterprises.vercel.app` from merge commit
+  `071ed79d9dd8c89c1ffca8eb849b7ec742090565` (PR #62,
+  deployment `dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB`).
 - Docs-only follow-up merges can create newer Vercel deployment URLs with the
   same app behavior. Use the Vercel dashboard or `vercel ls` for the newest
   deployment before recording fresh evidence.

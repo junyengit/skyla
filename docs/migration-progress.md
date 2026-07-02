@@ -457,12 +457,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `origin/main` after PR #58 to recheck admin/POS readability, Stripe/API
       safety, dependencies, and hosting state.
 - [x] Confirmed Vercel project `junyen-enterprises/web` is still on Node
-      `24.x`, the PR #61 production deployment
-      `https://web-aaow8lg0e-junyen-enterprises.vercel.app`
-      (`dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`) is READY from merge commit
-      `e5e4b75b477b7ffef20f5279a97491024fcb5cab`, and aliases include
-      `skydeckla.com` and `www.skydeckla.com`. Later docs-only merges can
-      create newer Vercel deployments with the same app behavior.
+      `24.x`, the PR #62 production deployment
+      `https://web-g6cp2p7an-junyen-enterprises.vercel.app`
+      (`dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB`) is READY from merge commit
+      `071ed79d9dd8c89c1ffca8eb849b7ec742090565`, and aliases include
+      `skydeckla.com` and `www.skydeckla.com`.
 - [x] Confirmed Vercel env vars are still absent, so payment/member/experience
       server writes remain safely blocked with `convex_unconfigured` until the
       real Convex and Stripe dashboard setup is done.
@@ -601,3 +600,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   as a compatibility URL, and leaves `/pos.html` as the explicit disabled
   legacy fallback. Live card-present payment remains blocked until real
   Convex/staff auth/Stripe webhook/test-reader acceptance is complete.
+- PR #62 merged the native `/pos` route cutover into `main`. Production
+  readiness and no-write payment smokes passed on
+  `https://web-g6cp2p7an-junyen-enterprises.vercel.app`,
+  `https://skydeckla.com`, and `https://www.skydeckla.com`; Vercel reported no
+  runtime error clusters and no error/fatal logs for deployment
+  `dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB` in the checked one-hour window.
