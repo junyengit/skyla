@@ -420,6 +420,31 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Checked Vercel logs for the PR #54 deployment after smoke probes; no
       error/fatal logs appeared in the checked 1-hour window, and the visible
       503/401 entries were expected no-write gates.
+- [x] Started branch `codex/native-experiences-cutover` from clean
+      `origin/main` to move the visible `/experiences` page into App Router
+      while keeping `/experiences.html` as a compatibility handoff.
+- [x] Added native `/experiences` page and client form that post to
+      `/api/experiences/inquiries` with an idempotency key and only fire lead
+      tracking after the server accepts the inquiry.
+- [x] Preserved event inquiry content and tracking hooks, but removed the
+      active `/experiences` route from the legacy `SkylaData.addInquiry`
+      localStorage/Supabase write path.
+- [x] Merged native experiences cutover PR #56 into `main` as merge commit
+      `65d2764d2981c77cb33473d17cf24d480675f2bc`; Vercel production
+      deployment `https://web-lbez0fbvp-junyen-enterprises.vercel.app`
+      (`dpl_FCx8Urf1iuvG8j357tBP6eKKoFYT`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes against
+      the Vercel deployment plus both custom domains. `/experiences` is native,
+      `/experiences.html` is a compatibility handoff, and neither path exposes
+      `shared-data.js` or `SkylaData.addInquiry`.
+- [x] Rechecked dependencies, CodeQL, payment/API probes, and production logs
+      after PR #56. `bun audit --audit-level=low`, `bun run security:audit`,
+      and GitHub CodeQL passed with no open code-scanning alerts. The only
+      `bun outdated --recursive` item is deferred `eslint@10.6.0`.
+- [x] Checked Vercel logs for the PR #56 deployment after smoke probes; no
+      error/fatal logs appeared in the fetched window, and the visible
+      503/401 entries were expected Convex/staff-auth no-write gates.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

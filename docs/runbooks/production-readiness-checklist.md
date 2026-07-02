@@ -38,16 +38,33 @@ of the legacy localStorage/Supabase write path. It correctly refuses to accept
 event inquiries when Convex is not configured, so the page is safe to serve but
 real event intake still depends on the dashboard setup below.
 
+## Plain-English Next Checklist
+
+1. Link the real Skyla Convex project.
+2. Add `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview and Production.
+3. Add Stripe secrets in Convex, not Vercel browser env vars.
+4. Keep Stripe in test mode first.
+5. Create the Stripe webhook endpoint after Convex gives you the site URL.
+6. Use Stripe test cards and a test Terminal reader only.
+7. Seed the first staff admin, then remove the bootstrap token.
+8. Confirm member and event forms save into Convex in Preview.
+9. Confirm checkout and POS stay server-priced with test payments.
+10. Disable or redeploy old Supabase payment functions from the fail-closed
+    repo copies.
+11. Finish the native admin/POS rebuild before removing the legacy fallbacks.
+12. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+    checks and record the production deployment URL here.
+
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest code-changing production deployment checked on 2026-07-02:
-  `https://web-ec9pf9hly-junyen-enterprises.vercel.app`
+  `https://web-lbez0fbvp-junyen-enterprises.vercel.app`
 - Latest code-changing deployment ID checked on 2026-07-02:
-  `dpl_EEP2DithtH52i8ixpsCtLQ5Bo9JM`
+  `dpl_FCx8Urf1iuvG8j357tBP6eKKoFYT`
 - Latest code-changing merge commit checked on 2026-07-02:
-  `2d8b1a78fc7f0df3cd01218ec05a7579ebc5abf2`
+  `65d2764d2981c77cb33473d17cf24d480675f2bc`
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -66,7 +83,7 @@ real event intake still depends on the dashboard setup below.
   strict required checks `ci-build`, `Analyze JavaScript and TypeScript`, and
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
   blocked.
-- GitHub CodeQL alerts checked on 2026-07-02 after the PR #40 `main` scan:
+- GitHub CodeQL alerts checked on 2026-07-02 after the PR #56 `main` scan:
   no open alerts.
 - Live API behavior checked on 2026-07-02 across the checked Vercel production
   deployment, apex domain, and `www` with `bun run test:payments`:
@@ -87,13 +104,19 @@ real event intake still depends on the dashboard setup below.
   and the latest Vercel deployment URL with an empty no-write payload:
   `/api/members/applications` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
+- Experience inquiry API checked on 2026-07-02 across the apex domain, `www`,
+  and the latest Vercel deployment URL with an empty no-write payload:
+  `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
+  is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no error/fatal logs for deployment `dpl_EEP2DithtH52i8ixpsCtLQ5Bo9JM` in the
-  checked 1-hour window. The visible 503/401 info logs are the expected
+  no error/fatal logs for deployment `dpl_FCx8Urf1iuvG8j357tBP6eKKoFYT` in the
+  fetched log window. The visible 503/401 info logs are the expected
   Convex-unconfigured and staff-auth no-write gates.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
+- Dependency freshness checked on 2026-07-02: `bun outdated --recursive` only
+  listed ESLint `10.6.0`.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
   compatible.
