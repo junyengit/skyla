@@ -308,13 +308,14 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified application production commit: `a82c0b10be1fd8f291d83bed57eb4ac14300bfcc`
-- Recorded verified application production deployment: `https://web-k294uhnw0-junyen-enterprises.vercel.app`
-- Recorded verified application production deployment ID: `dpl_GN8Dw18L781T9wdQY25yCcNGBLg7`
+- Recorded verified app/security production commit: `e194abe670803c8484a32a48e669f61ed117f58b`
+- Recorded verified app/security production deployment: `https://web-rmz8b793f-junyen-enterprises.vercel.app`
+- Recorded verified app/security production deployment ID: `dpl_9ZNeHcaTqo7odZhpf4yAyGshYRQ9`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
   TypeScript`, `Vercel`
+- GitHub CodeQL open alerts after PR #40 `main` scan: none
 
 Current order-spine state:
 

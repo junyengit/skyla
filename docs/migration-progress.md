@@ -264,6 +264,25 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       interpolation, removed an inline QR fallback that interpolated booking
       refs, and stopped legacy Supabase Stripe functions from echoing exception
       messages to callers.
+- [x] Merged GitHub protection and legacy CodeQL hardening PR #40 into `main`
+      as merge commit `e194abe670803c8484a32a48e669f61ed117f58b`; Vercel
+      production deployment `https://web-rmz8b793f-junyen-enterprises.vercel.app`
+      (`dpl_9ZNeHcaTqo7odZhpf4yAyGshYRQ9`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed main CI, main CodeQL, Vercel production, and GitHub Pages
+      workflows passed after PR #40.
+- [x] Confirmed GitHub CodeQL has no open alerts after the PR #40 `main` scan.
+- [x] Re-ran post-merge route and payment smokes against
+      `https://web-rmz8b793f-junyen-enterprises.vercel.app`,
+      `https://skydeckla.com`, and `https://www.skydeckla.com`; each passed
+      with checkout total `8505` cents and POS total `9700` cents for the
+      smoke payloads.
+- [x] Confirmed Vercel grouped runtime errors found no production errors in the
+      checked 30-minute window after the PR #40 smoke probes.
+- [x] Visually checked live `/admin` and `/pos-next` in Helium; both staff
+      surfaces remain readable with white text on black/dark panels, and
+      `/pos-next` reviewed one General Admission to a server total of `$29.00`
+      while keeping `Send to Reader` disabled.
 
 ## In Progress
 
@@ -292,7 +311,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/terminal-webhook-reconciliation`.
 - [x] Verify, review, and ship `codex/payment-api-smoke-current-state`.
 - [x] Verify, review, and ship `codex/post-payment-smoke-production-state`.
-- [ ] Verify, review, and ship `codex/github-main-protection-state`.
+- [x] Verify, review, and ship `codex/github-main-protection-state`.
+- [ ] Verify, review, and ship `codex/post-github-hardening-production-state`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

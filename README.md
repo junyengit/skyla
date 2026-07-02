@@ -44,15 +44,16 @@ flowchart LR
 As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Recorded verified application production deployment:
-  `https://web-k294uhnw0-junyen-enterprises.vercel.app` from merge commit
-  `a82c0b10be1fd8f291d83bed57eb4ac14300bfcc`.
+- Recorded verified app/security production deployment:
+  `https://web-rmz8b793f-junyen-enterprises.vercel.app` from merge commit
+  `e194abe670803c8484a32a48e669f61ed117f58b`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
   pushes, branch deletion, and unresolved conversations are blocked.
+- GitHub CodeQL open alerts checked after the PR #40 `main` scan: none open.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished.
