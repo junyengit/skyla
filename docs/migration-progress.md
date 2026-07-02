@@ -381,7 +381,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/post-payment-hosting-state`.
 - [x] Verify, review, and ship `codex/root-legacy-regression-guard`.
 - [x] Verify, review, and ship `codex/legal-pages-app-router`.
-- [ ] Verify, review, and ship `codex/legal-compat-copy`.
+- [x] Verify, review, and ship `codex/legal-compat-copy`.
+- [ ] Verify, review, and ship `codex/public-content-app-router`.
+- [x] Rechecked payment/API, dependency, GitHub, and Vercel production state
+      before shipping `codex/public-content-app-router`: `bun run check`,
+      `bun run security:audit`, `bun audit --audit-level=low`,
+      `bun outdated --recursive`, custom-domain route smokes,
+      custom-domain payment smokes, and `bun run test:production-readiness`
+      passed. `bun run convex:env:check` still fails as expected because
+      Vercel has no project env vars and Convex is not linked.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -430,6 +438,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   `/privacy.html` and `/terms.html` as compatibility files until legacy links
   and crawlers no longer need them, but keep their copy current and avoid
   loading shared legacy data scripts on legal-only pages.
+- `/about` and `/cafe` should be native App Router pages. The native cafe page
+  renders active menu items from `@skyla/payments` so public prices align with
+  checkout/POS server-owned catalog data instead of browser localStorage.
 
 ## Risks To Track
 

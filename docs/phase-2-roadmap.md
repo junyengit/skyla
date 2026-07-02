@@ -232,7 +232,9 @@ Rebuild the compatibility bridge into real Next routes.
 
 Priority order:
 
-1. Legal and content pages: `/privacy`, `/terms`, `/about`, `/cafe`, `/experiences`.
+1. Legal and content pages: `/privacy`, `/terms`, `/about`, and `/cafe` are
+   native. `/experiences` remains on the compatibility bridge until its
+   inquiry form and ad conversion tracking have a typed Convex/analytics path.
 2. Members flow: `/members`.
 3. Checkout flow: `/checkout`.
 4. Admin gate and dashboard: `/admin`.

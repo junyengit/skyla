@@ -21,21 +21,34 @@ describe("legacy route bridge", () => {
     }
   });
 
-  it("keeps legal pages native while preserving .html compatibility", () => {
+  it("keeps static public pages native while preserving .html compatibility", () => {
     const webDir = import.meta.dirname;
+    const aboutPage = readFileSync(join(webDir, "app/about/page.tsx"), "utf8");
+    const cafePage = readFileSync(join(webDir, "app/cafe/page.tsx"), "utf8");
     const privacyPage = readFileSync(join(webDir, "app/privacy/page.tsx"), "utf8");
     const termsPage = readFileSync(join(webDir, "app/terms/page.tsx"), "utf8");
+    const publicComponent = readFileSync(join(webDir, "components/public-page-shell.tsx"), "utf8");
     const legalComponent = readFileSync(join(webDir, "components/legal-page.tsx"), "utf8");
+    const aboutFallback = readFileSync(join(publicDir, "about.html"), "utf8");
+    const cafeFallback = readFileSync(join(publicDir, "cafe.html"), "utf8");
     const privacyFallback = readFileSync(join(publicDir, "privacy.html"), "utf8");
     const termsFallback = readFileSync(join(publicDir, "terms.html"), "utf8");
 
+    expect(aboutPage).toContain("Best Space");
+    expect(cafePage).toContain("cafeItems");
+    expect(cafePage).toContain("@skyla/payments");
     expect(privacyPage).toContain("Convex");
     expect(privacyFallback).toContain("Convex");
     expect(privacyPage).not.toContain("stored using <strong>Supabase</strong>");
     expect(privacyFallback).not.toContain("stored using <strong>Supabase</strong>");
+    expect(aboutPage).not.toContain("shared-data.js");
+    expect(cafePage).not.toContain("shared-data.js");
     expect(privacyPage).not.toContain("shared-data.js");
     expect(termsPage).not.toContain("shared-data.js");
+    expect(publicComponent).not.toContain("shared-data.js");
     expect(legalComponent).not.toContain("shared-data.js");
+    expect(aboutFallback).not.toContain("shared-data.js");
+    expect(cafeFallback).not.toContain("shared-data.js");
     expect(privacyFallback).not.toContain("shared-data.js");
     expect(termsFallback).not.toContain("shared-data.js");
   });
