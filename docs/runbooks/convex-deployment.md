@@ -261,7 +261,8 @@ not call `payments.createStripeCheckoutSession` from the frontend.
   returns ready and a preview POST returns `persisted: true`.
 - `NEXT_PUBLIC_CONVEX_URL` is safe to expose; Convex auth and function guards
   still enforce protected staff flows server-side.
-- Stripe Checkout session creation and webhook reconciliation now exist in
-  Convex code, but they are not live until the env, Stripe dashboard, and
-  frontend cutover gates above pass.
-- Kaskade and Terminal actions are still separate work.
+- Stripe Checkout session creation, Stripe Checkout webhook reconciliation,
+  Stripe Terminal PaymentIntent creation, reader handoff, and Terminal webhook
+  reconciliation now exist in Convex code, but they are not live until the env,
+  Stripe dashboard, staff auth, test-reader, and frontend cutover gates above
+  pass.

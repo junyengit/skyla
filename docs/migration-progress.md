@@ -318,6 +318,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Visually checked local `/admin`, `/pos-next`, `/pos`, and `/admin.html` in
       Helium; staff/admin surfaces remain readable with white text on
       black/dark panels.
+- [x] Merged staff stylesheet cache-bust PR #44 into `main` as merge commit
+      `aa1b7d6fdd9d613605d57429a1554982d0587eae`; Vercel production deployment
+      `https://web-4dgb61b60-junyen-enterprises.vercel.app`
+      (`dpl_Fk9fhLYJ67PuuWn3Z7jJBz3UPCTm`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed PR #44 main CI, main CodeQL, Vercel production, GitHub Pages,
+      route smokes, payment smokes, no-write member API probes, Vercel runtime
+      errors, and Helium staff contrast checks after deployment.
 
 ## In Progress
 
@@ -349,7 +357,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/github-main-protection-state`.
 - [x] Verify, review, and ship `codex/post-github-hardening-production-state`.
 - [x] Verify, review, and ship `codex/native-member-application-spine`.
-- [ ] Verify, review, and ship `codex/post-member-application-production-state`.
+- [x] Verify, review, and ship `codex/post-member-application-production-state`.
+- [x] Verify, review, and ship `codex/staff-contrast-cache-bust`.
+- [ ] Verify, review, and ship `codex/production-readiness-smoke`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

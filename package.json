@@ -27,6 +27,7 @@
     "test:unit": "turbo test:unit && bun run convex:test:unit",
     "test:smoke": "node scripts/smoke/route-smoke.mjs",
     "test:payments": "node scripts/smoke/payment-api-smoke.mjs",
+    "test:production-readiness": "node scripts/smoke/production-readiness-smoke.mjs",
     "convex:test:unit": "vitest run convex",
     "convex:env:check": "node scripts/setup/check-convex-env.mjs",
     "convex:schema:typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck convex/schema.ts",
