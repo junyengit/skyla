@@ -133,4 +133,38 @@ describe("ads-tracking.js", () => {
       ]
     ]);
   });
+
+  it("emits membership lead conversion events when configured", () => {
+    const { window } = runTrackingScript({
+      googleTagId: "AW-123456789",
+      conversions: {
+        membershipLead: "AW-123456789/member"
+      }
+    });
+
+    window.SkylaAds.trackLead("membership", { value: 500 });
+
+    expect(dataLayerCalls(window)).toEqual([
+      ["js", expect.any(Date)],
+      ["config", "AW-123456789"],
+      [
+        "event",
+        "generate_lead",
+        {
+          lead_type: "membership",
+          value: 500,
+          currency: "USD"
+        }
+      ],
+      [
+        "event",
+        "conversion",
+        {
+          send_to: "AW-123456789/member",
+          value: 500,
+          currency: "USD"
+        }
+      ]
+    ]);
+  });
 });

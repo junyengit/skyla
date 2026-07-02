@@ -1,6 +1,7 @@
 # 0015: Native Member Application Spine
 
-Status: Accepted for the migration slice.
+Status: Accepted for the migration slice. The visible page cutover is handled
+by [0017](0017-native-members-page-cutover.md).
 
 ## Simple Version
 
@@ -88,7 +89,8 @@ Expected states:
 
 ## Deferred
 
-- Cut over visible `/members` UI to the native route.
+- Cut over visible `/members` UI to the native route. Completed by
+  [0017](0017-native-members-page-cutover.md).
 - Add a native member review detail drawer and CSV export in `/admin`.
 - Backfill old `skyla_members` / Supabase rows into structured Convex fields.
 - Remove legacy member localStorage/Supabase code after acceptance.

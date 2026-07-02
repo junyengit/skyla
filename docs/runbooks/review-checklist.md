@@ -42,10 +42,12 @@ Use this after each major phase.
 - Legacy `/checkout.html` card payment stays disabled while `/checkout` is the
   card path
 - Motion respects reduced motion
-- Legacy route bridge still covers `/experiences`, `/members`, and `/pos`;
-  `/about`, `/cafe`, `/checkout`, `/privacy`, `/terms`, `/admin`, and
+- Legacy route bridge still covers `/experiences` and `/pos`; `/about`,
+  `/cafe`, `/checkout`, `/members`, `/privacy`, `/terms`, `/admin`, and
   `/pos-next` are App Router routes with `.html` compatibility files where
   needed
+- `/members` and `/members.html` do not expose `shared-data.js` or
+  `SkylaData.addMember`
 
 ## Deployment
 

@@ -4,9 +4,9 @@
 
 Launch Google Ads around three conversion goals:
 
-1. Ticket purchases on `checkout.html`
+1. Ticket purchases on `/checkout`
 2. Private experience / event inquiries on `experiences.html#reserve`
-3. Membership applications on `members.html#apply`
+3. Membership applications on `/members#apply`
 
 ## Required Account Setup
 
@@ -139,9 +139,9 @@ Asset groups:
 Use final URL expansion cautiously. Keep it focused on:
 
 - `/`
-- `/checkout.html`
+- `/checkout`
 - `/experiences.html`
-- `/members.html`
+- `/members`
 
 ## Responsive Search Ad Copy
 
@@ -174,10 +174,10 @@ Descriptions:
 
 Sitelinks:
 
-- Buy Tickets - https://skydeckla.com/checkout.html
+- Buy Tickets - https://skydeckla.com/checkout
 - Private Experiences - https://skydeckla.com/experiences.html
-- Membership - https://skydeckla.com/members.html
-- Cafe And Lounge - https://skydeckla.com/cafe.html
+- Membership - https://skydeckla.com/members
+- Cafe And Lounge - https://skydeckla.com/cafe
 
 Callouts:
 

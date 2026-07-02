@@ -62,9 +62,9 @@ As of July 2, 2026:
   Stripe dashboard setup is finished. `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables on July 2,
   2026.
-- The Next app serves the new homepage, `/about`, `/cafe`, `/privacy`,
-  `/terms`, checkout route, `/admin`, and `/pos-next` draft review route. It
-  still bridges `/experiences`, `/members`, and `/pos` to static compatibility
+- The Next app serves the new homepage, `/about`, `/cafe`, `/members`,
+  `/privacy`, `/terms`, checkout route, `/admin`, and `/pos-next` draft review
+  route. It still bridges `/experiences` and `/pos` to static compatibility
   pages in `apps/web/public`. The old `.html` URLs remain available during
   route-by-route cutover.
 
@@ -121,6 +121,12 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   active menu items from `@skyla/payments`, the same catalog source used by
   checkout and POS. Their `.html` compatibility copies no longer load
   `shared-data.js`.
+- Native `/members` is an App Router page with a server-gated application
+  form. It posts to `/api/members/applications` with an idempotency key and
+  only shows success after Convex accepts the mutation. Until Convex/Vercel envs
+  are linked, the form reports the safe `convex_unconfigured` pause instead of
+  saving to browser localStorage or Supabase. `/members.html` remains as a
+  compatibility artifact during the transition.
 - Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; `/pos-next` still needs staff auth, Convex envs, and reader collection wiring before it replaces the live register.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
