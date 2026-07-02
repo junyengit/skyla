@@ -33,29 +33,38 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-4jzsjm853-junyen-enterprises.vercel.app`
+  `https://web-g8ev04o2t-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_5N2NVHBtKbYPEtVBRW5PXdUQuT7J`
+  `dpl_8kjPLDfvRvJ2PszV2rKUbet6KBD9`
 - Merge commit checked on 2026-07-02:
-  `be24d917c418d00f81847ba33b1ea965c6dbc5a9`
+  `1af5633779f52683ac7ca04ef1171f307e62cbea`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
 - Vercel env status checked on 2026-07-02: no project environment variables
   are configured for `junyen-enterprises/web`.
+- GitHub branch protection checked on 2026-07-02: `main` is not protected yet
+  (`gh api repos/junyengit/skyla/branches/main/protection` returns `404`).
 - Live API behavior checked on 2026-07-02 across the apex domain, `www`, and the
   latest Vercel deployment URL:
-  - Spoofed checkout total `1` cent returned canonical server total `8505` cents.
-  - Spoofed POS total/reader/location returned canonical server total `9700`
-    cents and no reader/location fields in the transient draft.
+  - Spoofed checkout total `1` cent returned canonical server total `8610`
+    cents for the probe payload.
+  - Spoofed POS total/reader/location returned canonical server total `4200`
+    cents for the probe payload and no reader/location fields in the transient
+    draft.
   - `/api/payments/stripe-checkout`,
     `/api/payments/stripe-terminal`, and
-    `/api/admin/config` returned `503` with `convex_unconfigured` when probed
-    with the required staff auth where applicable.
+    `/api/payments/stripe-terminal/process` returned `503` with
+    `convex_unconfigured` when probed with the required fake staff auth where
+    applicable.
+  - `/api/payments/stripe-terminal` returned `401 staff_auth_required` before
+    Convex configuration when no staff token was provided.
   - No response exposed a Stripe `clientSecret`.
+- Vercel runtime errors checked on 2026-07-02: no grouped runtime errors in the
+  last 2 hours.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
-- Dependency audit checked on 2026-07-02: clean after the `postcss@8.5.16`
-  override.
+- Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
+  no vulnerabilities after the `postcss@8.5.16` override.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
   compatible.
@@ -135,6 +144,8 @@ flowchart TD
   though Convex is unconfigured and live checkout/POS payment execution remains
   intentionally blocked.
 - Convex cloud is not linked yet.
+- Active Convex `staffUsers` rows are not seeded yet. Native staff auth cannot
+  be accepted until at least one admin is seeded.
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
 - `/checkout` is the new App Router checkout, but live card payment is gated
   until Convex and Stripe dashboard envs exist.
@@ -188,8 +199,11 @@ flowchart TD
       locations that staff are allowed to use.
 - [ ] Run `bun run convex:env:check`.
 - [ ] Run `bun run convex:codegen`.
-- [ ] Seed active `staffUsers` records for admins/viewers before using native
-      `/admin`.
+- [ ] Temporarily set `SKYLA_STAFF_BOOTSTRAP_TOKEN`, run
+      `staffBootstrap.upsertStaffUser` for the initial admin, then remove the
+      token.
+- [ ] Seed active `staffUsers` records for admins/viewers/POS staff before
+      using native `/admin` or `/pos-next`.
 - [ ] Verify `/api/admin/operations` returns `200` with a valid staff token and
       `401`/`503` without auth or envs.
 - [ ] Verify `/api/admin/bookings/status` returns `200` with a valid admin/pos
@@ -236,15 +250,18 @@ flowchart TD
 - [ ] Block force pushes and branch deletion.
 - [ ] Keep Dependabot and secret scanning enabled.
 
+Current check: `main` is not protected yet.
+
 ## Verification Commands
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bun install --frozen-lockfile
 PATH="$HOME/.bun/bin:$PATH" bun run check
-PATH="$HOME/.bun/bin:$PATH" bun audit
+PATH="$HOME/.bun/bin:$PATH" bun run security:audit
+PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-4jzsjm853-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-g8ev04o2t-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
@@ -252,20 +269,22 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 ## Next Work Order
 
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
-2. Verify preview checkout draft persistence returns `persisted: true`.
-3. Create Stripe test webhook endpoint and set Convex Stripe env vars.
-4. Set Convex/Vercel env vars so the App Router checkout can persist orders
+2. Seed initial staff with `staffBootstrap.upsertStaffUser`, verify native
+   `/admin`, then remove `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
+3. Verify preview checkout draft persistence returns `persisted: true`.
+4. Create Stripe test webhook endpoint and set Convex Stripe env vars.
+5. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-5. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
+6. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-6. Add Stripe Terminal final paid reconciliation through webhook or polling.
-7. Promote `/pos-next` into the live POS only after Terminal capture uses
+7. Add Stripe Terminal final paid reconciliation through webhook or polling.
+8. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-8. Finish native Admin beyond status actions: vouchers, refunds, config,
+9. Finish native Admin beyond status actions: vouchers, refunds, config,
    catalog, exports, and any destructive action with typed validators,
    audit logs, and rollback steps.
-9. Rebuild POS as the protected live App Router/Convex register.
-10. Migrate remaining Supabase data and disable legacy Supabase functions only
+10. Rebuild POS as the protected live App Router/Convex register.
+11. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff

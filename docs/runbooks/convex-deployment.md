@@ -123,8 +123,28 @@ Use Stripe test-mode values for Preview/Development. Do not paste secret values
 into PRs, logs, or docs.
 
 6. Seed staff users before testing native `/admin` or `/pos-next` against the
-   real deployment. The `subject` must match the Convex auth identity subject,
-   `active` must be `true`, and roles should be scoped:
+   real deployment. Prefer the typed bootstrap mutation instead of manual table
+   edits.
+
+Create a temporary bootstrap token, set it in Convex, run the mutation, then
+remove the token after staff access is verified:
+
+```bash
+export SKYLA_STAFF_BOOTSTRAP_TOKEN="<32+ character temporary token>"
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_STAFF_BOOTSTRAP_TOKEN "$SKYLA_STAFF_BOOTSTRAP_TOKEN"
+PATH="$HOME/.bun/bin:$PATH" bunx convex run staffBootstrap:upsertStaffUser '{
+  "bootstrapToken": "<same temporary token>",
+  "subject": "<Convex auth identity subject>",
+  "email": "admin@skydeckla.com",
+  "role": "admin",
+  "active": true,
+  "note": "initial admin seed"
+}'
+PATH="$HOME/.bun/bin:$PATH" bunx convex env remove SKYLA_STAFF_BOOTSTRAP_TOKEN
+```
+
+The `subject` must match the Convex auth identity subject, `active` must be
+`true`, and roles should be scoped:
 
 - `admin`: dashboard and POS operations
 - `viewer`: read-only admin operations snapshot
@@ -160,9 +180,14 @@ Expected cloud-ready result:
 
 ```json
 {
-  "readyForCloudPersistence": true
+  "readyForCloudPersistence": true,
+  "readyForStaffBootstrap": false
 }
 ```
+
+`readyForStaffBootstrap` should be `true` only while
+`SKYLA_STAFF_BOOTSTRAP_TOKEN` is temporarily set. It should return to `false`
+after staff seeding and token removal.
 
 Then run:
 
@@ -210,6 +235,8 @@ these are true:
 - Preview `/api/order-drafts/checkout` returns `persisted: true`
 - Preview `/api/admin/operations` returns `401` without a bearer token
 - Preview `/api/admin/operations` returns `200` with a valid admin/viewer token
+- At least one active `admin` staff row exists, created through
+  `staffBootstrap.upsertStaffUser` or an equivalent audited process
 - Preview `/api/admin/bookings/status` returns `401` without a bearer token
 - Preview `/api/admin/bookings/status` returns `400` for arbitrary statuses
 - Preview `/api/admin/bookings/status` lets admin/pos staff set `checked-in`

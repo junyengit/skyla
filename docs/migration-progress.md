@@ -201,6 +201,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Re-ran post-merge route smoke tests for `https://web-4jzsjm853-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
 - [x] Verified production API probes across all three bases: spoofed checkout totals return canonical `8505` cents, spoofed POS totals/reader/location return canonical `9700` cents with no transient reader/location fields, and authenticated payment/admin routes fail closed with `convex_unconfigured` while Convex envs are absent.
 - [x] Confirmed Vercel production logs had no error entries for the checked 30-minute window.
+- [x] Merged post-admin-config current-state docs PR #34 into `main` as merge commit `1af5633779f52683ac7ca04ef1171f307e62cbea`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-g8ev04o2t-junyen-enterprises.vercel.app` (`dpl_8kjPLDfvRvJ2PszV2rKUbet6KBD9`), aliased to `skydeckla.com` and `www.skydeckla.com`.
+- [x] Verified `main` branch protection is still missing; this remains a GitHub dashboard hardening task.
+- [x] Started branch `codex/convex-live-readiness-spine` for Convex staff bootstrap and live-readiness hardening.
+- [x] Added a token-gated `staffBootstrap.upsertStaffUser` mutation so initial Convex `staffUsers` rows can be seeded through typed validation and audit events instead of manual table edits.
+- [x] Extended `bun run convex:env:check` with a separate `readyForStaffBootstrap` gate for the temporary bootstrap token.
+- [x] Verified local Bun canary revision `1.4.0-canary.1+eba370b69`, frozen install, full `bun run check`, Convex anonymous typecheck/codegen, `bun audit --audit-level=low`, and `bun outdated --recursive`.
+- [x] Re-ran live smoke tests for `https://web-g8ev04o2t-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
+- [x] Verified live payment probes across all three bases: spoofed checkout totals return canonical `8610` cents, spoofed POS totals/reader/location return canonical `4200` cents with no transient reader/location fields, Stripe Checkout/Terminal execution fails closed with `convex_unconfigured`, Terminal requires staff auth first, and no response exposes `clientSecret`.
+- [x] Confirmed Vercel reports no grouped runtime errors for the project in the checked 2-hour window.
 
 ## In Progress
 
@@ -225,6 +235,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/native-admin-ops-spine`.
 - [x] Verify, review, and ship `codex/native-admin-actions-spine`.
 - [x] Verify, review, and ship `codex/admin-config-spine`.
+- [ ] Verify, review, and ship `codex/convex-live-readiness-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

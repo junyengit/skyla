@@ -15,6 +15,8 @@ The committed artifacts now include:
 - `paymentInternals.ts`: internal order snapshot and payment-event ledger
   functions used by payment actions.
 - `http.ts`: HTTP route for Stripe webhooks at `POST /stripe-webhook`.
+- `staffBootstrap.ts`: temporary token-gated mutation for seeding initial
+  `staffUsers` rows after the real Convex project is linked.
 - `lib/`: shared auth and draft-persistence helpers.
 - `_generated/`: generated Convex API/server/data-model types from local
   anonymous Convex validation.
@@ -39,14 +41,16 @@ Deployment-linked validation after the real project is configured:
 bun run convex:codegen
 ```
 
-No production checkout/POS traffic is cut over by this directory yet. The
-Stripe Checkout action and webhook route exist, but the public compatibility
-checkout still uses the legacy bridge until real Convex/Stripe envs, Stripe
-dashboard webhook setup, and frontend cutover are verified. The next backend
+No production checkout/POS payment traffic is cut over yet. The Stripe Checkout
+action, Terminal sale-ref action, reader-processing action, and webhook route
+exist, but they stay gated until real Convex/Stripe envs, staff auth, Stripe
+dashboard webhook setup, and preview acceptance are verified. The next backend
 slices should:
 
 1. Create or link the real Convex deployment.
-2. Add Kaskade and Terminal provider actions that accept only `orderRef` or
-   `saleRef`, never browser totals.
-3. Move the Next checkout/POS flows from compatibility pages to persisted
-   Convex draft refs.
+2. Seed staff through `staffBootstrap.upsertStaffUser`, then remove
+   `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
+3. Add Kaskade provider actions that accept only `orderRef`, never browser
+   totals.
+4. Accept checkout/POS flows against persisted Convex draft refs with real
+   Vercel/Convex/Stripe envs.
