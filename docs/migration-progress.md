@@ -382,7 +382,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/root-legacy-regression-guard`.
 - [x] Verify, review, and ship `codex/legal-pages-app-router`.
 - [x] Verify, review, and ship `codex/legal-compat-copy`.
-- [ ] Verify, review, and ship `codex/public-content-app-router`.
+- [x] Verify, review, and ship `codex/public-content-app-router`.
 - [x] Rechecked payment/API, dependency, GitHub, and Vercel production state
       before shipping `codex/public-content-app-router`: `bun run check`,
       `bun run security:audit`, `bun audit --audit-level=low`,
@@ -390,6 +390,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       custom-domain payment smokes, and `bun run test:production-readiness`
       passed. `bun run convex:env:check` still fails as expected because
       Vercel has no project env vars and Convex is not linked.
+- [x] Merged public content App Router PR #51 into `main` as
+      `37df37c9c20194fa67e93847b5b9cbb8a76092d1`; Vercel production
+      deployment `https://web-gg92osnfi-junyen-enterprises.vercel.app`
+      (`dpl_6PW4HQNh9LF2XKqt92Tx1ENDZxDt`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Re-ran post-merge route smokes, payment smokes, and production-readiness
+      smoke against the Vercel deployment plus both custom domains. About/cafe
+      are native App Router pages, their `.html` compatibility URLs still
+      return `200`, and neither path loads `shared-data.js`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
