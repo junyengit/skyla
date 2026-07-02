@@ -14,7 +14,8 @@ with a client secret. Skyla uses smart readers, so the safer direction is:
 2. Store the selected Stripe reader on that sale.
 3. Create a Stripe Terminal PaymentIntent from the stored `saleRef`.
 4. Ask Stripe to process that stored PaymentIntent on the stored reader.
-5. Treat the sale as pending until Stripe confirms the final result.
+5. Treat the reader handoff as pending until a signed Stripe PaymentIntent
+   webhook confirms the final result.
 
 This keeps amount, currency, lines, and reader choice tied to the persisted sale
 instead of loose browser payloads.
@@ -71,6 +72,8 @@ sequenceDiagram
   Convex->>Stripe: process intent on stored reader
   Stripe-->>Reader: display/collect payment
   Convex-->>POS: processing or failed
+  Stripe-->>Convex: payment_intent.succeeded/payment_failed/canceled webhook
+  Convex->>Convex: reconcile saleRef, PaymentIntent ID, amount, currency
 ```
 
 ## Consequences
@@ -90,9 +93,9 @@ sequenceDiagram
   idempotency key instead of replaying Stripe's cached failed result.
 - A short reservation lock prevents duplicate process commands while one reader
   handoff attempt is in flight.
-- A reader handoff response is not enough to mark a sale paid. The current code
-  records `processing` or `failed`; final `paid` reconciliation still needs a
-  Stripe webhook or polling slice.
+- A reader handoff response is not enough to mark a sale paid. The reader path
+  records `processing` or `failed`; signed Stripe PaymentIntent webhooks
+  finalize the stored sale.
 - Tipping remains disabled for this path unless it is modeled server-side in a
   future decision.
 - PR #28 first shipped on production deployment

@@ -4,6 +4,8 @@ import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import {
   stripeCheckoutOutcomeFromEvent,
+  stripeTerminalPaymentIntentOutcomeFromEvent,
+  stripeWebhookObjectType,
   verifyStripeWebhookSignature,
   type StripeWebhookEvent
 } from "./lib/stripeWebhook";
@@ -34,6 +36,30 @@ http.route({
       event = JSON.parse(rawBody) as StripeWebhookEvent;
     } catch {
       return json({ ok: false, error: "invalid_json" }, { status: 400 });
+    }
+
+    if (stripeWebhookObjectType(event) === "payment_intent") {
+      const outcome = stripeTerminalPaymentIntentOutcomeFromEvent(event);
+      const result = await ctx.runMutation(
+        internal.paymentInternals.recordStripeTerminalWebhook,
+        withoutUndefined({
+          providerEventId: outcome.providerEventId,
+          eventType: outcome.eventType,
+          outcome: outcome.outcome,
+          providerPaymentId: "providerPaymentId" in outcome ? outcome.providerPaymentId : undefined,
+          saleRef: outcome.saleRef,
+          amountCents: "amountCents" in outcome ? outcome.amountCents : undefined,
+          currency: "currency" in outcome ? outcome.currency : undefined,
+          raw: outcome.raw
+        })
+      );
+
+      return json({
+        ok: result.status !== "failed",
+        status: result.status,
+        duplicate: result.duplicate,
+        saleRef: result.saleRef
+      });
     }
 
     const outcome = stripeCheckoutOutcomeFromEvent(event);

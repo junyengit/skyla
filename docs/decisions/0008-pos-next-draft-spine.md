@@ -4,7 +4,10 @@ Date: 2026-06-30
 
 ## Status
 
-Accepted for this migration slice.
+Accepted for this migration slice. Later slices added the sale-ref-only Terminal
+action, server-driven reader handoff, and signed PaymentIntent webhook
+reconciliation; see decisions 0009, 0010, and 0006 for the current payment
+state.
 
 ## Context
 
@@ -36,8 +39,8 @@ The UI:
 - shows a high-contrast staff register surface
 - lets staff build and review a cart
 - displays the reviewed server total
-- keeps Terminal payment disabled until a future Convex Terminal action accepts
-  only a stored `saleRef`
+- initially kept Terminal payment disabled until a Convex Terminal action could
+  accept only a stored `saleRef`
 
 ## Consequences
 

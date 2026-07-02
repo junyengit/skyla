@@ -119,9 +119,11 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 - `/api/order-drafts/pos` and `/pos-next` add a native POS draft review path.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser
   totals. The backend now creates Stripe Terminal intents and sends them to the
-  stored reader from stored `saleRef` records only, but live Terminal payment
-  remains blocked until Vercel/Convex envs, staff auth, test-reader acceptance,
-  and final Stripe paid-state reconciliation are complete.
+  stored reader from stored `saleRef` records only. Signed Stripe
+  `payment_intent.*` webhooks now reconcile final POS payment state from the
+  stored Terminal payment event. Live Terminal payment remains gated until
+  Vercel/Convex envs, staff auth, Stripe dashboard endpoint setup, and
+  test-reader acceptance are complete.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:

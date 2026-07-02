@@ -78,9 +78,9 @@ package, guest count, and add-ons, but the server calculates:
 
 Provider actions must create payment sessions or intents from a stored
 `orderRef` or `saleRef`, not from a browser-supplied amount. The current Stripe
-Checkout action, Stripe webhook route, and Terminal `saleRef` actions follow
-this rule; Kaskade and Terminal final paid reconciliation are still future
-slices.
+Checkout action, Stripe webhook route, Terminal `saleRef` actions, and Terminal
+PaymentIntent webhook reconciliation follow this rule; Kaskade is still a future
+slice.
 
 ## Agent Data
 
@@ -376,6 +376,10 @@ Rules:
 - Paid Checkout Session events only mark an order paid after Convex reconciles
   the session ID, order ref, amount, currency, expected provider, and order
   status against stored order/payment rows.
+- Terminal PaymentIntent events only mark a POS sale paid, failed, or canceled
+  after Convex reconciles `metadata[source]`, Stripe PaymentIntent ID,
+  `saleRef`, amount, currency, sale status, and the stored Terminal
+  `paymentEvents` row.
 
 Required Convex env:
 

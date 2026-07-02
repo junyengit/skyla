@@ -154,9 +154,9 @@ flowchart TD
   dashboard.
 - POS legacy reader connection and charge UI should stay disabled while the
   `/pos-next` staff-authenticated Terminal flow is accepted.
-- `/pos-next` is not the live register yet because reader processing still needs
-  real Convex/staff auth/Stripe test-reader acceptance plus final paid
-  reconciliation.
+- `/pos-next` is not the live register yet because reader processing and signed
+  webhook reconciliation still need real Convex/staff auth/Stripe dashboard envs
+  plus Stripe test-reader acceptance.
 - Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
   The native `/admin` snapshot, status actions, and announcement/hours config
   are only the first admin slices.
@@ -227,16 +227,22 @@ flowchart TD
   - `checkout.session.async_payment_succeeded`
   - `checkout.session.async_payment_failed`
   - `checkout.session.expired`
+  - `payment_intent.succeeded`
+  - `payment_intent.payment_failed`
+  - `payment_intent.canceled`
 - [ ] Copy the endpoint signing secret into Convex as
   `STRIPE_WEBHOOK_SECRET`.
 - [ ] Use Stripe test cards only until preview checkout passes.
 - [ ] Verify webhook delivery, duplicate replay behavior, amount mismatch
-      rejection, and order status transitions before live traffic.
+      rejection, and order/POS sale status transitions before live traffic.
 - [ ] Create a separate live-mode endpoint only after test mode passes.
 - [ ] Do not use a real credit card during verification. Use Stripe test mode
       cards and Stripe dashboard test webhooks until preview acceptance passes.
 - [x] Replace the legacy Terminal create-intent path in repo code with a Convex
       action that accepts `saleRef` only and reads the stored POS sale amount.
+- [x] Add signed Stripe Terminal PaymentIntent webhook reconciliation from the
+      stored `saleRef`, stored Terminal PaymentIntent ID, amount, currency, and
+      webhook event ID.
 - [ ] Wire the POS UI to collect/process that Convex-created PaymentIntent on a
       real Stripe test reader.
 - [ ] Disable or redeploy legacy Supabase Stripe functions so any live old
@@ -266,6 +272,14 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:sm
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
 
+Current dependency note:
+
+- `bun audit --audit-level=low` reports no vulnerabilities.
+- `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
+  `10.6.0`) in `@skyla/web`. Leave that for a dedicated lint tooling slice
+  because the current Next/ESLint peer graph is stable on ESLint 9 and this
+  payment change does not require the major upgrade.
+
 ## Next Work Order
 
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
@@ -277,7 +291,8 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
    and start Stripe Checkout.
 6. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-7. Add Stripe Terminal final paid reconciliation through webhook or polling.
+7. Accept Stripe Terminal final webhook reconciliation in test mode with a real
+   test reader and matching Convex sale.
 8. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
 9. Finish native Admin beyond status actions: vouchers, refunds, config,

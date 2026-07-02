@@ -22,7 +22,9 @@ Use this after each major phase.
   without it
 - Webhook work verifies signature, amount, currency, status, and idempotency
 - Stripe webhooks use raw request bodies before JSON parsing
-- Paid-order transitions require stored Convex order/payment-event reconciliation
+- Paid order and POS sale transitions require stored Convex order/sale,
+  payment-event, amount, currency, status, and webhook idempotency
+  reconciliation
 
 ## Product
 
@@ -65,6 +67,8 @@ Use this after each major phase.
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment
 - Stripe webhook secret is configured before paid-order completion moves to Convex
 - Stripe dashboard webhook endpoint points to the Convex site URL, not the old Supabase function
+- Stripe Terminal PaymentIntent webhooks subscribe to succeeded, payment_failed,
+  and canceled events before `/pos-next` handles live card-present sales
 - Kaskade and non-payment legacy paths stay enabled or explicitly disabled until replacements pass acceptance
 - `/api/admin/config` writes only typed announcement/hours data, requires admin
   staff, and records `admin.config.update` audit events

@@ -10,7 +10,10 @@ import {
   type StripeTerminalProcessSnapshot,
   type StripeTerminalSnapshot
 } from "./lib/stripeTerminal";
-import { stripeCheckoutOrderStatusAfterUnpaidOutcome } from "./lib/stripeWebhook";
+import {
+  stripeCheckoutOrderStatusAfterUnpaidOutcome,
+  stripeTerminalSaleStatusAfterUnpaidOutcome
+} from "./lib/stripeWebhook";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -501,6 +504,273 @@ function terminalRawHasActiveProcessReservation(base: Record<string, unknown>, n
   return !hasRecordedThisReservation && now - reservedAt < terminalProcessReservationTtlMs;
 }
 
+export const recordStripeTerminalWebhook = internalMutation({
+  args: {
+    providerEventId: v.string(),
+    eventType: v.string(),
+    outcome: v.union(v.literal("paid"), v.literal("failed"), v.literal("canceled"), v.literal("ignored")),
+    providerPaymentId: v.optional(v.string()),
+    saleRef: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.literal("usd")),
+    raw: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    const existingWebhook = await ctx.db
+      .query("webhookEvents")
+      .withIndex("by_provider_providerEventId", (q) =>
+        q.eq("provider", "terminal").eq("providerEventId", args.providerEventId)
+      )
+      .first();
+    if (existingWebhook) {
+      return {
+        status: existingWebhook.status,
+        duplicate: true,
+        saleRef: existingWebhook.saleRef
+      };
+    }
+
+    if (args.outcome === "ignored") {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "ignored",
+        saleRef: args.saleRef,
+        raw: args.raw
+      });
+      return { status: "ignored", duplicate: false, saleRef: args.saleRef };
+    }
+
+    if (!args.providerPaymentId || !args.saleRef) {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "missing_provider_payment_or_sale_ref" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+    if (args.amountCents === undefined || !args.currency) {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "missing_terminal_amount_or_currency" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+      .unique();
+    if (!sale) {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "pos_sale_not_found" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    const providerEvents = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_provider_providerPaymentId", (q) =>
+        q.eq("provider", "terminal").eq("providerPaymentId", args.providerPaymentId as string)
+      )
+      .collect();
+    const expectedIntentKey = stripeTerminalIntentIdempotencyKey(args.saleRef);
+    const terminalEvent =
+      providerEvents.find((event) => event.saleRef === args.saleRef && event.idempotencyKey === expectedIntentKey) ??
+      providerEvents.find((event) => event.saleRef === args.saleRef);
+    if (!terminalEvent) {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "terminal_intent_not_created_by_convex" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    const amountCents = args.amountCents;
+    const currency = args.currency;
+    if (
+      sale.totalCents !== amountCents ||
+      sale.currency !== currency ||
+      terminalEvent.amountCents !== amountCents ||
+      terminalEvent.currency !== currency
+    ) {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "amount_or_currency_mismatch" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    if (args.outcome !== "paid" && sale.status === "paid") {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "pos_sale_already_paid" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+    if (args.outcome !== "canceled" && sale.status === "canceled") {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "pos_sale_already_canceled" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    if (
+      (args.outcome === "paid" && sale.status !== "payment_pending" && sale.status !== "paid") ||
+      (args.outcome !== "paid" && sale.status !== "payment_pending" && sale.status !== "canceled")
+    ) {
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "pos_sale_status_not_reconcilable" }
+      });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    if (args.outcome === "paid") {
+      const now = Date.now();
+      const existingPaidEvent = providerEvents.find((event) => event.saleRef === args.saleRef && event.status === "paid");
+      if (!existingPaidEvent) {
+        await ctx.db.insert("paymentEvents", {
+          saleRef: args.saleRef,
+          provider: "terminal",
+          providerPaymentId: args.providerPaymentId,
+          idempotencyKey: terminalEvent.idempotencyKey,
+          status: "paid",
+          currency,
+          amountCents,
+          rawEventId: args.providerEventId,
+          raw: args.raw,
+          createdAt: now
+        });
+      }
+
+      if (terminalEvent.status !== "paid") {
+        await ctx.db.patch(terminalEvent._id, {
+          status: "paid",
+          raw: withoutUndefined({
+            ...terminalRawBase(terminalEvent.raw),
+            terminalWebhookRecordedAt: now,
+            terminalWebhook: args.raw
+          })
+        });
+      }
+
+      if (sale.status !== "paid") {
+        await ctx.db.patch(sale._id, {
+          status: "paid",
+          updatedAt: now
+        });
+      }
+
+      await insertTerminalWebhookAuditEvent(ctx, {
+        saleRef: args.saleRef,
+        outcome: args.outcome,
+        amountCents,
+        providerPaymentId: args.providerPaymentId,
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        createdAt: now
+      });
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "processed",
+        saleRef: args.saleRef,
+        raw: args.raw
+      });
+      return { status: "processed", duplicate: false, saleRef: args.saleRef };
+    }
+
+    const now = Date.now();
+    const providerStatus = args.outcome === "failed" ? "failed" : "canceled";
+    await ctx.db.insert("paymentEvents", {
+      saleRef: args.saleRef,
+      provider: "terminal",
+      providerPaymentId: args.providerPaymentId,
+      idempotencyKey: terminalEvent.idempotencyKey,
+      status: providerStatus,
+      currency,
+      amountCents,
+      rawEventId: args.providerEventId,
+      raw: args.raw,
+      createdAt: now
+    });
+
+    if (terminalEvent.status !== providerStatus) {
+      await ctx.db.patch(terminalEvent._id, {
+        status: providerStatus,
+        raw: withoutUndefined({
+          ...terminalRawBase(terminalEvent.raw),
+          terminalWebhookRecordedAt: now,
+          terminalWebhook: args.raw
+        })
+      });
+    }
+
+    const nextSaleStatus = stripeTerminalSaleStatusAfterUnpaidOutcome(args.outcome);
+    if (sale.status !== nextSaleStatus) {
+      await ctx.db.patch(sale._id, {
+        status: nextSaleStatus,
+        updatedAt: now
+      });
+    }
+
+    await insertTerminalWebhookAuditEvent(ctx, {
+      saleRef: args.saleRef,
+      outcome: args.outcome,
+      amountCents,
+      providerPaymentId: args.providerPaymentId,
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
+      createdAt: now
+    });
+    await insertWebhookEvent(ctx, {
+      provider: "terminal",
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
+      status: "processed",
+      saleRef: args.saleRef,
+      raw: args.raw
+    });
+    return { status: "processed", duplicate: false, saleRef: args.saleRef };
+  }
+});
+
 export const recordStripeCheckoutWebhook = internalMutation({
   args: {
     providerEventId: v.string(),
@@ -693,22 +963,52 @@ export const recordStripeCheckoutWebhook = internalMutation({
 async function insertWebhookEvent(
   ctx: MutationCtx,
   args: {
+    provider?: "stripe" | "terminal";
     providerEventId: string;
     eventType: string;
     status: "processed" | "ignored" | "failed";
     orderRef?: string;
+    saleRef?: string;
     raw?: unknown;
   }
 ) {
   await ctx.db.insert("webhookEvents", withoutUndefined({
-    provider: "stripe",
+    provider: args.provider ?? "stripe",
     providerEventId: args.providerEventId,
     eventType: args.eventType,
     processedAt: Date.now(),
     status: args.status,
     orderRef: args.orderRef,
+    saleRef: args.saleRef,
     raw: args.raw
   }));
+}
+
+async function insertTerminalWebhookAuditEvent(
+  ctx: MutationCtx,
+  args: {
+    saleRef: string;
+    outcome: "paid" | "failed" | "canceled";
+    amountCents: number;
+    providerPaymentId: string;
+    providerEventId: string;
+    eventType: string;
+    createdAt: number;
+  }
+) {
+  await ctx.db.insert("auditEvents", {
+    action: `pos.terminalWebhook.${args.outcome}`,
+    entityType: "posSale",
+    entityRef: args.saleRef,
+    metadata: {
+      amountCents: args.amountCents,
+      providerPaymentId: args.providerPaymentId,
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
+      status: args.outcome
+    },
+    createdAt: args.createdAt
+  });
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
