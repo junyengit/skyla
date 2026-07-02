@@ -332,11 +332,11 @@ Current verified Vercel data:
 - Vercel project root: `apps/web`
 - Production branch: `main`
 - Latest verified app-code production commit:
-  `e5e4b75b477b7ffef20f5279a97491024fcb5cab` (PR #61)
+  `071ed79d9dd8c89c1ffca8eb849b7ec742090565` (PR #62)
 - Latest verified app-code production deployment:
-  `https://web-aaow8lg0e-junyen-enterprises.vercel.app`
+  `https://web-g6cp2p7an-junyen-enterprises.vercel.app`
 - Latest verified app-code production deployment ID:
-  `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`
+  `dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB`
 - Later docs-only merges can create newer Vercel deployments with the same app
   behavior; query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
