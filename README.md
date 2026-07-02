@@ -45,8 +45,8 @@ As of July 1, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-cem3bs58o-junyen-enterprises.vercel.app` from merge commit
-  `910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`.
+  `https://web-61n76njga-junyen-enterprises.vercel.app` from merge commit
+  `97f42be824797f681f9a7b0e6e71b4ee4fa5302c`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
@@ -115,10 +115,10 @@ SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
   real Convex envs, Stripe envs, and Stripe dashboard endpoint setup.
 - `/api/order-drafts/pos` and `/pos-next` add a native POS draft review path.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser
-  totals. The backend action now creates Stripe Terminal intents from stored
-  `saleRef` records only, but Terminal payment remains locked in the UI until
-  dashboard envs, staff auth, test-reader acceptance, and final Stripe
-  reconciliation are complete.
+  totals. The backend now creates Stripe Terminal intents and sends them to the
+  stored reader from stored `saleRef` records only, but live Terminal payment
+  remains blocked until Vercel/Convex envs, staff auth, test-reader acceptance,
+  and final Stripe paid-state reconciliation are complete.
 - Supabase functions remain legacy transition surfaces until Convex, server-authoritative payment creation, admin, and POS replacements are verified.
 
 Useful operator references:

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted in `codex/pos-terminal-reader-process`.
+Accepted in `codex/pos-terminal-reader-process` and merged in PR #28 as
+`97f42be824797f681f9a7b0e6e71b4ee4fa5302c`.
 
 ## Plain-English Version
 
@@ -44,7 +45,7 @@ The stored POS sale must already have a trusted `readerId`. The reader handoff
 uses a separate idempotency key from PaymentIntent creation:
 
 ```text
-skyla:terminal-process:<saleRef>:<paymentIntentId>:<readerId>
+skyla:terminal-process:<saleRef>:<paymentIntentId>:<readerId>:attempt-<N>
 ```
 
 ## Flow
@@ -94,3 +95,7 @@ sequenceDiagram
   Stripe webhook or polling slice.
 - Tipping remains disabled for this path unless it is modeled server-side in a
   future decision.
+- Production deployment `dpl_8XKorTa795wz7RyVgvCMDN3JxANn` is live at
+  `https://web-61n76njga-junyen-enterprises.vercel.app`, but payment routes
+  still fail closed with `convex_unconfigured` until Vercel and Convex are
+  wired to the real deployment env vars.
