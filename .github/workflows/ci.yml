@@ -6,7 +6,8 @@ on:
     branches: ["main"]
 
 jobs:
-  build:
+  ci-build:
+    name: ci-build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -950,30 +950,35 @@ function applyMemberFilters() {
   empty.classList.remove('visible');
   meta.textContent = `Showing ${filtered.length} of ${allMembers.length} application${allMembers.length !== 1 ? 's' : ''}`;
 
-  tbody.innerHTML = filtered.map(m => `
-    <tr id="mrow-${m.id}">
-      <td>${fmtDate(m.createdAt)}<br/><span style="color:var(--gray);font-size:.72rem">${fmtTime(m.createdAt)}</span></td>
-      <td>
-        ${esc(m.firstName || '')} ${esc(m.lastName || '')}
-        <br/><span style="color:var(--gray);font-size:.72rem">${esc(m.email || '')}</span>
-      </td>
-      <td style="font-size:.82rem">${esc(m.phone || '—')}</td>
-      <td>
-        <span style="color:${tierColor(m.tier)};font-weight:600">${tierGem(m.tier)}</span>
-        <span style="font-size:.8rem;margin-left:4px">${tierLabel(m.tier)}</span>
-      </td>
-      <td style="font-size:.8rem;color:var(--gray-lt)">${esc(m.source || '—')}</td>
-      <td><span class="status-badge status-badge--${memStatusColor(m.status)}">${m.status || 'pending'}</span></td>
-      <td>
-        <div class="row-actions">
-          <button class="row-btn row-btn--check-in" onclick="viewMemberBio('${m.id}')">View</button>
-          ${m.status !== 'approved'   ? `<button class="row-btn row-btn--check-in" onclick="updateMemberStatus('${m.id}','approved')">Approve</button>` : ''}
-          ${m.status !== 'waitlisted' ? `<button class="row-btn"                   onclick="updateMemberStatus('${m.id}','waitlisted')">Waitlist</button>` : ''}
-          ${m.status !== 'rejected'   ? `<button class="row-btn row-btn--cancel"   onclick="updateMemberStatus('${m.id}','rejected')">Reject</button>` : ''}
-          <button class="row-btn row-btn--delete" onclick="deleteMember('${m.id}')">✕</button>
-        </div>
-      </td>
-    </tr>`).join('');
+  tbody.innerHTML = filtered.map(m => {
+    const memberId = String(m.id || '');
+    const memberArg = jsArg(memberId);
+    const status = String(m.status || 'pending');
+    return `
+      <tr id="mrow-${esc(memberId)}">
+        <td>${fmtDate(m.createdAt)}<br/><span style="color:var(--gray);font-size:.72rem">${fmtTime(m.createdAt)}</span></td>
+        <td>
+          ${esc(m.firstName || '')} ${esc(m.lastName || '')}
+          <br/><span style="color:var(--gray);font-size:.72rem">${esc(m.email || '')}</span>
+        </td>
+        <td style="font-size:.82rem">${esc(m.phone || '—')}</td>
+        <td>
+          <span style="color:${tierColor(m.tier)};font-weight:600">${esc(tierGem(m.tier))}</span>
+          <span style="font-size:.8rem;margin-left:4px">${esc(tierLabel(m.tier))}</span>
+        </td>
+        <td style="font-size:.8rem;color:var(--gray-lt)">${esc(m.source || '—')}</td>
+        <td><span class="status-badge status-badge--${memStatusColor(status)}">${esc(status)}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="row-btn row-btn--check-in" onclick="viewMemberBio(${memberArg})">View</button>
+            ${status !== 'approved'   ? `<button class="row-btn row-btn--check-in" onclick="updateMemberStatus(${memberArg},'approved')">Approve</button>` : ''}
+            ${status !== 'waitlisted' ? `<button class="row-btn"                   onclick="updateMemberStatus(${memberArg},'waitlisted')">Waitlist</button>` : ''}
+            ${status !== 'rejected'   ? `<button class="row-btn row-btn--cancel"   onclick="updateMemberStatus(${memberArg},'rejected')">Reject</button>` : ''}
+            <button class="row-btn row-btn--delete" onclick="deleteMember(${memberArg})">✕</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
 }
 
 function updateMemberStatus(id, newStatus) {
@@ -999,22 +1004,27 @@ function viewMemberBio(id) {
 
   document.getElementById('mem-bio-name').textContent = `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Applicant';
 
+  const memberId = String(m.id || '');
+  const memberArg = jsArg(memberId);
+  const emailHref = encodeURIComponent(String(m.email || ''));
+  const status = String(m.status || 'pending');
+
   document.getElementById('mem-bio-meta').innerHTML = `
-    <div class="mem-bio-row"><span>Email</span><a href="mailto:${esc(m.email)}">${esc(m.email || '—')}</a></div>
+    <div class="mem-bio-row"><span>Email</span><a href="mailto:${emailHref}">${esc(m.email || '—')}</a></div>
     <div class="mem-bio-row"><span>Phone</span>${esc(m.phone || '—')}</div>
-    <div class="mem-bio-row"><span>Tier</span><strong style="color:${tierColor(m.tier)}">${tierGem(m.tier)} ${tierLabel(m.tier)}</strong></div>
+    <div class="mem-bio-row"><span>Tier</span><strong style="color:${tierColor(m.tier)}">${esc(tierGem(m.tier))} ${esc(tierLabel(m.tier))}</strong></div>
     <div class="mem-bio-row"><span>Source</span>${esc(m.source || '—')}</div>
     <div class="mem-bio-row"><span>Applied</span>${fmtDate(m.createdAt)} at ${fmtTime(m.createdAt)}</div>
-    <div class="mem-bio-row"><span>Status</span><span class="status-badge status-badge--${memStatusColor(m.status)}">${m.status || 'pending'}</span></div>`;
+    <div class="mem-bio-row"><span>Status</span><span class="status-badge status-badge--${memStatusColor(status)}">${esc(status)}</span></div>`;
 
   document.getElementById('mem-bio-body').innerHTML = m.bio
     ? `<p class="mem-bio-label">About / Why Skyla</p><blockquote class="mem-bio-quote">${esc(m.bio)}</blockquote>`
     : `<p style="color:var(--gray);font-style:italic">No bio provided.</p>`;
 
   document.getElementById('mem-bio-actions').innerHTML = `
-    ${m.status !== 'approved'   ? `<button class="admin-btn" onclick="updateMemberStatus('${m.id}','approved');closeMemberBio()">Approve</button>` : ''}
-    ${m.status !== 'waitlisted' ? `<button class="admin-btn admin-btn--ghost" onclick="updateMemberStatus('${m.id}','waitlisted');closeMemberBio()">Waitlist</button>` : ''}
-    ${m.status !== 'rejected'   ? `<button class="admin-btn admin-btn--danger" onclick="updateMemberStatus('${m.id}','rejected');closeMemberBio()">Reject</button>` : ''}`;
+    ${status !== 'approved'   ? `<button class="admin-btn" onclick="updateMemberStatus(${memberArg},'approved');closeMemberBio()">Approve</button>` : ''}
+    ${status !== 'waitlisted' ? `<button class="admin-btn admin-btn--ghost" onclick="updateMemberStatus(${memberArg},'waitlisted');closeMemberBio()">Waitlist</button>` : ''}
+    ${status !== 'rejected'   ? `<button class="admin-btn admin-btn--danger" onclick="updateMemberStatus(${memberArg},'rejected');closeMemberBio()">Reject</button>` : ''}`;
 
   document.getElementById('mem-bio-overlay').style.display = 'flex';
 }
@@ -1041,7 +1051,16 @@ function exportMembersCSV() {
 
 // ── ESCAPE ────────────────────────────────────────────────────
 function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function jsArg(str) {
+  return esc(JSON.stringify(String(str ?? '')));
 }
 
 // ── TAB SWITCH ────────────────────────────────────────────────

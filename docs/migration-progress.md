@@ -203,7 +203,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel production logs had no error entries for the checked 30-minute window.
 - [x] Merged post-admin-config current-state docs PR #34 into `main` as merge commit `1af5633779f52683ac7ca04ef1171f307e62cbea`.
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-g8ev04o2t-junyen-enterprises.vercel.app` (`dpl_8kjPLDfvRvJ2PszV2rKUbet6KBD9`), aliased to `skydeckla.com` and `www.skydeckla.com`.
-- [x] Verified `main` branch protection is still missing; this remains a GitHub dashboard hardening task.
+- [x] Verified `main` branch protection was still missing at that checkpoint;
+      it remained a GitHub dashboard hardening task until the later protection
+      update below.
 - [x] Started branch `codex/convex-live-readiness-spine` for Convex staff bootstrap and live-readiness hardening.
 - [x] Added a token-gated `staffBootstrap.upsertStaffUser` mutation so initial Convex `staffUsers` rows can be seeded through typed validation and audit events instead of manual table edits.
 - [x] Extended `bun run convex:env:check` with a separate `readyForStaffBootstrap` gate for the temporary bootstrap token.
@@ -249,6 +251,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `https://skydeckla.com`, and `https://www.skydeckla.com`; each passed,
       and deployed checkout assets confirmed Kaskade disabled on all three
       bases.
+- [x] Merged post-payment current-state docs PR #39 into `main` as merge
+      commit `a82c0b10be1fd8f291d83bed57eb4ac14300bfcc`; Vercel production
+      deployment `https://web-k294uhnw0-junyen-enterprises.vercel.app`
+      (`dpl_GN8Dw18L781T9wdQY25yCcNGBLg7`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Protected GitHub `main` with strict required checks `ci-build`,
+      `Analyze JavaScript and TypeScript`, and `Vercel`; force pushes, branch
+      deletion, and unresolved conversations are blocked.
+- [x] Hardened the remaining open GitHub CodeQL alert classes in legacy
+      compatibility code: escaped checkout ticket/member admin HTML
+      interpolation, removed an inline QR fallback that interpolated booking
+      refs, and stopped legacy Supabase Stripe functions from echoing exception
+      messages to callers.
 
 ## In Progress
 
@@ -276,7 +291,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/convex-live-readiness-spine`.
 - [x] Verify, review, and ship `codex/terminal-webhook-reconciliation`.
 - [x] Verify, review, and ship `codex/payment-api-smoke-current-state`.
-- [ ] Verify, review, and ship `codex/post-payment-smoke-production-state`.
+- [x] Verify, review, and ship `codex/post-payment-smoke-production-state`.
+- [ ] Verify, review, and ship `codex/github-main-protection-state`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

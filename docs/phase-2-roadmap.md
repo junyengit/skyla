@@ -280,7 +280,9 @@ Baseline now in place:
 - Native admin action route tests require staff auth before Convex, fail closed
   when Convex is unconfigured, and reject arbitrary booking/member statuses
   before calling Convex.
-- Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md` are present in repo config; GitHub dashboard protection remains a separate verification step.
+- Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md` are present in repo config.
+- GitHub `main` branch protection is active with strict required checks:
+  `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel`.
 
 ## PR Ladder
 
@@ -306,11 +308,13 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified application production commit: `edbd1d80ad43f967680b9e96c1b60c253ed04a70`
-- Recorded verified application production deployment: `https://web-5rd41qfa5-junyen-enterprises.vercel.app`
-- Recorded verified application production deployment ID: `dpl_Gue9pxpBcbd2A7z3NXip6fjsZyjJ`
+- Recorded verified application production commit: `a82c0b10be1fd8f291d83bed57eb4ac14300bfcc`
+- Recorded verified application production deployment: `https://web-k294uhnw0-junyen-enterprises.vercel.app`
+- Recorded verified application production deployment ID: `dpl_GN8Dw18L781T9wdQY25yCcNGBLg7`
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
+- Protected `main` required checks: `ci-build`, `Analyze JavaScript and
+  TypeScript`, `Vercel`
 
 Current order-spine state:
 

@@ -216,11 +216,12 @@ Status: Vercel setup, route verification, Vercel domain verification, and custom
 
 ### Phase 8: GitHub Hardening
 
-Status: partially implemented in repo config; dashboard enforcement still pending
+Status: active in repo config and GitHub branch protection
 
 - Protect `main`.
-- Require pull requests and CI.
-- Block force pushes.
+- Require pull requests and strict `ci-build`, `Analyze JavaScript and
+  TypeScript`, and `Vercel` checks.
+- Block force pushes and branch deletion.
 - Enable Dependabot security updates.
 - Add CodeQL scanning.
 - Add CODEOWNERS and security reporting policy.

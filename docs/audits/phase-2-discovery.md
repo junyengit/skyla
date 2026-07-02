@@ -188,7 +188,10 @@ P1 findings:
 - Legacy bridge scripts have stored-XSS surfaces through `innerHTML` paths for announcement, booking table, checkout ticket/status, and POS catalog/cart rendering.
 - `apps/web/eslint.config.mjs` ignores `public/**/*.js`, so those bridge scripts are intentionally outside the current lint gate.
 - CI now includes unit tests and the tracked artifact guard on the QA/security baseline branch, but integration, e2e, and visual tests are still pending.
-- GitHub repo hardening is partially implemented in code with Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md`; dashboard-side branch protection, rulesets, vulnerability alerts, and required checks still need confirmation.
+- GitHub repo hardening is now implemented in code with Dependabot, CodeQL,
+  CODEOWNERS, and `SECURITY.md`; `main` branch protection now requires
+  `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel`, and blocks
+  force pushes, branch deletion, and unresolved conversations.
 
 P2 findings:
 
@@ -208,5 +211,7 @@ Recommended first QA/security gates:
 1. Keep and extend unit tests around canonical pricing, order creation, webhook idempotency, role checks, and XSS escaping.
 2. Extend the route smoke script into Playwright desktop/mobile checks for screenshots, console errors, and reduced motion.
 3. Keep dependency audit, CodeQL, Dependabot, and tracked artifact/secret scanning wired into CI.
-4. Harden GitHub dashboard settings: protect `main`, require PRs, require CI and Vercel preview, block force pushes/deletions, and confirm vulnerability alerts.
+4. Keep GitHub dashboard settings verified: `main` is protected, PRs are
+   required, `ci-build`/CodeQL/Vercel gates are required, and force
+   pushes/deletions are blocked. Continue confirming vulnerability alerts.
 5. Track the POS date-format bug and client-trusted Terminal charge amount before POS rebuild or shutdown.

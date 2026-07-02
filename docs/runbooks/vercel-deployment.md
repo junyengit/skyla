@@ -26,10 +26,10 @@ root.
 As of July 2, 2026:
 
 - Recorded verified application deployment from `main` was READY at
-  `https://web-19f0ixf88-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_5uqfp1ihft12GprzQFTddLe8chyf`.
+  `https://web-k294uhnw0-junyen-enterprises.vercel.app`.
+- Recorded verified deployment ID: `dpl_GN8Dw18L781T9wdQY25yCcNGBLg7`.
 - Recorded verified merge commit:
-  `79f0bad6683196222e41e09d54dd2a7909869c53`.
+  `a82c0b10be1fd8f291d83bed57eb4ac14300bfcc`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -39,7 +39,7 @@ As of July 2, 2026:
   configured in Convex.
 - The latest production build logs show Vercel installing Bun canary
   `1.4.0-canary.1+eba370b69`, detecting Next.js `16.2.10`, and deploying from
-  Git commit `79f0bad`.
+  Git commit `a82c0b1`.
 
 ## Bun Deployment Changes
 
@@ -99,8 +99,10 @@ Leave any conversion env var blank to keep that event disabled. Do not hard-code
 5. Run `bun run test:payments` against the Preview deployment when the change
    touches checkout, POS, Stripe, Kaskade, Supabase functions, or Convex payment
    code.
-6. Merge to `main`.
-7. Vercel deploys Production from `main`.
+6. Confirm the protected-branch checks are green: `ci-build`,
+   `Analyze JavaScript and TypeScript`, and `Vercel`.
+7. Merge to `main`.
+8. Vercel deploys Production from `main`.
 
 ## Domain Cutover
 
