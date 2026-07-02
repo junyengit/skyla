@@ -28,7 +28,9 @@ for (const baseUrl of baseUrls) {
   await checkPaymentNoWrite(origin);
   await checkStaffStyles(origin);
   await checkMembersPageNoLegacyWrites(origin);
+  await checkExperiencesPageNoLegacyWrites(origin);
   await checkMemberApplicationsNoWrite(origin);
+  await checkExperienceInquiriesNoWrite(origin);
 }
 
 if (failures.length > 0) {
@@ -44,7 +46,9 @@ console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(
 console.log("- Route matrix and noindex headers passed.");
 console.log("- Payment no-write probes kept server-owned totals and stopped before Stripe execution.");
 console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
+console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
 console.log("- Member application no-write probe did not create data.");
+console.log("- Experience inquiry no-write probe did not create data.");
 console.log("- Legacy staff pages reference the current dark stylesheet cache keys.");
 for (const note of notes) {
   console.log(`- ${note}`);
@@ -94,6 +98,26 @@ async function checkMembersPageNoLegacyWrites(origin) {
 
     if (path === "/members" && !html.includes("Begin your application")) {
       failures.push(`${origin}${path}: did not render the native member application page`);
+    }
+  }
+}
+
+async function checkExperiencesPageNoLegacyWrites(origin) {
+  for (const path of ["/experiences", "/experiences.html"]) {
+    const response = await fetch(new URL(path, origin), { redirect: "follow" });
+    const html = await response.text();
+
+    if (response.status !== 200) {
+      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
+      continue;
+    }
+
+    if (html.includes("shared-data.js") || html.includes("SkylaData.addInquiry")) {
+      failures.push(`${origin}${path}: exposed legacy inquiry localStorage/Supabase write path`);
+    }
+
+    if (path === "/experiences" && !html.includes("Request Event Details")) {
+      failures.push(`${origin}${path}: did not render the native experiences page`);
     }
   }
 }
@@ -213,6 +237,29 @@ async function checkMemberApplicationsNoWrite(origin) {
 
   failures.push(
     `${origin}/api/members/applications: expected no-write 503 convex_unconfigured or 400 validation, got ${response.status}`
+  );
+}
+
+async function checkExperienceInquiriesNoWrite(origin) {
+  const response = await fetch(new URL("/api/experiences/inquiries", origin), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}"
+  });
+  const json = await response.json().catch(() => null);
+
+  if (response.status === 503 && json?.code === "convex_unconfigured") {
+    notes.push(`${origin} experience inquiries remain safely Convex-gated.`);
+    return;
+  }
+
+  if (response.status === 400 && String(json?.error ?? "").includes("firstName is required")) {
+    notes.push(`${origin} experience inquiry route reached validation before any write.`);
+    return;
+  }
+
+  failures.push(
+    `${origin}/api/experiences/inquiries: expected no-write 503 convex_unconfigured or 400 validation, got ${response.status}`
   );
 }
 

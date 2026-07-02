@@ -27,12 +27,15 @@ describe("legacy route bridge", () => {
     const cafePage = readFileSync(join(webDir, "app/cafe/page.tsx"), "utf8");
     const membersPage = readFileSync(join(webDir, "app/members/page.tsx"), "utf8");
     const membersClient = readFileSync(join(webDir, "components/members-application-client.tsx"), "utf8");
+    const experiencesPage = readFileSync(join(webDir, "app/experiences/page.tsx"), "utf8");
+    const experiencesClient = readFileSync(join(webDir, "components/experience-inquiry-client.tsx"), "utf8");
     const privacyPage = readFileSync(join(webDir, "app/privacy/page.tsx"), "utf8");
     const termsPage = readFileSync(join(webDir, "app/terms/page.tsx"), "utf8");
     const publicComponent = readFileSync(join(webDir, "components/public-page-shell.tsx"), "utf8");
     const legalComponent = readFileSync(join(webDir, "components/legal-page.tsx"), "utf8");
     const aboutFallback = readFileSync(join(publicDir, "about.html"), "utf8");
     const cafeFallback = readFileSync(join(publicDir, "cafe.html"), "utf8");
+    const experiencesFallback = readFileSync(join(publicDir, "experiences.html"), "utf8");
     const membersFallback = readFileSync(join(publicDir, "members.html"), "utf8");
     const privacyFallback = readFileSync(join(publicDir, "privacy.html"), "utf8");
     const termsFallback = readFileSync(join(publicDir, "terms.html"), "utf8");
@@ -43,6 +46,9 @@ describe("legacy route bridge", () => {
     expect(membersPage).toContain("MembersApplicationClient");
     expect(membersClient).toContain("/api/members/applications");
     expect(membersClient).toContain("idempotencyKey");
+    expect(experiencesPage).toContain("ExperienceInquiryClient");
+    expect(experiencesClient).toContain("/api/experiences/inquiries");
+    expect(experiencesClient).toContain("idempotencyKey");
     expect(privacyPage).toContain("Convex");
     expect(privacyFallback).toContain("Convex");
     expect(privacyPage).not.toContain("stored using <strong>Supabase</strong>");
@@ -51,12 +57,17 @@ describe("legacy route bridge", () => {
     expect(cafePage).not.toContain("shared-data.js");
     expect(membersPage).not.toContain("shared-data.js");
     expect(membersClient).not.toContain("SkylaData.addMember");
+    expect(experiencesPage).not.toContain("shared-data.js");
+    expect(experiencesClient).not.toContain("SkylaData.addInquiry");
     expect(privacyPage).not.toContain("shared-data.js");
     expect(termsPage).not.toContain("shared-data.js");
     expect(publicComponent).not.toContain("shared-data.js");
     expect(legalComponent).not.toContain("shared-data.js");
     expect(aboutFallback).not.toContain("shared-data.js");
     expect(cafeFallback).not.toContain("shared-data.js");
+    expect(experiencesFallback).toContain("url=/experiences");
+    expect(experiencesFallback).not.toContain("shared-data.js");
+    expect(experiencesFallback).not.toContain("SkylaData.addInquiry");
     expect(membersFallback).toContain("url=/members");
     expect(membersFallback).not.toContain("shared-data.js");
     expect(membersFallback).not.toContain("SkylaData.addMember");
@@ -93,7 +104,7 @@ describe("legacy route bridge", () => {
   });
 
   it("loads Google Ads config before the tracking helper on conversion pages", () => {
-    const experiences = readFileSync(join(publicDir, "experiences.html"), "utf8");
+    const experiences = readFileSync(join(import.meta.dirname, "app/experiences/page.tsx"), "utf8");
     const membersPage = readFileSync(join(import.meta.dirname, "app/members/page.tsx"), "utf8");
 
     for (const [route, contents] of [

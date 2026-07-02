@@ -25,6 +25,7 @@ flowchart LR
   next["apps/web Next.js App Router"]
   bridge["apps/web/public legacy bridge"]
   admin["Native /admin ops snapshot"]
+  experiences["Native /experiences inquiry page + API"]
   members["Native /members application page + API"]
   posDraft["Native /pos-next draft"]
   supabase["Supabase auth, tables, edge functions"]
@@ -35,6 +36,7 @@ flowchart LR
   vercel --> next
   next --> bridge
   next --> admin
+  next --> experiences
   next --> members
   next --> posDraft
   bridge --> supabase
@@ -57,6 +59,9 @@ Why this is not the final state:
 - The native `/members` page now posts to the server application API and fails
   closed until Convex is configured. `/members.html` remains as a compatibility
   artifact while linked Convex acceptance is verified.
+- The native `/experiences` page now posts to the server inquiry API and fails
+  closed until Convex is configured. `/experiences.html` remains as a
+  compatibility artifact while linked Convex acceptance is verified.
 
 ## Target Shape
 
@@ -233,9 +238,9 @@ Rebuild the compatibility bridge into real Next routes.
 
 Priority order:
 
-1. Legal and content pages: `/privacy`, `/terms`, `/about`, and `/cafe` are
-   native. `/experiences` remains on the compatibility bridge until its
-   inquiry form and ad conversion tracking have a typed Convex/analytics path.
+1. Legal and content pages: `/privacy`, `/terms`, `/about`, `/cafe`, and
+   `/experiences` are native. `/experiences` now has a typed Convex-gated
+   inquiry path and server-accepted lead tracking.
 2. Members flow: `/members` is native; linked Convex acceptance is still
    required before treating it as live intake.
 3. Checkout flow: `/checkout`.
@@ -345,9 +350,9 @@ Current verified Vercel data:
   now reference bumped CSS cache keys.
 - Production-readiness smoke PR: `#45`
 - Production-readiness state: `bun run test:production-readiness` bundles the
-  route matrix, no-write payment probes, member application no-write probe, and
-  staff stylesheet cache-key check for custom domains plus an optional Vercel
-  deployment URL.
+  route matrix, no-write payment probes, member application and experience
+  inquiry no-write probes, and staff stylesheet cache-key check for custom
+  domains plus an optional Vercel deployment URL.
 - Payment/hosting/readability PR: `#46`
 - Payment/hosting/readability state: Stripe actions require explicit
   `SKYLA_STRIPE_MODE`, Terminal no longer returns public `clientSecret`, the

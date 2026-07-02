@@ -54,9 +54,9 @@ As of July 2, 2026:
 
 During cutover, `apps/web` includes static compatibility files in
 `apps/web/public` for existing public routes. `next.config.mjs` rewrites only
-the remaining legacy extensionless URLs, currently `/experiences` and `/pos`,
-to their `.html` compatibility files. Native App Router routes such as
-`/checkout` and `/members` should own their extensionless URLs directly.
+the remaining legacy extensionless URL, currently `/pos`, to its `.html`
+compatibility file. Native App Router routes such as `/checkout`,
+`/experiences`, and `/members` should own their extensionless URLs directly.
 
 Keep the bridge until the equivalent App Router routes are rebuilt with server-authoritative payments, Convex data access, and authenticated admin/POS flows.
 

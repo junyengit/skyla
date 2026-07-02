@@ -33,6 +33,11 @@ of the legacy localStorage/Supabase write path. It correctly refuses to accept
 applications when Convex is not configured, so the page is safe to serve but
 real application intake still depends on the dashboard setup below.
 
+The native `/experiences` page now uses the server event inquiry API instead
+of the legacy localStorage/Supabase write path. It correctly refuses to accept
+event inquiries when Convex is not configured, so the page is safe to serve but
+real event intake still depends on the dashboard setup below.
+
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
@@ -100,6 +105,7 @@ flowchart TD
   next["apps/web Next.js"]
   checkout["App Router checkout"]
   members["Native /members + member API"]
+  experiences["Native /experiences + inquiry API"]
   posNext["App Router POS draft"]
   legacy["Legacy admin/POS + fallback pages"]
   supabase["Legacy Supabase functions"]
@@ -108,10 +114,12 @@ flowchart TD
 
   domain --> vercel --> next --> checkout
   next --> members
+  next --> experiences
   next --> posNext
   next --> legacy --> supabase
   checkout -. "needs env" .-> convex
   members -. "needs env" .-> convex
+  experiences -. "needs env" .-> convex
   posNext -. "needs staff auth" .-> convex
   convex -. "needs env + webhook endpoint" .-> stripe
 ```
@@ -145,6 +153,13 @@ flowchart TD
 - Native `/members` posts to that API with an idempotency key and no longer
   writes applications through `SkylaData.addMember`, browser localStorage, or
   the legacy Supabase mirror.
+- `/api/experiences/inquiries` is the new server-durable event inquiry path.
+  It validates public inquiry fields, requires Convex before accepting, dedupes
+  exact retries with an idempotency key, and writes a pending Convex
+  `inquiries` row plus a compact audit event.
+- Native `/experiences` posts to that API with an idempotency key and no longer
+  writes event inquiries through `SkylaData.addInquiry`, browser localStorage,
+  or the legacy Supabase mirror.
 - Admin and POS dark-theme text is high contrast.
 - Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` are
   readable on the black staff surfaces, with no obvious text overlap.
@@ -167,8 +182,8 @@ flowchart TD
 - `bun run test:payments` now checks the payment API fail-closed behavior on
   any supplied base URL without using a real card or writing Convex data.
 - `bun run test:production-readiness` now bundles route, noindex, payment
-  no-write, member no-write, and staff contrast/cache-key checks for the custom
-  domains.
+  no-write, member no-write, experience inquiry no-write, and staff
+  contrast/cache-key checks for the custom domains.
 - `/api/admin/bookings/status` and `/api/admin/members/status` require staff
   bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
@@ -207,12 +222,12 @@ flowchart TD
 - `/members` is native, but live application acceptance is still gated until
   `/api/members/applications` can write to a linked Convex deployment in preview
   and production.
+- `/experiences` is native, but live event inquiry acceptance is still gated
+  until `/api/experiences/inquiries` can write to a linked Convex deployment in
+  preview and production.
 - `/about`, `/cafe`, `/privacy`, and `/terms` are native App Router pages with
   `.html` compatibility URLs. Native `/cafe` uses the shared
   `@skyla/payments` catalog for public menu prices.
-- `/experiences` is still the compatibility page because its inquiry form and
-  ad conversion tracking need a typed Convex/analytics cutover before route
-  replacement.
 - Any already deployed Supabase payment functions must still be disabled or
   redeployed from the permanently fail-closed repo code in the Supabase
   dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
@@ -446,7 +461,8 @@ What has been done:
 - There is now a repeatable payment smoke command to check that fail-closed
   behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
 - There is also a one-command production-readiness smoke that bundles route,
-  payment no-write, member no-write, and staff contrast/cache-key checks.
+  payment no-write, member no-write, experience inquiry no-write, and staff
+  contrast/cache-key checks.
 - `/members` is now a Next.js page. Its form does not save locally; it only
   succeeds after the server accepts the application.
 - Admin, POS, and `/pos-next` use high-contrast dark staff screens.

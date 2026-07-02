@@ -191,16 +191,25 @@ export default defineSchema({
 
   inquiries: defineTable({
     status: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    email: v.optional(v.string()),
     emailLower: v.optional(v.string()),
     experience: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    guestCount: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    source: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    inquiryFingerprint: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     legacyId: v.optional(v.string()),
     rawLegacy: v.optional(v.any())
   })
     .index("by_status_createdAt", ["status", "createdAt"])
-    .index("by_emailLower_createdAt", ["emailLower", "createdAt"]),
+    .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
+    .index("by_idempotencyKey", ["idempotencyKey"]),
 
   config: defineTable({
     key: v.string(),

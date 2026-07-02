@@ -339,6 +339,7 @@ h3 {
   min-height: 100svh;
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 .publicNav {
@@ -407,11 +408,13 @@ h3 {
   position: relative;
   z-index: 1;
   width: min(1020px, 100%);
+  min-width: 0;
 }
 
 .publicHeroContent h1 {
   max-width: 760px;
   font-size: clamp(4.2rem, 11vw, 8.8rem);
+  overflow-wrap: break-word;
 }
 
 .publicHeroContent h1 span {
@@ -425,6 +428,7 @@ h3 {
   color: rgba(255, 255, 255, 0.76);
   font-size: clamp(1rem, 2vw, 1.18rem);
   line-height: 1.66;
+  overflow-wrap: break-word;
 }
 
 .publicHeroActions {
@@ -683,7 +687,8 @@ h3 {
 .memberStats span,
 .memberTierCard > strong,
 .memberTierSelect legend,
-.memberApplicationForm label > span {
+.memberApplicationForm label > span,
+.experienceInquiryForm label > span {
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.78rem;
   font-weight: 800;
@@ -886,7 +891,9 @@ h3 {
 }
 
 .memberApplicationForm,
-.memberSuccess {
+.memberSuccess,
+.experienceInquiryForm,
+.experienceSuccess {
   display: grid;
   gap: 18px;
   max-width: 820px;
@@ -902,14 +909,18 @@ h3 {
   gap: 14px;
 }
 
-.memberApplicationForm label {
+.memberApplicationForm label,
+.experienceInquiryForm label {
   display: grid;
   gap: 8px;
 }
 
 .memberApplicationForm input,
 .memberApplicationForm select,
-.memberApplicationForm textarea {
+.memberApplicationForm textarea,
+.experienceInquiryForm input,
+.experienceInquiryForm select,
+.experienceInquiryForm textarea {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
@@ -920,17 +931,21 @@ h3 {
   padding: 12px 14px;
 }
 
-.memberApplicationForm textarea {
+.memberApplicationForm textarea,
+.experienceInquiryForm textarea {
   min-height: 132px;
   resize: vertical;
 }
 
 .memberApplicationForm input::placeholder,
-.memberApplicationForm textarea::placeholder {
+.memberApplicationForm textarea::placeholder,
+.experienceInquiryForm input::placeholder,
+.experienceInquiryForm textarea::placeholder {
   color: rgba(255, 255, 255, 0.42);
 }
 
-.memberApplicationForm select option {
+.memberApplicationForm select option,
+.experienceInquiryForm select option {
   background: #111216;
   color: var(--text);
 }
@@ -995,7 +1010,8 @@ h3 {
 
 .memberFormNote,
 .memberFormError,
-.memberSuccess p {
+.memberSuccess p,
+.experienceSuccess p {
   margin: 0;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
@@ -1038,6 +1054,254 @@ h3 {
 
 .memberSuccess strong {
   color: var(--gold-strong);
+}
+
+.experienceStats,
+.experienceSection,
+.experienceFeature,
+.experienceInquiry,
+.experienceAnchorRow {
+  width: min(1160px, calc(100vw - 40px));
+  margin: 0 auto;
+}
+
+.experienceStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+  transform: translateY(-36px);
+}
+
+.experienceStats div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  min-height: 148px;
+  align-content: center;
+  padding: 22px;
+  background: #0d0e11;
+}
+
+.experienceStats strong {
+  color: var(--gold-strong);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+}
+
+.experienceStats span,
+.experienceCard span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.experienceStats p,
+.experienceCard p,
+.experienceFeatureCopy p,
+.experienceRoomCopy p,
+.experienceNotice span {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.58;
+  overflow-wrap: break-word;
+}
+
+.experienceAnchorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px 0 28px;
+}
+
+.experienceAnchorRow a {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 10px 14px;
+  text-transform: uppercase;
+}
+
+.experienceIntro {
+  padding-top: 28px;
+}
+
+.experienceSection {
+  padding: 72px 0 86px;
+  border-top: 1px solid var(--line);
+}
+
+.experienceCardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.experienceCard {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(24, 25, 30, 0.86);
+}
+
+.experienceCard img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 11;
+  object-fit: cover;
+}
+
+.experienceCard div {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+}
+
+.experienceCard h3,
+.experienceRoom h3 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  line-height: 1;
+}
+
+.experienceCard strong,
+.experienceRoomCopy strong,
+.experiencePriceRow strong {
+  color: var(--gold-strong);
+  font-size: 1.12rem;
+}
+
+.experienceFeature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+  gap: clamp(24px, 5vw, 64px);
+  align-items: stretch;
+  padding: 84px 0 92px;
+  border-top: 1px solid var(--line);
+}
+
+.experienceFeatureMedia,
+.experienceRoomMedia {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+}
+
+.experienceFeatureMedia {
+  min-height: 540px;
+}
+
+.experienceFeatureMedia img,
+.experienceRoomMedia img {
+  object-fit: cover;
+}
+
+.experienceFeatureCopy,
+.experienceRoomCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: clamp(24px, 4vw, 44px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.experienceFeatureCopy h2 {
+  font-size: clamp(2.4rem, 5vw, 4.9rem);
+  line-height: 0.96;
+}
+
+.experienceFeatureCopy ul,
+.experienceRoomCopy ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.experienceFeatureCopy li,
+.experienceRoomCopy li {
+  position: relative;
+  padding-left: 20px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.45;
+}
+
+.experienceFeatureCopy li::before,
+.experienceRoomCopy li::before {
+  position: absolute;
+  left: 0;
+  color: var(--gold-strong);
+  content: "*";
+}
+
+.experiencePriceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+}
+
+.experiencePriceRow span {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.experienceFeatureCopy .primaryAction {
+  align-self: flex-start;
+}
+
+.experienceRoomGrid {
+  display: grid;
+  gap: 18px;
+}
+
+.experienceRoom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: clamp(22px, 5vw, 58px);
+  min-height: 460px;
+}
+
+.experienceRoom:nth-child(even) {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+}
+
+.experienceRoom:nth-child(even) .experienceRoomMedia {
+  order: 2;
+}
+
+.experienceRoomMedia {
+  min-height: 420px;
+}
+
+.experienceNotice {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  border: 1px solid rgba(216, 182, 83, 0.28);
+  border-radius: 8px;
+  background: rgba(216, 182, 83, 0.08);
+  padding: 20px 22px;
+}
+
+.experienceNotice strong {
+  color: var(--gold-strong);
+}
+
+.experienceInquiry {
+  padding: 86px 0 98px;
+  border-top: 1px solid var(--line);
 }
 
 .legalPage {
@@ -1183,6 +1447,15 @@ h3 {
     padding-inline: 20px;
   }
 
+  .publicHeroContent h1 {
+    font-size: 4.2rem;
+    line-height: 0.88;
+  }
+
+  .publicHeroContent > p:not(.sectionLabel) {
+    max-width: 100%;
+  }
+
   .publicStats,
   .publicIntro,
   .publicFeatureList,
@@ -1192,6 +1465,11 @@ h3 {
   .memberTierSection,
   .memberSpaces,
   .memberApply,
+  .experienceStats,
+  .experienceSection,
+  .experienceFeature,
+  .experienceInquiry,
+  .experienceAnchorRow,
   .cafeNativeGallery,
   .cafeMenuNative {
     width: min(100% - 32px, 1160px);
@@ -1199,9 +1477,11 @@ h3 {
 
   .publicStats,
   .memberStats,
+  .experienceStats,
   .memberTierGrid,
   .memberTierSelect,
   .memberFormGrid,
+  .experienceCardGrid,
   .publicCardGrid,
   .cafeNativeGallery,
   .cafeMenuGrid {
@@ -1214,16 +1494,25 @@ h3 {
     margin-top: 0;
   }
 
+  .experienceStats {
+    transform: none;
+    margin-top: 0;
+  }
+
   .publicIntro,
   .publicFeature,
   .publicCta,
   .memberSpace,
-  .memberSpace.isReverse {
+  .memberSpace.isReverse,
+  .experienceFeature,
+  .experienceRoom,
+  .experienceRoom:nth-child(even) {
     grid-template-columns: 1fr;
   }
 
   .publicFeature:nth-child(even) .publicFeatureMedia,
-  .memberSpace.isReverse .memberSpaceMedia {
+  .memberSpace.isReverse .memberSpaceMedia,
+  .experienceRoom:nth-child(even) .experienceRoomMedia {
     order: 0;
   }
 
@@ -1235,9 +1524,19 @@ h3 {
     min-height: 300px;
   }
 
+  .experienceFeatureMedia,
+  .experienceRoomMedia {
+    min-height: 300px;
+  }
+
   .publicCta {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    white-space: normal;
   }
 
   .legalPage {
@@ -1250,6 +1549,12 @@ h3 {
 
   .legalNav nav {
     display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .publicHeroContent h1 {
+    font-size: 3.55rem;
   }
 }
 

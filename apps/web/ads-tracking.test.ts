@@ -167,4 +167,38 @@ describe("ads-tracking.js", () => {
       ]
     ]);
   });
+
+  it("emits event lead conversion events when configured", () => {
+    const { window } = runTrackingScript({
+      googleTagId: "AW-123456789",
+      conversions: {
+        eventLead: "AW-123456789/event"
+      }
+    });
+
+    window.SkylaAds.trackLead("event", { value: 250 });
+
+    expect(dataLayerCalls(window)).toEqual([
+      ["js", expect.any(Date)],
+      ["config", "AW-123456789"],
+      [
+        "event",
+        "generate_lead",
+        {
+          lead_type: "event",
+          value: 250,
+          currency: "USD"
+        }
+      ],
+      [
+        "event",
+        "conversion",
+        {
+          send_to: "AW-123456789/event",
+          value: 250,
+          currency: "USD"
+        }
+      ]
+    ]);
+  });
 });

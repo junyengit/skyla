@@ -10,9 +10,11 @@
 
 import type * as admin from "../admin.js";
 import type * as http from "../http.js";
+import type * as inquiries from "../inquiries.js";
 import type * as lib_adminConfig from "../lib/adminConfig.js";
 import type * as lib_adminOperations from "../lib/adminOperations.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_inquiries from "../lib/inquiries.js";
 import type * as lib_memberApplications from "../lib/memberApplications.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
 import type * as lib_staffBootstrap from "../lib/staffBootstrap.js";
@@ -35,9 +37,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   http: typeof http;
+  inquiries: typeof inquiries;
   "lib/adminConfig": typeof lib_adminConfig;
   "lib/adminOperations": typeof lib_adminOperations;
   "lib/auth": typeof lib_auth;
+  "lib/inquiries": typeof lib_inquiries;
   "lib/memberApplications": typeof lib_memberApplications;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
   "lib/staffBootstrap": typeof lib_staffBootstrap;

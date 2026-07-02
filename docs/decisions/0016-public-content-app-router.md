@@ -26,5 +26,6 @@ public menu shares the same server-owned catalog source as POS and checkout.
 - Public content pages ship as static Server Components with no legacy
   localStorage/Supabase bridge.
 - Old `.html` links continue to return `200`.
-- `/experiences` remains on the legacy bridge because it still has lead-form and
-  ad-conversion behavior that needs a dedicated Convex/analytics migration.
+- `/experiences` was intentionally left for a separate lead-form migration.
+  That follow-up is now covered by
+  [0018](0018-native-experiences-inquiry-cutover.md).
