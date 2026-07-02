@@ -37,12 +37,15 @@ do not cut over the public form until the dashboard setup below is done.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Production deployment checked on 2026-07-02:
+- Latest code-changing production deployment checked on 2026-07-02:
   `https://web-gg92osnfi-junyen-enterprises.vercel.app`
-- Production deployment ID checked on 2026-07-02:
+- Latest code-changing deployment ID checked on 2026-07-02:
   `dpl_6PW4HQNh9LF2XKqt92Tx1ENDZxDt`
-- Merge commit checked on 2026-07-02:
+- Latest code-changing merge commit checked on 2026-07-02:
   `37df37c9c20194fa67e93847b5b9cbb8a76092d1`
+- Docs-only follow-up merges may create newer Vercel deployments with the same
+  app behavior. Use Vercel for the newest deployment URL before recording new
+  evidence.
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -60,7 +63,7 @@ do not cut over the public form until the dashboard setup below is done.
   blocked.
 - GitHub CodeQL alerts checked on 2026-07-02 after the PR #40 `main` scan:
   no open alerts.
-- Live API behavior checked on 2026-07-02 across the current Vercel production
+- Live API behavior checked on 2026-07-02 across the checked Vercel production
   deployment, apex domain, and `www` with `bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
@@ -370,13 +373,13 @@ PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-gg92osnfi-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=<latest-production-url> bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
-PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-gg92osnfi-junyen-enterprises.vercel.app bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=<latest-production-url> bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
-PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=https://web-gg92osnfi-junyen-enterprises.vercel.app,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
+PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=<latest-production-url>,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
 PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/member-applications-route.test.ts convex/memberApplications.test.ts
 ```
 
