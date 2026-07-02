@@ -32,9 +32,26 @@ html { font-size: 15px; }
 body.admin-body {
   font-family: var(--font);
   background: var(--black);
-  color: var(--off-white);
+  color: var(--white);
+  color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+}
+
+body.admin-body .admin-shell,
+body.admin-body .admin-main,
+body.admin-body .admin-section,
+body.admin-body .dash-panel,
+body.admin-body .table-wrap,
+body.admin-body .pricing-card,
+body.admin-body .pricing-extra,
+body.admin-body .settings-block,
+body.admin-body .checkin-scan,
+body.admin-body .checkin-card,
+body.admin-body .mem-bio-box,
+body.admin-body .confirm-box,
+body.admin-body .toast {
+  color: var(--white);
 }
 
 body.admin-body input,
@@ -44,9 +61,20 @@ body.admin-body button {
   color: var(--white);
 }
 
+body.admin-body input,
+body.admin-body textarea,
+body.admin-body select {
+  color-scheme: dark;
+}
+
+body.admin-body select option {
+  background: var(--dark-3);
+  color: var(--white);
+}
+
 a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: var(--font); border: none; }
-input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.78); opacity: 1; }
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.86); opacity: 1; }
 
 /* ── ANNOUNCEMENT (public pages) ── */
 .site-announcement {

@@ -12,7 +12,7 @@ setup and agents verifying the result afterward.
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel team ID: `team_3kWPO8fPD6E7x39voGoNNeog`
 - Local Vercel link path: `apps/web/.vercel/project.json` (ignored)
-- Vercel env status checked on 2026-07-01: no environment variables exist for
+- Vercel env status checked on 2026-07-02: no environment variables exist for
   `junyen-enterprises/web`.
 - Local Convex status: anonymous-only local deployment in root `.env.local`.
 - Cloud Convex status: not linked yet.

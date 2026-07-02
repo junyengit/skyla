@@ -41,15 +41,18 @@ flowchart LR
 
 ## Current Hosting State
 
-As of July 1, 2026:
+As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-61n76njga-junyen-enterprises.vercel.app` from merge commit
-  `97f42be824797f681f9a7b0e6e71b4ee4fa5302c`.
+  `https://web-dqay6ls9s-junyen-enterprises.vercel.app` from merge commit
+  `28290519ce164bfed71832f8a978acb15fa699ac`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
+- Vercel still has no project environment variables configured. That is why
+  payment execution intentionally stops with `convex_unconfigured` until the real
+  Convex and Stripe dashboard setup is finished.
 - The Next app serves the new homepage, checkout route, and `/pos-next` draft
   review route. It bridges legacy routes from `/about`, `/cafe`,
   `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to

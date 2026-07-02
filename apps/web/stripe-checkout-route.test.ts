@@ -71,6 +71,25 @@ describe("/api/payments/stripe-checkout", () => {
     });
   });
 
+  it("treats missing Stripe return-origin allowlist as server configuration", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    fetchActionMock.mockRejectedValueOnce(
+      new Error("SKYLA_PAYMENT_RETURN_ORIGINS must list at least one allowed Stripe return origin")
+    );
+
+    const response = await POST(
+      request({
+        orderRef: "SKY2607-ABC123",
+        idempotencyKey: "checkout_20260704_abc123"
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "SKYLA_PAYMENT_RETURN_ORIGINS must list at least one allowed Stripe return origin"
+    });
+  });
+
   it("starts Stripe Checkout through the Convex action with generated return URLs", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     fetchActionMock.mockResolvedValueOnce({

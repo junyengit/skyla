@@ -23,19 +23,19 @@ root.
 
 ## Current Production State
 
-As of July 1, 2026:
+As of July 2, 2026:
 
 - Recorded verified application deployment from `main` was READY at
-  `https://web-61n76njga-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_8XKorTa795wz7RyVgvCMDN3JxANn`.
+  `https://web-dqay6ls9s-junyen-enterprises.vercel.app`.
+- Recorded verified deployment ID: `dpl_FqPrQ97E6sdaaZ5Tqv8gBjMU2vaD`.
 - Recorded verified merge commit:
-  `97f42be824797f681f9a7b0e6e71b4ee4fa5302c`.
+  `28290519ce164bfed71832f8a978acb15fa699ac`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
 - Vercel currently has no project environment variables configured.
-- Stripe Checkout and Terminal routes currently fail closed with
+- Stripe Checkout and Terminal create/process routes currently fail closed with
   `convex_unconfigured` until the real Convex deployment URL is added.
 
 ## Bun Deployment Changes

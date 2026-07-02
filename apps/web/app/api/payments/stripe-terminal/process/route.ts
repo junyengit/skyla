@@ -57,7 +57,12 @@ function paymentFailureStatus(message: string) {
   if (normalized.includes("auth") || normalized.includes("staff role")) {
     return 401;
   }
-  if (normalized.includes("not configured")) {
+  if (
+    normalized.includes("not configured") ||
+    normalized.includes("stripe_secret_key") ||
+    normalized.includes("terminal reader registry") ||
+    normalized.includes("skyla_terminal_reader_registry")
+  ) {
     return 503;
   }
   if (normalized.includes("different staff user")) {

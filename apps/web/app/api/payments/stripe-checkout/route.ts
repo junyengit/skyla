@@ -47,6 +47,15 @@ function originFor(request: Request) {
   return new URL(request.url).origin;
 }
 
+function isServerConfigurationError(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("not configured") ||
+    normalized.includes("stripe_secret_key") ||
+    normalized.includes("skyla_payment_return_origins")
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const deploymentUrl = convexUrl();
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Could not start Stripe Checkout";
     const status = message.includes("is required") || message.includes("origin is not allowed")
       ? 400
-      : message.toLowerCase().includes("not configured")
+      : isServerConfigurationError(message)
         ? 503
         : 502;
 
