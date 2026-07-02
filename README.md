@@ -45,8 +45,8 @@ As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Recorded verified application production deployment:
-  `https://web-51jx64rul-junyen-enterprises.vercel.app` from merge commit
-  `18646de9a636c50fc470ffabc83f6d212884db15`.
+  `https://web-19f0ixf88-junyen-enterprises.vercel.app` from merge commit
+  `79f0bad6683196222e41e09d54dd2a7909869c53`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.

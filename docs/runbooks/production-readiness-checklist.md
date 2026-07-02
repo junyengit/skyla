@@ -33,11 +33,11 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-51jx64rul-junyen-enterprises.vercel.app`
+  `https://web-19f0ixf88-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_Fz2YSWNMiagFgUXmHcrCoUpxj73B`
+  `dpl_5uqfp1ihft12GprzQFTddLe8chyf`
 - Merge commit checked on 2026-07-02:
-  `18646de9a636c50fc470ffabc83f6d212884db15`
+  `79f0bad6683196222e41e09d54dd2a7909869c53`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -63,8 +63,8 @@ from Vercel.
     Convex configuration when no staff token was provided.
   - No response exposed a Stripe `clientSecret`.
 - Vercel production runtime errors checked on 2026-07-02 for deployment
-  `dpl_Fz2YSWNMiagFgUXmHcrCoUpxj73B`: no error or fatal logs in the checked
-  2-hour window.
+  `dpl_5uqfp1ihft12GprzQFTddLe8chyf`: no error or fatal logs in the checked
+  30-minute window after production smoke probes.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -98,10 +98,10 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-02 for
-  `https://web-51jx64rul-junyen-enterprises.vercel.app`,
+  `https://web-19f0ixf88-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for PR #37, the Terminal webhook reconciliation
+  deployment checks passed for PR #38, the payment smoke and Kaskade retirement
   merge.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
@@ -303,10 +303,10 @@ PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-51jx64rul-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-19f0ixf88-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
-PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-51jx64rul-junyen-enterprises.vercel.app bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-19f0ixf88-junyen-enterprises.vercel.app bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 ```
