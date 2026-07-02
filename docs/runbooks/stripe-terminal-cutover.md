@@ -154,5 +154,4 @@ Expected after Convex and a test reader are wired:
 
 If the new Terminal path fails during preview, keep `/pos-next` locked and do
 not promote it over `/pos`. Do not re-enable browser-authoritative payment
-creation except as an explicit short-lived emergency decision with a written
-rollback time.
+creation; the repo no longer supports a legacy payment escape hatch.

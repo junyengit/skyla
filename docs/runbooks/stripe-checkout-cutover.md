@@ -111,7 +111,7 @@ Expected:
 - New Convex action accepts `orderRef`, not `amountCents`.
 - `/checkout` calls the Next/Convex route.
 - `/checkout.html` has `STRIPE_ENABLED = false`.
-- Old Supabase payment creation actions return `410` by default in repo code.
+- Old Supabase payment creation actions return `410` permanently in repo code.
 
 3. Confirm the webhook route exists after the real Convex deployment is linked:
 

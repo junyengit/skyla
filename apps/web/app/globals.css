@@ -736,6 +736,14 @@ h3 {
   color: #fff;
 }
 
+.posNextPage .brand,
+.posNextPage p,
+.posNextPage span,
+.posNextPage strong,
+.posNextPage label {
+  color: #fff;
+}
+
 .posNextPage select option {
   background: #111216;
   color: #fff;
@@ -778,8 +786,9 @@ h3 {
   text-transform: uppercase;
 }
 
-.posNextStatus {
-  color: var(--green);
+.posNextStatus,
+.posNextStatus svg {
+  color: #fff;
 }
 
 .posNextShell {
@@ -872,7 +881,7 @@ h3 {
 }
 
 .posNextItem strong {
-  color: var(--gold-strong);
+  color: #fff;
   font-size: 1.12rem;
 }
 
@@ -1042,7 +1051,7 @@ h3 {
 }
 
 .posNextTotals strong {
-  color: var(--gold-strong);
+  color: #fff;
   text-align: right;
 }
 
@@ -1157,13 +1166,29 @@ h3 {
 }
 
 .adminOpsPage input,
+.adminOpsPage textarea,
+.adminOpsPage select,
 .adminOpsPage button {
   color: #fff;
   font: inherit;
 }
 
+.adminOpsPage .brand,
+.adminOpsPage p,
+.adminOpsPage span,
+.adminOpsPage strong,
+.adminOpsPage label,
+.adminOpsPage time {
+  color: #fff;
+}
+
 .adminOpsPage input::placeholder {
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.adminOpsPage select option {
+  background: #111216;
+  color: #fff;
 }
 
 .adminOpsPage .primaryAction {
@@ -1204,14 +1229,15 @@ h3 {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   padding: 0 14px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #fff;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.adminOpsStatus {
-  color: var(--gold-strong);
+.adminOpsStatus,
+.adminOpsStatus svg {
+  color: #fff;
 }
 
 .adminOpsShell {
@@ -1255,7 +1281,7 @@ h3 {
 
 .adminOpsPanelHeader p {
   margin: 0 0 4px;
-  color: rgba(255, 255, 255, 0.66);
+  color: #fff;
   font-size: 0.74rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1271,7 +1297,7 @@ h3 {
 .adminOpsAccess label {
   display: grid;
   gap: 8px;
-  color: rgba(255, 255, 255, 0.72);
+  color: #fff;
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1283,6 +1309,7 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.42);
+  color: #fff;
   padding: 0 14px;
 }
 
@@ -1301,7 +1328,7 @@ h3 {
 .adminOpsMessage,
 .adminOpsEmpty {
   margin: 0;
-  color: rgba(255, 255, 255, 0.72);
+  color: #fff;
   line-height: 1.5;
 }
 
@@ -1313,7 +1340,7 @@ h3 {
 }
 
 .adminOpsStaff span {
-  color: var(--gold-strong);
+  color: #fff;
   font-size: 0.74rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1346,7 +1373,7 @@ h3 {
 .adminOpsReadiness span,
 .adminOpsRow span,
 .adminOpsRow time {
-  color: rgba(255, 255, 255, 0.66);
+  color: #fff;
 }
 
 .adminOpsGrid span,
@@ -1387,6 +1414,153 @@ h3 {
 
 .adminOpsReadiness strong {
   color: #fff;
+}
+
+.adminOpsConfig {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.4fr);
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.adminOpsConfigCard,
+.adminOpsCatalog {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.adminOpsConfigCard {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px;
+}
+
+.adminOpsHoursCard {
+  grid-row: span 2;
+}
+
+.adminOpsConfigTitle {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.adminOpsConfigTitle strong {
+  font-size: 1rem;
+}
+
+.adminOpsConfigTitle span {
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsConfigCard label {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsConfigCard input,
+.adminOpsConfigCard select {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  padding: 0 12px;
+}
+
+.adminOpsConfigCard input:disabled {
+  opacity: 0.6;
+}
+
+.adminOpsInlineToggle {
+  display: flex !important;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.adminOpsInlineToggle input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--gold);
+}
+
+.adminOpsConfigCard .secondaryAction {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.adminOpsConfigCard .secondaryAction:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.adminOpsHoursGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.adminOpsHoursRow {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.9fr) repeat(3, minmax(84px, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+
+.adminOpsHoursRow > strong {
+  align-self: center;
+}
+
+.adminOpsCatalog {
+  max-height: 282px;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.adminOpsCatalog div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.adminOpsCatalog div.isInactive {
+  opacity: 0.62;
+}
+
+.adminOpsCatalog span,
+.adminOpsCatalog em {
+  color: #fff;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalog strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .adminOpsTabs {
@@ -1527,6 +1701,14 @@ h3 {
   .adminOpsReadiness {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .adminOpsConfig {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsHoursCard {
+    grid-row: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1544,5 +1726,10 @@ h3 {
   .adminOpsRow strong,
   .adminOpsRow span {
     white-space: normal;
+  }
+
+  .adminOpsHoursRow,
+  .adminOpsCatalog div {
+    grid-template-columns: 1fr;
   }
 }

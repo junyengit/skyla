@@ -24,6 +24,11 @@ const secretPatterns = [
 const namedSecretAssignment =
   /\b(?:STRIPE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|KASKADE_API_SECRET)\b\s*[:=]\s*["']?([^"',\s;]+)/i;
 
+const retiredLegacyPaymentFlags = [
+  ["SKYLA_ENABLE", "LEGACY_BROWSER_PAYMENTS"].join("_"),
+  ["SKYLA_ENABLE", "LEGACY_TERMINAL_BRIDGE"].join("_")
+];
+
 const binaryExtensions = new Set([
   ".gif",
   ".jpeg",
@@ -62,6 +67,15 @@ for (const file of trackedFiles) {
 
   if (contents.includes("\0")) {
     continue;
+  }
+
+  if (file !== "scripts/security/check-tracked-artifacts.mjs") {
+    for (const flag of retiredLegacyPaymentFlags) {
+      if (contents.includes(flag)) {
+        failures.push(`${file}: retired legacy payment flag ${flag} must not be reintroduced`);
+        break;
+      }
+    }
   }
 
   for (const pattern of secretPatterns) {

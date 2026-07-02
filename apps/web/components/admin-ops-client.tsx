@@ -83,6 +83,51 @@ type OperationsSnapshot = {
   };
 };
 
+type AnnouncementType = "info" | "warning" | "success";
+type Weekday = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+
+type AnnouncementConfig = {
+  active: boolean;
+  text: string;
+  type: AnnouncementType;
+};
+
+type HoursDayConfig = {
+  open: string;
+  close: string;
+  closed: boolean;
+};
+
+type HoursConfig = Record<Weekday, HoursDayConfig>;
+
+type ConfigSnapshot = {
+  staff: {
+    emailLower: string;
+    role: "admin" | "pos" | "viewer";
+  };
+  config: {
+    announcement: AnnouncementConfig;
+    hours: HoursConfig;
+  };
+  state: {
+    announcement: { updatedAt?: number; updatedBy?: string; invalid: boolean };
+    hours: { updatedAt?: number; updatedBy?: string; invalid: boolean };
+  };
+  editableKeys: Array<"announcement" | "hours">;
+};
+
+type CatalogItem = {
+  key: string;
+  kind: "ticket" | "addon" | "cafe";
+  name: string;
+  priceCents: number;
+  active: boolean;
+};
+
+type AdminOpsClientProps = {
+  catalog: CatalogItem[];
+};
+
 type AdminTab = "orders" | "bookings" | "members" | "pos" | "payments";
 type BookingAdminStatus = "confirmed" | "checked-in" | "cancelled";
 type MemberAdminStatus = "pending" | "approved" | "waitlisted" | "rejected";
@@ -92,6 +137,24 @@ const readinessLabels: Record<keyof Readiness, string> = {
   stripeWebhookSecret: "Webhook",
   terminalReaderRegistry: "Readers",
   paymentReturnOrigins: "Return URLs"
+};
+
+const weekdays: Weekday[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const defaultAnnouncement: AnnouncementConfig = {
+  active: false,
+  text: "",
+  type: "info"
+};
+
+const defaultHours: HoursConfig = {
+  Monday: { open: "09:00", close: "00:00", closed: false },
+  Tuesday: { open: "09:00", close: "00:00", closed: false },
+  Wednesday: { open: "09:00", close: "00:00", closed: false },
+  Thursday: { open: "09:00", close: "00:00", closed: false },
+  Friday: { open: "09:00", close: "00:00", closed: false },
+  Saturday: { open: "09:00", close: "00:00", closed: false },
+  Sunday: { open: "09:00", close: "00:00", closed: false }
 };
 
 function money(cents: number) {
@@ -121,9 +184,12 @@ function countLabel(count?: { value: number; capped: boolean }) {
   return count.capped ? `${count.value}+` : String(count.value);
 }
 
-export function AdminOpsClient() {
+export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
   const [staffToken, setStaffToken] = useState("");
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
+  const [configSnapshot, setConfigSnapshot] = useState<ConfigSnapshot | null>(null);
+  const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementConfig>(defaultAnnouncement);
+  const [hoursDraft, setHoursDraft] = useState<HoursConfig>(defaultHours);
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [isLoading, setIsLoading] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
@@ -136,6 +202,7 @@ export function AdminOpsClient() {
     if (!token) {
       setMessage("Staff token required.");
       setSnapshot(null);
+      setConfigSnapshot(null);
       return;
     }
 
@@ -143,18 +210,30 @@ export function AdminOpsClient() {
     setMessage(null);
 
     try {
-      const response = await fetch("/api/admin/operations?limit=12", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = (await response.json()) as OperationsSnapshot | { error?: string; code?: string };
-      if (!response.ok) {
-        throw new Error("error" in data ? data.error ?? "Could not load admin operations" : "Could not load admin operations");
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      const [operationsResponse, configResponse] = await Promise.all([
+        fetch("/api/admin/operations?limit=12", { headers }),
+        fetch("/api/admin/config", { headers })
+      ]);
+      const operationsData = (await operationsResponse.json()) as OperationsSnapshot | { error?: string; code?: string };
+      const configData = (await configResponse.json()) as ConfigSnapshot | { error?: string; code?: string };
+      if (!operationsResponse.ok) {
+        throw new Error(
+          "error" in operationsData ? operationsData.error ?? "Could not load admin operations" : "Could not load admin operations"
+        );
       }
-      setSnapshot(data as OperationsSnapshot);
+      if (!configResponse.ok) {
+        throw new Error("error" in configData ? configData.error ?? "Could not load admin config" : "Could not load admin config");
+      }
+      setSnapshot(operationsData as OperationsSnapshot);
+      setConfigSnapshot(configData as ConfigSnapshot);
+      setAnnouncementDraft((configData as ConfigSnapshot).config.announcement);
+      setHoursDraft((configData as ConfigSnapshot).config.hours);
     } catch (error) {
       setSnapshot(null);
+      setConfigSnapshot(null);
       setMessage(error instanceof Error ? error.message : "Could not load admin operations");
     } finally {
       setIsLoading(false);
@@ -202,6 +281,55 @@ export function AdminOpsClient() {
 
   function updateMemberStatus(memberId: string, status: MemberAdminStatus) {
     void postAdminAction("/api/admin/members/status", { memberId, status });
+  }
+
+  function updateAnnouncementDraft(patch: Partial<AnnouncementConfig>) {
+    setAnnouncementDraft((current) => ({ ...current, ...patch }));
+  }
+
+  function updateHoursDraft(day: Weekday, patch: Partial<HoursDayConfig>) {
+    setHoursDraft((current) => ({
+      ...current,
+      [day]: {
+        ...current[day],
+        ...patch
+      }
+    }));
+  }
+
+  async function saveConfig(key: "announcement" | "hours") {
+    const token = staffToken.trim();
+    if (!token) {
+      setMessage("Staff token required.");
+      return;
+    }
+
+    setActionKey(`config:${key}`);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          key,
+          data: key === "announcement" ? announcementDraft : hoursDraft
+        })
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Config update failed");
+      }
+      await loadOperations();
+      setMessage("Config saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Config update failed");
+    } finally {
+      setActionKey(null);
+    }
   }
 
   return (
@@ -281,6 +409,122 @@ export function AdminOpsClient() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="adminOpsPanel">
+          <div className="adminOpsPanelHeader">
+            <ShieldCheck size={22} />
+            <div>
+              <p>Site Config</p>
+              <h2>{configSnapshot ? "Announcement & Hours" : "Locked"}</h2>
+            </div>
+          </div>
+
+          {configSnapshot ? (
+            <div className="adminOpsConfig">
+              <div className="adminOpsConfigCard">
+                <div className="adminOpsConfigTitle">
+                  <strong>Announcement</strong>
+                  {configSnapshot.state.announcement.invalid ? <span>Stored data needs review</span> : null}
+                </div>
+                <label className="adminOpsInlineToggle">
+                  <input
+                    type="checkbox"
+                    checked={announcementDraft.active}
+                    onChange={(event) => updateAnnouncementDraft({ active: event.target.checked })}
+                  />
+                  <span>Active</span>
+                </label>
+                <label>
+                  <span>Text</span>
+                  <input
+                    maxLength={180}
+                    value={announcementDraft.text}
+                    onChange={(event) => updateAnnouncementDraft({ text: event.target.value })}
+                  />
+                </label>
+                <label>
+                  <span>Type</span>
+                  <select
+                    value={announcementDraft.type}
+                    onChange={(event) => updateAnnouncementDraft({ type: event.target.value as AnnouncementType })}
+                  >
+                    <option value="info">Info</option>
+                    <option value="warning">Warning</option>
+                    <option value="success">Success</option>
+                  </select>
+                </label>
+                <button
+                  className="secondaryAction"
+                  type="button"
+                  disabled={Boolean(actionKey) || !configSnapshot.editableKeys.includes("announcement")}
+                  onClick={() => void saveConfig("announcement")}
+                >
+                  Save Announcement
+                </button>
+              </div>
+
+              <div className="adminOpsConfigCard adminOpsHoursCard">
+                <div className="adminOpsConfigTitle">
+                  <strong>Hours</strong>
+                  {configSnapshot.state.hours.invalid ? <span>Stored data needs review</span> : null}
+                </div>
+                <div className="adminOpsHoursGrid">
+                  {weekdays.map((day) => (
+                    <div className="adminOpsHoursRow" key={day}>
+                      <strong>{day}</strong>
+                      <label>
+                        <span>Open</span>
+                        <input
+                          type="time"
+                          value={hoursDraft[day].open}
+                          disabled={hoursDraft[day].closed}
+                          onChange={(event) => updateHoursDraft(day, { open: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        <span>Close</span>
+                        <input
+                          type="time"
+                          value={hoursDraft[day].close}
+                          disabled={hoursDraft[day].closed}
+                          onChange={(event) => updateHoursDraft(day, { close: event.target.value })}
+                        />
+                      </label>
+                      <label className="adminOpsInlineToggle">
+                        <input
+                          type="checkbox"
+                          checked={hoursDraft[day].closed}
+                          onChange={(event) => updateHoursDraft(day, { closed: event.target.checked })}
+                        />
+                        <span>Closed</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  className="secondaryAction"
+                  type="button"
+                  disabled={Boolean(actionKey) || !configSnapshot.editableKeys.includes("hours")}
+                  onClick={() => void saveConfig("hours")}
+                >
+                  Save Hours
+                </button>
+              </div>
+
+              <div className="adminOpsCatalog" aria-label="Canonical catalog">
+                {catalog.map((item) => (
+                  <div className={item.active ? "" : "isInactive"} key={`${item.kind}:${item.key}`}>
+                    <span>{item.kind}</span>
+                    <strong>{item.name}</strong>
+                    <em>{money(item.priceCents)}</em>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="adminOpsEmpty">Config locked</p>
+          )}
         </div>
 
         <div className="adminOpsPanel">

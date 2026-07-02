@@ -33,11 +33,11 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-gstswx8r6-junyen-enterprises.vercel.app`
+  `https://web-1eof6htpt-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_2JFi8CGiRnW2MyjbTkaRHgTALH43`
+  `dpl_Ap7UDu3G6c5MLEitvkWfgCgrm3oD`
 - Merge commit checked on 2026-07-02:
-  `b4d8ad7342ad4a993dc7178753349f9dae3e167f`
+  `6560f5705c39daa6e832ed3e3944c2cb1d951935`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -46,7 +46,7 @@ from Vercel.
 - Live API behavior checked on 2026-07-02 across the apex domain, `www`, and the
   latest Vercel deployment URL:
   - Spoofed checkout total `1` cent returned canonical server total `8505` cents.
-  - Spoofed POS total/reader returned canonical server total `5800` cents and no
+  - Spoofed POS total/reader returned canonical server total `9700` cents and no
     reader fields in the transient draft.
   - `/api/payments/stripe-checkout`,
     `/api/payments/stripe-terminal`, and
@@ -96,6 +96,9 @@ flowchart TD
 - Native `/admin` can now call audited booking/member status actions through
   Next API routes and Convex mutations. The browser sends only refs, allowed
   statuses, and the staff bearer token.
+- Native `/admin` can now load and save typed announcement/hours config through
+  `/api/admin/config`; pricing, menu, catalog, vouchers, refunds, deletes, and
+  resets remain intentionally unavailable.
 - Admin and POS dark-theme text is high contrast.
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
@@ -115,13 +118,16 @@ flowchart TD
 - Production `/api/order-drafts/pos` ignores spoofed browser totals and returns
   the server catalog total.
 - The repo copy of legacy Supabase Stripe Checkout and Terminal payment
-  creation fails closed by default.
+  creation returns `410` permanently.
 - `/checkout.html` no longer enables legacy Stripe card creation from browser
   totals.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
 - Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
   TypeScript `6.0.3`, Vitest `4.1.9`, and Convex `1.42.1` are current.
+- `eslint@10.6.0` is intentionally held because the latest available
+  `eslint-plugin-react@7.37.5` crashes under ESLint 10 through Next's lint
+  config.
 - `bun audit` reports no vulnerabilities.
 
 ## Still Not Safe To Call Complete
@@ -134,17 +140,18 @@ flowchart TD
 - `/checkout` is the new App Router checkout, but live card payment is gated
   until Convex and Stripe dashboard envs exist.
 - Any already deployed Supabase Stripe functions must still be disabled or
-  redeployed from the fail-closed repo code in the Supabase dashboard.
+  redeployed from the permanently fail-closed repo code in the Supabase
+  dashboard.
 - POS legacy reader connection and charge UI should stay disabled while the
   `/pos-next` staff-authenticated Terminal flow is accepted.
 - `/pos-next` is not the live register yet because reader processing still needs
   real Convex/staff auth/Stripe test-reader acceptance plus final paid
   reconciliation.
 - Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
-  The native `/admin` snapshot and status actions are only the first admin
-  slices.
+  The native `/admin` snapshot, status actions, and announcement/hours config
+  are only the first admin slices.
 - Native admin intentionally does not yet do voucher redemption, refunds,
-  hard delete, clear all, reset all, pricing/menu/hours edits, or catalog/config
+  hard delete, clear all, reset all, pricing/menu edits, or payment catalog
   changes.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
@@ -194,6 +201,9 @@ flowchart TD
 - [ ] Verify `/api/admin/members/status` allows only `admin` staff, accepts
       `pending`, `approved`, `waitlisted`, and `rejected`, and writes an
       `admin.memberStatus.update` audit event.
+- [ ] Verify `/api/admin/config` can load and save announcement/hours with a
+      valid admin token, rejects viewer/pos writes, rejects malformed shapes,
+      and writes an `admin.config.update` audit event.
 
 ### Stripe
 
@@ -235,7 +245,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun audit
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-gstswx8r6-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-1eof6htpt-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```

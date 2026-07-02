@@ -58,14 +58,16 @@ Use this after each major phase.
 - `/api/payments/stripe-terminal` does not accept `amountCents`, `readerId`, or
   `terminalLocationId` from the browser
 - Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation
-  return `410` unless an explicit transition env var re-enables them
+  return `410` permanently in repo code
 - Convex has `STRIPE_SECRET_KEY` in the correct environment
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` before POS reader handoff testing
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment
 - Stripe webhook secret is configured before paid-order completion moves to Convex
 - Stripe dashboard webhook endpoint points to the Convex site URL, not the old Supabase function
-- Kaskade and Terminal legacy payment paths stay enabled or explicitly disabled until replacements pass acceptance
+- Kaskade and non-payment legacy paths stay enabled or explicitly disabled until replacements pass acceptance
+- `/api/admin/config` writes only typed announcement/hours data, requires admin
+  staff, and records `admin.config.update` audit events
 
 ## Why These Gates Exist
 
