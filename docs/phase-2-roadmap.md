@@ -329,6 +329,12 @@ Current verified Vercel data:
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
 - Native `/members` cutover branch: `codex/native-members-cutover`
+- Native `/members` cutover PR: `#54`
+- Native `/members` cutover merge commit:
+  `2d8b1a78fc7f0df3cd01218ec05a7579ebc5abf2`
+- Native `/members` cutover production deployment:
+  `https://web-ec9pf9hly-junyen-enterprises.vercel.app`
+- Native `/members` cutover deployment ID: `dpl_EEP2DithtH52i8ixpsCtLQ5Bo9JM`
 - Native `/members` cutover state: the visible page posts to
   `/api/members/applications` with an idempotency key and does not use
   `SkylaData.addMember`; application success remains gated until Convex is
