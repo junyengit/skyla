@@ -68,12 +68,15 @@ flowchart TD
 
 ## Raw Agent Contract
 
-After this cutover, route ownership should be:
+After this cutover, route ownership was:
 
 - `legacyRoutes`: `experiences`, `pos`
 - `nativePublicRoutes`: `about`, `cafe`, `checkout`, `members`, `privacy`,
   `terms`
 - `/members.html`: compatibility only
+
+Decision [0018](0018-native-experiences-inquiry-cutover.md) later moves
+`experiences` into `nativePublicRoutes`.
 
 Acceptance checks:
 

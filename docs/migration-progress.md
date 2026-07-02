@@ -443,6 +443,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Cut public `/members` over to the native application path with a
       fail-closed server submission contract. Linked Convex/Vercel envs are
       still required before real application acceptance succeeds in production.
+- [x] Cut public `/experiences` over to the native inquiry path with a
+      fail-closed server submission contract. Linked Convex/Vercel envs are
+      still required before real inquiry acceptance succeeds in production.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
@@ -463,6 +466,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Public member applications should follow the same fail-closed rule as payment
   execution: no "application received" success on the native path unless Convex
   accepted the mutation.
+- Public experience inquiries should follow the same fail-closed rule as
+  payment execution: no "request received" success on the native path unless
+  Convex accepted the mutation.
 - `/privacy` and `/terms` should be native App Router pages. Keep
   `/privacy.html` and `/terms.html` as compatibility files until legacy links
   and crawlers no longer need them, but keep their copy current and avoid
