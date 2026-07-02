@@ -3,7 +3,7 @@
 ## New Vercel App
 
 Use Node `24.x` and Bun canary. The last verified local Bun revision is
-`1.4.0-canary.1+52a1ddf07`.
+`1.4.0-canary.1+eba370b69`.
 
 ```bash
 bun upgrade --canary

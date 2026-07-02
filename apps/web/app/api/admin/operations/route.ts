@@ -1,5 +1,12 @@
 import { fetchQuery } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
+import {
+  adminFailureStatus,
+  authToken,
+  convexUnconfiguredResponse,
+  convexUrl,
+  staffAuthRequiredResponse
+} from "../_shared";
 
 type OperationsSnapshotArgs = {
   limit?: number;
@@ -21,6 +28,8 @@ type OperationsSnapshot = {
     pendingOrders: { value: number; capped: boolean };
     draftPosSales: { value: number; capped: boolean };
     pendingPosSales: { value: number; capped: boolean };
+    pendingMembers: { value: number; capped: boolean };
+    approvedMembers: { value: number; capped: boolean };
   };
   recent: {
     orders: Array<{
@@ -58,6 +67,27 @@ type OperationsSnapshot = {
       rawEventId?: string;
       createdAt: number;
     }>;
+    bookings: Array<{
+      bookingRef: string;
+      orderRef?: string;
+      visitDate?: string;
+      status: string;
+      emailLower?: string;
+      checkedInAt?: number;
+      cancelledAt?: number;
+      createdAt: number;
+      updatedAt?: number;
+      legacyId?: string;
+    }>;
+    members: Array<{
+      memberId: string;
+      status: string;
+      emailLower?: string;
+      tier?: string;
+      createdAt: number;
+      updatedAt?: number;
+      legacyId?: string;
+    }>;
   };
 };
 
@@ -66,19 +96,6 @@ const getOperationsSnapshotQuery = makeFunctionReference<
   OperationsSnapshotArgs,
   OperationsSnapshot
 >("admin:getOperationsSnapshot");
-
-function convexUrl() {
-  return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
-}
-
-function authToken(request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.toLowerCase().startsWith("bearer ")) {
-    return undefined;
-  }
-  const token = authorization.slice("bearer ".length).trim();
-  return token || undefined;
-}
 
 function parseLimit(request: Request) {
   const rawLimit = new URL(request.url).searchParams.get("limit");
@@ -92,42 +109,16 @@ function parseLimit(request: Request) {
   return parsed;
 }
 
-function adminFailureStatus(message: string) {
-  const normalized = message.toLowerCase();
-  if (message.includes("limit must")) {
-    return 400;
-  }
-  if (normalized.includes("auth") || normalized.includes("staff role")) {
-    return 401;
-  }
-  if (normalized.includes("not configured")) {
-    return 503;
-  }
-  return 502;
-}
-
 export async function GET(request: Request) {
   try {
     const token = authToken(request);
     if (!token) {
-      return Response.json(
-        {
-          error: "Staff authentication is required for Admin Operations",
-          code: "staff_auth_required"
-        },
-        { status: 401 }
-      );
+      return staffAuthRequiredResponse("Admin Operations");
     }
 
     const deploymentUrl = convexUrl();
     if (!deploymentUrl) {
-      return Response.json(
-        {
-          error: "Convex is not configured for Admin Operations",
-          code: "convex_unconfigured"
-        },
-        { status: 503 }
-      );
+      return convexUnconfiguredResponse("Admin Operations");
     }
 
     const snapshot = await fetchQuery(

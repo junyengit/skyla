@@ -76,17 +76,6 @@ function paymentFailureStatus(message: string) {
 
 export async function POST(request: Request) {
   try {
-    const deploymentUrl = convexUrl();
-    if (!deploymentUrl) {
-      return Response.json(
-        {
-          error: "Convex is not configured for Stripe Terminal reader processing",
-          code: "convex_unconfigured"
-        },
-        { status: 503 }
-      );
-    }
-
     const token = authToken(request);
     if (!token) {
       return Response.json(
@@ -95,6 +84,17 @@ export async function POST(request: Request) {
           code: "staff_auth_required"
         },
         { status: 401 }
+      );
+    }
+
+    const deploymentUrl = convexUrl();
+    if (!deploymentUrl) {
+      return Response.json(
+        {
+          error: "Convex is not configured for Stripe Terminal reader processing",
+          code: "convex_unconfigured"
+        },
+        { status: 503 }
       );
     }
 

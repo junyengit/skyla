@@ -74,9 +74,11 @@ describe("admin operations route", () => {
         draftOrders: { value: 1, capped: false },
         pendingOrders: { value: 2, capped: false },
         draftPosSales: { value: 3, capped: false },
-        pendingPosSales: { value: 4, capped: false }
+        pendingPosSales: { value: 4, capped: false },
+        pendingMembers: { value: 5, capped: false },
+        approvedMembers: { value: 6, capped: false }
       },
-      recent: { orders: [], posSales: [], paymentEvents: [] }
+      recent: { orders: [], posSales: [], paymentEvents: [], bookings: [], members: [] }
     });
 
     const response = await route.GET(

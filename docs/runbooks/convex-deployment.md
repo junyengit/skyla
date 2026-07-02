@@ -24,7 +24,9 @@ has a real Convex URL and the caller sends an `idempotencyKey`. Until then, it
 keeps returning transient server-priced totals so the public site does not break.
 The native `/admin` operations route follows the same fail-closed pattern:
 without a real Convex URL it returns `convex_unconfigured`, and without a staff
-bearer token it returns `staff_auth_required`.
+bearer token it returns `staff_auth_required`. Booking and member status actions
+follow the same pattern: the Next API route validates auth/config and allowed
+statuses before Convex performs the staff-role check, mutation, and audit write.
 
 ```mermaid
 flowchart LR
@@ -58,6 +60,28 @@ flowchart LR
   token -- yes --> env
   env -- no --> fail
   env -- yes --> query --> staff --> snapshot
+```
+
+```mermaid
+flowchart LR
+  ui["Native /admin action button"]
+  route["/api/admin/bookings/status or /api/admin/members/status"]
+  auth{"Bearer token?"}
+  env{"Convex URL set?"}
+  allowed{"Allowed status?"}
+  mutation["Convex admin status mutation"]
+  role["requireStaffUser role check"]
+  patch["Patch status only"]
+  audit["Insert auditEvents row"]
+  fail["Fail closed JSON"]
+
+  ui --> route --> auth
+  auth -- no --> fail
+  auth -- yes --> env
+  env -- no --> fail
+  env -- yes --> allowed
+  allowed -- no --> fail
+  allowed -- yes --> mutation --> role --> patch --> audit
 ```
 
 ## Dashboard Setup
@@ -105,6 +129,16 @@ into PRs, logs, or docs.
 - `admin`: dashboard and POS operations
 - `viewer`: read-only admin operations snapshot
 - `pos`: POS sale draft and Terminal handoff only
+
+For the native admin action slice:
+
+- `viewer` can load `/api/admin/operations` but cannot mutate status.
+- `pos` can check bookings in and undo check-in, but cannot cancel bookings or
+  change member applications.
+- `admin` can check in, undo check-in, cancel bookings, and move members between
+  `pending`, `approved`, `waitlisted`, and `rejected`.
+- Cancel/refund/payment reconciliation, hard delete, clear-all, reset-all,
+  voucher redemption, and config/catalog edits remain out of scope.
 
 7. Pull local web envs if you want the Next route to use Convex locally:
 
@@ -176,6 +210,15 @@ these are true:
 - Preview `/api/order-drafts/checkout` returns `persisted: true`
 - Preview `/api/admin/operations` returns `401` without a bearer token
 - Preview `/api/admin/operations` returns `200` with a valid admin/viewer token
+- Preview `/api/admin/bookings/status` returns `401` without a bearer token
+- Preview `/api/admin/bookings/status` returns `400` for arbitrary statuses
+- Preview `/api/admin/bookings/status` lets admin/pos staff set `checked-in`
+  and `confirmed`
+- Preview `/api/admin/bookings/status` lets only admin staff set `cancelled`
+- Preview `/api/admin/members/status` lets only admin staff set `pending`,
+  `approved`, `waitlisted`, or `rejected`
+- Admin status mutations write `auditEvents` rows and do not alter order,
+  payment, or Stripe fields
 - `bun run check` passes
 - `bun run security:audit` passes
 - A Stripe test-mode checkout can be created from a stored `orderRef`

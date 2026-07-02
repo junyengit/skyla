@@ -14,7 +14,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 
 - [x] Verified current production is GitHub Pages from `main` root.
 - [x] Verified latest package baseline through npm registry:
-  - Next.js `16.2.9`
+  - Next.js `16.2.10`
   - React `19.2.7`
   - Motion `12.42.2`
   - Turbo `2.10.2`
@@ -64,7 +64,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
 - [x] Merged workflow dependency PRs for `actions/checkout@v7`, `pnpm/action-setup@v6`, and `actions/setup-node@v6`; latest verified production deployment is `https://web-l7aei5nb9-junyen-enterprises.vercel.app` (`dpl_CU1KmDXUnwRTu7YDjo1BPywv8awp`) from commit `47412f698045adab3b0523b53f829134dd2cf248`.
 - [x] Created branch `codex/bun-canary-root-cleanup`.
-- [x] Installed Bun canary locally and verified `1.4.0-canary.1+52a1ddf07`.
+- [x] Installed Bun canary locally and verified `1.4.0-canary.1+eba370b69`.
 - [x] Replaced pnpm workspace metadata with Bun workspace metadata and generated text `bun.lock`.
 - [x] Updated GitHub CI to `oven-sh/setup-bun@v2` with `bun-version: canary`.
 - [x] Added `apps/web/vercel.json` and `scripts/setup/vercel-install-bun-canary.sh` so Vercel installs/upgrades Bun canary during builds.
@@ -159,7 +159,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-cem3bs58o-junyen-enterprises.vercel.app` (`dpl_6zSPMN5i5S4FNjUwePhN697qs76P`).
 - [x] Re-ran post-merge route smoke tests for `https://web-cem3bs58o-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
 - [x] Verified production `/api/order-drafts/pos` ignores spoofed POS totals, reader IDs, and Terminal location IDs; two `general` tickets returned the server catalog total of `5800` cents.
-- [x] Verified production `/api/payments/stripe-checkout` and `/api/payments/stripe-terminal` fail closed with `503` and `code: "convex_unconfigured"` until the real Convex deployment URL is wired.
+- [x] Verified production `/api/payments/stripe-checkout` and authenticated `/api/payments/stripe-terminal` probes fail closed with `503` and `code: "convex_unconfigured"` until the real Convex deployment URL is wired.
 - [x] Refreshed merged-main dependency and quality gates: `bun run check`, `bun audit --audit-level=high`, `bun outdated --recursive`, and anonymous Convex function typecheck.
 - [x] Started branch `codex/pos-terminal-reader-process` for server-driven Stripe Terminal reader handoff from stored POS sale refs.
 - [x] Added `/api/payments/stripe-terminal/process` and `payments.processStripeTerminalPaymentIntent` so `/pos-next` can ask Stripe to process a stored PaymentIntent on the stored, allowlisted reader.
@@ -168,12 +168,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-61n76njga-junyen-enterprises.vercel.app` (`dpl_8XKorTa795wz7RyVgvCMDN3JxANn`).
 - [x] Re-ran post-merge live route checks for `https://skydeckla.com` and `https://www.skydeckla.com`; `/`, `/checkout`, `/pos-next`, `/admin`, and `/pos` returned `200`, and staff routes remained `noindex, nofollow`.
 - [x] Verified live `/pos-next` in Helium: adding one General Admission reviewed to a `$29.00` server total and kept `Send to Reader` disabled until Convex/staff/reader setup exists.
-- [x] Verified Vercel project `junyen-enterprises/web` still has no configured environment variables, so checkout and Terminal payment routes fail closed with `convex_unconfigured`.
+- [x] Verified Vercel project `junyen-enterprises/web` still has no configured environment variables, so checkout fails closed with `convex_unconfigured`, while Terminal payment routes require staff auth before returning the same Convex gate.
 - [x] Merged post-Terminal current-state docs PR #29 into `main` as merge commit `28290519ce164bfed71832f8a978acb15fa699ac`.
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-dqay6ls9s-junyen-enterprises.vercel.app` (`dpl_FqPrQ97E6sdaaZ5Tqv8gBjMU2vaD`).
 - [x] Started branch `codex/payment-hosting-qa-and-contrast` for staff-page contrast, API, hosting, and dependency verification.
 - [x] Re-ran live route smokes for `https://web-dqay6ls9s-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
-- [x] Verified live API probes across all three production bases: spoofed checkout total returns canonical `8505` cents, spoofed POS total/reader returns canonical `5800` cents with no reader fields, and Stripe payment routes fail closed with `convex_unconfigured` without exposing `clientSecret`.
+- [x] Verified live API probes across all three production bases: spoofed checkout total returns canonical `8505` cents, spoofed POS total/reader returns canonical `5800` cents with no reader fields, and Stripe payment routes fail closed with `convex_unconfigured` when probed with required staff auth, without exposing `clientSecret`.
 - [x] Raised staff-page text contrast again for legacy `/admin`, legacy `/pos`, and native `/pos-next`, and bumped legacy CSS cache versions.
 - [x] Upgraded safe patch dependencies: `next` and `eslint-config-next` to `16.2.10`, and `@types/node` to `26.1.0`; left ESLint `10.6.0` deferred because the current plugin stack still needs ESLint 9.
 - [x] Merged payment/hosting QA PR #30 into `main` as merge commit `a5f693ce487e0eb6fd2356a6fa21f088acc4f066`; Vercel production deployment `https://web-5k3rzg3px-junyen-enterprises.vercel.app` is READY and aliased to `skydeckla.com` and `www.skydeckla.com`.
@@ -182,6 +182,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added `/api/admin/operations`, which requires a staff bearer token and forwards it to a staff-gated Convex query instead of reading Supabase or localStorage in the browser.
 - [x] Added `admin.getOperationsSnapshot` with read-only readiness, order, POS, and payment summaries plus recent-record indexes.
 - [x] Updated smoke/route tests so `/admin` is treated as a noindex App Router route while `/admin.html` remains a noindex compatibility file.
+- [x] Merged native admin operations PR #31 into `main` as merge commit `b4d8ad7342ad4a993dc7178753349f9dae3e167f`.
+- [x] Started branch `codex/native-admin-actions-spine` for audited booking/member status actions on the native `/admin` route.
+- [x] Added staff-gated admin action routes for booking check-in/undo/cancel and member approve/waitlist/reject, each forwarding the staff bearer token to Convex.
+- [x] Added Convex booking/member status mutations that validate allowed statuses, preserve payment/order data, and write audit events.
 
 ## In Progress
 
@@ -203,7 +207,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
 - [x] Verify, review, and ship `codex/pos-terminal-reader-process`.
 - [x] Verify, review, and ship `codex/payment-hosting-qa-and-contrast`.
-- [ ] Verify, review, and ship `codex/native-admin-ops-spine`.
+- [x] Verify, review, and ship `codex/native-admin-ops-spine`.
+- [ ] Verify, review, and ship `codex/native-admin-actions-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -220,7 +225,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
 - [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
 - [ ] Real POS Terminal test-reader acceptance and final paid reconciliation from stored `saleRef` only.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a read-only staff-token operations snapshot in `codex/native-admin-ops-spine`, but booking/member/config mutations and the live POS replacement still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot plus audited booking/member status actions in `codex/native-admin-actions-spine`, but config/catalog/voucher/delete workflows and the live POS replacement still remain.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -249,4 +254,4 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
 - Repository copies of legacy Supabase Stripe Checkout and Terminal functions now fail closed unless explicitly re-enabled by transition env vars, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.
-- The native `/admin` branch intentionally starts read-only: no local password fallback, no browser Supabase writes, no hard deletes, no bulk clears, and no config/catalog mutations until typed Convex validators and audit events exist.
+- The native `/admin` path now has audited status actions, but it still intentionally excludes hard deletes, bulk clears, reset-all settings, voucher redemption, payment refunds, and config/catalog mutations until typed validators, reconciliation rules, and rollback procedures exist.

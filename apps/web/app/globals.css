@@ -1331,7 +1331,7 @@ h3 {
 
 .adminOpsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1431,6 +1431,10 @@ h3 {
   padding: 12px 14px;
 }
 
+.adminOpsRowWithActions {
+  grid-template-columns: minmax(0, 1.2fr) 0.5fr 0.8fr minmax(180px, 0.8fr);
+}
+
 .adminOpsRow div {
   min-width: 0;
 }
@@ -1451,6 +1455,40 @@ h3 {
 .adminOpsRow span,
 .adminOpsRow time {
   font-size: 0.82rem;
+}
+
+.adminOpsRowActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.adminOpsRowActions button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsRowActions button:hover {
+  border-color: var(--gold);
+}
+
+.adminOpsRowActions button:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.adminOpsRowActions button.isDanger {
+  border-color: rgba(224, 112, 112, 0.38);
+  color: #ffb2b2;
 }
 
 .adminOpsEmpty {
@@ -1494,8 +1532,13 @@ h3 {
 @media (max-width: 640px) {
   .adminOpsGrid,
   .adminOpsReadiness,
-  .adminOpsRow {
+  .adminOpsRow,
+  .adminOpsRowWithActions {
     grid-template-columns: 1fr;
+  }
+
+  .adminOpsRowActions {
+    justify-content: flex-start;
   }
 
   .adminOpsRow strong,

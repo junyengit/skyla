@@ -21,6 +21,8 @@ type OperationsSnapshot = {
     pendingOrders: { value: number; capped: boolean };
     draftPosSales: { value: number; capped: boolean };
     pendingPosSales: { value: number; capped: boolean };
+    pendingMembers: { value: number; capped: boolean };
+    approvedMembers: { value: number; capped: boolean };
   };
   recent: {
     orders: Array<{
@@ -57,10 +59,33 @@ type OperationsSnapshot = {
       rawEventId?: string;
       createdAt: number;
     }>;
+    bookings: Array<{
+      bookingRef: string;
+      orderRef?: string;
+      visitDate?: string;
+      status: string;
+      emailLower?: string;
+      checkedInAt?: number;
+      cancelledAt?: number;
+      createdAt: number;
+      updatedAt?: number;
+      legacyId?: string;
+    }>;
+    members: Array<{
+      memberId: string;
+      status: string;
+      emailLower?: string;
+      tier?: string;
+      createdAt: number;
+      updatedAt?: number;
+      legacyId?: string;
+    }>;
   };
 };
 
-type AdminTab = "orders" | "pos" | "payments";
+type AdminTab = "orders" | "bookings" | "members" | "pos" | "payments";
+type BookingAdminStatus = "confirmed" | "checked-in" | "cancelled";
+type MemberAdminStatus = "pending" | "approved" | "waitlisted" | "rejected";
 
 const readinessLabels: Record<keyof Readiness, string> = {
   stripeSecret: "Stripe API",
@@ -101,6 +126,7 @@ export function AdminOpsClient() {
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [isLoading, setIsLoading] = useState(false);
+  const [actionKey, setActionKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const readinessScore = useMemo(() => (snapshot ? totalReady(snapshot.readiness) : 0), [snapshot]);
@@ -133,6 +159,49 @@ export function AdminOpsClient() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function postAdminAction(
+    endpoint: "/api/admin/bookings/status" | "/api/admin/members/status",
+    body: Record<string, string>
+  ) {
+    const token = staffToken.trim();
+    if (!token) {
+      setMessage("Staff token required.");
+      return;
+    }
+
+    setActionKey(`${endpoint}:${Object.values(body).join(":")}`);
+    setMessage(null);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Admin action failed");
+      }
+      await loadOperations();
+      setMessage("Admin action saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Admin action failed");
+    } finally {
+      setActionKey(null);
+    }
+  }
+
+  function updateBookingStatus(bookingRef: string, status: BookingAdminStatus) {
+    void postAdminAction("/api/admin/bookings/status", { bookingRef, status });
+  }
+
+  function updateMemberStatus(memberId: string, status: MemberAdminStatus) {
+    void postAdminAction("/api/admin/members/status", { memberId, status });
   }
 
   return (
@@ -186,6 +255,14 @@ export function AdminOpsClient() {
             <span>Pending POS</span>
             <strong>{countLabel(snapshot?.counts.pendingPosSales)}</strong>
           </article>
+          <article>
+            <span>Pending Members</span>
+            <strong>{countLabel(snapshot?.counts.pendingMembers)}</strong>
+          </article>
+          <article>
+            <span>Approved Members</span>
+            <strong>{countLabel(snapshot?.counts.approvedMembers)}</strong>
+          </article>
         </div>
 
         <div className="adminOpsPanel">
@@ -227,6 +304,24 @@ export function AdminOpsClient() {
               POS
             </button>
             <button
+              className={activeTab === "bookings" ? "isActive" : ""}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "bookings"}
+              onClick={() => setActiveTab("bookings")}
+            >
+              Bookings
+            </button>
+            <button
+              className={activeTab === "members" ? "isActive" : ""}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "members"}
+              onClick={() => setActiveTab("members")}
+            >
+              Members
+            </button>
+            <button
               className={activeTab === "payments" ? "isActive" : ""}
               type="button"
               role="tab"
@@ -266,6 +361,83 @@ export function AdminOpsClient() {
                 ))
               : null}
 
+            {activeTab === "bookings"
+              ? snapshot?.recent.bookings.map((booking) => (
+                  <div className="adminOpsRow adminOpsRowWithActions" key={booking.bookingRef}>
+                    <div>
+                      <strong>{booking.bookingRef}</strong>
+                      <span>{[booking.visitDate, booking.emailLower].filter(Boolean).join(" / ")}</span>
+                    </div>
+                    <span>{booking.status}</span>
+                    <span>{booking.checkedInAt ? `In ${shortDate(booking.checkedInAt)}` : booking.cancelledAt ? `Cancelled ${shortDate(booking.cancelledAt)}` : "Open"}</span>
+                    <div className="adminOpsRowActions">
+                      {booking.status === "checked-in" ? (
+                        <button
+                          type="button"
+                          disabled={Boolean(actionKey)}
+                          onClick={() => updateBookingStatus(booking.bookingRef, "confirmed")}
+                        >
+                          Undo
+                        </button>
+                      ) : booking.status === "cancelled" ? null : (
+                        <button
+                          type="button"
+                          disabled={Boolean(actionKey)}
+                          onClick={() => updateBookingStatus(booking.bookingRef, "checked-in")}
+                        >
+                          Check In
+                        </button>
+                      )}
+                      {booking.status !== "cancelled" && snapshot?.staff.role === "admin" ? (
+                        <button
+                          className="isDanger"
+                          type="button"
+                          disabled={Boolean(actionKey)}
+                          onClick={() => updateBookingStatus(booking.bookingRef, "cancelled")}
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              : null}
+
+            {activeTab === "members"
+              ? snapshot?.recent.members.map((member) => (
+                  <div className="adminOpsRow adminOpsRowWithActions" key={member.memberId}>
+                    <div>
+                      <strong>{member.emailLower ?? member.memberId}</strong>
+                      <span>{[member.tier, member.legacyId].filter(Boolean).join(" / ")}</span>
+                    </div>
+                    <span>{member.status}</span>
+                    <span>{shortDate(member.updatedAt ?? member.createdAt)}</span>
+                    <div className="adminOpsRowActions">
+                      {snapshot?.staff.role === "admin" && member.status !== "approved" ? (
+                        <button type="button" disabled={Boolean(actionKey)} onClick={() => updateMemberStatus(member.memberId, "approved")}>
+                          Approve
+                        </button>
+                      ) : null}
+                      {snapshot?.staff.role === "admin" && member.status !== "waitlisted" ? (
+                        <button type="button" disabled={Boolean(actionKey)} onClick={() => updateMemberStatus(member.memberId, "waitlisted")}>
+                          Waitlist
+                        </button>
+                      ) : null}
+                      {snapshot?.staff.role === "admin" && member.status !== "rejected" ? (
+                        <button
+                          className="isDanger"
+                          type="button"
+                          disabled={Boolean(actionKey)}
+                          onClick={() => updateMemberStatus(member.memberId, "rejected")}
+                        >
+                          Reject
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              : null}
+
             {activeTab === "payments"
               ? snapshot?.recent.paymentEvents.map((event) => (
                   <div className="adminOpsRow" key={`${event.provider}:${event.providerPaymentId}:${event.createdAt}`}>
@@ -280,7 +452,18 @@ export function AdminOpsClient() {
                 ))
               : null}
 
-            {snapshot && snapshot.recent[activeTab === "orders" ? "orders" : activeTab === "pos" ? "posSales" : "paymentEvents"].length === 0 ? (
+            {snapshot &&
+            snapshot.recent[
+              activeTab === "orders"
+                ? "orders"
+                : activeTab === "pos"
+                  ? "posSales"
+                  : activeTab === "bookings"
+                    ? "bookings"
+                    : activeTab === "members"
+                      ? "members"
+                      : "paymentEvents"
+            ].length === 0 ? (
               <p className="adminOpsEmpty">No recent records</p>
             ) : null}
 
