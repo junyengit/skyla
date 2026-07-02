@@ -28,6 +28,11 @@ static checkout is still reachable at `/checkout.html`, but its Stripe card
 creation path is disabled in code so it cannot mint browser-priced card charges
 from Vercel.
 
+The native member application server path now exists in code, but the visible
+`/members` page is still the compatibility page until Convex is linked. The new
+path correctly refuses to accept applications when Convex is not configured, so
+do not cut over the public form until the dashboard setup below is done.
+
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
@@ -83,6 +88,7 @@ flowchart TD
   vercel["Vercel web project"]
   next["apps/web Next.js"]
   checkout["App Router checkout"]
+  members["Native member API"]
   posNext["App Router POS draft"]
   legacy["Legacy admin/POS + fallback pages"]
   supabase["Legacy Supabase functions"]
@@ -90,9 +96,11 @@ flowchart TD
   stripe["Stripe dashboard"]
 
   domain --> vercel --> next --> checkout
+  next --> members
   next --> posNext
   next --> legacy --> supabase
   checkout -. "needs env" .-> convex
+  members -. "needs env" .-> convex
   posNext -. "needs staff auth" .-> convex
   convex -. "needs env + webhook endpoint" .-> stripe
 ```
@@ -120,6 +128,10 @@ flowchart TD
 - Native `/admin` can now load and save typed announcement/hours config through
   `/api/admin/config`; pricing, menu, catalog, vouchers, refunds, deletes, and
   resets remain intentionally unavailable.
+- `/api/members/applications` is the new server-durable member application path.
+  It validates applicant fields, requires Convex before accepting, dedupes exact
+  retries with an idempotency key, and writes a pending Convex `members` row plus
+  a compact audit event.
 - Admin and POS dark-theme text is high contrast.
 - Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` are
   readable on the black staff surfaces, with no obvious text overlap.
@@ -169,6 +181,9 @@ flowchart TD
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
 - `/checkout` is the new App Router checkout, but live card payment is gated
   until Convex and Stripe dashboard envs exist.
+- `/members` is still the compatibility page. Cut it over only after
+  `/api/members/applications` can write to a linked Convex deployment in preview
+  and production.
 - Any already deployed Supabase payment functions must still be disabled or
   redeployed from the permanently fail-closed repo code in the Supabase
   dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
@@ -241,6 +256,11 @@ flowchart TD
 - [ ] Verify `/api/admin/config` can load and save announcement/hours with a
       valid admin token, rejects viewer/pos writes, rejects malformed shapes,
       and writes an `admin.config.update` audit event.
+- [ ] Verify `/api/members/applications` returns `503 convex_unconfigured`
+      before env wiring, then returns `201` for a new preview application,
+      `200` for an exact idempotent retry, and `409` for a conflicting retry.
+- [ ] Verify the created member appears in native `/admin` with name, email,
+      phone, source, tier, bio, pending status, and timestamps.
 
 ### Stripe
 
@@ -321,6 +341,7 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-rmz8b793f-junyen-enterprises.vercel.app bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/member-applications-route.test.ts convex/memberApplications.test.ts
 ```
 
 Current dependency note:
@@ -336,21 +357,23 @@ Current dependency note:
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
 2. Seed initial staff with `staffBootstrap.upsertStaffUser`, verify native
    `/admin`, then remove `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
-3. Verify preview checkout draft persistence returns `persisted: true`.
-4. Create Stripe test webhook endpoint and set Convex Stripe env vars.
-5. Set Convex/Vercel env vars so the App Router checkout can persist orders
+3. Verify preview member applications persist through
+   `/api/members/applications`; only then cut over visible `/members`.
+4. Verify preview checkout draft persistence returns `persisted: true`.
+5. Create Stripe test webhook endpoint and set Convex Stripe env vars.
+6. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-6. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
+7. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-7. Accept Stripe Terminal final webhook reconciliation in test mode with a real
+8. Accept Stripe Terminal final webhook reconciliation in test mode with a real
    test reader and matching Convex sale.
-8. Promote `/pos-next` into the live POS only after Terminal capture uses
+9. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-9. Finish native Admin beyond status actions: vouchers, refunds, config,
+10. Finish native Admin beyond status actions: vouchers, refunds, config,
    catalog, exports, and any destructive action with typed validators,
    audit logs, and rollback steps.
-10. Rebuild POS as the protected live App Router/Convex register.
-11. Migrate remaining Supabase data and disable legacy Supabase functions only
+11. Rebuild POS as the protected live App Router/Convex register.
+12. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff
@@ -365,6 +388,8 @@ What has been done:
   card-payment APIs stop safely instead of trying to charge.
 - There is now a repeatable payment smoke command to check that fail-closed
   behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
+- A new member application API exists, but the public form should stay on the
+  old page until Convex is connected so real applications are not dropped.
 - Admin, POS, and `/pos-next` use high-contrast dark staff screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations plus
   booking/member status buttons; `/admin.html` remains as a fallback for the
@@ -374,6 +399,8 @@ What still needs to be done:
 
 - Link the real Convex cloud project.
 - Add the required Vercel and Convex environment variables.
+- Test the new member application API in preview, then cut over the visible
+  `/members` form.
 - Create the Stripe webhook endpoint in the Stripe dashboard.
 - Test checkout with Stripe test cards only.
 - Test POS Terminal with a Stripe test reader only.

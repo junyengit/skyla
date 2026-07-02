@@ -169,8 +169,16 @@ export default defineSchema({
 
   members: defineTable({
     status: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    email: v.optional(v.string()),
     emailLower: v.optional(v.string()),
+    phone: v.optional(v.string()),
     tier: v.optional(v.string()),
+    source: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    applicationFingerprint: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     legacyId: v.optional(v.string()),
@@ -178,7 +186,8 @@ export default defineSchema({
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
-    .index("by_emailLower_createdAt", ["emailLower", "createdAt"]),
+    .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
+    .index("by_idempotencyKey", ["idempotencyKey"]),
 
   inquiries: defineTable({
     status: v.string(),

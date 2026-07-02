@@ -283,6 +283,18 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       surfaces remain readable with white text on black/dark panels, and
       `/pos-next` reviewed one General Admission to a server total of `$29.00`
       while keeping `Send to Reader` disabled.
+- [x] Started branch `codex/native-member-application-spine` for the first
+      server-durable public member application path.
+- [x] Added `/api/members/applications`, which validates public applicant input,
+      requires Convex before accepting, requires an idempotency key, and forwards
+      only normalized fields to `memberApplications.submitApplication`.
+- [x] Added Convex member application helpers and mutation code that inserts
+      pending `members` rows, preserves applicant details for native admin
+      review, dedupes exact retries, rejects conflicting idempotency reuse, and
+      writes a compact `member.application.submit` audit event.
+- [x] Expanded the native admin member projection so new Convex member
+      applications can show applicant name, email, phone, source, bio, tier,
+      status, and timestamps instead of only a thin email/tier summary.
 
 ## In Progress
 
@@ -312,7 +324,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/payment-api-smoke-current-state`.
 - [x] Verify, review, and ship `codex/post-payment-smoke-production-state`.
 - [x] Verify, review, and ship `codex/github-main-protection-state`.
-- [ ] Verify, review, and ship `codex/post-github-hardening-production-state`.
+- [x] Verify, review, and ship `codex/post-github-hardening-production-state`.
+- [ ] Verify, review, and ship `codex/native-member-application-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -333,6 +346,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
 - [x] Stripe Terminal final webhook reconciliation from stored `saleRef` and stored Terminal payment events only.
 - [ ] Real POS Terminal test-reader acceptance with linked Convex, Vercel envs, Stripe dashboard webhook endpoint, and seeded staff.
+- [ ] Cut public `/members` over to the native application path after linked
+      Convex/Vercel envs are present. The server route now exists, but the
+      visible legacy form should not switch until submissions can persist
+      durably.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
@@ -348,6 +365,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Use `bun run test:payments` as the public payment/API safety smoke while
   production is expected to fail closed before real Convex/Stripe dashboard
   wiring.
+- Public member applications should follow the same fail-closed rule as payment
+  execution: no "application received" success on the native path unless Convex
+  accepted the mutation.
 
 ## Risks To Track
 

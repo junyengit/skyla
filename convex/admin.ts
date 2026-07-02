@@ -142,21 +142,46 @@ function publicBooking(booking: {
 function publicMember(member: {
   _id: string;
   status: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   emailLower?: string;
+  phone?: string;
   tier?: string;
+  source?: string;
+  bio?: string;
   createdAt: number;
   updatedAt?: number;
   legacyId?: string;
+  rawLegacy?: unknown;
 }) {
+  const firstName = member.firstName ?? legacyString(member.rawLegacy, "firstName");
+  const lastName = member.lastName ?? legacyString(member.rawLegacy, "lastName");
+  const email = member.email ?? legacyString(member.rawLegacy, "email") ?? member.emailLower;
+
   return {
     memberId: member._id,
+    firstName,
+    lastName,
+    email,
     status: member.status,
     emailLower: member.emailLower,
+    phone: member.phone ?? legacyString(member.rawLegacy, "phone"),
     tier: member.tier,
+    source: member.source ?? legacyString(member.rawLegacy, "source"),
+    bio: member.bio ?? legacyString(member.rawLegacy, "bio"),
     createdAt: member.createdAt,
     updatedAt: member.updatedAt,
     legacyId: member.legacyId
   };
+}
+
+function legacyString(rawLegacy: unknown, key: string) {
+  if (!rawLegacy || typeof rawLegacy !== "object" || Array.isArray(rawLegacy)) {
+    return undefined;
+  }
+  const value = (rawLegacy as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
 }
 
 function cappedCount(items: unknown[]) {
