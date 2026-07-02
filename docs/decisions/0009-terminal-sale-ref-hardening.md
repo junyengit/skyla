@@ -5,8 +5,10 @@
 Accepted and shipped in PR #26, merged to `main` as
 `910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`.
 
-Production deployment `dpl_6zSPMN5i5S4FNjUwePhN697qs76P` is live at
-`https://web-cem3bs58o-junyen-enterprises.vercel.app`.
+This decision was superseded for live reader collection by
+[0010: Server-Driven Terminal Reader Handoff](0010-server-driven-terminal-reader-handoff.md),
+which removed the browser's need for the Terminal `client_secret` and shipped in
+PR #28.
 
 ## Plain-English Version
 

@@ -162,6 +162,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verified production `/api/payments/stripe-checkout` and `/api/payments/stripe-terminal` fail closed with `503` and `code: "convex_unconfigured"` until the real Convex deployment URL is wired.
 - [x] Refreshed merged-main dependency and quality gates: `bun run check`, `bun audit --audit-level=high`, `bun outdated --recursive`, and anonymous Convex function typecheck.
 - [x] Started branch `codex/pos-terminal-reader-process` for server-driven Stripe Terminal reader handoff from stored POS sale refs.
+- [x] Added `/api/payments/stripe-terminal/process` and `payments.processStripeTerminalPaymentIntent` so `/pos-next` can ask Stripe to process a stored PaymentIntent on the stored, allowlisted reader.
+- [x] Added `SKYLA_TERMINAL_READER_REGISTRY` validation at POS draft storage, PaymentIntent creation, and reader processing time.
+- [x] Merged Terminal reader handoff PR #28 into `main` as merge commit `97f42be824797f681f9a7b0e6e71b4ee4fa5302c`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-61n76njga-junyen-enterprises.vercel.app` (`dpl_8XKorTa795wz7RyVgvCMDN3JxANn`).
+- [x] Re-ran post-merge live route checks for `https://skydeckla.com` and `https://www.skydeckla.com`; `/`, `/checkout`, `/pos-next`, `/admin`, and `/pos` returned `200`, and staff routes remained `noindex, nofollow`.
+- [x] Verified live `/pos-next` in Helium: adding one General Admission reviewed to a `$29.00` server total and kept `Send to Reader` disabled until Convex/staff/reader setup exists.
+- [x] Verified Vercel project `junyen-enterprises/web` still has no configured environment variables, so checkout and Terminal payment routes fail closed with `convex_unconfigured`.
 
 ## In Progress
 
@@ -181,7 +188,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/next-checkout-convex-cutover`.
 - [x] Verify, review, and ship `codex/pos-next-draft-spine`.
 - [x] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
-- [ ] Verify, review, and ship `codex/pos-terminal-reader-process`.
+- [x] Verify, review, and ship `codex/pos-terminal-reader-process`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -196,7 +203,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
 - [x] Disable `/checkout.html` legacy Stripe card fallback in the Vercel-served compatibility page.
 - [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
-- [ ] Live POS Terminal reader processing and final paid reconciliation from stored `saleRef` only.
+- [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
+- [ ] Real POS Terminal test-reader acceptance and final paid reconciliation from stored `saleRef` only.
 - [ ] Admin/POS protected App Router rebuild.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.

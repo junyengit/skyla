@@ -30,17 +30,19 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-01:
-  `https://web-cem3bs58o-junyen-enterprises.vercel.app`
+  `https://web-61n76njga-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-01:
-  `dpl_6zSPMN5i5S4FNjUwePhN697qs76P`
+  `dpl_8XKorTa795wz7RyVgvCMDN3JxANn`
 - Merge commit checked on 2026-07-01:
-  `910d0fa6586f52980e95c6c5ed7ac5e9d2a69bb9`
+  `97f42be824797f681f9a7b0e6e71b4ee4fa5302c`
 - Custom domains checked on 2026-07-01:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Live API behavior checked on 2026-07-01: payment routes return
-  `convex_unconfigured`, so the production app is still not wired to real
-  Convex payment execution.
+- Vercel env status checked on 2026-07-01: no project environment variables
+  are configured for `junyen-enterprises/web`.
+- Live API behavior checked on 2026-07-01: checkout and Terminal payment
+  routes return `convex_unconfigured`, so the production app is still not wired
+  to real Convex payment execution.
 - Bun checked locally: `1.4.0-canary.1+52a1ddf07`
 - Dependency audit checked on 2026-07-01: clean after the `postcss@8.5.16`
   override.
@@ -74,7 +76,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for the Terminal sale-ref hardening merge.
+  deployment checks passed for PR #28, the Terminal reader handoff merge.
 - Admin and POS are marked `noindex, nofollow`.
 - `/pos-next` is marked `noindex, nofollow`.
 - Admin and POS dark-theme text is high contrast.
@@ -103,8 +105,9 @@ flowchart TD
 
 ## Still Not Safe To Call Complete
 
-- The deployed app still behaves as though Convex is unconfigured, so live
-  checkout/POS payment execution remains intentionally blocked.
+- Vercel currently has no project env vars, so the deployed app behaves as
+  though Convex is unconfigured and live checkout/POS payment execution remains
+  intentionally blocked.
 - Convex cloud is not linked yet.
 - Stripe live/test webhook endpoint is not created in the Stripe dashboard yet.
 - `/checkout` is the new App Router checkout, but live card payment is gated
@@ -192,7 +195,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun audit
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-cem3bs58o-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-61n76njga-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
@@ -204,8 +207,8 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 3. Create Stripe test webhook endpoint and set Convex Stripe env vars.
 4. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-5. Wire and accept POS Terminal reader processing from stored `saleRef` and
-   stored reader IDs.
+5. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
+   Stripe test reader using stored `saleRef` and stored reader IDs.
 6. Add Stripe Terminal final paid reconciliation through webhook or polling.
 7. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.

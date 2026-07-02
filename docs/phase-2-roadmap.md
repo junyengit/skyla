@@ -311,13 +311,16 @@ Current order-spine state:
   canonical totals without Convex envs, and persists through Convex when
   `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 - Local Convex validation: anonymous local deployment at `http://127.0.0.1:3210` when `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` is run
-- Vercel env status checked on 2026-06-30: no environment variables configured for `junyen-enterprises/web`
-- Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, Stripe dashboard webhook endpoint, live checkout cutover
+- Vercel env status checked on 2026-07-01: no environment variables configured for `junyen-enterprises/web`
+- Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, Stripe dashboard webhook endpoint, live payment acceptance
 - Stripe Checkout/webhook status: local code exists and is server-authoritative
   by stored `orderRef`, async failure events leave the order terminal instead
-  of pending, but it is not wired to the live checkout page or a real Stripe
-  dashboard endpoint yet.
-- Live compatibility checkout still uses `apps/web/public/checkout.html` and legacy Supabase/payment bridges.
+  of pending, and `/checkout` is the App Router path. Live card payment remains
+  blocked until Vercel/Convex envs and the real Stripe dashboard endpoint are
+  configured.
+- Legacy compatibility checkout still exists at `apps/web/public/checkout.html`,
+  but its browser-authoritative Stripe card creation path is disabled in repo
+  code.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
 - Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
 - Convex env gate: `bun run convex:env:check`
