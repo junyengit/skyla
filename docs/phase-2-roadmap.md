@@ -389,9 +389,9 @@ Current order-spine state:
   of pending, and `/checkout` is the App Router path. Live card payment remains
   blocked until Vercel/Convex envs and the real Stripe dashboard endpoint are
   configured.
-- Legacy compatibility checkout still exists at `apps/web/public/checkout.html`,
-  but its browser-authoritative Stripe card creation path is disabled in repo
-  code.
+- Legacy compatibility checkout has been reduced to a handoff at
+  `apps/web/public/checkout.html`; the old browser checkout script and
+  stylesheet are no longer shipped in `apps/web/public`.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
 - Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
 - Convex env gate: `bun run convex:env:check`

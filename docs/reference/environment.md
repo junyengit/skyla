@@ -33,7 +33,7 @@ safe for browser code, secret means dashboard/server only.
 | `SUPABASE_URL` | mixed | Vercel/Supabase legacy | Transition only | Keeps compatibility pages talking to legacy Supabase. | Keep only until Convex replacements are accepted. |
 | `SUPABASE_ANON_KEY` | yes-ish | Vercel/Supabase legacy | Transition only | Legacy browser reads/writes through existing bridge. | Do not add service-role powers to browser paths. |
 | `SUPABASE_SERVICE_ROLE_KEY` | no | server only | Transition only | Legacy server migration/admin tasks. | Never expose to `NEXT_PUBLIC_*`; avoid Preview production access. |
-| `NEXT_PUBLIC_GOOGLE_ADS_TAG_ID` | yes | Vercel | Production/Preview | Google Ads tag for compatibility pages. | Optional; blank keeps tracking inert. |
+| `NEXT_PUBLIC_GOOGLE_ADS_TAG_ID` | yes | Vercel | Production/Preview | Google Ads tag for native conversion pages and remaining compatibility pages. | Optional; blank keeps tracking inert. |
 | `NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_CONVERSION` | yes | Vercel | Production/Preview | Purchase conversion label. | Optional until paid ads are active. |
 
 ## Stripe Return Origins

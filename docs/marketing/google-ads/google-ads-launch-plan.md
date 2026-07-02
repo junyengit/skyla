@@ -44,7 +44,7 @@ Recommended conversion values:
 Budget: $60 to $100/day
 
 Landing page:
-`https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content={creative}&utm_term={keyword}`
+`https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content={creative}&utm_term={keyword}`
 
 Ad groups:
 

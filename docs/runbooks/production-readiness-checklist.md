@@ -24,9 +24,9 @@ until staff auth, Convex envs, and Stripe Terminal acceptance are complete.
 Native `/admin` now has a staff-token operations snapshot plus audited
 booking/member status actions. `/admin.html` remains the legacy fallback until
 config, voucher, refund, and destructive workflows are rebuilt safely. The old
-static checkout is still reachable at `/checkout.html`, but its Stripe card
-creation path is disabled in code so it cannot mint browser-priced card charges
-from Vercel.
+static checkout URL is still reachable at `/checkout.html`, but it is now only
+a compatibility handoff to `/checkout`; the old browser checkout script and
+stylesheet are no longer shipped.
 
 The native `/members` page now uses the server member application API instead
 of the legacy localStorage/Supabase write path. It correctly refuses to accept
@@ -214,11 +214,11 @@ flowchart TD
   the server catalog total.
 - The repo copy of legacy Supabase Stripe Checkout, Terminal payment creation,
   and Stripe webhook handling returns `410` permanently.
-- The compatibility checkout no longer offers Kaskade/crypto, and the repo copy
-  of legacy Supabase Kaskade payment/webhook functions now returns `410`
-  permanently.
-- `/checkout.html` no longer enables legacy Stripe card creation from browser
-  totals.
+- The checkout compatibility handoff no longer ships Kaskade/crypto or the old
+  browser checkout script, and the repo copy of legacy Supabase Kaskade
+  payment/webhook functions now returns `410` permanently.
+- `/checkout.html` now points to `/checkout` and no longer serves legacy Stripe
+  card creation code from browser totals.
 - Public static compatibility-page ticket links now point to `/checkout`, the
   App Router checkout path, instead of `checkout.html`.
 - No raw card number/CVC collection was found in the app code.
@@ -433,7 +433,8 @@ The production-readiness smoke is safe before and after dashboard wiring because
 its payment probes are no-write by default: draft routes omit idempotency/auth
 write prerequisites, and payment execution routes stop at validation or missing
 staff auth before any Stripe action can run. It checks the route matrix, noindex
-headers, server-owned totals, the member application no-write gate, and staff
+headers, server-owned totals, checkout handoff/retired asset checks, the member
+application no-write gate, the experience inquiry no-write gate, and staff
 admin/POS dark stylesheet cache keys across the custom domains plus an optional
 `VERCEL_PRODUCTION_URL`.
 

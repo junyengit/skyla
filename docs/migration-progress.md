@@ -445,6 +445,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Checked Vercel logs for the PR #56 deployment after smoke probes; no
       error/fatal logs appeared in the fetched window, and the visible
       503/401 entries were expected Convex/staff-auth no-write gates.
+- [x] Started branch `codex/checkout-compat-handoff` from clean `origin/main`
+      to remove the remaining public legacy checkout implementation.
+- [x] Replaced `apps/web/public/checkout.html` with a compatibility handoff to
+      native `/checkout` and removed the unused public `checkout.js` and
+      `checkout.css` files so the old browser-authoritative booking/payment
+      script is no longer shipped.
+- [x] Updated smoke tests, route tests, runbooks, and Google Ads launch
+      materials to assert and use the native `/checkout` path.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -461,6 +469,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
 - [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
 - [x] Disable `/checkout.html` legacy Stripe card fallback in the Vercel-served compatibility page.
+- [x] Replace `/checkout.html` with a handoff-only compatibility page and stop
+      shipping the legacy checkout script/stylesheet in `apps/web/public`.
 - [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
 - [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
 - [x] Stripe Terminal final webhook reconciliation from stored `saleRef` and stored Terminal payment events only.
@@ -512,7 +522,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
 - Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.2` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
-- Google Ads conversion tracking is a transition bridge on the static compatibility pages. The App Router rebuild should replace it with a typed analytics integration once checkout, members, and lead forms are native routes.
+- Google Ads conversion tracking is still a transition bridge, but checkout,
+  members, and experience lead routes are now native App Router pages. Replace
+  the public helper with a typed analytics integration once dashboard wiring and
+  acceptance are stable.
 - Shipped code now creates Stripe Terminal PaymentIntents from stored `saleRef` records only. Live reader collection still needs staff auth wiring and dashboard/env acceptance before `/pos-next` can replace `/pos`.
 - The reader-processing work adds server-driven reader processing for stored POS sales. Reader handoff still stays non-final; signed Stripe `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` webhooks now reconcile the stored sale against `saleRef`, Terminal PaymentIntent ID, amount, currency, and webhook idempotency.
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.

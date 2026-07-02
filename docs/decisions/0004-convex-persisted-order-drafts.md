@@ -8,10 +8,11 @@ Accepted as an incremental migration step.
 
 ## Context
 
-The first order-spine slice introduced canonical pricing and a Convex schema, but
-the live compatibility checkout and POS paths still rely on legacy browser and
-Supabase payment bridges. Cutting provider payments over before stored order
-state exists would keep too much trust in browser-submitted data.
+The first order-spine slice introduced canonical pricing and a Convex schema.
+At the time, the live compatibility checkout and POS paths still relied on
+legacy browser and Supabase payment bridges. Cutting provider payments over
+before stored order state existed would have kept too much trust in
+browser-submitted data.
 
 ## Decision
 

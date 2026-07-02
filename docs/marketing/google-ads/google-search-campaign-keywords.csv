@@ -1,16 +1,16 @@
 Campaign,Ad Group,Keyword,Match Type,Final URL
-Tickets - Search,LA Observation Deck,la observation deck,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=la_observation_deck&utm_term={keyword}
-Tickets - Search,LA Observation Deck,los angeles observation deck,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=la_observation_deck&utm_term={keyword}
-Tickets - Search,LA Observation Deck,observation deck los angeles,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=la_observation_deck&utm_term={keyword}
-Tickets - Search,Best Views,best views in la,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=best_views&utm_term={keyword}
-Tickets - Search,Best Views,best views los angeles,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=best_views&utm_term={keyword}
-Tickets - Search,Best Views,rooftop views los angeles,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=best_views&utm_term={keyword}
-Tickets - Search,Things To Do,things to do in los angeles,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=things_to_do&utm_term={keyword}
-Tickets - Search,Things To Do,things to do in la,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=things_to_do&utm_term={keyword}
-Tickets - Search,Nearby Attractions,things to do near lacma,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=nearby_attractions&utm_term={keyword}
-Tickets - Search,Nearby Attractions,things to do near academy museum,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=nearby_attractions&utm_term={keyword}
-Tickets - Search,Date Night,date night los angeles,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=date_night&utm_term={keyword}
-Tickets - Search,Date Night,sunset views los angeles,Phrase,https://skydeckla.com/checkout.html?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=date_night&utm_term={keyword}
+Tickets - Search,LA Observation Deck,la observation deck,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=la_observation_deck&utm_term={keyword}
+Tickets - Search,LA Observation Deck,los angeles observation deck,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=la_observation_deck&utm_term={keyword}
+Tickets - Search,LA Observation Deck,observation deck los angeles,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=la_observation_deck&utm_term={keyword}
+Tickets - Search,Best Views,best views in la,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=best_views&utm_term={keyword}
+Tickets - Search,Best Views,best views los angeles,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=best_views&utm_term={keyword}
+Tickets - Search,Best Views,rooftop views los angeles,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=best_views&utm_term={keyword}
+Tickets - Search,Things To Do,things to do in los angeles,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=things_to_do&utm_term={keyword}
+Tickets - Search,Things To Do,things to do in la,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=things_to_do&utm_term={keyword}
+Tickets - Search,Nearby Attractions,things to do near lacma,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=nearby_attractions&utm_term={keyword}
+Tickets - Search,Nearby Attractions,things to do near academy museum,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=nearby_attractions&utm_term={keyword}
+Tickets - Search,Date Night,date night los angeles,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=date_night&utm_term={keyword}
+Tickets - Search,Date Night,sunset views los angeles,Phrase,https://skydeckla.com/checkout?utm_source=google&utm_medium=cpc&utm_campaign=tickets_search&utm_content=date_night&utm_term={keyword}
 Private Events - Search,Event Venue,private event space los angeles,Phrase,https://skydeckla.com/experiences.html?utm_source=google&utm_medium=cpc&utm_campaign=private_events_search&utm_content=event_venue&utm_term={keyword}#reserve
 Private Events - Search,Event Venue,rooftop event venue los angeles,Phrase,https://skydeckla.com/experiences.html?utm_source=google&utm_medium=cpc&utm_campaign=private_events_search&utm_content=event_venue&utm_term={keyword}#reserve
 Private Events - Search,Event Venue,event space with city views los angeles,Phrase,https://skydeckla.com/experiences.html?utm_source=google&utm_medium=cpc&utm_campaign=private_events_search&utm_content=event_venue&utm_term={keyword}#reserve
