@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   stripeCheckoutOrderStatusAfterUnpaidOutcome,
   stripeCheckoutOutcomeFromEvent,
+  stripeTerminalPaymentIntentOutcomeFromEvent,
+  stripeTerminalSaleStatusAfterUnpaidOutcome,
+  stripeWebhookObjectType,
   stripeWebhookTestSignature,
   verifyStripeWebhookSignature,
   type StripeWebhookEvent
@@ -28,6 +31,31 @@ const paidCheckoutEvent: StripeWebhookEvent = {
       metadata: {
         order_ref: "SKY2607-ABC123",
         source: "convex"
+      }
+    }
+  }
+};
+
+const paidTerminalEvent: StripeWebhookEvent = {
+  id: "evt_terminal_paid_123",
+  type: "payment_intent.succeeded",
+  created: nowSeconds,
+  livemode: false,
+  data: {
+    object: {
+      id: "pi_terminal_123",
+      object: "payment_intent",
+      amount: 8550,
+      currency: "usd",
+      status: "succeeded",
+      client_secret: "pi_terminal_123_secret_keep_out",
+      latest_charge: "ch_terminal_123",
+      metadata: {
+        sale_ref: "POS2607-ABC123",
+        source: "convex-terminal",
+        line_count: "3",
+        reader_id: "tmr_123",
+        terminal_location_id: "tml_123"
       }
     }
   }
@@ -75,6 +103,7 @@ describe("Stripe webhook helpers", () => {
   });
 
   it("extracts a paid Checkout Session outcome from stored-order metadata", () => {
+    expect(stripeWebhookObjectType(paidCheckoutEvent)).toBe("checkout.session");
     expect(stripeCheckoutOutcomeFromEvent(paidCheckoutEvent)).toMatchObject({
       outcome: "paid",
       providerEventId: "evt_checkout_paid_123",
@@ -86,9 +115,108 @@ describe("Stripe webhook helpers", () => {
     });
   });
 
+  it("extracts a paid Terminal PaymentIntent outcome from stored-sale metadata", () => {
+    expect(stripeWebhookObjectType(paidTerminalEvent)).toBe("payment_intent");
+    const outcome = stripeTerminalPaymentIntentOutcomeFromEvent(paidTerminalEvent);
+
+    expect(outcome).toMatchObject({
+      outcome: "paid",
+      providerEventId: "evt_terminal_paid_123",
+      eventType: "payment_intent.succeeded",
+      providerPaymentId: "pi_terminal_123",
+      saleRef: "POS2607-ABC123",
+      amountCents: 8550,
+      currency: "usd"
+    });
+    expect(JSON.stringify(outcome.raw)).not.toContain("client_secret");
+  });
+
   it("maps unpaid Checkout outcomes to terminal order states", () => {
     expect(stripeCheckoutOrderStatusAfterUnpaidOutcome("failed")).toBe("canceled");
     expect(stripeCheckoutOrderStatusAfterUnpaidOutcome("canceled")).toBe("expired");
+  });
+
+  it("maps unpaid Terminal outcomes without downgrading retryable failures to canceled", () => {
+    expect(stripeTerminalSaleStatusAfterUnpaidOutcome("failed")).toBe("payment_pending");
+    expect(stripeTerminalSaleStatusAfterUnpaidOutcome("canceled")).toBe("canceled");
+  });
+
+  it("extracts failed and canceled Terminal PaymentIntent outcomes", () => {
+    expect(
+      stripeTerminalPaymentIntentOutcomeFromEvent({
+        ...paidTerminalEvent,
+        id: "evt_terminal_failed_123",
+        type: "payment_intent.payment_failed",
+        data: {
+          object: {
+            ...(paidTerminalEvent.data?.object as Record<string, unknown>),
+            status: "requires_payment_method"
+          }
+        }
+      })
+    ).toMatchObject({
+      outcome: "failed",
+      providerEventId: "evt_terminal_failed_123",
+      providerPaymentId: "pi_terminal_123",
+      saleRef: "POS2607-ABC123"
+    });
+
+    expect(
+      stripeTerminalPaymentIntentOutcomeFromEvent({
+        ...paidTerminalEvent,
+        id: "evt_terminal_canceled_123",
+        type: "payment_intent.canceled",
+        data: {
+          object: {
+            ...(paidTerminalEvent.data?.object as Record<string, unknown>),
+            status: "canceled"
+          }
+        }
+      })
+    ).toMatchObject({
+      outcome: "canceled",
+      providerEventId: "evt_terminal_canceled_123",
+      providerPaymentId: "pi_terminal_123",
+      saleRef: "POS2607-ABC123"
+    });
+  });
+
+  it("ignores Terminal PaymentIntent events without Convex sale authority", () => {
+    expect(
+      stripeTerminalPaymentIntentOutcomeFromEvent({
+        ...paidTerminalEvent,
+        data: {
+          object: {
+            ...(paidTerminalEvent.data?.object as Record<string, unknown>),
+            metadata: {
+              sale_ref: "POS2607-ABC123",
+              source: "other-system"
+            }
+          }
+        }
+      })
+    ).toMatchObject({
+      outcome: "ignored",
+      providerEventId: "evt_terminal_paid_123",
+      saleRef: "POS2607-ABC123"
+    });
+
+    expect(
+      stripeTerminalPaymentIntentOutcomeFromEvent({
+        ...paidTerminalEvent,
+        data: {
+          object: {
+            ...(paidTerminalEvent.data?.object as Record<string, unknown>),
+            metadata: {
+              source: "convex-terminal"
+            }
+          }
+        }
+      })
+    ).toMatchObject({
+      outcome: "ignored",
+      providerEventId: "evt_terminal_paid_123"
+    });
   });
 
   it("ignores unpaid, unsupported, and malformed events", () => {

@@ -43,8 +43,31 @@ export type StripeCheckoutWebhookOutcome =
       raw: Record<string, unknown>;
     };
 
+export type StripeTerminalWebhookOutcome =
+  | {
+      outcome: "paid" | "failed" | "canceled";
+      providerEventId: string;
+      eventType: string;
+      providerPaymentId: string;
+      saleRef: string;
+      amountCents: number;
+      currency: "usd";
+      raw: Record<string, unknown>;
+    }
+  | {
+      outcome: "ignored";
+      providerEventId: string;
+      eventType: string;
+      saleRef?: string;
+      raw: Record<string, unknown>;
+    };
+
 export function stripeCheckoutOrderStatusAfterUnpaidOutcome(outcome: "failed" | "canceled"): "canceled" | "expired" {
   return outcome === "failed" ? "canceled" : "expired";
+}
+
+export function stripeTerminalSaleStatusAfterUnpaidOutcome(outcome: "failed" | "canceled"): "payment_pending" | "canceled" {
+  return outcome === "failed" ? "payment_pending" : "canceled";
 }
 
 type StripeCheckoutSessionObject = {
@@ -57,6 +80,16 @@ type StripeCheckoutSessionObject = {
   payment_status?: unknown;
   status?: unknown;
   payment_intent?: unknown;
+};
+
+type StripeTerminalPaymentIntentObject = {
+  id?: unknown;
+  object?: unknown;
+  amount?: unknown;
+  currency?: unknown;
+  status?: unknown;
+  metadata?: unknown;
+  latest_charge?: unknown;
 };
 
 export async function verifyStripeWebhookSignature(
@@ -166,6 +199,73 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
   return ignored(providerEventId, eventType, orderRef, "unsupported_event_type", event, session);
 }
 
+export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhookEvent): StripeTerminalWebhookOutcome {
+  const providerEventId = stringValue(event.id) ?? "missing_event_id";
+  const eventType = stringValue(event.type) ?? "unknown";
+  const intent = terminalPaymentIntentObject(event.data?.object);
+  const saleRef = terminalSaleRef(intent);
+
+  if (!event.id || !event.type) {
+    return terminalIgnored(providerEventId, eventType, saleRef, "missing_event_identity", event, intent);
+  }
+  if (!intent || intent.object !== "payment_intent") {
+    return terminalIgnored(providerEventId, eventType, saleRef, "not_payment_intent", event, intent);
+  }
+  if (terminalMetadataSource(intent) !== "convex-terminal") {
+    return terminalIgnored(providerEventId, eventType, saleRef, "not_convex_terminal_source", event, intent);
+  }
+  if (
+    eventType !== "payment_intent.succeeded" &&
+    eventType !== "payment_intent.payment_failed" &&
+    eventType !== "payment_intent.canceled"
+  ) {
+    return terminalIgnored(providerEventId, eventType, saleRef, "unsupported_event_type", event, intent);
+  }
+
+  const providerPaymentId = stringValue(intent.id);
+  const amountCents = numberValue(intent.amount);
+  const currency = currencyValue(intent.currency);
+  if (!providerPaymentId || !saleRef || amountCents === undefined || !currency) {
+    return terminalIgnored(providerEventId, eventType, saleRef, "missing_terminal_payment_fields", event, intent);
+  }
+
+  if (eventType === "payment_intent.succeeded") {
+    const status = stringValue(intent.status);
+    if (status && status !== "succeeded") {
+      return terminalIgnored(providerEventId, eventType, saleRef, "payment_intent_status_mismatch", event, intent);
+    }
+    return {
+      outcome: "paid",
+      providerEventId,
+      eventType,
+      providerPaymentId,
+      saleRef,
+      amountCents,
+      currency,
+      raw: terminalSanitizedRaw(event, intent, "paid")
+    };
+  }
+
+  return {
+    outcome: eventType === "payment_intent.canceled" ? "canceled" : "failed",
+    providerEventId,
+    eventType,
+    providerPaymentId,
+    saleRef,
+    amountCents,
+    currency,
+    raw: terminalSanitizedRaw(event, intent, eventType === "payment_intent.canceled" ? "canceled" : "payment_failed")
+  };
+}
+
+export function stripeWebhookObjectType(event: StripeWebhookEvent) {
+  const object = event.data?.object;
+  if (!object || typeof object !== "object") {
+    return undefined;
+  }
+  return stringValue((object as { object?: unknown }).object);
+}
+
 function parseStripeSignatureHeader(header: string | null) {
   if (!header) {
     return null;
@@ -221,9 +321,29 @@ function checkoutSessionObject(value: unknown): StripeCheckoutSessionObject | un
   return value as StripeCheckoutSessionObject;
 }
 
+function terminalPaymentIntentObject(value: unknown): StripeTerminalPaymentIntentObject | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  return value as StripeTerminalPaymentIntentObject;
+}
+
 function checkoutOrderRef(session: StripeCheckoutSessionObject | undefined) {
   const metadata = session?.metadata && typeof session.metadata === "object" ? (session.metadata as Record<string, unknown>) : {};
   return stringValue(session?.client_reference_id) ?? stringValue(metadata.order_ref);
+}
+
+function terminalSaleRef(intent: StripeTerminalPaymentIntentObject | undefined) {
+  const metadata = terminalMetadata(intent);
+  return stringValue(metadata.sale_ref);
+}
+
+function terminalMetadataSource(intent: StripeTerminalPaymentIntentObject | undefined) {
+  return stringValue(terminalMetadata(intent).source);
+}
+
+function terminalMetadata(intent: StripeTerminalPaymentIntentObject | undefined) {
+  return intent?.metadata && typeof intent.metadata === "object" ? (intent.metadata as Record<string, unknown>) : {};
 }
 
 function ignored(
@@ -240,6 +360,23 @@ function ignored(
     eventType,
     orderRef,
     raw: sanitizedRaw(event, session, reason)
+  };
+}
+
+function terminalIgnored(
+  providerEventId: string,
+  eventType: string,
+  saleRef: string | undefined,
+  reason: string,
+  event: StripeWebhookEvent,
+  intent: StripeTerminalPaymentIntentObject | undefined
+): StripeTerminalWebhookOutcome {
+  return {
+    outcome: "ignored",
+    providerEventId,
+    eventType,
+    saleRef,
+    raw: terminalSanitizedRaw(event, intent, reason)
   };
 }
 
@@ -266,6 +403,31 @@ function sanitizedRaw(event: StripeWebhookEvent, session: StripeCheckoutSessionO
   });
 }
 
+function terminalSanitizedRaw(
+  event: StripeWebhookEvent,
+  intent: StripeTerminalPaymentIntentObject | undefined,
+  reason: string
+) {
+  return withoutUndefined({
+    reason,
+    eventId: stringValue(event.id),
+    eventType: stringValue(event.type),
+    created: numberValue(event.created),
+    livemode: typeof event.livemode === "boolean" ? event.livemode : undefined,
+    paymentIntent: intent
+      ? withoutUndefined({
+          id: stringValue(intent.id),
+          object: stringValue(intent.object),
+          amount: numberValue(intent.amount),
+          currency: stringValue(intent.currency),
+          status: stringValue(intent.status),
+          latest_charge: stringValue(intent.latest_charge),
+          metadata: terminalMetadataSummary(intent.metadata)
+        })
+      : undefined
+  });
+}
+
 function metadataSummary(value: unknown) {
   if (!value || typeof value !== "object") {
     return undefined;
@@ -276,6 +438,20 @@ function metadataSummary(value: unknown) {
     source: stringValue(metadata.source),
     visit_date: stringValue(metadata.visit_date),
     entry_time: stringValue(metadata.entry_time)
+  });
+}
+
+function terminalMetadataSummary(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const metadata = value as Record<string, unknown>;
+  return withoutUndefined({
+    sale_ref: stringValue(metadata.sale_ref),
+    source: stringValue(metadata.source),
+    line_count: stringValue(metadata.line_count),
+    reader_id: stringValue(metadata.reader_id),
+    terminal_location_id: stringValue(metadata.terminal_location_id)
   });
 }
 

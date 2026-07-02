@@ -14,6 +14,7 @@ Convex the source of truth:
   trusted reader registry.
 - Stripe Terminal receives an amount only after Convex reads the stored sale.
 - Stripe receives the reader handoff from Convex, not browser-side amount data.
+- Stripe webhooks provide the final paid, failed, or canceled state.
 - Staff auth is required before the payment intent can be created.
 
 No real card should be used for verification. Use Stripe test mode and a Stripe
@@ -31,7 +32,9 @@ flowchart TD
   process["Convex payments.processStripeTerminalPaymentIntent"]
   stripe["Stripe card_present PaymentIntent"]
   reader["Stripe Terminal reader"]
+  webhook["Stripe payment_intent.* webhook"]
   ledger["Convex paymentEvents"]
+  webhookLedger["Convex webhookEvents"]
   registry["Convex SKYLA_TERMINAL_READER_REGISTRY"]
 
   staff --> draft --> registry --> sale
@@ -40,6 +43,9 @@ flowchart TD
   staff --> process --> reader
   action --> ledger
   process --> ledger
+  stripe --> webhook --> sale
+  webhook --> ledger
+  webhook --> webhookLedger
 ```
 
 ## Required Dashboard State
@@ -56,8 +62,10 @@ route because Vercel is not wired to a real Convex deployment yet.
 - Stripe test-mode reader is registered and available.
 - Legacy Supabase Terminal bridge is disabled or redeployed from fail-closed
   repo code.
-- Final paid reconciliation is wired through Stripe webhook handling or a safe
-  polling job before live acceptance.
+- Stripe test-mode webhook endpoint points at the Convex site URL
+  `https://<convex-site-url>/stripe-webhook`.
+- The endpoint subscribes to `payment_intent.succeeded`,
+  `payment_intent.payment_failed`, and `payment_intent.canceled`.
 
 ## API Checks
 
@@ -125,7 +133,30 @@ Expected after Convex and a test reader are wired:
 - Concurrent duplicate handoffs are rejected while a short server-side
   reservation is still active.
 - `paymentEvents.status` moves to `processing` or `failed`.
-- `posSales.status` stays `payment_pending` until Stripe final confirmation.
+- `posSales.status` stays `payment_pending` until a signed Stripe
+  PaymentIntent webhook confirms the final state.
+
+### Final Webhook Reconciliation
+
+Stripe sends final PaymentIntent events to the Convex HTTP route:
+
+```text
+POST https://<convex-site-url>/stripe-webhook
+```
+
+Expected after Convex and Stripe webhook envs are wired:
+
+- `payment_intent.succeeded` marks the matching stored POS sale `paid`.
+- `payment_intent.payment_failed` leaves the sale `payment_pending` so staff can
+  retry safely.
+- `payment_intent.canceled` marks the sale `canceled`.
+- The webhook must match an existing Terminal `paymentEvents` row by Stripe
+  PaymentIntent ID and `saleRef`.
+- Stripe amount/currency, stored POS sale amount/currency, and stored Terminal
+  payment-event amount/currency must all match.
+- Duplicate Stripe webhook event IDs are no-ops.
+- Webhook metadata is used only to find the stored ref; it does not decide the
+  charged amount or sale status by itself.
 
 ## Acceptance Checklist
 
@@ -144,8 +175,12 @@ Expected after Convex and a test reader are wired:
       idempotency key.
 - [ ] Duplicate in-flight reader handoffs are rejected by the reservation lock.
 - [ ] Stripe test reader can process the stored intent.
-- [ ] Successful reader payment records/updates the stored sale and ledger.
-- [ ] Canceled/failed reader payment records a safe failure state.
+- [ ] Successful reader handoff leaves the sale pending until Stripe webhook
+      confirmation.
+- [ ] Signed Stripe PaymentIntent webhook records/updates the stored sale,
+      `paymentEvents`, and `webhookEvents`.
+- [ ] Canceled/failed PaymentIntent webhooks record a safe non-paid state
+      without downgrading an already-paid sale.
 - [ ] `/pos-next` is promoted only after the test-reader path passes.
 - [ ] Legacy `/pos` and Supabase Terminal bridge are removed or permanently
       disabled after acceptance.
