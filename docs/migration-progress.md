@@ -457,10 +457,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `origin/main` after PR #58 to recheck admin/POS readability, Stripe/API
       safety, dependencies, and hosting state.
 - [x] Confirmed Vercel project `junyen-enterprises/web` is still on Node
-      `24.x`, latest production deployment
-      `https://web-9adqy8vx3-junyen-enterprises.vercel.app`
-      (`dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT`) is READY, and aliases include
-      `skydeckla.com` and `www.skydeckla.com`.
+      `24.x`, the PR #59 production deployment
+      `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`
+      (`dpl_ArArkLGov88ksSxchCDM5TXBNGQe`) is READY from merge commit
+      `d0844856f82b764687ead620b9207a56b1cf7719`, and aliases include
+      `skydeckla.com` and `www.skydeckla.com`. Later docs-only merges can
+      create newer Vercel deployments with the same app behavior.
 - [x] Confirmed Vercel env vars are still absent, so payment/member/experience
       server writes remain safely blocked with `convex_unconfigured` until the
       real Convex and Stripe dashboard setup is done.
