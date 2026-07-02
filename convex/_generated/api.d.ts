@@ -14,6 +14,7 @@ import type * as lib_adminConfig from "../lib/adminConfig.js";
 import type * as lib_adminOperations from "../lib/adminOperations.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
+import type * as lib_staffBootstrap from "../lib/staffBootstrap.js";
 import type * as lib_stripeCheckout from "../lib/stripeCheckout.js";
 import type * as lib_stripeTerminal from "../lib/stripeTerminal.js";
 import type * as lib_stripeWebhook from "../lib/stripeWebhook.js";
@@ -21,6 +22,7 @@ import type * as lib_terminalReaderRegistry from "../lib/terminalReaderRegistry.
 import type * as orderDrafts from "../orderDrafts.js";
 import type * as paymentInternals from "../paymentInternals.js";
 import type * as payments from "../payments.js";
+import type * as staffBootstrap from "../staffBootstrap.js";
 
 import type {
   ApiFromModules,
@@ -35,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   "lib/adminOperations": typeof lib_adminOperations;
   "lib/auth": typeof lib_auth;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
+  "lib/staffBootstrap": typeof lib_staffBootstrap;
   "lib/stripeCheckout": typeof lib_stripeCheckout;
   "lib/stripeTerminal": typeof lib_stripeTerminal;
   "lib/stripeWebhook": typeof lib_stripeWebhook;
@@ -42,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   orderDrafts: typeof orderDrafts;
   paymentInternals: typeof paymentInternals;
   payments: typeof payments;
+  staffBootstrap: typeof staffBootstrap;
 }>;
 
 /**

@@ -25,6 +25,7 @@ safe for browser code, secret means dashboard/server only.
 | `SKYLA_PAYMENT_RETURN_ORIGINS` | no | Convex | Production/Preview/Development | Comma-separated allowed origins for Stripe success/cancel URLs. | Required; example `https://skydeckla.com,https://www.skydeckla.com`. |
 | `STRIPE_WEBHOOK_SECRET` | no | Convex | Production/Preview/Development | Verifies Stripe webhook signatures for `POST /stripe-webhook`. | Required before webhook cutover. |
 | `SKYLA_TERMINAL_READER_REGISTRY` | no | Convex | Production/Preview/Development | Comma-separated trusted Stripe Terminal readers, optionally paired to locations as `tmr_reader@tml_location`. | Required before `/pos-next` can persist a reader or process a reader handoff. |
+| `SKYLA_STAFF_BOOTSTRAP_TOKEN` | no | Convex | Temporary setup only | Authorizes the typed `staffBootstrap.upsertStaffUser` seed mutation before any staff rows exist. | Set only while seeding staff, then remove or rotate. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | yes | Vercel | Production/Preview/Development | Browser-safe Stripe.js publishable key. | Needed only when frontend is wired to Stripe.js or embedded Checkout. |
 | `KASKADE_API_KEY` | no | Convex | Production/Preview/Development | Future Kaskade payment action secret. | Not ready; legacy bridge still exists. |
 | `SKYLA_TERMINAL_SETUP_TOKEN` | no | Supabase legacy, later Convex | Production only | One-time manager token for Stripe Terminal reader setup. | Legacy setup hardening is present; Terminal payment creation is replaced in repo code but the live reader flow still needs Convex envs and UI acceptance. |
@@ -83,3 +84,16 @@ PATH="$HOME/.bun/bin:$PATH" bun --revision
 
 Do not print secret values in logs, PRs, or docs. Check presence, scope, and
 shape only.
+
+## Staff Bootstrap Token
+
+Use `SKYLA_STAFF_BOOTSTRAP_TOKEN` only to create or update initial
+`staffUsers` rows after the real Convex project is linked. It must be at least
+32 characters and contain no whitespace.
+
+After staff is seeded and a real staff bearer token can load `/admin`, remove
+the bootstrap token from Convex:
+
+```bash
+PATH="$HOME/.bun/bin:$PATH" bunx convex env remove SKYLA_STAFF_BOOTSTRAP_TOKEN
+```

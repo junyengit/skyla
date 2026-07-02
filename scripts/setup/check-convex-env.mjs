@@ -34,6 +34,7 @@ const stripeSecretKey = env.STRIPE_SECRET_KEY ?? "";
 const stripeReturnOrigins = env.SKYLA_PAYMENT_RETURN_ORIGINS ?? "";
 const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
 const terminalReaderRegistry = env.SKYLA_TERMINAL_READER_REGISTRY ?? "";
+const staffBootstrapToken = env.SKYLA_STAFF_BOOTSTRAP_TOKEN ?? "";
 const stripeReturnOriginList = commaList(stripeReturnOrigins);
 const terminalReaderRegistryList = commaList(terminalReaderRegistry);
 
@@ -80,6 +81,14 @@ const checks = [
     ok: terminalReaderRegistryList.length > 0 &&
       terminalReaderRegistryList.every((entry) => /^tmr_[A-Za-z0-9_]+(@tml_[A-Za-z0-9_]+)?$/.test(entry)),
     note: terminalReaderRegistry ? "comma-separated reader or reader@location entries" : undefined
+  },
+  {
+    name: "SKYLA_STAFF_BOOTSTRAP_TOKEN",
+    present: Boolean(staffBootstrapToken),
+    ok: staffBootstrapToken.length >= 32 && !/\s/.test(staffBootstrapToken),
+    note: staffBootstrapToken
+      ? "temporary Convex-only token for seeding staffUsers; remove or rotate after staff is seeded"
+      : undefined
   }
 ];
 
@@ -89,6 +98,7 @@ const output = {
   readyForStripeCheckout: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok,
   readyForStripeWebhook: checks[0].ok && checks[5].ok,
   readyForTerminalReaderHandoff: checks[0].ok && checks[1].ok && checks[3].ok && checks[6].ok,
+  readyForStaffBootstrap: checks[0].ok && checks[7].ok,
   checks
 };
 
