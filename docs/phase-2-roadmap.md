@@ -318,9 +318,9 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified production-readiness commit: `59b62f56e8018e38f57f28f19a30e599abdd0e8d`
-- Recorded verified production-readiness deployment: `https://web-k2mvfzmip-junyen-enterprises.vercel.app`
-- Recorded verified production-readiness deployment ID: `dpl_24ZzQNr3tuWGb51n5wZy8qjZdHMm`
+- Recorded verified payment/hosting/readability commit: `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`
+- Recorded verified payment/hosting/readability deployment: `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`
+- Recorded verified payment/hosting/readability deployment ID: `dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed; the visible `/members` form remains on the compatibility
@@ -334,6 +334,11 @@ Current verified Vercel data:
   route matrix, no-write payment probes, member application no-write probe, and
   staff stylesheet cache-key check for custom domains plus an optional Vercel
   deployment URL.
+- Payment/hosting/readability PR: `#46`
+- Payment/hosting/readability state: Stripe actions require explicit
+  `SKYLA_STRIPE_MODE`, Terminal no longer returns public `clientSecret`, the
+  legacy Supabase Stripe webhook repo copy is fail-closed, and live admin/POS
+  surfaces were rechecked in Helium after production deploy.
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
