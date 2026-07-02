@@ -55,8 +55,14 @@ Use this after each major phase.
 - Vercel preview builds
 - Build logs are clean
 - Preview smoke: `SMOKE_BASE_URL=<preview-url> bun run test:smoke`
+- Preview payment smoke:
+  `PAYMENT_SMOKE_BASE_URL=<preview-url> bun run test:payments`
+- Preview readiness smoke:
+  `PRODUCTION_READINESS_BASE_URLS=<preview-url> bun run test:production-readiness`
 - Production apex smoke: `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`
 - Production `www` smoke: `SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke`
+- Production payment smoke on the latest Vercel deployment, apex, and `www`
+- Production readiness smoke on the latest Vercel deployment, apex, and `www`
 - Protected branch checks are green: `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel`
 - Production domain is not changed without approval
