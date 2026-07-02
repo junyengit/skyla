@@ -453,6 +453,33 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       script is no longer shipped.
 - [x] Updated smoke tests, route tests, runbooks, and Google Ads launch
       materials to assert and use the native `/checkout` path.
+- [x] Started branch `codex/admin-pos-readability-audit` from clean
+      `origin/main` after PR #58 to recheck admin/POS readability, Stripe/API
+      safety, dependencies, and hosting state.
+- [x] Confirmed Vercel project `junyen-enterprises/web` is still on Node
+      `24.x`, latest production deployment
+      `https://web-9adqy8vx3-junyen-enterprises.vercel.app`
+      (`dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT`) is READY, and aliases include
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed Vercel env vars are still absent, so payment/member/experience
+      server writes remain safely blocked with `convex_unconfigured` until the
+      real Convex and Stripe dashboard setup is done.
+- [x] Updated GitHub repo metadata to point the homepage at
+      `https://skydeckla.com`, enabled Dependabot vulnerability alerts, enabled
+      automated security fixes, and disabled the old GitHub Pages deployment
+      surface now that Vercel custom domains are verified.
+- [x] Re-ran Bun canary dependency checks. `bun install --canary` made no
+      changes, `bun audit --audit-level=low` found no vulnerabilities, and
+      `bun outdated --recursive` only reports deferred `eslint@10.6.0`.
+- [x] Re-tested `eslint@10.6.0`; lint still fails through
+      `eslint-plugin-react@7.37.5`, so ESLint remains pinned to `9.39.4`.
+- [x] Bumped legacy staff CSS cache keys to `admin.css?v=8` and `pos.css?v=10`,
+      raised disabled/used state opacity on dark staff surfaces, and added a
+      regression test that keeps native/legacy admin and POS text high-contrast
+      while legacy POS charging stays disabled.
+- [x] Escaped legacy POS catalog, cart, and receipt render paths so custom
+      staff-entered item names cannot inject markup while `/pos` remains a
+      compatibility surface.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -482,7 +509,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       fail-closed server submission contract. Linked Convex/Vercel envs are
       still required before real inquiry acceptance succeeds in production.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
-- [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
+- [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
 ## Decisions
@@ -517,6 +544,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Current local working tree includes unrelated pre-existing content edits. Do not revert them.
 - The first Vercel CLI deployment was built from a dirty local worktree because legacy root files are modified locally. Use a clean Git-triggered deployment as the cutover candidate.
 - Old root static pages have been removed from the active tree; compatibility pages still exist under `apps/web/public`.
+- GitHub Pages was disabled after Vercel custom-domain verification; use Vercel
+  rollback instead of `github.io` hosting.
 - Historical note: the GitHub Pages project URL redirected through the repository `CNAME` before this cleanup branch removed that file, so it was not a clean fallback after DNS cutover without Pages custom-domain changes.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.

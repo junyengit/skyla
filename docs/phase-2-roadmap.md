@@ -327,9 +327,9 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified payment/hosting/readability commit: `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`
-- Recorded verified payment/hosting/readability deployment: `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`
-- Recorded verified payment/hosting/readability deployment ID: `dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`
+- Latest verified production commit: `19c0e6d86f115f78cc24b842e14d406255e846c5`
+- Latest verified production deployment: `https://web-9adqy8vx3-junyen-enterprises.vercel.app`
+- Latest verified production deployment ID: `dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT`
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -347,7 +347,7 @@ Current verified Vercel data:
 - Staff contrast cache-bust PR: `#44`
 - Staff contrast state: `/admin`, `/admin.html`, `/pos-next`, and `/pos` use
   dark staff surfaces with readable white text; legacy `admin.html` and `pos`
-  now reference bumped CSS cache keys.
+  currently reference `admin.css?v=8` and `pos.css?v=10`.
 - Production-readiness smoke PR: `#45`
 - Production-readiness state: `bun run test:production-readiness` bundles the
   route matrix, no-write payment probes, member application and experience

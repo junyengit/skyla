@@ -148,4 +148,37 @@ describe("legacy route bridge", () => {
     expect(pos).toContain('id="reader-token"');
     expect(pos).toContain('type="password"');
   });
+
+  it("keeps admin and POS staff surfaces high-contrast while legacy charging stays disabled", () => {
+    const webDir = import.meta.dirname;
+    const globalsCss = readFileSync(join(webDir, "app/globals.css"), "utf8");
+    const nativeAdmin = readFileSync(join(webDir, "app/admin/page.tsx"), "utf8");
+    const nativeAdminClient = readFileSync(join(webDir, "components/admin-ops-client.tsx"), "utf8");
+    const nativePos = readFileSync(join(webDir, "app/pos-next/page.tsx"), "utf8");
+    const adminHtml = readFileSync(join(publicDir, "admin.html"), "utf8");
+    const adminCss = readFileSync(join(publicDir, "admin.css"), "utf8");
+    const posHtml = readFileSync(join(publicDir, "pos.html"), "utf8");
+    const posCss = readFileSync(join(publicDir, "pos.css"), "utf8");
+    const posJs = readFileSync(join(publicDir, "pos.js"), "utf8");
+
+    expect(nativeAdmin).toContain("adminOpsPage");
+    expect(nativeAdmin).toContain("@skyla/payments");
+    expect(nativeAdminClient).toContain('aria-label="Canonical catalog"');
+    expect(nativePos).toContain("posNextPage");
+    expect(globalsCss).toContain(".adminOpsPage p,");
+    expect(globalsCss).toContain(".posNextPage p,");
+    expect(globalsCss).toContain("color: #fff");
+    expect(adminHtml).toContain("admin.css?v=8");
+    expect(adminCss).toContain("--gray:      #ffffff");
+    expect(adminCss).toContain(".hours-input:disabled");
+    expect(adminCss).toContain("opacity: 0.75");
+    expect(posHtml).toContain("pos.css?v=10");
+    expect(posCss).toContain("--muted: #ffffff");
+    expect(posCss).toContain(".pos-cart__charge:disabled { opacity: 0.72");
+    expect(posJs).toContain("function escHtml");
+    expect(posJs).toContain("escHtml(l.name)");
+    expect(posJs).toContain("escHtml(i.name)");
+    expect(posJs).toContain("LEGACY_TERMINAL_PAYMENTS_ENABLED = false");
+    expect(posJs).toContain("Card-present payments are moving to the secure /pos-next flow");
+  });
 });

@@ -11,7 +11,9 @@ path through prior Vercel deployments.
 - DNS host: Vercel nameservers `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Current Vercel verification reports both `skydeckla.com` and `www.skydeckla.com` as configured correctly.
 - Custom-domain smoke tests pass for the apex and `www` without DNS overrides.
-- Historical GitHub Pages values were apex A records `185.199.108.153`,
+- GitHub Pages is disabled for this repository after Vercel custom-domain
+  verification. Historical GitHub Pages values were apex A records
+  `185.199.108.153`,
   `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, plus
   `www.skydeckla.com` CNAME `junyengit.github.io.`. They are not the preferred
   rollback path after root static cleanup.
@@ -26,7 +28,9 @@ Historical note: immediately after the nameserver switch, local OS/browser DNS c
 
 ## Vercel Domain State
 
-As of June 30, 2026, both `skydeckla.com` and `www.skydeckla.com` have been added to Vercel project `junyen-enterprises/web`, Vercel reports both as configured correctly, and GoDaddy is pointed at Vercel nameservers.
+As of July 2, 2026, both `skydeckla.com` and `www.skydeckla.com` are attached
+to Vercel project `junyen-enterprises/web`, Vercel reports both as configured
+correctly, and GoDaddy is pointed at Vercel nameservers.
 
 With Vercel nameservers active, do not edit apex A records or the `www` CNAME in GoDaddy. Manage domain routing in Vercel Project Settings.
 
@@ -108,9 +112,9 @@ propagation.
 ## Legacy Surface Shutdown
 
 Root GitHub Pages static files are no longer the active rollback path after
-cleanup. Do not disable Supabase functions/storage or payment webhooks during
-the migration. Use them only until Convex, payment, admin, and POS replacements
-are verified.
+cleanup, and the GitHub Pages deployment has been disabled. Do not disable
+Supabase functions/storage or payment webhooks during the migration. Use them
+only until Convex, payment, admin, and POS replacements are verified.
 
 1. Keep the old DNS values recorded for incident response.
 2. Confirm Vercel production is serving `skydeckla.com` and `www.skydeckla.com`.
