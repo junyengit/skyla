@@ -25,6 +25,7 @@ flowchart LR
   next["apps/web Next.js App Router"]
   bridge["apps/web/public legacy bridge"]
   admin["Native /admin ops snapshot"]
+  members["Native member application API"]
   posDraft["Native /pos-next draft"]
   supabase["Supabase auth, tables, edge functions"]
   payments["Stripe / Kaskade / EmailJS / Brevo"]
@@ -34,6 +35,7 @@ flowchart LR
   vercel --> next
   next --> bridge
   next --> admin
+  next --> members
   next --> posDraft
   bridge --> supabase
   bridge --> payments
@@ -52,6 +54,9 @@ Why this is not the final state:
 - Supabase-era functions and data access are still outside the target architecture.
 - Compatibility files in `apps/web/public` are still legacy code and should be replaced with typed routes.
 - `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations plus audited booking/member status actions, while `/admin.html` remains available for legacy workflows until the remaining Convex admin mutations are complete.
+- The native member application API exists and fails closed until Convex is
+  configured; the visible `/members` form remains on the compatibility page
+  until that durable write path is available in production.
 
 ## Target Shape
 
@@ -208,6 +213,8 @@ Initial tables:
 Initial server boundaries:
 
 - Public inquiry/member submissions: Convex mutations.
+- Public member application submission now has a native API and Convex mutation
+  spine; the UI cutover remains gated by real Convex/Vercel envs.
 - Checkout/order creation: Convex mutation creates an order with canonical prices.
 - Stripe/Kaskade payment creation: Convex action uses stored order state.
 - Webhooks: Convex HTTP actions verify signatures, enforce expected amount/currency/status, and write idempotent events.
@@ -280,6 +287,9 @@ Baseline now in place:
 - Native admin action route tests require staff auth before Convex, fail closed
   when Convex is unconfigured, and reject arbitrary booking/member statuses
   before calling Convex.
+- Native member application tests validate fail-closed Convex behavior,
+  idempotency, server-side trimming, tier/email validation, and audit metadata
+  that excludes phone/bio details.
 - Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md` are present in repo config.
 - GitHub `main` branch protection is active with strict required checks:
   `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel`.

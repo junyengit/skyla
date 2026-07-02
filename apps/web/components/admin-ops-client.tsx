@@ -73,9 +73,15 @@ type OperationsSnapshot = {
     }>;
     members: Array<{
       memberId: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
       status: string;
       emailLower?: string;
+      phone?: string;
       tier?: string;
+      source?: string;
+      bio?: string;
       createdAt: number;
       updatedAt?: number;
       legacyId?: string;
@@ -651,8 +657,8 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
               ? snapshot?.recent.members.map((member) => (
                   <div className="adminOpsRow adminOpsRowWithActions" key={member.memberId}>
                     <div>
-                      <strong>{member.emailLower ?? member.memberId}</strong>
-                      <span>{[member.tier, member.legacyId].filter(Boolean).join(" / ")}</span>
+                      <strong>{[member.firstName, member.lastName].filter(Boolean).join(" ") || member.emailLower || member.memberId}</strong>
+                      <span>{[member.email ?? member.emailLower, member.tier, member.source, member.legacyId].filter(Boolean).join(" / ")}</span>
                     </div>
                     <span>{member.status}</span>
                     <span>{shortDate(member.updatedAt ?? member.createdAt)}</span>
