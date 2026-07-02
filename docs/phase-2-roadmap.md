@@ -318,13 +318,17 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified app/member production commit: `0219a838e879c7f611c35d5c19dba06476de7ce7`
-- Recorded verified app/member production deployment: `https://web-b474ddr4i-junyen-enterprises.vercel.app`
-- Recorded verified app/member production deployment ID: `dpl_6ENBkgnH2iUZXmkGFgki68ueatq7`
+- Recorded verified app/member/staff-contrast production commit: `aa1b7d6fdd9d613605d57429a1554982d0587eae`
+- Recorded verified app/member/staff-contrast production deployment: `https://web-4dgb61b60-junyen-enterprises.vercel.app`
+- Recorded verified app/member/staff-contrast production deployment ID: `dpl_Fk9fhLYJ67PuuWn3Z7jJBz3UPCTm`
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed; the visible `/members` form remains on the compatibility
   page until the real Convex deployment URL is linked in Vercel.
+- Staff contrast cache-bust PR: `#44`
+- Staff contrast state: `/admin`, `/admin.html`, `/pos-next`, and `/pos` use
+  dark staff surfaces with readable white text; legacy `admin.html` and `pos`
+  now reference bumped CSS cache keys.
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
