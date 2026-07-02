@@ -113,6 +113,7 @@ The value should look like `https://<deployment>.convex.cloud`.
 5. Add Stripe action envs to Convex before testing payment creation:
 
 ```bash
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_STRIPE_MODE "test"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_PAYMENT_RETURN_ORIGINS "https://skydeckla.com,https://www.skydeckla.com"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
@@ -227,7 +228,9 @@ these are true:
 
 - `bun run convex:env:check` reports `readyForCloudPersistence: true`
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and Production
-- Convex has `STRIPE_SECRET_KEY`
+- Convex has `SKYLA_STRIPE_MODE` set to `test` for preview acceptance
+- Convex has `STRIPE_SECRET_KEY`, and its `sk_test_` or `sk_live_` prefix
+  matches `SKYLA_STRIPE_MODE`
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS`
 - Convex has `STRIPE_WEBHOOK_SECRET`
 - Stripe dashboard has a test-mode webhook endpoint for

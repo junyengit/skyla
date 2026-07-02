@@ -65,6 +65,7 @@ describe("admin operations route", () => {
     vi.mocked(fetchQuery).mockResolvedValueOnce({
       staff: { emailLower: "ops@example.com", role: "admin" },
       readiness: {
+        stripeMode: true,
         stripeSecret: true,
         stripeWebhookSecret: false,
         terminalReaderRegistry: false,

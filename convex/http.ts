@@ -3,6 +3,10 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import {
+  assertStripeWebhookMode,
+  parseStripeMode
+} from "./lib/stripeMode";
+import {
   stripeCheckoutOutcomeFromEvent,
   stripeTerminalPaymentIntentOutcomeFromEvent,
   stripeWebhookObjectType,
@@ -36,6 +40,16 @@ http.route({
       event = JSON.parse(rawBody) as StripeWebhookEvent;
     } catch {
       return json({ ok: false, error: "invalid_json" }, { status: 400 });
+    }
+
+    try {
+      assertStripeWebhookMode(event, parseStripeMode(process.env.SKYLA_STRIPE_MODE));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Stripe mode check failed";
+      return json(
+        { ok: false, error: message },
+        { status: message.includes("not configured") ? 500 : 400 }
+      );
     }
 
     if (stripeWebhookObjectType(event) === "payment_intent") {

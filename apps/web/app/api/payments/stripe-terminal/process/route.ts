@@ -60,6 +60,8 @@ function paymentFailureStatus(message: string) {
   if (
     normalized.includes("not configured") ||
     normalized.includes("stripe_secret_key") ||
+    normalized.includes("skyla_stripe_mode") ||
+    normalized.includes("does not match") ||
     normalized.includes("terminal reader registry") ||
     normalized.includes("skyla_terminal_reader_registry")
   ) {

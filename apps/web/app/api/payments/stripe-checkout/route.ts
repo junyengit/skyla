@@ -52,7 +52,9 @@ function isServerConfigurationError(message: string) {
   return (
     normalized.includes("not configured") ||
     normalized.includes("stripe_secret_key") ||
-    normalized.includes("skyla_payment_return_origins")
+    normalized.includes("skyla_stripe_mode") ||
+    normalized.includes("skyla_payment_return_origins") ||
+    normalized.includes("does not match")
   );
 }
 

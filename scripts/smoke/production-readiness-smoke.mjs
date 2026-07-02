@@ -9,8 +9,8 @@ const baseUrls = uniqueUrls([
 const mode = process.env.SKYLA_ACCEPTANCE_MODE ?? "no-write";
 
 const staffStyles = [
-  { path: "/admin.html", expected: "admin.css?v=6", label: "legacy admin stylesheet" },
-  { path: "/pos", expected: "pos.css?v=8", label: "legacy POS stylesheet" }
+  { path: "/admin.html", expected: "admin.css?v=7", label: "legacy admin stylesheet" },
+  { path: "/pos", expected: "pos.css?v=9", label: "legacy POS stylesheet" }
 ];
 
 const failures = [];

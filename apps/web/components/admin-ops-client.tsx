@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, CalendarDays, ShieldCheck } from "@skyla/ui/icons";
 
 type Readiness = {
+  stripeMode: boolean;
   stripeSecret: boolean;
   stripeWebhookSecret: boolean;
   terminalReaderRegistry: boolean;
@@ -139,6 +140,7 @@ type BookingAdminStatus = "confirmed" | "checked-in" | "cancelled";
 type MemberAdminStatus = "pending" | "approved" | "waitlisted" | "rejected";
 
 const readinessLabels: Record<keyof Readiness, string> = {
+  stripeMode: "Stripe mode",
   stripeSecret: "Stripe API",
   stripeWebhookSecret: "Webhook",
   terminalReaderRegistry: "Readers",
@@ -404,7 +406,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
             <CalendarDays size={22} />
             <div>
               <p>Readiness</p>
-              <h2>{snapshot ? `${readinessScore}/4 configured` : "Waiting"}</h2>
+              <h2>{snapshot ? `${readinessScore}/5 configured` : "Waiting"}</h2>
             </div>
           </div>
           <div className="adminOpsReadiness">

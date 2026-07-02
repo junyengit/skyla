@@ -15,7 +15,11 @@ path through prior Vercel deployments.
   `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, plus
   `www.skydeckla.com` CNAME `junyengit.github.io.`. They are not the preferred
   rollback path after root static cleanup.
-- Existing TXT records include `apple-domain-verification=UKchr7KlrHJiCids` and `brevo-code:bf64ac1498536c7d801c996cabb36ea8`. Preserve TXT records during any DNS change.
+- Historical TXT records included `apple-domain-verification=UKchr7KlrHJiCids`
+  and `brevo-code:bf64ac1498536c7d801c996cabb36ea8`. A 2026-07-02
+  authoritative Vercel DNS check did not return those values. Restore them in
+  Vercel DNS if Apple/Brevo still need domain verification, or record the
+  decision if they were intentionally removed.
 - No AAAA records were observed. Do not add AAAA records for Vercel.
 
 Historical note: immediately after the nameserver switch, local OS/browser DNS caches briefly returned stale GitHub Pages behavior while Vercel and external DNS were already correct.

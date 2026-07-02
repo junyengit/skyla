@@ -41,7 +41,8 @@ Return URLs are restricted by the Convex env variable
 
 ## Consequences
 
-- Convex needs `STRIPE_SECRET_KEY` before the action can run.
+- Convex needs `SKYLA_STRIPE_MODE` and a matching `STRIPE_SECRET_KEY` before
+  the action can run.
 - Convex needs `SKYLA_PAYMENT_RETURN_ORIGINS` before the action can return a
   session URL.
 - The frontend checkout cutover is still separate work.

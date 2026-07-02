@@ -63,7 +63,9 @@ Use this after each major phase.
   `terminalLocationId` from the browser
 - Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation
   return `410` permanently in repo code
-- Convex has `STRIPE_SECRET_KEY` in the correct environment
+- Convex has `SKYLA_STRIPE_MODE` in the correct environment
+- Convex has `STRIPE_SECRET_KEY` in the correct environment and matching
+  `SKYLA_STRIPE_MODE`
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` before POS reader handoff testing
 - Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment

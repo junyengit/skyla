@@ -354,7 +354,8 @@ Rules:
 
 Required Convex env:
 
-- `STRIPE_SECRET_KEY`
+- `SKYLA_STRIPE_MODE`
+- `STRIPE_SECRET_KEY` matching `SKYLA_STRIPE_MODE`
 - `SKYLA_PAYMENT_RETURN_ORIGINS`
 
 See [stripe-checkout-cutover.md](stripe-checkout-cutover.md) before wiring the

@@ -43,9 +43,10 @@ It does not accept:
 The action requires a staff-authenticated Convex identity, reads `posSales` and
 `posSaleLines`, verifies totals, creates a Stripe `card_present`
 PaymentIntent, writes a `paymentEvents` row, and moves the sale to
-`payment_pending`. The action returns the PaymentIntent `client_secret` to the
-staff-authenticated POS route because Stripe Terminal JS needs it to collect the
-payment method on the reader; the ledger stores only sanitized intent metadata.
+`payment_pending`. The action verifies that Stripe returned a client secret,
+but it does not return that secret to the public Next route; server-driven
+reader processing uses the stored PaymentIntent and stored reader instead. The
+ledger stores only sanitized intent metadata.
 
 ## Diagram
 
