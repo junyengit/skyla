@@ -239,6 +239,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       and old timestamps are rejected.
 - [x] Extended the tracked artifact/security guard to block reintroducing
       the retired legacy Kaskade enable flag and webhook secret diagnostics.
+- [x] Merged payment smoke/Kaskade retirement PR #38 into `main` as merge
+      commit `79f0bad6683196222e41e09d54dd2a7909869c53`; Vercel production
+      deployment `https://web-19f0ixf88-junyen-enterprises.vercel.app`
+      (`dpl_5uqfp1ihft12GprzQFTddLe8chyf`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Re-ran post-merge route and payment smokes against
+      `https://web-19f0ixf88-junyen-enterprises.vercel.app`,
+      `https://skydeckla.com`, and `https://www.skydeckla.com`; each passed,
+      and deployed checkout assets confirmed Kaskade disabled on all three
+      bases.
 
 ## In Progress
 
@@ -265,7 +275,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/admin-config-spine`.
 - [x] Verify, review, and ship `codex/convex-live-readiness-spine`.
 - [x] Verify, review, and ship `codex/terminal-webhook-reconciliation`.
-- [ ] Verify, review, and ship `codex/payment-api-smoke-current-state`.
+- [x] Verify, review, and ship `codex/payment-api-smoke-current-state`.
+- [ ] Verify, review, and ship `codex/post-payment-smoke-production-state`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
