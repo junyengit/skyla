@@ -44,25 +44,28 @@ flowchart LR
 As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Recorded verified payment/hosting/readability deployment:
-  `https://web-5h8rxbvkt-junyen-enterprises.vercel.app` from merge commit
-  `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`.
+- Current verified production deployment:
+  `https://web-dx2w057ld-junyen-enterprises.vercel.app` from merge commit
+  `2c05f867cced89d8d14f712928a6ec704a446644`.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
   pushes, branch deletion, and unresolved conversations are blocked.
-- GitHub CI, CodeQL, and Vercel checks passed after PR #46 reached
-  `main`; CodeQL open alerts checked after the PR #40 `main` scan: none open.
+- GitHub `main` currently points at
+  `2c05f867cced89d8d14f712928a6ec704a446644`; CodeQL open alerts checked on
+  July 2, 2026: none open.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
-  Stripe dashboard setup is finished.
-- The Next app serves the new homepage, checkout route, and `/pos-next` draft
-  review route. It bridges legacy routes from `/about`, `/cafe`,
-  `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos` to
-  static compatibility pages in `apps/web/public`. The old checkout remains
-  available at `/checkout.html` during the payment cutover.
+  Stripe dashboard setup is finished. `vercel env ls` for
+  `junyen-enterprises/web` found no project environment variables on July 2,
+  2026.
+- The Next app serves the new homepage, `/about`, `/cafe`, `/privacy`,
+  `/terms`, checkout route, `/admin`, and `/pos-next` draft review route. It
+  still bridges `/experiences`, `/members`, and `/pos` to static compatibility
+  pages in `apps/web/public`. The old `.html` URLs remain available during
+  route-by-route cutover.
 
 ## Current Bun And Cleanup State
 
@@ -113,6 +116,10 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 
 - Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
+- Native `/about` is a server-rendered content route. Native `/cafe` renders
+  active menu items from `@skyla/payments`, the same catalog source used by
+  checkout and POS. Their `.html` compatibility copies no longer load
+  `shared-data.js`.
 - Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; `/pos-next` still needs staff auth, Convex envs, and reader collection wiring before it replaces the live register.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route

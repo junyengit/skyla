@@ -37,19 +37,19 @@ do not cut over the public form until the dashboard setup below is done.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Payment/hosting/readability deployment checked on 2026-07-02:
-  `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`
+- Production deployment checked on 2026-07-02:
+  `https://web-dx2w057ld-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`
+  `dpl_CXUMt9K85LoXBcJAUcSiqYhuzTjE`
 - Merge commit checked on 2026-07-02:
-  `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`
+  `2c05f867cced89d8d14f712928a6ec704a446644`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel/Convex env behavior checked on 2026-07-02: production still behaves
-  as Convex-unconfigured, so checkout/POS execution is safely blocked. A prior
-  direct Vercel env check also found no project env vars; recheck the dashboard
-  before assuming that is still the literal env-list state.
+- Vercel/Convex env behavior checked on 2026-07-02: `vercel env ls` for
+  `junyen-enterprises/web` found no project environment variables. Production
+  still behaves as Convex-unconfigured, so checkout/POS execution is safely
+  blocked.
 - DNS TXT records checked by subagent on 2026-07-02: authoritative Vercel DNS
   did not return the older Apple/Brevo TXT values documented in the domain
   runbook. Restore them in Vercel DNS if those services are still needed, or
@@ -60,8 +60,8 @@ do not cut over the public form until the dashboard setup below is done.
   blocked.
 - GitHub CodeQL alerts checked on 2026-07-02 after the PR #40 `main` scan:
   no open alerts.
-- Live API behavior checked on 2026-07-02 across the apex domain, `www`, and the
-  latest Vercel deployment URL with `bun run test:payments`:
+- Live API behavior checked on 2026-07-02 across the apex domain and `www`
+  with `bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
   - Spoofed POS total/reader/location returned canonical server total `9700`
@@ -79,10 +79,8 @@ do not cut over the public form until the dashboard setup below is done.
   and the latest Vercel deployment URL with an empty no-write payload:
   `/api/members/applications` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
-- Vercel production runtime errors checked on 2026-07-02 after the PR #46
-  deployment and smoke probes: no grouped runtime errors in the checked
-  1-hour window, and no production error/fatal logs in the checked 30-minute
-  window.
+- Vercel production runtime errors checked on 2026-07-02 after smoke probes:
+  no production error/fatal logs in the checked 24-hour window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -118,12 +116,11 @@ flowchart TD
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
-- The 23-route smoke test passed on 2026-07-02 for
-  `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`,
-  `https://skydeckla.com`, and `https://www.skydeckla.com`.
-- GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for PR #46, the payment/hosting/readability merge.
-- GitHub CodeQL open-alert list is empty after PR #40 reached `main`.
+- The 23-route smoke test passed on 2026-07-02 for `https://skydeckla.com` and
+  `https://www.skydeckla.com`.
+- GitHub `main` is protected with required `ci-build`,
+  `Analyze JavaScript and TypeScript`, and `Vercel` checks.
+- GitHub CodeQL open-alert list is empty.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
   `noindex, nofollow` in the current code path.
@@ -160,6 +157,9 @@ flowchart TD
   until Convex is connected.
 - `bun run test:payments` now checks the payment API fail-closed behavior on
   any supplied base URL without using a real card or writing Convex data.
+- `bun run test:production-readiness` now bundles route, noindex, payment
+  no-write, member no-write, and staff contrast/cache-key checks for the custom
+  domains.
 - `/api/admin/bookings/status` and `/api/admin/members/status` require staff
   bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
@@ -177,7 +177,8 @@ flowchart TD
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
 - Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
-  TypeScript `6.0.3`, Vitest `4.1.9`, and Convex `1.42.1` are current.
+  TypeScript `6.0.3`, Vitest `4.1.9`, and Convex `1.42.1` are current for
+  this stack.
 - `eslint@10.6.0` is intentionally held because the latest available
   `eslint-plugin-react@7.37.5` crashes under ESLint 10 through Next's lint
   config.
@@ -197,6 +198,12 @@ flowchart TD
 - `/members` is still the compatibility page. Cut it over only after
   `/api/members/applications` can write to a linked Convex deployment in preview
   and production.
+- `/about`, `/cafe`, `/privacy`, and `/terms` are native App Router pages with
+  `.html` compatibility URLs. Native `/cafe` uses the shared
+  `@skyla/payments` catalog for public menu prices.
+- `/experiences` is still the compatibility page because its inquiry form and
+  ad conversion tracking need a typed Convex/analytics cutover before route
+  replacement.
 - Any already deployed Supabase payment functions must still be disabled or
   redeployed from the permanently fail-closed repo code in the Supabase
   dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
@@ -360,16 +367,20 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
-PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-5h8rxbvkt-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-dx2w057ld-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
-PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-5h8rxbvkt-junyen-enterprises.vercel.app bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-dx2w057ld-junyen-enterprises.vercel.app bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
-PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=https://web-5h8rxbvkt-junyen-enterprises.vercel.app,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
+PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=https://web-dx2w057ld-junyen-enterprises.vercel.app,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
 PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/member-applications-route.test.ts convex/memberApplications.test.ts
 ```
+
+`bun run convex:env:check` is expected to fail until the real Convex/Vercel
+environment variables are present. Treat that failure as the dashboard setup
+check, not as a reason to bypass the fail-closed payment behavior.
 
 The production-readiness smoke is safe before and after dashboard wiring because
 its payment probes are no-write by default: draft routes omit idempotency/auth
