@@ -37,12 +37,12 @@ do not cut over the public form until the dashboard setup below is done.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- App/security production deployment checked on 2026-07-02:
-  `https://web-rmz8b793f-junyen-enterprises.vercel.app`
+- App/member production deployment checked on 2026-07-02:
+  `https://web-b474ddr4i-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_9ZNeHcaTqo7odZhpf4yAyGshYRQ9`
+  `dpl_6ENBkgnH2iUZXmkGFgki68ueatq7`
 - Merge commit checked on 2026-07-02:
-  `e194abe670803c8484a32a48e669f61ed117f58b`
+  `0219a838e879c7f611c35d5c19dba06476de7ce7`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -71,10 +71,13 @@ do not cut over the public form until the dashboard setup below is done.
   - `/api/payments/stripe-terminal` returned `401 staff_auth_required` before
     Convex configuration when no staff token was provided.
   - No response exposed a Stripe `clientSecret`.
-- Vercel production runtime errors checked on 2026-07-02 after the
-  post-hardening smoke probes for deployment
-  `dpl_9ZNeHcaTqo7odZhpf4yAyGshYRQ9`: no grouped runtime errors in the checked
-  30-minute window.
+- Member application API checked on 2026-07-02 across the apex domain, `www`,
+  and the latest Vercel deployment URL with an empty no-write payload:
+  `/api/members/applications` returned `503` with `convex_unconfigured`, so it
+  is safely blocked until Convex is linked.
+- Vercel production runtime errors checked on 2026-07-02 after the PR #42
+  deployment and smoke probes: no grouped runtime errors in the checked 2-hour
+  window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -111,11 +114,10 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-02 for
-  `https://web-rmz8b793f-junyen-enterprises.vercel.app`,
+  `https://web-b474ddr4i-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for PR #40, the GitHub protection and legacy CodeQL
-  hardening merge.
+  deployment checks passed for PR #42, the native member application merge.
 - GitHub CodeQL open-alert list is empty after PR #40 reached `main`.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
@@ -335,10 +337,10 @@ PATH="$HOME/.bun/bin:$PATH" bun run security:audit
 PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-rmz8b793f-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-b474ddr4i-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
-PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-rmz8b793f-junyen-enterprises.vercel.app bun run test:payments
+PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://web-b474ddr4i-junyen-enterprises.vercel.app bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/member-applications-route.test.ts convex/memberApplications.test.ts

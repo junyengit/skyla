@@ -318,9 +318,13 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Recorded verified app/security production commit: `e194abe670803c8484a32a48e669f61ed117f58b`
-- Recorded verified app/security production deployment: `https://web-rmz8b793f-junyen-enterprises.vercel.app`
-- Recorded verified app/security production deployment ID: `dpl_9ZNeHcaTqo7odZhpf4yAyGshYRQ9`
+- Recorded verified app/member production commit: `0219a838e879c7f611c35d5c19dba06476de7ce7`
+- Recorded verified app/member production deployment: `https://web-b474ddr4i-junyen-enterprises.vercel.app`
+- Recorded verified app/member production deployment ID: `dpl_6ENBkgnH2iUZXmkGFgki68ueatq7`
+- Native member application PR: `#42`
+- Native member application state: server API and Convex mutation are merged,
+  tested, and deployed; the visible `/members` form remains on the compatibility
+  page until the real Convex deployment URL is linked in Vercel.
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
