@@ -99,10 +99,11 @@ Use this after each major phase.
 - Kaskade and non-payment legacy paths stay enabled or explicitly disabled until replacements pass acceptance
 - `/api/admin/config` writes only typed announcement/hours data, requires admin
   staff, and records `admin.config.update` audit events
-- Native admin check-in should be the next safe slice; do not port voucher
-  redemption, refunds, hard deletes, clear-all, reset-all, pricing/menu edits,
-  password changes, POS charging, or reader setup without typed Convex models,
-  audit events, reconciliation rules, and rollback steps
+- Native admin booking lookup/check-in should stay limited to staff-gated lookup
+  plus allowed booking status transitions. Do not port voucher redemption,
+  refunds, hard deletes, clear-all, reset-all, pricing/menu edits, password
+  changes, POS charging, or reader setup without typed Convex models, audit
+  events, reconciliation rules, and rollback steps.
 
 ## Why These Gates Exist
 

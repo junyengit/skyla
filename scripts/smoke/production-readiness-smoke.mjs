@@ -27,6 +27,7 @@ for (const baseUrl of baseUrls) {
   runSmokeScript(origin, "route matrix", "scripts/smoke/route-smoke.mjs", { SMOKE_BASE_URL: origin });
   await checkPaymentNoWrite(origin);
   await checkStaffStyles(origin);
+  await checkNativeAdminSurface(origin);
   await checkCheckoutPageNoLegacyWrites(origin);
   await checkMembersPageNoLegacyWrites(origin);
   await checkExperiencesPageNoLegacyWrites(origin);
@@ -52,6 +53,7 @@ console.log("- Native experiences pages do not expose the legacy localStorage/Su
 console.log("- Member application no-write probe did not create data.");
 console.log("- Experience inquiry no-write probe did not create data.");
 console.log("- Legacy staff pages reference the current dark stylesheet cache keys.");
+console.log("- Native admin exposes the staff-gated booking lookup panel.");
 for (const note of notes) {
   console.log(`- ${note}`);
 }
@@ -81,6 +83,24 @@ async function checkStaffStyles(origin) {
     if (!html.includes(style.expected)) {
       failures.push(`${origin}${style.path}: expected ${style.label} ${style.expected}`);
     }
+  }
+}
+
+async function checkNativeAdminSurface(origin) {
+  const response = await fetch(new URL("/admin", origin), { redirect: "follow" });
+  const html = await response.text();
+
+  if (response.status !== 200) {
+    failures.push(`${origin}/admin: expected HTTP 200, got ${response.status}`);
+    return;
+  }
+
+  if (!html.includes("Booking Lookup") || !html.includes("Staff Token")) {
+    failures.push(`${origin}/admin: did not render native staff booking lookup controls`);
+  }
+
+  if (html.includes("SkylaData") || html.includes("shared-data.js")) {
+    failures.push(`${origin}/admin: exposed legacy localStorage/Supabase admin path`);
   }
 }
 
