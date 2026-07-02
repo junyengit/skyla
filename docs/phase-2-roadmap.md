@@ -51,7 +51,7 @@ Why this is not the final state:
 - Admin and POS rely heavily on client-side behavior.
 - Supabase-era functions and data access are still outside the target architecture.
 - Compatibility files in `apps/web/public` are still legacy code and should be replaced with typed routes.
-- `/admin` is now being cut over route-by-route: the first native page is read-only and staff-token gated, while `/admin.html` remains available for legacy workflows until Convex data/admin mutations are complete.
+- `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations plus audited booking/member status actions, while `/admin.html` remains available for legacy workflows until the remaining Convex admin mutations are complete.
 
 ## Target Shape
 
@@ -243,7 +243,11 @@ Current admin cutover rule:
 - `/admin` should move to native App Router functionality first.
 - `/admin.html` may remain as a noindex compatibility page while missing workflows are rebuilt.
 - New native admin code must use staff-gated Convex/Next server boundaries, not browser Supabase writes or local password/sessionStorage gates.
-- Destructive actions such as hard delete, clear all, and reset all settings stay out until there are typed validators, audit events, and rollback procedures.
+- Booking/member status actions may be added when they validate allowed states,
+  enforce staff roles on the server, and write audit events.
+- Destructive actions, refunds, voucher redemption, hard delete, clear all,
+  config/catalog writes, and reset all settings stay out until there are typed
+  validators, reconciliation rules, audit events, and rollback procedures.
 
 ### 5. QA, Security, And GitHub Hardening
 
@@ -273,6 +277,9 @@ Baseline now in place:
 - `bun run security:artifacts` blocks tracked generated artifacts, local env files, obvious provider keys, and private keys.
 - `bun run security:audit` fails on high or critical dependency advisories across production and dev tooling.
 - `bun run test:smoke` checks the route matrix and admin/POS `X-Robots-Tag` headers against a supplied deployment URL.
+- Native admin action route tests require staff auth before Convex, fail closed
+  when Convex is unconfigured, and reject arbitrary booking/member statuses
+  before calling Convex.
 - Dependabot, CodeQL, CODEOWNERS, and `SECURITY.md` are present in repo config; GitHub dashboard protection remains a separate verification step.
 
 ## PR Ladder
@@ -340,13 +347,13 @@ Current order-spine state:
 
 Current package baseline:
 
-- Next.js `16.2.9`
+- Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
 - Turborepo `2.10.2`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
-- Last verified Bun revision: `1.4.0-canary.1+52a1ddf07`
+- Last verified Bun revision: `1.4.0-canary.1+eba370b69`
 
 Useful verification commands:
 

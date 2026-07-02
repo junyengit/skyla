@@ -28,24 +28,7 @@ afterEach(() => {
 });
 
 describe("/api/payments/stripe-terminal", () => {
-  it("fails closed when Convex is not configured", async () => {
-    const response = await CREATE_POST(
-      request({
-        saleRef: "SALE260704-ABC123",
-        idempotencyKey: "pos_20260704_abc123"
-      })
-    );
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      code: "convex_unconfigured"
-    });
-    expect(fetchActionMock).not.toHaveBeenCalled();
-  });
-
-  it("requires staff auth before calling Convex", async () => {
-    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-
+  it("requires staff auth before checking Convex configuration", async () => {
     const response = await CREATE_POST(
       request({
         saleRef: "SALE260704-ABC123",
@@ -56,6 +39,24 @@ describe("/api/payments/stripe-terminal", () => {
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
       code: "staff_auth_required"
+    });
+    expect(fetchActionMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when Convex is not configured after staff auth", async () => {
+    const response = await CREATE_POST(
+      request(
+        {
+          saleRef: "SALE260704-ABC123",
+          idempotencyKey: "pos_20260704_abc123"
+        },
+        { headers: { authorization: "Bearer staff.jwt.token" } }
+      )
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "convex_unconfigured"
     });
     expect(fetchActionMock).not.toHaveBeenCalled();
   });
@@ -139,24 +140,7 @@ describe("/api/payments/stripe-terminal", () => {
 });
 
 describe("/api/payments/stripe-terminal/process", () => {
-  it("fails closed when Convex is not configured", async () => {
-    const response = await PROCESS_POST(
-      request({
-        saleRef: "SALE260704-ABC123",
-        idempotencyKey: "pos_20260704_abc123"
-      })
-    );
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      code: "convex_unconfigured"
-    });
-    expect(fetchActionMock).not.toHaveBeenCalled();
-  });
-
-  it("requires staff auth before processing on a reader", async () => {
-    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-
+  it("requires staff auth before checking Convex configuration", async () => {
     const response = await PROCESS_POST(
       request({
         saleRef: "SALE260704-ABC123",
@@ -167,6 +151,24 @@ describe("/api/payments/stripe-terminal/process", () => {
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
       code: "staff_auth_required"
+    });
+    expect(fetchActionMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when Convex is not configured after staff auth", async () => {
+    const response = await PROCESS_POST(
+      request(
+        {
+          saleRef: "SALE260704-ABC123",
+          idempotencyKey: "pos_20260704_abc123"
+        },
+        { headers: { authorization: "Bearer staff.jwt.token" } }
+      )
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "convex_unconfigured"
     });
     expect(fetchActionMock).not.toHaveBeenCalled();
   });

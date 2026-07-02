@@ -20,9 +20,10 @@ env vars, and Stripe dashboard webhook endpoint are ready.
 Live POS is still a legacy compatibility page. A native `/pos-next` draft page
 exists for server-priced sale review, and the repo now has the
 server-authoritative Terminal action, but reader collection is still locked
-until staff auth, Convex envs, and Stripe Terminal acceptance are complete. A
-native `/admin` read-only operations page is in progress; `/admin.html` remains
-the legacy fallback until booking/member/config workflows are rebuilt. The old
+until staff auth, Convex envs, and Stripe Terminal acceptance are complete.
+Native `/admin` now has a staff-token operations snapshot plus audited
+booking/member status actions. `/admin.html` remains the legacy fallback until
+config, voucher, refund, and destructive workflows are rebuilt safely. The old
 static checkout is still reachable at `/checkout.html`, but its Stripe card
 creation path is disabled in code so it cannot mint browser-priced card charges
 from Vercel.
@@ -32,11 +33,11 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-dqay6ls9s-junyen-enterprises.vercel.app`
+  `https://web-gstswx8r6-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_FqPrQ97E6sdaaZ5Tqv8gBjMU2vaD`
+  `dpl_2JFi8CGiRnW2MyjbTkaRHgTALH43`
 - Merge commit checked on 2026-07-02:
-  `28290519ce164bfed71832f8a978acb15fa699ac`
+  `b4d8ad7342ad4a993dc7178753349f9dae3e167f`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -50,9 +51,10 @@ from Vercel.
   - `/api/payments/stripe-checkout`,
     `/api/payments/stripe-terminal`, and
     `/api/payments/stripe-terminal/process` returned `503` with
-    `convex_unconfigured`.
+    `convex_unconfigured` when probed with the required staff auth where
+    applicable.
   - No response exposed a Stripe `clientSecret`.
-- Bun checked locally: `1.4.0-canary.1+52a1ddf07`
+- Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: clean after the `postcss@8.5.16`
   override.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
@@ -91,6 +93,9 @@ flowchart TD
   `noindex, nofollow` in the current code path.
 - Native `/admin` uses `/api/admin/operations` to request a staff-gated Convex
   operations snapshot; it does not read or write Supabase from the browser.
+- Native `/admin` can now call audited booking/member status actions through
+  Next API routes and Convex mutations. The browser sends only refs, allowed
+  statuses, and the staff bearer token.
 - Admin and POS dark-theme text is high contrast.
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
@@ -100,10 +105,13 @@ flowchart TD
   Stripe final confirmation.
 - Stored readers are rechecked against the registry at payment time, and
   duplicate in-flight reader handoffs are rejected by a short reservation lock.
-- Production `/api/payments/stripe-checkout`,
-  `/api/payments/stripe-terminal`, and
-  `/api/payments/stripe-terminal/process` currently fail closed with
-  `convex_unconfigured` until Convex is connected.
+- Production `/api/payments/stripe-checkout` currently fails closed with
+  `convex_unconfigured` until Convex is connected. Terminal payment routes
+  require staff bearer auth first, then fail closed with `convex_unconfigured`
+  until Convex is connected.
+- `/api/admin/bookings/status` and `/api/admin/members/status` require staff
+  bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
+  statuses before calling Convex, and do not expose Stripe `clientSecret`.
 - Production `/api/order-drafts/pos` ignores spoofed browser totals and returns
   the server catalog total.
 - The repo copy of legacy Supabase Stripe Checkout and Terminal payment
@@ -133,7 +141,11 @@ flowchart TD
   real Convex/staff auth/Stripe test-reader acceptance plus final paid
   reconciliation.
 - Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
-  The native `/admin` read-only snapshot is only the first admin slice.
+  The native `/admin` snapshot and status actions are only the first admin
+  slices.
+- Native admin intentionally does not yet do voucher redemption, refunds,
+  hard delete, clear all, reset all, pricing/menu/hours edits, or catalog/config
+  changes.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
 
@@ -174,6 +186,14 @@ flowchart TD
       `/admin`.
 - [ ] Verify `/api/admin/operations` returns `200` with a valid staff token and
       `401`/`503` without auth or envs.
+- [ ] Verify `/api/admin/bookings/status` returns `200` with a valid admin/pos
+      token for `confirmed` and `checked-in`, rejects arbitrary statuses with
+      `400`, and returns `503` while Convex is unconfigured.
+- [ ] Verify `/api/admin/bookings/status` allows `cancelled` only for `admin`
+      staff and writes an `admin.bookingStatus.update` audit event.
+- [ ] Verify `/api/admin/members/status` allows only `admin` staff, accepts
+      `pending`, `approved`, `waitlisted`, and `rejected`, and writes an
+      `admin.memberStatus.update` audit event.
 
 ### Stripe
 
@@ -215,7 +235,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun audit
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-dqay6ls9s-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-gstswx8r6-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
@@ -232,8 +252,9 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 6. Add Stripe Terminal final paid reconciliation through webhook or polling.
 7. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-8. Expand native Admin from read-only operations into audited booking/member
-   actions.
+8. Finish native Admin beyond status actions: vouchers, refunds, config,
+   catalog, exports, and any destructive action with typed validators,
+   audit logs, and rollback steps.
 9. Rebuild POS as the protected live App Router/Convex register.
 10. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
@@ -249,9 +270,9 @@ What has been done:
 - The current live site does not have the secret Convex/Stripe settings yet, so
   card-payment APIs stop safely instead of trying to charge.
 - Admin, POS, and `/pos-next` use high-contrast dark staff screens.
-- `/admin` is being moved into Next.js first as a read-only staff operations
-  page; `/admin.html` remains as a fallback for the workflows that are not
-  rebuilt yet.
+- `/admin` is being moved into Next.js. It now has staff-gated operations plus
+  booking/member status buttons; `/admin.html` remains as a fallback for the
+  workflows that are not rebuilt yet.
 
 What still needs to be done:
 
@@ -262,3 +283,5 @@ What still needs to be done:
 - Test POS Terminal with a Stripe test reader only.
 - Finish the protected Admin and POS Next.js/Convex pages, then retire the old
   compatibility pages and Supabase functions.
+- Use Stripe test cards and a Stripe test Terminal reader first. Do not verify
+  this migration with a real credit card.

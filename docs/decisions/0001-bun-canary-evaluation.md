@@ -33,7 +33,7 @@ Turborepo should use text lockfile analysis, so the repo should commit `bun.lock
 
 ## Implementation Notes
 
-- Last verified local Bun revision: `1.4.0-canary.1+52a1ddf07`.
+- Last verified local Bun revision: `1.4.0-canary.1+eba370b69`.
 - Root `package.json` records `packageManager: bun@1.4.0-canary.1` and
   workspace globs for `apps/*` and `packages/*`.
 - CI uses `oven-sh/setup-bun@v2` with `bun-version: canary`.

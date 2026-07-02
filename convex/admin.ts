@@ -1,12 +1,25 @@
 import { v } from "convex/values";
 
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import {
+  bookingStatusPatch,
+  memberStatusPatch,
+  normalizeAdminNote,
+  statusAuditMetadata
+} from "./lib/adminOperations";
 import { requireStaffUser } from "./lib/auth";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const recentLimit = 12;
 const countLimit = 100;
+const bookingAdminStatus = v.union(v.literal("confirmed"), v.literal("checked-in"), v.literal("cancelled"));
+const memberAdminStatus = v.union(
+  v.literal("pending"),
+  v.literal("approved"),
+  v.literal("waitlisted"),
+  v.literal("rejected")
+);
 
 function envConfigured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -88,6 +101,52 @@ function publicPaymentEvent(event: {
   };
 }
 
+function publicBooking(booking: {
+  bookingRef: string;
+  orderRef?: string;
+  visitDate?: string;
+  status: string;
+  emailLower?: string;
+  checkedInAt?: number;
+  cancelledAt?: number;
+  createdAt: number;
+  updatedAt?: number;
+  legacyId?: string;
+}) {
+  return {
+    bookingRef: booking.bookingRef,
+    orderRef: booking.orderRef,
+    visitDate: booking.visitDate,
+    status: booking.status,
+    emailLower: booking.emailLower,
+    checkedInAt: booking.checkedInAt,
+    cancelledAt: booking.cancelledAt,
+    createdAt: booking.createdAt,
+    updatedAt: booking.updatedAt,
+    legacyId: booking.legacyId
+  };
+}
+
+function publicMember(member: {
+  _id: string;
+  status: string;
+  emailLower?: string;
+  tier?: string;
+  createdAt: number;
+  updatedAt?: number;
+  legacyId?: string;
+}) {
+  return {
+    memberId: member._id,
+    status: member.status,
+    emailLower: member.emailLower,
+    tier: member.tier,
+    createdAt: member.createdAt,
+    updatedAt: member.updatedAt,
+    legacyId: member.legacyId
+  };
+}
+
 function cappedCount(items: unknown[]) {
   return {
     value: Math.min(items.length, countLimit),
@@ -103,11 +162,25 @@ export const getOperationsSnapshot = query({
     const staffUser = await requireStaffUser(ctx, ["admin", "viewer"]);
     const limit = Math.max(1, Math.min(args.limit ?? recentLimit, 25));
 
-    const [recentOrders, recentPosSales, recentPaymentEvents, draftOrders, pendingOrders, draftPosSales, pendingPosSales] =
+    const [
+      recentOrders,
+      recentPosSales,
+      recentPaymentEvents,
+      recentBookings,
+      recentMembers,
+      draftOrders,
+      pendingOrders,
+      draftPosSales,
+      pendingPosSales,
+      pendingMembers,
+      approvedMembers
+    ] =
       await Promise.all([
         ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db.query("posSales").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db.query("paymentEvents").withIndex("by_createdAt").order("desc").take(limit),
+        ctx.db.query("bookings").withIndex("by_createdAt").order("desc").take(limit),
+        ctx.db.query("members").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db
           .query("orders")
           .withIndex("by_status_createdAt", (q) => q.eq("status", "draft"))
@@ -126,6 +199,16 @@ export const getOperationsSnapshot = query({
         ctx.db
           .query("posSales")
           .withIndex("by_status_createdAt", (q) => q.eq("status", "payment_pending"))
+          .order("desc")
+          .take(countLimit + 1),
+        ctx.db
+          .query("members")
+          .withIndex("by_status_createdAt", (q) => q.eq("status", "pending"))
+          .order("desc")
+          .take(countLimit + 1),
+        ctx.db
+          .query("members")
+          .withIndex("by_status_createdAt", (q) => q.eq("status", "approved"))
           .order("desc")
           .take(countLimit + 1)
       ]);
@@ -145,13 +228,96 @@ export const getOperationsSnapshot = query({
         draftOrders: cappedCount(draftOrders),
         pendingOrders: cappedCount(pendingOrders),
         draftPosSales: cappedCount(draftPosSales),
-        pendingPosSales: cappedCount(pendingPosSales)
+        pendingPosSales: cappedCount(pendingPosSales),
+        pendingMembers: cappedCount(pendingMembers),
+        approvedMembers: cappedCount(approvedMembers)
       },
       recent: {
         orders: recentOrders.map(publicOrder),
         posSales: recentPosSales.map(publicPosSale),
-        paymentEvents: recentPaymentEvents.map(publicPaymentEvent)
+        paymentEvents: recentPaymentEvents.map(publicPaymentEvent),
+        bookings: recentBookings.map(publicBooking),
+        members: recentMembers.map(publicMember)
       }
     };
+  }
+});
+
+export const updateBookingStatus = mutation({
+  args: {
+    bookingRef: v.string(),
+    status: bookingAdminStatus,
+    note: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, args.status === "cancelled" ? ["admin"] : ["admin", "pos"]);
+    const bookingRef = args.bookingRef.trim();
+    if (!bookingRef) {
+      throw new Error("bookingRef is required");
+    }
+
+    const booking = await ctx.db
+      .query("bookings")
+      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", bookingRef))
+      .unique();
+    if (!booking) {
+      throw new Error("Booking was not found");
+    }
+    if (booking.status === args.status) {
+      return publicBooking(booking);
+    }
+    if (booking.status === "cancelled" && args.status === "checked-in") {
+      throw new Error("Cancelled bookings cannot be checked in");
+    }
+    if (booking.status === "cancelled" && args.status !== "cancelled" && staffUser.role !== "admin") {
+      throw new Error("Only admin staff can restore cancelled bookings");
+    }
+
+    const note = normalizeAdminNote(args.note);
+    const now = Date.now();
+    const patch = bookingStatusPatch(args.status, now);
+
+    await ctx.db.patch(booking._id, patch);
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: staffUser._id,
+      action: "admin.bookingStatus.update",
+      entityType: "booking",
+      entityRef: booking.bookingRef,
+      metadata: statusAuditMetadata(booking.status, args.status, note),
+      createdAt: now
+    });
+
+    return publicBooking({ ...booking, ...patch });
+  }
+});
+
+export const updateMemberStatus = mutation({
+  args: {
+    memberId: v.id("members"),
+    status: memberAdminStatus,
+    note: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin"]);
+    const member = await ctx.db.get(args.memberId);
+    if (!member) {
+      throw new Error("Member application was not found");
+    }
+
+    const note = normalizeAdminNote(args.note);
+    const now = Date.now();
+    const patch = memberStatusPatch(args.status, now);
+
+    await ctx.db.patch(member._id, patch);
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: staffUser._id,
+      action: "admin.memberStatus.update",
+      entityType: "member",
+      entityRef: member._id,
+      metadata: statusAuditMetadata(member.status, args.status, note),
+      createdAt: now
+    });
+
+    return publicMember({ ...member, ...patch });
   }
 });

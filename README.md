@@ -70,7 +70,7 @@ As of July 2, 2026:
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+52a1ddf07`.
+`1.4.0-canary.1+eba370b69`.
 
 ```bash
 bun upgrade --canary
