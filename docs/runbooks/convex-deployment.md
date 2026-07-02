@@ -158,6 +158,9 @@ For the native admin action slice:
   change member applications.
 - `admin` can check in, undo check-in, cancel bookings, and move members between
   `pending`, `approved`, `waitlisted`, and `rejected`.
+- `admin`, `pos`, and `viewer` can use staff-gated booking lookup for exact
+  booking references or exact guest emails; only `admin` and `pos` can mutate
+  booking check-in state through the separate status action.
 - Cancel/refund/payment reconciliation, hard delete, clear-all, reset-all,
   voucher redemption, and config/catalog edits remain out of scope.
 

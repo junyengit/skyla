@@ -482,6 +482,25 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Escaped legacy POS catalog, cart, and receipt render paths so custom
       staff-entered item names cannot inject markup while `/pos` remains a
       compatibility surface.
+- [x] Started branch `codex/native-admin-checkin` from clean `origin/main`
+      after PR #60 for the next staff workflow migration slice.
+- [x] Added a native front-desk booking lookup path:
+      `/api/admin/bookings/lookup` requires a staff bearer token, fails closed
+      when Convex is unconfigured, forwards only bounded lookup parameters to
+      Convex, and supports exact booking-reference lookup plus bounded email
+      lookup.
+- [x] Added `admin.lookupBookingForCheckIn` so native `/admin` can find
+      bookings through staff-gated Convex indexes and use the existing audited
+      booking status mutation for check-in/undo actions.
+- [x] Added a native `/admin` Booking Lookup panel for QR/barcode/manual
+      booking-reference entry while leaving vouchers, refunds, destructive
+      actions, pricing/menu/catalog edits, reader setup, and live POS charging
+      out of scope.
+- [x] Local rendered `/admin` checks confirmed the Booking Lookup panel appears
+      and the native route does not expose `SkylaData` or `shared-data.js`.
+      Helium/Computer Use visual capture still returns `cgWindowNotFound` or a
+      wallpaper-only screenshot on this Mac, so the slice relies on rendered
+      HTML/CSS assertions and smoke tests until browser capture is restored.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -510,7 +529,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Cut public `/experiences` over to the native inquiry path with a
       fail-closed server submission contract. Linked Convex/Vercel envs are
       still required before real inquiry acceptance succeeds in production.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -566,4 +585,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   `410` permanently where they could affect payment state, but this does not
   change any already deployed Supabase function until it is redeployed or
   disabled in the Supabase dashboard.
-- The native `/admin` path now has audited status actions and announcement/hours config, but it still intentionally excludes hard deletes, bulk clears, reset-all settings, voucher redemption, payment refunds, and pricing/menu/catalog mutations until typed validators, reconciliation rules, and rollback procedures exist.
+- The native `/admin` path now has front-desk booking lookup/check-in, audited
+  status actions, and announcement/hours config, but it still intentionally
+  excludes hard deletes, bulk clears, reset-all settings, voucher redemption,
+  payment refunds, and pricing/menu/catalog mutations until typed validators,
+  reconciliation rules, and rollback procedures exist.

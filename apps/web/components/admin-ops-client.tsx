@@ -66,6 +66,9 @@ type OperationsSnapshot = {
       visitDate?: string;
       status: string;
       emailLower?: string;
+      firstName?: string;
+      lastName?: string;
+      partySize?: number;
       checkedInAt?: number;
       cancelledAt?: number;
       createdAt: number;
@@ -121,6 +124,16 @@ type ConfigSnapshot = {
     hours: { updatedAt?: number; updatedBy?: string; invalid: boolean };
   };
   editableKeys: Array<"announcement" | "hours">;
+};
+
+type BookingLookupResult = {
+  staff: {
+    emailLower: string;
+    role: "admin" | "pos" | "viewer";
+  };
+  query: string;
+  matchType: "bookingRef" | "email";
+  matches: OperationsSnapshot["recent"]["bookings"];
 };
 
 type CatalogItem = {
@@ -196,10 +209,13 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
   const [staffToken, setStaffToken] = useState("");
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [configSnapshot, setConfigSnapshot] = useState<ConfigSnapshot | null>(null);
+  const [bookingLookup, setBookingLookup] = useState<BookingLookupResult | null>(null);
+  const [bookingLookupQuery, setBookingLookupQuery] = useState("");
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementConfig>(defaultAnnouncement);
   const [hoursDraft, setHoursDraft] = useState<HoursConfig>(defaultHours);
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLookupLoading, setIsLookupLoading] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -275,6 +291,9 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
         throw new Error(data.error ?? "Admin action failed");
       }
       await loadOperations();
+      if (endpoint === "/api/admin/bookings/status" && bookingLookupQuery.trim()) {
+        await lookupBooking({ silent: true });
+      }
       setMessage("Admin action saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Admin action failed");
@@ -289,6 +308,48 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
 
   function updateMemberStatus(memberId: string, status: MemberAdminStatus) {
     void postAdminAction("/api/admin/members/status", { memberId, status });
+  }
+
+  async function lookupBooking(options: { silent?: boolean } = {}) {
+    const token = staffToken.trim();
+    const query = bookingLookupQuery.trim();
+    if (!token) {
+      setMessage("Staff token required.");
+      setBookingLookup(null);
+      return;
+    }
+    if (!query) {
+      setMessage("Booking reference or email required.");
+      setBookingLookup(null);
+      return;
+    }
+
+    setIsLookupLoading(true);
+    if (!options.silent) {
+      setMessage(null);
+    }
+
+    try {
+      const response = await fetch(`/api/admin/bookings/lookup?q=${encodeURIComponent(query)}&limit=6`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = (await response.json()) as BookingLookupResult | { error?: string };
+      if (!response.ok) {
+        throw new Error("error" in data ? data.error ?? "Booking lookup failed" : "Booking lookup failed");
+      }
+      setBookingLookup(data as BookingLookupResult);
+      if (!options.silent) {
+        const count = (data as BookingLookupResult).matches.length;
+        setMessage(count ? `Found ${count} booking${count === 1 ? "" : "s"}.` : "No booking found.");
+      }
+    } catch (error) {
+      setBookingLookup(null);
+      setMessage(error instanceof Error ? error.message : "Booking lookup failed");
+    } finally {
+      setIsLookupLoading(false);
+    }
   }
 
   function updateAnnouncementDraft(patch: Partial<AnnouncementConfig>) {
@@ -416,6 +477,82 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
                 <strong>{snapshot ? (snapshot.readiness[key] ? "Ready" : "Missing") : "--"}</strong>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="adminOpsPanel adminOpsLookup">
+          <div className="adminOpsPanelHeader">
+            <CalendarDays size={22} />
+            <div>
+              <p>Front Desk</p>
+              <h2>Booking Lookup</h2>
+            </div>
+          </div>
+          <form
+            className="adminOpsLookupForm"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void lookupBooking();
+            }}
+          >
+            <label>
+              <span>Booking Reference Or Email</span>
+              <input
+                autoComplete="off"
+                inputMode="search"
+                maxLength={120}
+                placeholder="SKY2607-ABC123"
+                value={bookingLookupQuery}
+                onChange={(event) => setBookingLookupQuery(event.target.value)}
+              />
+            </label>
+            <button className="secondaryAction" type="submit" disabled={isLookupLoading}>
+              {isLookupLoading ? "Looking" : "Look Up"}
+              <ArrowRight size={18} />
+            </button>
+          </form>
+          <div className="adminOpsLookupResults">
+            {bookingLookup?.matches.map((booking) => {
+              const guestName = [booking.firstName, booking.lastName].filter(Boolean).join(" ");
+              return (
+                <div className="adminOpsLookupCard" key={booking.bookingRef}>
+                  <div>
+                    <strong>{booking.bookingRef}</strong>
+                    <span>{[guestName, booking.emailLower, booking.visitDate].filter(Boolean).join(" / ")}</span>
+                    <em>{booking.partySize ? `${booking.partySize} guests` : booking.orderRef ?? "No party size"}</em>
+                  </div>
+                  <span>{booking.status}</span>
+                  <span>
+                    {booking.checkedInAt
+                      ? `Checked in ${shortDate(booking.checkedInAt)}`
+                      : booking.cancelledAt
+                        ? `Cancelled ${shortDate(booking.cancelledAt)}`
+                        : "Ready"}
+                  </span>
+                  <div className="adminOpsRowActions">
+                    {booking.status === "checked-in" ? (
+                      <button
+                        type="button"
+                        disabled={Boolean(actionKey)}
+                        onClick={() => updateBookingStatus(booking.bookingRef, "confirmed")}
+                      >
+                        Undo
+                      </button>
+                    ) : booking.status === "cancelled" ? null : (
+                      <button
+                        type="button"
+                        disabled={Boolean(actionKey)}
+                        onClick={() => updateBookingStatus(booking.bookingRef, "checked-in")}
+                      >
+                        Check In
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {bookingLookup && bookingLookup.matches.length === 0 ? <p className="adminOpsEmpty">No booking found</p> : null}
+            {!bookingLookup ? <p className="adminOpsEmpty">Scan or type a booking reference</p> : null}
           </div>
         </div>
 

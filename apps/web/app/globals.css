@@ -2620,6 +2620,96 @@ h3 {
   color: #fff;
 }
 
+.adminOpsLookup {
+  display: grid;
+  gap: 16px;
+}
+
+.adminOpsLookupForm {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.adminOpsLookupForm label {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsLookupForm input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  padding: 0 12px;
+}
+
+.adminOpsLookupForm .secondaryAction {
+  gap: 8px;
+  min-width: 132px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.adminOpsLookupForm .secondaryAction:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.adminOpsLookupResults {
+  display: grid;
+  gap: 8px;
+}
+
+.adminOpsLookupCard {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) 0.48fr 0.75fr minmax(140px, 0.55fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+}
+
+.adminOpsLookupCard div {
+  min-width: 0;
+}
+
+.adminOpsLookupCard strong,
+.adminOpsLookupCard span,
+.adminOpsLookupCard em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsLookupCard strong {
+  font-size: 1rem;
+}
+
+.adminOpsLookupCard span,
+.adminOpsLookupCard em {
+  font-size: 0.82rem;
+}
+
+.adminOpsLookupCard em {
+  color: rgba(255, 255, 255, 0.82);
+  font-style: normal;
+}
+
 .adminOpsConfig {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.4fr);
@@ -2910,6 +3000,15 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .adminOpsLookupForm,
+  .adminOpsLookupCard {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsLookupForm .secondaryAction {
+    width: 100%;
+  }
+
   .adminOpsHoursCard {
     grid-row: auto;
   }
@@ -2928,7 +3027,10 @@ h3 {
   }
 
   .adminOpsRow strong,
-  .adminOpsRow span {
+  .adminOpsRow span,
+  .adminOpsLookupCard strong,
+  .adminOpsLookupCard span,
+  .adminOpsLookupCard em {
     white-space: normal;
   }
 

@@ -119,18 +119,29 @@ function publicBooking(booking: {
   visitDate?: string;
   status: string;
   emailLower?: string;
+  firstName?: string;
+  lastName?: string;
+  partySize?: number;
   checkedInAt?: number;
   cancelledAt?: number;
   createdAt: number;
   updatedAt?: number;
   legacyId?: string;
+  rawLegacy?: unknown;
 }) {
+  const firstName = booking.firstName ?? legacyString(booking.rawLegacy, "firstName");
+  const lastName = booking.lastName ?? legacyString(booking.rawLegacy, "lastName");
+  const partySize = booking.partySize ?? legacyNumber(booking.rawLegacy, "partySize") ?? legacyNumber(booking.rawLegacy, "guests");
+
   return {
     bookingRef: booking.bookingRef,
     orderRef: booking.orderRef,
     visitDate: booking.visitDate,
     status: booking.status,
     emailLower: booking.emailLower,
+    firstName,
+    lastName,
+    partySize,
     checkedInAt: booking.checkedInAt,
     cancelledAt: booking.cancelledAt,
     createdAt: booking.createdAt,
@@ -182,6 +193,20 @@ function legacyString(rawLegacy: unknown, key: string) {
   }
   const value = (rawLegacy as Record<string, unknown>)[key];
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function legacyNumber(rawLegacy: unknown, key: string) {
+  if (!rawLegacy || typeof rawLegacy !== "object" || Array.isArray(rawLegacy)) {
+    return undefined;
+  }
+  const value = (rawLegacy as Record<string, unknown>)[key];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+  return undefined;
 }
 
 function cappedCount(items: unknown[]) {
@@ -314,6 +339,69 @@ export const getOperationsSnapshot = query({
         bookings: recentBookings.map(publicBooking),
         members: recentMembers.map(publicMember)
       }
+    };
+  }
+});
+
+export const lookupBookingForCheckIn = query({
+  args: {
+    query: v.string(),
+    limit: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos", "viewer"]);
+    const queryText = args.query.trim();
+    if (!queryText) {
+      throw new Error("query is required");
+    }
+    if (queryText.length > 120) {
+      throw new Error("query must be 120 characters or fewer");
+    }
+    const limit = Math.max(1, Math.min(args.limit ?? 6, 8));
+    const normalizedRef = queryText.toUpperCase();
+
+    const booking = await ctx.db
+      .query("bookings")
+      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", normalizedRef))
+      .unique();
+    if (booking) {
+      return {
+        staff: {
+          emailLower: staffUser.emailLower,
+          role: staffUser.role
+        },
+        query: queryText,
+        matchType: "bookingRef" as const,
+        matches: [publicBooking(booking)]
+      };
+    }
+
+    if (queryText.includes("@")) {
+      const matches = await ctx.db
+        .query("bookings")
+        .withIndex("by_emailLower_createdAt", (q) => q.eq("emailLower", queryText.toLowerCase()))
+        .order("desc")
+        .take(limit);
+
+      return {
+        staff: {
+          emailLower: staffUser.emailLower,
+          role: staffUser.role
+        },
+        query: queryText,
+        matchType: "email" as const,
+        matches: matches.map(publicBooking)
+      };
+    }
+
+    return {
+      staff: {
+        emailLower: staffUser.emailLower,
+        role: staffUser.role
+      },
+      query: queryText,
+      matchType: "bookingRef" as const,
+      matches: []
     };
   }
 });

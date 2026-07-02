@@ -154,6 +154,7 @@ describe("legacy route bridge", () => {
     const globalsCss = readFileSync(join(webDir, "app/globals.css"), "utf8");
     const nativeAdmin = readFileSync(join(webDir, "app/admin/page.tsx"), "utf8");
     const nativeAdminClient = readFileSync(join(webDir, "components/admin-ops-client.tsx"), "utf8");
+    const nativeAdminLookupRoute = readFileSync(join(webDir, "app/api/admin/bookings/lookup/route.ts"), "utf8");
     const nativePos = readFileSync(join(webDir, "app/pos-next/page.tsx"), "utf8");
     const adminHtml = readFileSync(join(publicDir, "admin.html"), "utf8");
     const adminCss = readFileSync(join(publicDir, "admin.css"), "utf8");
@@ -164,6 +165,12 @@ describe("legacy route bridge", () => {
     expect(nativeAdmin).toContain("adminOpsPage");
     expect(nativeAdmin).toContain("@skyla/payments");
     expect(nativeAdminClient).toContain('aria-label="Canonical catalog"');
+    expect(nativeAdminClient).toContain("Booking Lookup");
+    expect(nativeAdminClient).toContain("/api/admin/bookings/lookup");
+    expect(nativeAdminClient).toContain("/api/admin/bookings/status");
+    expect(nativeAdminLookupRoute).toContain("staffAuthRequiredResponse");
+    expect(nativeAdminLookupRoute).toContain("convexUnconfiguredResponse");
+    expect(nativeAdminLookupRoute).toContain("admin:lookupBookingForCheckIn");
     expect(nativePos).toContain("posNextPage");
     expect(globalsCss).toContain(".adminOpsPage p,");
     expect(globalsCss).toContain(".posNextPage p,");

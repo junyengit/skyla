@@ -172,6 +172,9 @@ flowchart TD
 - Native `/admin` can now call audited booking/member status actions through
   Next API routes and Convex mutations. The browser sends only refs, allowed
   statuses, and the staff bearer token.
+- Native `/admin` can now look up a booking reference or exact guest email
+  through `/api/admin/bookings/lookup`, then check in or undo check-in through
+  the same audited status route. It still fails closed until Convex is linked.
 - Native `/admin` can now load and save typed announcement/hours config through
   `/api/admin/config`; pricing, menu, catalog, vouchers, refunds, deletes, and
   resets remain intentionally unavailable.
@@ -273,8 +276,8 @@ flowchart TD
   webhook reconciliation still need real Convex/staff auth/Stripe dashboard envs
   plus Stripe test-reader acceptance.
 - Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
-  The native `/admin` snapshot, status actions, and announcement/hours config
-  are only the first admin slices.
+  The native `/admin` snapshot, booking lookup/check-in, status actions, and
+  announcement/hours config are only the first admin slices.
 - Native admin intentionally does not yet do voucher redemption, refunds,
   hard delete, clear all, reset all, pricing/menu edits, or payment catalog
   changes.
@@ -480,13 +483,11 @@ Current dependency note:
    test reader and matching Convex sale.
 9. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-10. Build the next native admin slice as front-desk check-in lookup/actions,
-   using staff-gated Convex/Next APIs and the existing booking status mutation.
-11. Finish native Admin beyond status actions: vouchers, refunds, config,
+10. Finish native Admin beyond lookup/status actions: vouchers, refunds, config,
    catalog, exports, and any destructive action with typed validators,
    audit logs, and rollback steps.
-12. Rebuild POS as the protected live App Router/Convex register.
-13. Migrate remaining Supabase data and disable legacy Supabase functions only
+11. Rebuild POS as the protected live App Router/Convex register.
+12. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff
