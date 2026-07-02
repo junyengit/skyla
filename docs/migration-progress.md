@@ -186,6 +186,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Started branch `codex/native-admin-actions-spine` for audited booking/member status actions on the native `/admin` route.
 - [x] Added staff-gated admin action routes for booking check-in/undo/cancel and member approve/waitlist/reject, each forwarding the staff bearer token to Convex.
 - [x] Added Convex booking/member status mutations that validate allowed statuses, preserve payment/order data, and write audit events.
+- [x] Merged native admin status actions PR #32 into `main` as merge commit `6560f5705c39daa6e832ed3e3944c2cb1d951935`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-1eof6htpt-junyen-enterprises.vercel.app` (`dpl_Ap7UDu3G6c5MLEitvkWfgCgrm3oD`).
+- [x] Re-ran post-merge route smoke tests for `https://web-1eof6htpt-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
+- [x] Verified production API probes across all three bases: spoofed checkout totals return canonical `8505` cents, spoofed POS totals/reader/location return canonical `9700` cents with no transient reader/location fields, staff routes return `401` without auth, and authenticated payment/admin routes fail closed with `convex_unconfigured` without exposing `clientSecret`.
+- [x] Confirmed Vercel production logs had no error entries for the checked 30-minute window.
+- [x] Started branch `codex/admin-config-spine` for the next native admin config/catalog migration slice.
+- [x] Added a typed native admin config spine for announcement and hours only; pricing, menu, voucher, refund, delete, and reset workflows stay deferred until they have typed catalog/entitlement/payment reconciliation models.
+- [x] Removed repo support for re-enabling legacy browser-authoritative Stripe Checkout and Terminal charge creation; retired legacy payment flags are now blocked by the tracked artifact/security guard.
+- [x] Ran the dependency sweep. `bun outdated --recursive` now reports only `eslint@10.6.0`; the upgrade is intentionally held because the latest available `eslint-plugin-react@7.37.5` crashes under ESLint 10 through Next's lint config.
+- [x] Tightened `/admin` and `/pos-next` text contrast so labels and secondary text render white on the black staff surfaces.
 
 ## In Progress
 
@@ -208,7 +218,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/pos-terminal-reader-process`.
 - [x] Verify, review, and ship `codex/payment-hosting-qa-and-contrast`.
 - [x] Verify, review, and ship `codex/native-admin-ops-spine`.
-- [ ] Verify, review, and ship `codex/native-admin-actions-spine`.
+- [x] Verify, review, and ship `codex/native-admin-actions-spine`.
+- [ ] Verify, review, and ship `codex/admin-config-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -225,7 +236,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
 - [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
 - [ ] Real POS Terminal test-reader acceptance and final paid reconciliation from stored `saleRef` only.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot plus audited booking/member status actions in `codex/native-admin-actions-spine`, but config/catalog/voucher/delete workflows and the live POS replacement still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -253,5 +264,5 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - The reader-processing work adds server-driven reader processing for stored POS sales. It still does not mark sales paid until a later Stripe webhook or polling reconciliation slice confirms final success.
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
-- Repository copies of legacy Supabase Stripe Checkout and Terminal functions now fail closed unless explicitly re-enabled by transition env vars, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.
-- The native `/admin` path now has audited status actions, but it still intentionally excludes hard deletes, bulk clears, reset-all settings, voucher redemption, payment refunds, and config/catalog mutations until typed validators, reconciliation rules, and rollback procedures exist.
+- Repository copies of legacy Supabase Stripe Checkout and Terminal charge creation now return `410` permanently, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.
+- The native `/admin` path now has audited status actions and announcement/hours config, but it still intentionally excludes hard deletes, bulk clears, reset-all settings, voucher redemption, payment refunds, and pricing/menu/catalog mutations until typed validators, reconciliation rules, and rollback procedures exist.

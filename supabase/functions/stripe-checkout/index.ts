@@ -1,7 +1,6 @@
 // ============================================================
 // Supabase Edge Function: stripe-checkout
 // Holds the Stripe SECRET key (never exposed to the browser).
-//   • action: "create"  → makes a Stripe Checkout Session, returns its URL
 //   • action: "verify"  → confirms a session was actually paid
 //
 // Uses withSupabase({ auth: ["publishable","secret"] }) so the website can
@@ -12,8 +11,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "jsr:@supabase/server@^1";
 
 const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-const LEGACY_BROWSER_PAYMENTS_ENABLED = Deno.env.get("SKYLA_ENABLE_LEGACY_BROWSER_PAYMENTS") === "true";
 const STRIPE_API = "https://api.stripe.com/v1";
+const DISABLED_PAYMENT_ACTIONS = new Set(["create", "payment-intent", "update-intent"]);
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -44,70 +43,18 @@ async function stripe(path: string, method = "GET", body?: string) {
 
 async function handle(req: Request) {
   try {
-    if (!STRIPE_SECRET) return json({ error: "STRIPE_SECRET_KEY not set" }, 500);
     const payload = await req.json();
-    const disabledPaymentActions = new Set(["create", "payment-intent", "update-intent"]);
-    if (disabledPaymentActions.has(payload.action) && !LEGACY_BROWSER_PAYMENTS_ENABLED) {
+    if (DISABLED_PAYMENT_ACTIONS.has(payload.action)) {
       return json(
         {
-          error:
-            "Legacy browser-authoritative Stripe payment creation is disabled. Use the Next.js/Convex checkout flow."
+          error: "Legacy browser-authoritative Stripe payment creation is permanently disabled. Use the Next.js/Convex checkout flow."
         },
         410
       );
     }
 
-    if (payload.action === "create") {
-      const { amountCents, currency = "usd", description, bookingRef, email, successUrl, cancelUrl } = payload;
-      if (!amountCents || amountCents < 50) return json({ error: "Invalid amount" }, 400);
-      if (!successUrl || !cancelUrl) return json({ error: "Missing return URLs" }, 400);
-
-      const fields: Record<string, string> = {
-        "mode": "payment",
-        "success_url": successUrl,
-        "cancel_url": cancelUrl,
-        "client_reference_id": bookingRef || "",
-        "metadata[booking_ref]": bookingRef || "",
-        "line_items[0][quantity]": "1",
-        "line_items[0][price_data][currency]": currency,
-        "line_items[0][price_data][unit_amount]": String(Math.round(amountCents)),
-        "line_items[0][price_data][product_data][name]": description || "Skyla Booking",
-      };
-      if (email) fields["customer_email"] = email;
-
-      const session = await stripe("/checkout/sessions", "POST", new URLSearchParams(fields).toString());
-      return json({ url: session.url, id: session.id });
-    }
-
-    // Embedded card form (Stripe.js Payment Element) — returns a client secret
-    if (payload.action === "payment-intent") {
-      const { amountCents, currency = "usd", bookingRef, email } = payload;
-      if (!amountCents || amountCents < 50) return json({ error: "Invalid amount" }, 400);
-      const fields: Record<string, string> = {
-        "amount": String(Math.round(amountCents)),
-        "currency": currency,
-        "payment_method_types[]": "card",
-        "metadata[booking_ref]": bookingRef || "",
-      };
-      if (email) fields["receipt_email"] = email;
-      const pi = await stripe("/payment_intents", "POST", new URLSearchParams(fields).toString());
-      return json({ clientSecret: pi.client_secret, id: pi.id });
-    }
-
-    // Attach full booking details to a PaymentIntent's metadata just before charging,
-    // so the webhook can recreate the booking if the customer's browser drops off.
-    if (payload.action === "update-intent") {
-      const { id, metadata } = payload;
-      if (!id) return json({ error: "Missing intent id" }, 400);
-      const fields: Record<string, string> = {};
-      for (const [k, v] of Object.entries(metadata || {})) {
-        fields[`metadata[${k}]`] = String(v ?? "").slice(0, 480);
-      }
-      const pi = await stripe(`/payment_intents/${id}`, "POST", new URLSearchParams(fields).toString());
-      return json({ ok: true, id: pi.id });
-    }
-
     if (payload.action === "verify") {
+      if (!STRIPE_SECRET) return json({ error: "STRIPE_SECRET_KEY not set" }, 500);
       const { sessionId } = payload;
       if (!sessionId) return json({ error: "Missing sessionId" }, 400);
       const session = await stripe(`/checkout/sessions/${sessionId}`, "GET");

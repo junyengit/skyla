@@ -71,9 +71,9 @@ sequenceDiagram
 
 - Legacy `/pos` Terminal card charging is disabled in the Vercel-served static
   script.
-- The repo copy of legacy Supabase Terminal bridge returns `410` by default for
-  browser-reachable runtime actions.
+- The repo copy of legacy Supabase Terminal bridge returns `410` permanently for
+  browser-reachable runtime payment actions.
 - A real POS cutover still needs staff auth, Convex envs, Stripe test reader
   verification, and final payment reconciliation after reader processing.
 - Any already deployed Supabase functions must still be disabled or redeployed
-  from the fail-closed repo code.
+  from the permanently fail-closed repo code.

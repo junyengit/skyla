@@ -8,7 +8,10 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as http from "../http.js";
+import type * as lib_adminConfig from "../lib/adminConfig.js";
+import type * as lib_adminOperations from "../lib/adminOperations.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
 import type * as lib_stripeCheckout from "../lib/stripeCheckout.js";
@@ -26,7 +29,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   http: typeof http;
+  "lib/adminConfig": typeof lib_adminConfig;
+  "lib/adminOperations": typeof lib_adminOperations;
   "lib/auth": typeof lib_auth;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
   "lib/stripeCheckout": typeof lib_stripeCheckout;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { addons, cafeItems, ticketPackages } from "@skyla/payments";
 import { ShieldCheck } from "@skyla/ui/icons";
 import { AdminOpsClient } from "@/components/admin-ops-client";
 
@@ -13,6 +14,30 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
+  const catalog = [
+    ...Object.values(ticketPackages).map((item) => ({
+      key: item.key,
+      kind: "ticket" as const,
+      name: item.name,
+      priceCents: item.priceCents,
+      active: item.active
+    })),
+    ...Object.values(addons).map((item) => ({
+      key: item.key,
+      kind: "addon" as const,
+      name: item.name,
+      priceCents: item.priceCents,
+      active: item.active
+    })),
+    ...Object.values(cafeItems).map((item) => ({
+      key: item.key,
+      kind: "cafe" as const,
+      name: item.name,
+      priceCents: item.priceCents,
+      active: item.active
+    }))
+  ];
+
   return (
     <main className="adminOpsPage">
       <header className="adminOpsHeader">
@@ -33,7 +58,7 @@ export default function AdminPage() {
         </nav>
       </header>
 
-      <AdminOpsClient />
+      <AdminOpsClient catalog={catalog} />
     </main>
   );
 }

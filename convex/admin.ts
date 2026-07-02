@@ -1,6 +1,17 @@
 import { v } from "convex/values";
 
+import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import {
+  configAuditMetadata,
+  defaultAnnouncement,
+  defaultHours,
+  isSiteConfigKey,
+  normalizeAnnouncementConfig,
+  normalizeHoursConfig,
+  normalizeSiteConfig,
+  siteConfigKeys
+} from "./lib/adminConfig";
 import {
   bookingStatusPatch,
   memberStatusPatch,
@@ -20,6 +31,7 @@ const memberAdminStatus = v.union(
   v.literal("waitlisted"),
   v.literal("rejected")
 );
+const siteConfigKey = v.union(v.literal("announcement"), v.literal("hours"));
 
 function envConfigured(name: string) {
   return Boolean(process.env[name]?.trim());
@@ -154,6 +166,43 @@ function cappedCount(items: unknown[]) {
   };
 }
 
+function publicConfigState(row: { updatedAt: number; updatedBy?: string } | null, invalid = false) {
+  return row
+    ? {
+        updatedAt: row.updatedAt,
+        updatedBy: row.updatedBy,
+        invalid
+      }
+    : {
+        updatedAt: undefined,
+        updatedBy: undefined,
+        invalid
+      };
+}
+
+function safeAnnouncement(data: unknown) {
+  try {
+    return { data: normalizeAnnouncementConfig(data), invalid: false };
+  } catch {
+    return { data: defaultAnnouncement, invalid: true };
+  }
+}
+
+function safeHours(data: unknown) {
+  try {
+    return { data: normalizeHoursConfig(data), invalid: false };
+  } catch {
+    return { data: defaultHours, invalid: true };
+  }
+}
+
+async function configRow(ctx: QueryCtx, key: string) {
+  return await ctx.db
+    .query("config")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+}
+
 export const getOperationsSnapshot = query({
   args: {
     limit: v.optional(v.number())
@@ -239,6 +288,86 @@ export const getOperationsSnapshot = query({
         bookings: recentBookings.map(publicBooking),
         members: recentMembers.map(publicMember)
       }
+    };
+  }
+});
+
+export const getConfigSnapshot = query({
+  args: {},
+  handler: async (ctx) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "viewer"]);
+    const [announcementRow, hoursRow] = await Promise.all([
+      configRow(ctx, "announcement"),
+      configRow(ctx, "hours")
+    ]);
+    const announcement = safeAnnouncement(announcementRow?.data ?? defaultAnnouncement);
+    const hours = safeHours(hoursRow?.data ?? defaultHours);
+
+    return {
+      staff: {
+        emailLower: staffUser.emailLower,
+        role: staffUser.role
+      },
+      config: {
+        announcement: announcement.data,
+        hours: hours.data
+      },
+      state: {
+        announcement: publicConfigState(announcementRow, announcement.invalid),
+        hours: publicConfigState(hoursRow, hours.invalid)
+      },
+      editableKeys: staffUser.role === "admin" ? [...siteConfigKeys] : []
+    };
+  }
+});
+
+export const updateSiteConfig = mutation({
+  args: {
+    key: siteConfigKey,
+    data: v.any(),
+    note: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin"]);
+    if (!isSiteConfigKey(args.key)) {
+      throw new Error("config key is not recognized");
+    }
+
+    const normalized = normalizeSiteConfig(args.key, args.data);
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        data: normalized,
+        updatedAt: now,
+        updatedBy: staffUser._id
+      });
+    } else {
+      await ctx.db.insert("config", {
+        key: args.key,
+        data: normalized,
+        updatedAt: now,
+        updatedBy: staffUser._id
+      });
+    }
+
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: staffUser._id,
+      action: "admin.config.update",
+      entityType: "config",
+      entityRef: args.key,
+      metadata: configAuditMetadata(args.key, args.note),
+      createdAt: now
+    });
+
+    return {
+      key: args.key,
+      data: normalized,
+      updatedAt: now
     };
   }
 });
