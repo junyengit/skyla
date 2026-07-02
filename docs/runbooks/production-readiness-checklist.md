@@ -38,11 +38,11 @@ real application intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest code-changing production deployment checked on 2026-07-02:
-  `https://web-gg92osnfi-junyen-enterprises.vercel.app`
+  `https://web-ec9pf9hly-junyen-enterprises.vercel.app`
 - Latest code-changing deployment ID checked on 2026-07-02:
-  `dpl_6PW4HQNh9LF2XKqt92Tx1ENDZxDt`
+  `dpl_EEP2DithtH52i8ixpsCtLQ5Bo9JM`
 - Latest code-changing merge commit checked on 2026-07-02:
-  `37df37c9c20194fa67e93847b5b9cbb8a76092d1`
+  `2d8b1a78fc7f0df3cd01218ec05a7579ebc5abf2`
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -83,8 +83,9 @@ real application intake still depends on the dashboard setup below.
   `/api/members/applications` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no production error/fatal logs for deployment
-  `dpl_6PW4HQNh9LF2XKqt92Tx1ENDZxDt` in the checked 1-hour window.
+  no error/fatal logs for deployment `dpl_EEP2DithtH52i8ixpsCtLQ5Bo9JM` in the
+  checked 1-hour window. The visible 503/401 info logs are the expected
+  Convex-unconfigured and staff-auth no-write gates.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -121,7 +122,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-02 for
-  `https://web-gg92osnfi-junyen-enterprises.vercel.app`,
+  `https://web-ec9pf9hly-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.

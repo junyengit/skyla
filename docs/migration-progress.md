@@ -408,6 +408,18 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Preserved membership lead tracking hooks after accepted submissions, but
       removed the active `/members` route from the legacy
       `SkylaData.addMember` localStorage/Supabase write path.
+- [x] Merged native members cutover PR #54 into `main` as merge commit
+      `2d8b1a78fc7f0df3cd01218ec05a7579ebc5abf2`; Vercel production
+      deployment `https://web-ec9pf9hly-junyen-enterprises.vercel.app`
+      (`dpl_EEP2DithtH52i8ixpsCtLQ5Bo9JM`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes against
+      the Vercel deployment plus both custom domains. `/members` is native,
+      `/members.html` is a compatibility handoff, and neither path exposes
+      `shared-data.js` or `SkylaData.addMember`.
+- [x] Checked Vercel logs for the PR #54 deployment after smoke probes; no
+      error/fatal logs appeared in the checked 1-hour window, and the visible
+      503/401 entries were expected no-write gates.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
