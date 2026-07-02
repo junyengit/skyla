@@ -334,11 +334,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel reports no grouped production runtime errors in the
       checked 24-hour window after PR #45, and no production error/fatal logs
       in the checked 2-hour window.
-- [x] Started `codex/payment-hosting-readability-check` to refresh staff
-      contrast cache keys, remove Terminal `clientSecret` from the public
-      Convex action result, require explicit `SKYLA_STRIPE_MODE`, hard-close
-      the legacy Supabase Stripe webhook repo copy, route static public ticket
-      links to `/checkout`, and document the DNS TXT/dashboard follow-up.
+- [x] Merged payment/hosting/readability PR #46 into `main` as merge commit
+      `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`; Vercel production deployment
+      `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`
+      (`dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Confirmed PR #46 CI, CodeQL, Vercel preview, preview smokes, production
+      route/payment/production-readiness smokes across the Vercel URL plus both
+      custom domains, Vercel runtime errors/logs, and Helium visual QA for
+      `/admin.html`, `/pos.html`, `/admin`, and `/pos-next`.
 
 ## In Progress
 

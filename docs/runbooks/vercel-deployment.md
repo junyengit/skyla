@@ -25,11 +25,11 @@ root.
 
 As of July 2, 2026:
 
-- Recorded verified production-readiness deployment from `main` was READY at
-  `https://web-k2mvfzmip-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_24ZzQNr3tuWGb51n5wZy8qjZdHMm`.
+- Recorded verified payment/hosting/readability deployment from `main` was READY
+  at `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`.
+- Recorded verified deployment ID: `dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`.
 - Recorded verified merge commit:
-  `59b62f56e8018e38f57f28f19a30e599abdd0e8d`.
+  `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -37,9 +37,12 @@ As of July 2, 2026:
 - Production payment routes currently fail closed with `convex_unconfigured`
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
-- The latest checked production deployment metadata reports Bun serverless
-  runtime usage, Turbopack bundling, target `production`, and Git commit
-  `59b62f56e8018e38f57f28f19a30e599abdd0e8d`.
+- The recorded payment/hosting/readability production deployment metadata reports
+  Bun serverless runtime usage, Turbopack bundling, target `production`, and Git
+  commit
+  `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`.
+- A later docs-only deployment may have a newer Vercel URL without changing this
+  functional verification baseline.
 
 ## Bun Deployment Changes
 
