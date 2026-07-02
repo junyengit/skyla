@@ -1,6 +1,6 @@
 # Skyla Phase 2 Roadmap
 
-Last updated: 2026-06-30
+Last updated: 2026-07-02
 
 ## Plain-English Goal
 
@@ -24,6 +24,8 @@ flowchart LR
   vercel["Vercel project: junyen-enterprises/web"]
   next["apps/web Next.js App Router"]
   bridge["apps/web/public legacy bridge"]
+  admin["Native /admin ops snapshot"]
+  posDraft["Native /pos-next draft"]
   supabase["Supabase auth, tables, edge functions"]
   payments["Stripe / Kaskade / EmailJS / Brevo"]
 
@@ -31,6 +33,8 @@ flowchart LR
   domain --> vercel
   vercel --> next
   next --> bridge
+  next --> admin
+  next --> posDraft
   bridge --> supabase
   bridge --> payments
 ```
@@ -47,6 +51,7 @@ Why this is not the final state:
 - Admin and POS rely heavily on client-side behavior.
 - Supabase-era functions and data access are still outside the target architecture.
 - Compatibility files in `apps/web/public` are still legacy code and should be replaced with typed routes.
+- `/admin` is now being cut over route-by-route: the first native page is read-only and staff-token gated, while `/admin.html` remains available for legacy workflows until Convex data/admin mutations are complete.
 
 ## Target Shape
 
@@ -232,6 +237,13 @@ Definition of done:
 - Legacy `.html` paths redirect or rewrite intentionally.
 - Reduced-motion and mobile layouts are verified.
 - Admin/POS are `noindex` and authenticated.
+
+Current admin cutover rule:
+
+- `/admin` should move to native App Router functionality first.
+- `/admin.html` may remain as a noindex compatibility page while missing workflows are rebuilt.
+- New native admin code must use staff-gated Convex/Next server boundaries, not browser Supabase writes or local password/sessionStorage gates.
+- Destructive actions such as hard delete, clear all, and reset all settings stay out until there are typed validators, audit events, and rollback procedures.
 
 ### 5. QA, Security, And GitHub Hardening
 

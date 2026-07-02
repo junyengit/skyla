@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { legacyRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
+import { legacyRoutes, noindexAppRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
 
 const publicDir = join(import.meta.dirname, "public");
 
@@ -10,15 +10,19 @@ describe("legacy route bridge", () => {
   it("keeps a compatibility file for every legacy route", () => {
     expect(new Set(legacyRoutes).size).toBe(legacyRoutes.length);
     expect(legacyRoutes).not.toContain("checkout");
+    expect(legacyRoutes).not.toContain("admin");
 
     for (const route of legacyRoutes) {
       expect(existsSync(join(publicDir, `${route}.html`)), `${route}.html`).toBe(true);
     }
     expect(existsSync(join(publicDir, "checkout.html")), "checkout.html legacy fallback").toBe(true);
+    expect(existsSync(join(publicDir, "admin.html")), "admin.html legacy fallback").toBe(true);
   });
 
   it("keeps admin and POS out of public indexing", () => {
     expect(noindexLegacyRoutes).toEqual(["admin", "pos"]);
+    expect(noindexAppRoutes).toContain("admin");
+    expect(noindexAppRoutes).toContain("pos-next");
 
     const robots = readFileSync(join(publicDir, "robots.txt"), "utf8");
     for (const route of noindexLegacyRoutes) {

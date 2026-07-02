@@ -61,6 +61,7 @@ export default defineSchema({
   })
     .index("by_orderRef", ["orderRef"])
     .index("by_channel_idempotencyKey", ["channel", "idempotencyKey"])
+    .index("by_createdAt", ["createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_channel_status_createdAt", ["channel", "status", "createdAt"])
     .index("by_customerEmail_createdAt", ["customerEmailLower", "createdAt"]),
@@ -97,6 +98,7 @@ export default defineSchema({
   })
     .index("by_saleRef", ["saleRef"])
     .index("by_staff_idempotencyKey", ["staffUserId", "idempotencyKey"])
+    .index("by_createdAt", ["createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_staff_createdAt", ["staffUserId", "createdAt"]),
 
@@ -128,6 +130,7 @@ export default defineSchema({
   })
     .index("by_orderRef", ["orderRef"])
     .index("by_saleRef", ["saleRef"])
+    .index("by_createdAt", ["createdAt"])
     .index("by_provider_providerPaymentId", ["provider", "providerPaymentId"])
     .index("by_provider_idempotencyKey", ["provider", "idempotencyKey"])
     .index("by_provider_status_createdAt", ["provider", "status", "createdAt"]),

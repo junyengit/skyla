@@ -2,21 +2,22 @@ import { legacyRoutes, noindexAppRoutes, noindexLegacyRoutes } from "../../apps/
 
 const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? "https://www.skydeckla.com");
 
-const routes = [
+const routes = Array.from(new Set([
   "/",
   "/index.html",
   "/checkout",
   "/checkout.html",
   ...noindexAppRoutes.map((route) => `/${route}`),
   ...legacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`]),
+  ...noindexLegacyRoutes.map((route) => `/${route}.html`),
   "/robots.txt",
   "/sitemap.xml"
-];
+]));
 
-const noindexRoutes = [
+const noindexRoutes = Array.from(new Set([
   ...noindexAppRoutes.map((route) => `/${route}`),
   ...noindexLegacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`])
-];
+]));
 
 const failures = [];
 

@@ -5,10 +5,9 @@ export const legacyRoutes = [
   "members",
   "privacy",
   "terms",
-  "admin",
   "pos"
 ];
 
 export const noindexLegacyRoutes = ["admin", "pos"];
 
-export const noindexAppRoutes = ["pos-next"];
+export const noindexAppRoutes = ["admin", "pos-next"];
