@@ -169,6 +169,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Re-ran post-merge live route checks for `https://skydeckla.com` and `https://www.skydeckla.com`; `/`, `/checkout`, `/pos-next`, `/admin`, and `/pos` returned `200`, and staff routes remained `noindex, nofollow`.
 - [x] Verified live `/pos-next` in Helium: adding one General Admission reviewed to a `$29.00` server total and kept `Send to Reader` disabled until Convex/staff/reader setup exists.
 - [x] Verified Vercel project `junyen-enterprises/web` still has no configured environment variables, so checkout and Terminal payment routes fail closed with `convex_unconfigured`.
+- [x] Merged post-Terminal current-state docs PR #29 into `main` as merge commit `28290519ce164bfed71832f8a978acb15fa699ac`.
+- [x] Confirmed Vercel production deployment from `main` is READY: `https://web-dqay6ls9s-junyen-enterprises.vercel.app` (`dpl_FqPrQ97E6sdaaZ5Tqv8gBjMU2vaD`).
+- [x] Started branch `codex/payment-hosting-qa-and-contrast` for staff-page contrast, API, hosting, and dependency verification.
+- [x] Re-ran live route smokes for `https://web-dqay6ls9s-junyen-enterprises.vercel.app`, `https://skydeckla.com`, and `https://www.skydeckla.com`; each 23-route matrix returned `200`.
+- [x] Verified live API probes across all three production bases: spoofed checkout total returns canonical `8505` cents, spoofed POS total/reader returns canonical `5800` cents with no reader fields, and Stripe payment routes fail closed with `convex_unconfigured` without exposing `clientSecret`.
+- [x] Raised staff-page text contrast again for legacy `/admin`, legacy `/pos`, and native `/pos-next`, and bumped legacy CSS cache versions.
+- [x] Upgraded safe patch dependencies: `next` and `eslint-config-next` to `16.2.10`, and `@types/node` to `26.1.0`; left ESLint `10.6.0` deferred because the current plugin stack still needs ESLint 9.
 
 ## In Progress
 
@@ -189,6 +196,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/pos-next-draft-spine`.
 - [x] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
 - [x] Verify, review, and ship `codex/pos-terminal-reader-process`.
+- [ ] Verify, review, and ship `codex/payment-hosting-qa-and-contrast`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

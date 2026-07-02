@@ -29,22 +29,29 @@ from Vercel.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Production deployment checked on 2026-07-01:
-  `https://web-61n76njga-junyen-enterprises.vercel.app`
-- Production deployment ID checked on 2026-07-01:
-  `dpl_8XKorTa795wz7RyVgvCMDN3JxANn`
-- Merge commit checked on 2026-07-01:
-  `97f42be824797f681f9a7b0e6e71b4ee4fa5302c`
-- Custom domains checked on 2026-07-01:
+- Production deployment checked on 2026-07-02:
+  `https://web-dqay6ls9s-junyen-enterprises.vercel.app`
+- Production deployment ID checked on 2026-07-02:
+  `dpl_FqPrQ97E6sdaaZ5Tqv8gBjMU2vaD`
+- Merge commit checked on 2026-07-02:
+  `28290519ce164bfed71832f8a978acb15fa699ac`
+- Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel env status checked on 2026-07-01: no project environment variables
+- Vercel env status checked on 2026-07-02: no project environment variables
   are configured for `junyen-enterprises/web`.
-- Live API behavior checked on 2026-07-01: checkout and Terminal payment
-  routes return `convex_unconfigured`, so the production app is still not wired
-  to real Convex payment execution.
+- Live API behavior checked on 2026-07-02 across the apex domain, `www`, and the
+  latest Vercel deployment URL:
+  - Spoofed checkout total `1` cent returned canonical server total `8505` cents.
+  - Spoofed POS total/reader returned canonical server total `5800` cents and no
+    reader fields in the transient draft.
+  - `/api/payments/stripe-checkout`,
+    `/api/payments/stripe-terminal`, and
+    `/api/payments/stripe-terminal/process` returned `503` with
+    `convex_unconfigured`.
+  - No response exposed a Stripe `clientSecret`.
 - Bun checked locally: `1.4.0-canary.1+52a1ddf07`
-- Dependency audit checked on 2026-07-01: clean after the `postcss@8.5.16`
+- Dependency audit checked on 2026-07-02: clean after the `postcss@8.5.16`
   override.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
@@ -76,7 +83,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for PR #28, the Terminal reader handoff merge.
+  deployment checks passed for PR #29, the current-state documentation merge.
 - Admin and POS are marked `noindex, nofollow`.
 - `/pos-next` is marked `noindex, nofollow`.
 - Admin and POS dark-theme text is high contrast.
@@ -88,8 +95,9 @@ flowchart TD
   Stripe final confirmation.
 - Stored readers are rechecked against the registry at payment time, and
   duplicate in-flight reader handoffs are rejected by a short reservation lock.
-- Production `/api/payments/stripe-checkout` and
-  `/api/payments/stripe-terminal` currently fail closed with
+- Production `/api/payments/stripe-checkout`,
+  `/api/payments/stripe-terminal`, and
+  `/api/payments/stripe-terminal/process` currently fail closed with
   `convex_unconfigured` until Convex is connected.
 - Production `/api/order-drafts/pos` ignores spoofed browser totals and returns
   the server catalog total.
@@ -99,7 +107,7 @@ flowchart TD
   totals.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
-- Next.js `16.2.9`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
+- Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
   TypeScript `6.0.3`, Vitest `4.1.9`, and Convex `1.42.1` are current.
 - `bun audit` reports no vulnerabilities.
 
@@ -195,7 +203,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun audit
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-61n76njga-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-dqay6ls9s-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
@@ -215,3 +223,25 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 8. Rebuild Admin and POS as protected App Router/Convex workflows.
 9. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
+
+## Plain-English Handoff
+
+What has been done:
+
+- The website is on Vercel and the domain is pointing there.
+- The repo is organized as a Turborepo with the app under `apps/web`.
+- Checkout and POS totals are now calculated by trusted code, not by whatever
+  the browser sends.
+- The current live site does not have the secret Convex/Stripe settings yet, so
+  card-payment APIs stop safely instead of trying to charge.
+- Admin, POS, and `/pos-next` use high-contrast dark staff screens.
+
+What still needs to be done:
+
+- Link the real Convex cloud project.
+- Add the required Vercel and Convex environment variables.
+- Create the Stripe webhook endpoint in the Stripe dashboard.
+- Test checkout with Stripe test cards only.
+- Test POS Terminal with a Stripe test reader only.
+- Rebuild Admin and POS as protected Next.js/Convex pages, then retire the old
+  compatibility pages and Supabase functions.

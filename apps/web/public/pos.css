@@ -7,7 +7,15 @@
 body.pos-body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg); color: var(--text);
+  color-scheme: dark;
   height: 100vh; overflow: hidden;
+}
+body.pos-body .pos,
+body.pos-body .pos-pay__card,
+body.pos-body .reader-row,
+body.pos-body .custom-charge,
+body.pos-body .pos-ticket {
+  color: var(--text);
 }
 body.pos-body input,
 body.pos-body textarea,
@@ -15,7 +23,16 @@ body.pos-body select,
 body.pos-body button {
   color: var(--text);
 }
-input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.78); opacity: 1; }
+body.pos-body input,
+body.pos-body textarea,
+body.pos-body select {
+  color-scheme: dark;
+}
+body.pos-body select option {
+  background: var(--panel2);
+  color: var(--text);
+}
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.86); opacity: 1; }
 
 /* GATE */
 .gate {

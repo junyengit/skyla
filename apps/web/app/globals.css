@@ -724,8 +724,25 @@ h3 {
   min-height: 100svh;
   background: #050506;
   color: #fff;
+  color-scheme: dark;
   overflow-x: hidden;
   padding: 18px clamp(14px, 3vw, 34px) 28px;
+}
+
+.posNextPage input,
+.posNextPage textarea,
+.posNextPage select,
+.posNextPage button {
+  color: #fff;
+}
+
+.posNextPage select option {
+  background: #111216;
+  color: #fff;
+}
+
+.posNextPage .primaryAction {
+  color: #15120a;
 }
 
 .posNextHeader {

@@ -311,7 +311,7 @@ Current order-spine state:
   canonical totals without Convex envs, and persists through Convex when
   `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 - Local Convex validation: anonymous local deployment at `http://127.0.0.1:3210` when `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` is run
-- Vercel env status checked on 2026-07-01: no environment variables configured for `junyen-enterprises/web`
+- Vercel env status checked on 2026-07-02: no environment variables configured for `junyen-enterprises/web`
 - Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, Stripe dashboard webhook endpoint, live payment acceptance
 - Stripe Checkout/webhook status: local code exists and is server-authoritative
   by stored `orderRef`, async failure events leave the order terminal instead

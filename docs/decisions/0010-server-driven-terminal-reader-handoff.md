@@ -95,7 +95,9 @@ sequenceDiagram
   Stripe webhook or polling slice.
 - Tipping remains disabled for this path unless it is modeled server-side in a
   future decision.
-- Production deployment `dpl_8XKorTa795wz7RyVgvCMDN3JxANn` is live at
-  `https://web-61n76njga-junyen-enterprises.vercel.app`, but payment routes
-  still fail closed with `convex_unconfigured` until Vercel and Convex are
-  wired to the real deployment env vars.
+- PR #28 first shipped on production deployment
+  `dpl_8XKorTa795wz7RyVgvCMDN3JxANn` at
+  `https://web-61n76njga-junyen-enterprises.vercel.app`. Later production
+  deployments keep the same payment behavior: routes still fail closed with
+  `convex_unconfigured` until Vercel and Convex are wired to the real deployment
+  env vars.
