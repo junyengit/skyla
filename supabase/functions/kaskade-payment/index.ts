@@ -8,10 +8,6 @@
 // SECRET: Edge Functions → Secrets → add  KASKADE_SECRET_KEY = ks_live_...
 // ============================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { withSupabase } from "jsr:@supabase/server@^1";
-
-const KASKADE_SECRET = Deno.env.get("KASKADE_SECRET_KEY") ?? "";
-const KASKADE_API = "https://pharosgate.com/api/v1";   // provider: PharosGate
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -27,51 +23,19 @@ function json(body: unknown, status = 200) {
 }
 
 async function handle(req: Request) {
-  try {
-    if (!KASKADE_SECRET) return json({ error: "KASKADE_SECRET_KEY not set" }, 500);
-    const payload = await req.json();
-
-    // ── Check live status of an existing payment (for polling) ──
-    if (payload.action === "status") {
-      if (!payload.paymentId) return json({ error: "Missing paymentId" }, 400);
-      const res = await fetch(`${KASKADE_API}/payments/${payload.paymentId}`, {
-        headers: { "Authorization": `Bearer ${KASKADE_SECRET}` },
-      });
-      const raw = await res.text();
-      let data: any = {};
-      try { data = JSON.parse(raw); } catch { /* non-JSON */ }
-      if (!res.ok) return json({ error: "PharosGate status failed", status: res.status, detail: data || raw }, 400);
-      return json({ payment: data.payment ?? data });
-    }
-
-    // ── Create a payment ──
-    const { priceUsd, payCurrency = "btc", orderId, orderDescription } = payload;
-    if (!priceUsd || priceUsd < 1) return json({ error: "Invalid amount" }, 400);
-
-    const res = await fetch(`${KASKADE_API}/payments`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${KASKADE_SECRET}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ priceUsd, payCurrency, orderId, orderDescription }),
-    });
-    const raw = await res.text();
-    let data: any = {};
-    try { data = JSON.parse(raw); } catch { /* non-JSON */ }
-    if (!res.ok) {
-      return json({ error: "PharosGate request failed", status: res.status, detail: data || raw }, 400);
-    }
-
-    return json({ payment: data.payment ?? data });
-  } catch (e) {
-    return json({ error: String((e as Error)?.message || e) }, 400);
-  }
+  await req.text().catch(() => "");
+  return json(
+    {
+      error:
+        "Legacy browser-authoritative Kaskade payment creation is permanently disabled. Use the Next.js/Convex payment flow."
+    },
+    410
+  );
 }
 
 export default {
-  fetch: (req: Request, ctx: unknown) => {
+  fetch: (req: Request) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-    return withSupabase({ auth: ["publishable", "secret"] }, handle)(req, ctx);
+    return handle(req);
   },
 };

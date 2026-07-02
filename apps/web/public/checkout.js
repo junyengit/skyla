@@ -800,12 +800,9 @@ async function finalizeStripeBooking(piId) {
 }
 
 // ── PAYMENTS (Kaskade — crypto, experimental) ────────────────────────────────
-// Alternative provider to Stripe (pay in BTC, etc.). Like Stripe, nothing
-// sensitive lives here: the secret key (ks_live_...) is stored in the Supabase
-// `kaskade-payment` Edge Function and never reaches the browser. Off by default
-// while we trial it alongside Stripe — flip to true once the function is
-// deployed and the KASKADE_SECRET_KEY secret is set in Supabase.
-const KASKADE_ENABLED = true;
+// Legacy crypto payments are retired until they can be recreated as a
+// server-authoritative Convex action from stored order refs.
+const KASKADE_ENABLED = false;
 
 const CRYPTO_META = {
   btc:       { name: 'Bitcoin',      sym: '₿' },
@@ -824,15 +821,8 @@ const CRYPTO_FAILED  = ['failed', 'expired', 'refunded'];
 let _cryptoPoll = null, _cryptoTimer = null, _cryptoCtx = null;
 
 // Creates a crypto payment and returns { id, payAddress, payAmount, ... }.
-async function createKaskadePayment(booking, payCurrency = 'btc') {
-  const data = await SkylaData.invokeFunction('kaskade-payment', {
-    priceUsd:         Math.round(booking.total),
-    payCurrency,
-    orderId:          booking.bookingRef,
-    orderDescription: `Sky LA — ${booking.packageName || 'Booking'}`,
-  });
-  if (!data || data.error) throw new Error(data?.error || 'Crypto payment failed');
-  return data.payment;
+async function createKaskadePayment() {
+  throw new Error('Legacy crypto checkout is retired. Use the secure /checkout flow.');
 }
 
 async function startCryptoCheckout(booking, ticketData) {
@@ -951,7 +941,7 @@ function closeCryptoModal() {
 function updatePayMethodUI() {
   const method = document.querySelector('input[name="paymethod"]:checked')?.value || 'card';
   const cryptoField = document.getElementById('crypto-currency-field');
-  if (cryptoField) cryptoField.style.display = method === 'crypto' ? '' : 'none';
+  if (cryptoField) cryptoField.style.display = method === 'crypto' && KASKADE_ENABLED ? '' : 'none';
 
   // Card → drop the embedded card form down; Crypto → collapse it
   const box = document.getElementById('stripe-inline');
@@ -966,15 +956,14 @@ function updatePayMethodUI() {
     opt.classList.toggle('is-active', opt.querySelector('input')?.value === method);
   });
 
-  const total  = document.getElementById('final-total')?.textContent || '$0.00';
   const btn    = document.querySelector('.btn--confirm');
   const notice = document.getElementById('pay-notice');
 
   if (method === 'crypto') {
-    if (btn) btn.innerHTML = `₿ Pay with Crypto — <span id="final-total">${total}</span>`;
+    if (btn) setConfirmButtonTotalLabel('Crypto Unavailable —');
     if (notice) notice.innerHTML =
       `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` +
-      ` Pay in Bitcoin, Ethereum, USDT &amp; more. Your ticket is issued the moment the payment confirms.`;
+      ` Crypto checkout is paused during the server-priced payment migration.`;
   } else if (STRIPE_ENABLED) {
     applyStripeUI();
   } else {

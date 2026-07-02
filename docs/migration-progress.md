@@ -217,6 +217,28 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `https://web-2vvwavkz2-junyen-enterprises.vercel.app`
       (`dpl_EnTbyZLcqo49NK6adc6Eag3Vn7k6`) is READY and the post-merge
       route/payment probes match the fail-closed state above.
+- [x] Merged Terminal webhook reconciliation PR #37 into `main` as merge commit
+      `18646de9a636c50fc470ffabc83f6d212884db15`; Vercel production deployment
+      `https://web-51jx64rul-junyen-enterprises.vercel.app`
+      (`dpl_Fz2YSWNMiagFgUXmHcrCoUpxj73B`) is READY and aliased to
+      `skydeckla.com` and `www.skydeckla.com`.
+- [x] Added `bun run test:payments`, a repeatable payment API smoke that checks
+      spoofed checkout/POS totals are replaced, Stripe execution routes fail
+      closed while Convex is unconfigured, staff auth gates Terminal routes,
+      and no response exposes `clientSecret`.
+- [x] Ran `bun run test:payments` against
+      `https://web-51jx64rul-junyen-enterprises.vercel.app`,
+      `https://skydeckla.com`, and `https://www.skydeckla.com`; each passed
+      with checkout total `8505` cents and POS total `9700` cents for the
+      current smoke payloads.
+- [x] Retired legacy Kaskade/crypto checkout in the compatibility page and repo
+      Supabase function copies after review found it could still create a
+      browser-priced payment from `booking.total`.
+- [x] Hardened the repo copy of the legacy Supabase Stripe webhook so bad
+      signature responses no longer expose webhook-secret length/prefix details
+      and old timestamps are rejected.
+- [x] Extended the tracked artifact/security guard to block reintroducing
+      the retired legacy Kaskade enable flag and webhook secret diagnostics.
 
 ## In Progress
 
@@ -242,6 +264,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/native-admin-actions-spine`.
 - [x] Verify, review, and ship `codex/admin-config-spine`.
 - [x] Verify, review, and ship `codex/convex-live-readiness-spine`.
+- [x] Verify, review, and ship `codex/terminal-webhook-reconciliation`.
+- [ ] Verify, review, and ship `codex/payment-api-smoke-current-state`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -249,8 +273,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Convex generated types and persisted draft mutations.
 - [ ] Real Convex cloud deployment link and Vercel env wiring.
 - [x] Convex Stripe HTTP webhook action.
-- [ ] Kaskade webhook/action handling.
-- [ ] Kaskade server-authoritative action.
+- [x] Legacy Kaskade browser-authoritative checkout and webhook are retired in
+      repo code.
+- [ ] Future Kaskade webhook/action handling may return only after it is
+      rebuilt as server-authoritative Convex code from stored order refs.
+- [ ] Future Kaskade server-authoritative action.
 - [x] Stripe Terminal sale-ref PaymentIntent action and Next route.
 - [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
 - [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
@@ -271,6 +298,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Do not commit or deploy `output/` or `tmp/`.
 - Use previous Vercel deployments as the hosting rollback path; do not treat root GitHub Pages files as the active rollback path after cleanup merges.
 - Treat `bun run check`, `bun run security:audit`, `bun run security:artifacts`, and custom-domain smoke tests as the minimum baseline before merging migration PRs.
+- Use `bun run test:payments` as the public payment/API safety smoke while
+  production is expected to fail closed before real Convex/Stripe dashboard
+  wiring.
 
 ## Risks To Track
 
@@ -287,5 +317,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - The reader-processing work adds server-driven reader processing for stored POS sales. Reader handoff still stays non-final; signed Stripe `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` webhooks now reconcile the stored sale against `saleRef`, Terminal PaymentIntent ID, amount, currency, and webhook idempotency.
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
-- Repository copies of legacy Supabase Stripe Checkout and Terminal charge creation now return `410` permanently, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.
+- Repository copies of legacy Supabase Stripe Checkout, Terminal charge
+  creation, Kaskade payment creation, and Kaskade webhook handling now return
+  `410` permanently where they could affect payment state, but this does not
+  change any already deployed Supabase function until it is redeployed or
+  disabled in the Supabase dashboard.
 - The native `/admin` path now has audited status actions and announcement/hours config, but it still intentionally excludes hard deletes, bulk clears, reset-all settings, voucher redemption, payment refunds, and pricing/menu/catalog mutations until typed validators, reconciliation rules, and rollback procedures exist.

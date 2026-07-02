@@ -41,7 +41,7 @@ async function hmacHex(secret: string, payload: string): Promise<string> {
 
 // Verify Stripe's signature: header is "t=<ts>,v1=<hmac>[,v1=<hmac>...]";
 // the signed payload is `${t}.${rawBody}` HMAC-SHA256'd with the signing secret.
-// Returns { ok, diag } where diag is a NON-sensitive hint for debugging.
+// Returns true only when the Stripe signature and timestamp are valid.
 async function validSignature(rawBody: string, sigHeader: string): Promise<{ ok: boolean; diag: string }> {
   if (!WEBHOOK_SECRET) return { ok: false, diag: "no_secret_configured" };
   if (!sigHeader)      return { ok: false, diag: "no_signature_header" };
@@ -57,6 +57,10 @@ async function validSignature(rawBody: string, sigHeader: string): Promise<{ ok:
     else if (k === "v1") v1s.push(v);
   }
   if (!t || v1s.length === 0) return { ok: false, diag: "malformed_header" };
+  const timestamp = Number(t);
+  if (!Number.isFinite(timestamp) || Math.abs(Date.now() / 1000 - timestamp) > 300) {
+    return { ok: false, diag: "timestamp_out_of_tolerance" };
+  }
 
   const expected = await hmacHex(WEBHOOK_SECRET, `${t}.${rawBody}`);
   for (const sig of v1s) {
@@ -65,8 +69,7 @@ async function validSignature(rawBody: string, sigHeader: string): Promise<{ ok:
     for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
     if (diff === 0) return { ok: true, diag: "ok" };
   }
-  // Non-sensitive hint: length + "whsec_" prefix only (never the secret itself)
-  return { ok: false, diag: `mismatch secret_len=${WEBHOOK_SECRET.length} prefix=${WEBHOOK_SECRET.slice(0, 6)}` };
+  return { ok: false, diag: "signature_mismatch" };
 }
 
 Deno.serve(async (req) => {
@@ -76,7 +79,8 @@ Deno.serve(async (req) => {
   const sig = req.headers.get("stripe-signature") || "";
   const check = await validSignature(raw, sig);
   if (!check.ok) {
-    return new Response(`invalid signature: ${check.diag}`, { status: 401 });
+    console.warn("stripe-webhook invalid signature", check.diag);
+    return new Response("invalid signature", { status: 401 });
   }
 
   let event: any = {};

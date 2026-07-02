@@ -29,6 +29,21 @@ const retiredLegacyPaymentFlags = [
   ["SKYLA_ENABLE", "LEGACY_TERMINAL_BRIDGE"].join("_")
 ];
 
+const retiredLegacyPaymentPatterns = [
+  {
+    pattern: /\bKASKADE_ENABLED\s*=\s*true\b/,
+    message: "legacy Kaskade browser-authoritative checkout must stay disabled"
+  },
+  {
+    pattern: /WEBHOOK_SECRET\.(?:length|slice)\b/,
+    message: "webhook signature errors must not expose secret diagnostics"
+  },
+  {
+    pattern: /secret_len=/,
+    message: "webhook signature errors must not expose secret diagnostics"
+  }
+];
+
 const binaryExtensions = new Set([
   ".gif",
   ".jpeg",
@@ -73,6 +88,13 @@ for (const file of trackedFiles) {
     for (const flag of retiredLegacyPaymentFlags) {
       if (contents.includes(flag)) {
         failures.push(`${file}: retired legacy payment flag ${flag} must not be reintroduced`);
+        break;
+      }
+    }
+
+    for (const { pattern, message } of retiredLegacyPaymentPatterns) {
+      if (pattern.test(contents)) {
+        failures.push(`${file}: ${message}`);
         break;
       }
     }
