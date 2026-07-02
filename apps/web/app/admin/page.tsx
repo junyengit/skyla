@@ -49,8 +49,8 @@ export default function AdminPage() {
           <span>Staff ops</span>
         </div>
         <nav aria-label="Staff navigation">
-          <Link href="/pos-next" prefetch={false}>
-            POS Draft
+          <Link href="/pos" prefetch={false}>
+            POS
           </Link>
           <Link href="/admin.html" prefetch={false}>
             Legacy Admin

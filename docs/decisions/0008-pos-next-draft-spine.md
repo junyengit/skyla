@@ -48,6 +48,8 @@ This creates a safe proving ground for POS pricing without breaking the current
 live register. It also gives tests a stable place to prove that browser totals
 are ignored.
 
-The migration is not complete after this decision. The remaining POS payment
-work is to store the draft under real staff auth, create a Terminal payment
-intent from `saleRef`, and then replace the legacy `/pos` path.
+The migration was not complete after this decision. Later work added
+sale-ref-only Terminal actions, server-driven reader processing, webhook
+reconciliation, and then moved the extensionless `/pos` route onto the native
+App Router shell. `/pos.html` remains as the explicit legacy fallback until
+dashboard wiring and test-reader acceptance are complete.

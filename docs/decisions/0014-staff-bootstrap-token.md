@@ -4,8 +4,8 @@ Status: Accepted for the migration slice.
 
 ## Simple Version
 
-Native `/admin` and `/pos-next` need Convex `staffUsers` rows before staff can
-log in with real Convex auth.
+Native `/admin`, `/pos`, and compatibility `/pos-next` need Convex
+`staffUsers` rows before staff can log in with real Convex auth.
 
 Manual table edits are easy to get wrong, so the repo now has a typed bootstrap
 mutation:

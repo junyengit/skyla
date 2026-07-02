@@ -118,12 +118,14 @@ PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_SECRET_KEY "$STRIPE_SECRE
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_PAYMENT_RETURN_ORIGINS "https://skydeckla.com,https://www.skydeckla.com"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_TERMINAL_READER_REGISTRY "tmr_frontdesk@tml_lobby"
+# Set only after Stripe test-reader acceptance passes.
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_POS_TERMINAL_ACCEPTANCE "enabled"
 ```
 
 Use Stripe test-mode values for Preview/Development. Do not paste secret values
 into PRs, logs, or docs.
 
-6. Seed staff users before testing native `/admin` or `/pos-next` against the
+6. Seed staff users before testing native `/admin`, `/pos`, or `/pos-next` against the
    real deployment. Prefer the typed bootstrap mutation instead of manual table
    edits.
 

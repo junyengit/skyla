@@ -17,11 +17,12 @@ from a stored POS `saleRef` only. The primary `/checkout` page now uses the
 Next.js App Router and fails closed until the real Convex deployment, Vercel
 env vars, and Stripe dashboard webhook endpoint are ready.
 
-Live POS is still a legacy compatibility page. A native `/pos-next` draft page
-exists for server-priced sale review, and the repo now has the
-server-authoritative Terminal action, but reader collection is still locked
-until staff auth, Convex envs, and Stripe Terminal acceptance are complete.
-Native `/admin` now has a staff-token operations snapshot plus audited
+The extensionless `/pos` route is now the native server-priced POS shell. The
+older `/pos-next` URL still renders that native shell during rollout, and
+`/pos.html` remains as the legacy compatibility fallback. Reader collection is
+still locked until staff auth, Convex envs, Stripe webhooks, and Stripe
+Terminal test-reader acceptance are complete. Native `/admin` now has a
+staff-token operations snapshot plus audited
 booking/member status actions. `/admin.html` remains the legacy fallback until
 config, voucher, refund, and destructive workflows are rebuilt safely. The old
 static checkout URL is still reachable at `/checkout.html`, but it is now only
@@ -46,25 +47,28 @@ real event intake still depends on the dashboard setup below.
 4. Keep Stripe in test mode first.
 5. Create the Stripe webhook endpoint after Convex gives you the site URL.
 6. Use Stripe test cards and a test Terminal reader only.
-7. Seed the first staff admin, then remove the bootstrap token.
-8. Confirm member and event forms save into Convex in Preview.
-9. Confirm checkout and POS stay server-priced with test payments.
-10. Disable or redeploy old Supabase payment functions from the fail-closed
+7. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until the test reader passes.
+8. Seed the first staff admin, then remove the bootstrap token.
+9. Confirm member and event forms save into Convex in Preview.
+10. Confirm checkout and POS stay server-priced with test payments.
+11. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-11. Finish the native admin/POS rebuild before removing the legacy fallbacks.
-12. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+12. Finish the native admin/POS rebuild and test-reader acceptance before
+    removing the legacy fallbacks.
+13. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest app-code production deployment checked on 2026-07-02:
-  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`
+- Latest app-code production deployment checked before this POS route slice on
+  2026-07-02:
+  `https://web-aaow8lg0e-junyen-enterprises.vercel.app`
 - Latest app-code deployment ID checked on 2026-07-02:
-  `dpl_ArArkLGov88ksSxchCDM5TXBNGQe`
+  `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`
 - Latest app-code merge commit checked on 2026-07-02:
-  `d0844856f82b764687ead620b9207a56b1cf7719` (PR #59)
+  `e5e4b75b477b7ffef20f5279a97491024fcb5cab` (PR #61)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -83,7 +87,7 @@ real event intake still depends on the dashboard setup below.
   strict required checks `ci-build`, `Analyze JavaScript and TypeScript`, and
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
   blocked.
-- GitHub CodeQL alerts checked on 2026-07-02 after the PR #59 `main` scan:
+- GitHub CodeQL alerts checked on 2026-07-02 after the PR #61 `main` scan:
   no open alerts.
 - GitHub security toggles checked on 2026-07-02: Dependabot vulnerability
   alerts are enabled, automated security fixes are enabled, and the repo
@@ -116,7 +120,7 @@ real event intake still depends on the dashboard setup below.
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no error/fatal logs for deployment `dpl_ArArkLGov88ksSxchCDM5TXBNGQe` in
+  no error/fatal logs for deployment `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t` in
   the fetched log window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
@@ -135,8 +139,8 @@ flowchart TD
   checkout["App Router checkout"]
   members["Native /members + member API"]
   experiences["Native /experiences + inquiry API"]
-  posNext["App Router POS draft"]
-  legacy["Legacy admin/POS + fallback pages"]
+  pos["Native /pos POS draft"]
+  legacy["Legacy admin/POS fallback pages"]
   supabase["Legacy Supabase functions"]
   convex["Convex order/payment code"]
   stripe["Stripe dashboard"]
@@ -144,12 +148,12 @@ flowchart TD
   domain --> vercel --> next --> checkout
   next --> members
   next --> experiences
-  next --> posNext
+  next --> pos
   next --> legacy --> supabase
   checkout -. "needs env" .-> convex
   members -. "needs env" .-> convex
   experiences -. "needs env" .-> convex
-  posNext -. "needs staff auth" .-> convex
+  pos -. "needs staff auth" .-> convex
   convex -. "needs env + webhook endpoint" .-> stripe
 ```
 
@@ -159,7 +163,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-02 for
-  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`,
+  `https://web-aaow8lg0e-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
@@ -193,15 +197,16 @@ flowchart TD
   writes event inquiries through `SkylaData.addInquiry`, browser localStorage,
   or the legacy Supabase mirror.
 - Admin and POS dark-theme text is high contrast. Legacy `/admin.html`
-  currently references `admin.css?v=8`, and legacy `/pos` currently references
-  `pos.css?v=10`; keep the smoke script expected cache keys in sync when those
-  files change.
+  currently references `admin.css?v=8`, and legacy `/pos.html` currently
+  references `pos.css?v=10`; keep the smoke script expected cache keys in sync
+  when those files change.
 - Prior Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` were
   readable on the black staff surfaces. In this later audit, macOS window
   capture returned only the desktop wallpaper, so the current slice relies on
   automated route/payment/readiness smokes plus direct rendered HTML/CSS
   assertions until Helium capture is available again.
-- `/pos-next` reviews a server-calculated POS total without using browser totals.
+- Native `/pos` and compatibility `/pos-next` review a server-calculated POS
+  total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
 - Convex Stripe actions now require `SKYLA_STRIPE_MODE`, and they reject a
@@ -270,11 +275,11 @@ flowchart TD
   redeployed from the permanently fail-closed repo code in the Supabase
   dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
   `kaskade-payment`, and `kaskade-webhook`.
-- POS legacy reader connection and charge UI should stay disabled while the
-  `/pos-next` staff-authenticated Terminal flow is accepted.
-- `/pos-next` is not the live register yet because reader processing and signed
-  webhook reconciliation still need real Convex/staff auth/Stripe dashboard envs
-  plus Stripe test-reader acceptance.
+- Legacy `/pos.html` reader connection and charge UI should stay disabled while
+  the native `/pos` staff-authenticated Terminal flow is accepted.
+- Native `/pos` is not safe for live card-present payment yet because reader
+  processing and signed webhook reconciliation still need real
+  Convex/staff auth/Stripe dashboard envs plus Stripe test-reader acceptance.
 - Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
   The native `/admin` snapshot, booking lookup/check-in, status actions, and
   announcement/hours config are only the first admin slices.
@@ -303,8 +308,8 @@ flowchart TD
       belong in Convex, not `NEXT_PUBLIC_*`.
 - [ ] Add Google Ads public env vars only when ads are ready.
 - [ ] Keep secrets out of `NEXT_PUBLIC_*`.
-- [ ] Confirm `/pos-next` remains `X-Robots-Tag: noindex, nofollow` after every
-      preview and production deploy.
+- [ ] Confirm `/pos` and `/pos-next` remain `X-Robots-Tag: noindex, nofollow`
+      after every preview and production deploy.
 - [ ] Confirm `/admin` and `/admin.html` remain `X-Robots-Tag: noindex,
       nofollow` after every preview and production deploy.
 - [ ] In Vercel DNS, confirm required TXT records still exist for Apple/Brevo or
@@ -323,13 +328,16 @@ flowchart TD
 - [ ] Set `STRIPE_WEBHOOK_SECRET` after creating the Stripe endpoint.
 - [ ] Set `SKYLA_TERMINAL_READER_REGISTRY` with the Stripe test-reader IDs and
       locations that staff are allowed to use.
+- [ ] Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until Stripe test-reader
+      acceptance passes, then set it to `enabled` in the matching
+      Vercel/Convex runtime scopes.
 - [ ] Run `bun run convex:env:check`.
 - [ ] Run `bun run convex:codegen`.
 - [ ] Temporarily set `SKYLA_STAFF_BOOTSTRAP_TOKEN`, run
       `staffBootstrap.upsertStaffUser` for the initial admin, then remove the
       token.
 - [ ] Seed active `staffUsers` records for admins/viewers/POS staff before
-      using native `/admin` or `/pos-next`.
+      using native `/admin`, `/pos`, or `/pos-next`.
 - [ ] Verify `/api/admin/operations` returns `200` with a valid staff token and
       `401`/`503` without auth or envs.
 - [ ] Verify `/api/admin/bookings/status` returns `200` with a valid admin/pos
@@ -384,8 +392,9 @@ flowchart TD
 - [x] Add signed Stripe Terminal PaymentIntent webhook reconciliation from the
       stored `saleRef`, stored Terminal PaymentIntent ID, amount, currency, and
       webhook event ID.
-- [ ] Wire the POS UI to collect/process that Convex-created PaymentIntent on a
-      real Stripe test reader.
+- [ ] Wire native `/pos` to collect/process that Convex-created PaymentIntent
+      on a real Stripe test reader, then set `SKYLA_POS_TERMINAL_ACCEPTANCE`
+      to `enabled`.
 - [ ] Disable or redeploy legacy Supabase Stripe functions so any live old
       functions inherit the fail-closed behavior.
 
@@ -452,10 +461,10 @@ The production-readiness smoke is safe before and after dashboard wiring because
 its payment probes are no-write by default: draft routes omit idempotency/auth
 write prerequisites, and payment execution routes stop at validation or missing
 staff auth before any Stripe action can run. It checks the route matrix, noindex
-headers, server-owned totals, checkout handoff/retired asset checks, the member
-application no-write gate, the experience inquiry no-write gate, and staff
-admin/POS dark stylesheet cache keys across the custom domains plus an optional
-`VERCEL_PRODUCTION_URL`.
+headers, server-owned totals, checkout handoff/retired asset checks, the native
+POS no-legacy check, the member application no-write gate, the experience
+inquiry no-write gate, and staff admin/POS fallback stylesheet cache keys across
+the custom domains plus an optional `VERCEL_PRODUCTION_URL`.
 
 Current dependency note:
 
@@ -477,12 +486,13 @@ Current dependency note:
 5. Create Stripe test webhook endpoint and set Convex Stripe env vars.
 6. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-7. Add real Vercel/Convex envs, then accept POS Terminal reader processing on a
+7. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
 8. Accept Stripe Terminal final webhook reconciliation in test mode with a real
    test reader and matching Convex sale.
-9. Promote `/pos-next` into the live POS only after Terminal capture uses
-   stored `saleRef` totals.
+9. Allow staff to use native `/pos` for card-present payment only after
+   Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
+   final state.
 10. Finish native Admin beyond lookup/status actions: vouchers, refunds, config,
    catalog, exports, and any destructive action with typed validators,
    audit logs, and rollback steps.
@@ -509,10 +519,14 @@ What has been done:
   contrast/cache-key checks.
 - `/members` is now a Next.js page. Its form does not save locally; it only
   succeeds after the server accepts the application.
-- Admin, POS, and `/pos-next` use high-contrast dark staff screens.
+- Admin, native POS, `/pos-next`, and legacy fallbacks use high-contrast dark
+  staff screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations plus
   booking/member status buttons; `/admin.html` remains as a fallback for the
   workflows that are not rebuilt yet.
+- `/pos` is now the native server-priced POS screen. `/pos.html` remains only
+  as the old disabled fallback while Stripe Terminal test-reader acceptance is
+  completed.
 
 What still needs to be done:
 
@@ -521,7 +535,7 @@ What still needs to be done:
 - Test the native `/members` application form in preview after Convex is linked.
 - Create the Stripe webhook endpoint in the Stripe dashboard.
 - Test checkout with Stripe test cards only.
-- Test POS Terminal with a Stripe test reader only.
+- Test native `/pos` Terminal with a Stripe test reader only.
 - Finish the protected Admin and POS Next.js/Convex pages, then retire the old
   compatibility pages and Supabase functions.
 - Use Stripe test cards and a Stripe test Terminal reader first. Do not verify

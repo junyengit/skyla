@@ -24,6 +24,7 @@ function request(body: unknown, init?: RequestInit) {
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_CONVEX_URL;
   delete process.env.CONVEX_URL;
+  delete process.env.SKYLA_POS_TERMINAL_ACCEPTANCE;
   fetchActionMock.mockReset();
 });
 
@@ -63,6 +64,7 @@ describe("/api/payments/stripe-terminal", () => {
 
   it("requires saleRef and idempotencyKey before calling Convex", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
 
     const response = await CREATE_POST(
       request({ saleRef: "SALE260704-ABC123" }, { headers: { authorization: "Bearer staff.jwt.token" } })
@@ -77,6 +79,7 @@ describe("/api/payments/stripe-terminal", () => {
 
   it("surfaces server configuration failures as unavailable", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
     fetchActionMock.mockRejectedValueOnce(new Error("STRIPE_SECRET_KEY does not match SKYLA_STRIPE_MODE"));
 
     const response = await CREATE_POST(
@@ -97,6 +100,7 @@ describe("/api/payments/stripe-terminal", () => {
 
   it("starts Stripe Terminal through the Convex action with staff auth and no browser amount or client secret", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
     fetchActionMock.mockResolvedValueOnce({
       saleRef: "SALE260704-ABC123",
       provider: "terminal",
@@ -136,6 +140,26 @@ describe("/api/payments/stripe-terminal", () => {
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }
     );
   });
+
+  it("requires explicit POS Terminal acceptance before calling Convex", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+
+    const response = await CREATE_POST(
+      request(
+        {
+          saleRef: "SALE260704-ABC123",
+          idempotencyKey: "pos_20260704_abc123"
+        },
+        { headers: { authorization: "Bearer staff.jwt.token" } }
+      )
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "pos_terminal_acceptance_required"
+    });
+    expect(fetchActionMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("/api/payments/stripe-terminal/process", () => {
@@ -174,6 +198,7 @@ describe("/api/payments/stripe-terminal/process", () => {
 
   it("surfaces missing reader registry failures as unavailable", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
     fetchActionMock.mockRejectedValueOnce(new Error("Trusted Terminal reader registry is not configured"));
 
     const response = await PROCESS_POST(
@@ -194,6 +219,7 @@ describe("/api/payments/stripe-terminal/process", () => {
 
   it("processes the stored Terminal PaymentIntent without browser reader or amount authority", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
     fetchActionMock.mockResolvedValueOnce({
       saleRef: "SALE260704-ABC123",
       provider: "terminal",
@@ -234,5 +260,25 @@ describe("/api/payments/stripe-terminal/process", () => {
       },
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }
     );
+  });
+
+  it("requires explicit POS Terminal acceptance before processing on a reader", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+
+    const response = await PROCESS_POST(
+      request(
+        {
+          saleRef: "SALE260704-ABC123",
+          idempotencyKey: "pos_20260704_abc123"
+        },
+        { headers: { authorization: "Bearer staff.jwt.token" } }
+      )
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "pos_terminal_acceptance_required"
+    });
+    expect(fetchActionMock).not.toHaveBeenCalled();
   });
 });

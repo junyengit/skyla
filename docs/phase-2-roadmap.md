@@ -27,7 +27,7 @@ flowchart LR
   admin["Native /admin ops snapshot"]
   experiences["Native /experiences inquiry page + API"]
   members["Native /members application page + API"]
-  posDraft["Native /pos-next draft"]
+  posDraft["Native /pos draft"]
   supabase["Supabase auth, tables, edge functions"]
   payments["Stripe / Kaskade / EmailJS / Brevo"]
 
@@ -62,6 +62,10 @@ Why this is not the final state:
 - The native `/experiences` page now posts to the server inquiry API and fails
   closed until Convex is configured. `/experiences.html` remains as a
   compatibility artifact while linked Convex acceptance is verified.
+- The native `/pos` page now renders the server-priced App Router POS shell.
+  `/pos-next` remains as a compatibility URL for the same shell, and
+  `/pos.html` remains as the disabled legacy fallback until Stripe test-reader
+  acceptance is complete.
 
 ## Target Shape
 
@@ -328,11 +332,11 @@ Current verified Vercel data:
 - Vercel project root: `apps/web`
 - Production branch: `main`
 - Latest verified app-code production commit:
-  `d0844856f82b764687ead620b9207a56b1cf7719` (PR #59)
+  `e5e4b75b477b7ffef20f5279a97491024fcb5cab` (PR #61)
 - Latest verified app-code production deployment:
-  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`
+  `https://web-aaow8lg0e-junyen-enterprises.vercel.app`
 - Latest verified app-code production deployment ID:
-  `dpl_ArArkLGov88ksSxchCDM5TXBNGQe`
+  `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`
 - Later docs-only merges can create newer Vercel deployments with the same app
   behavior; query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
@@ -350,9 +354,10 @@ Current verified Vercel data:
   `SkylaData.addMember`; application success remains gated until Convex is
   linked in Vercel.
 - Staff contrast cache-bust PR: `#44`
-- Staff contrast state: `/admin`, `/admin.html`, `/pos-next`, and `/pos` use
-  dark staff surfaces with readable white text; legacy `admin.html` and `pos`
-  currently reference `admin.css?v=8` and `pos.css?v=10`.
+- Staff contrast state: `/admin`, `/admin.html`, `/pos`, `/pos-next`, and
+  `/pos.html` use dark staff surfaces with readable white text; legacy
+  `admin.html` and `pos.html` currently reference `admin.css?v=8` and
+  `pos.css?v=10`.
 - Production-readiness smoke PR: `#45`
 - Production-readiness state: `bun run test:production-readiness` bundles the
   route matrix, no-write payment probes, member application and experience

@@ -69,6 +69,7 @@ describe("admin operations route", () => {
         stripeSecret: true,
         stripeWebhookSecret: false,
         terminalReaderRegistry: false,
+        terminalAcceptance: false,
         paymentReturnOrigins: true
       },
       counts: {

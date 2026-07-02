@@ -322,6 +322,7 @@ export const getOperationsSnapshot = query({
         stripeSecret: envConfigured("STRIPE_SECRET_KEY"),
         stripeWebhookSecret: envConfigured("STRIPE_WEBHOOK_SECRET"),
         terminalReaderRegistry: envConfigured("SKYLA_TERMINAL_READER_REGISTRY"),
+        terminalAcceptance: process.env.SKYLA_POS_TERMINAL_ACCEPTANCE === "enabled",
         paymentReturnOrigins: envConfigured("SKYLA_PAYMENT_RETURN_ORIGINS")
       },
       counts: {

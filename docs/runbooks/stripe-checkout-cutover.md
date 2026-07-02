@@ -32,9 +32,10 @@ checkout remains reachable at `/checkout.html` only as a compatibility handoff
 during the cutover; the old browser checkout script and stylesheet are no
 longer shipped.
 
-POS is a separate payment surface. `/pos-next` can review server-priced POS sale
-drafts, and the Terminal backend now creates payment intents from stored
-`saleRef` records only. Do not treat POS as cut over until the staff UI can
+POS is a separate payment surface. Native `/pos` can review server-priced POS
+sale drafts, and `/pos-next` remains a compatibility URL for the same shell.
+The Terminal backend now creates payment intents from stored `saleRef` records
+only. Do not treat POS card-present payment as live until the staff UI can
 collect/process those intents on a real test reader.
 
 ## Flow
@@ -206,9 +207,9 @@ Expected after Convex is wired:
       default in repo code.
 - [ ] Confirm any already deployed legacy Supabase functions are redeployed from
       fail-closed code or disabled in the dashboard.
-- [x] POS Terminal create-intent accepts `saleRef` only before `/pos-next`
-      replaces the live `/pos` path.
-- [ ] `/pos-next` can collect/process the Convex-created PaymentIntent on a
+- [x] POS Terminal create-intent accepts `saleRef` only before live
+      card-present use.
+- [ ] Native `/pos` can collect/process the Convex-created PaymentIntent on a
       Stripe test reader.
 - [ ] No real cards are used during preview verification.
 

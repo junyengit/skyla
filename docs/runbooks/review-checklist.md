@@ -37,17 +37,19 @@ Use this after each major phase.
 - Legal pages are reachable
 - Ticket path is safe
 - Admin and POS text remains high-contrast on the dark background
-- Legacy staff stylesheet cache keys in `/admin.html`, `/pos`, and
+- Legacy staff stylesheet cache keys in `/admin.html`, `/pos.html`, and
   `scripts/smoke/production-readiness-smoke.mjs` stay in sync after staff CSS
   changes
 - Admin/POS are not indexed
+- `/pos` is an App Router route and is not indexed
 - `/pos-next` is not indexed
 - `/checkout.html` remains a handoff to `/checkout` and does not load
   `shared-data.js`, `checkout.js`, or legacy browser payment code
 - Motion respects reduced motion
-- Legacy route bridge still covers `/pos`; `/about`, `/cafe`, `/checkout`,
-  `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos-next`
-  are App Router routes with `.html` compatibility files where needed
+- `/about`, `/cafe`, `/checkout`, `/experiences`, `/members`, `/privacy`,
+  `/terms`, `/admin`, `/pos`, and `/pos-next` are App Router routes with
+  `.html` compatibility files where needed. `/pos.html` is the explicit legacy
+  POS fallback; extensionless `/pos` should not be rewritten to it.
 - `/members` and `/members.html` do not expose `shared-data.js` or
   `SkylaData.addMember`
 - `/experiences` and `/experiences.html` do not expose `shared-data.js` or
@@ -95,7 +97,7 @@ Use this after each major phase.
 - Stripe webhook secret is configured before paid-order completion moves to Convex
 - Stripe dashboard webhook endpoint points to the Convex site URL, not the old Supabase function
 - Stripe Terminal PaymentIntent webhooks subscribe to succeeded, payment_failed,
-  and canceled events before `/pos-next` handles live card-present sales
+  and canceled events before native `/pos` handles live card-present sales
 - Kaskade and non-payment legacy paths stay enabled or explicitly disabled until replacements pass acceptance
 - `/api/admin/config` writes only typed announcement/hours data, requires admin
   staff, and records `admin.config.update` audit events

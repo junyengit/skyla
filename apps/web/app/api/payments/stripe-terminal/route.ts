@@ -30,6 +30,10 @@ function convexUrl() {
   return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
 }
 
+function terminalAcceptanceEnabled() {
+  return process.env.SKYLA_POS_TERMINAL_ACCEPTANCE === "enabled";
+}
+
 function authToken(request: Request) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.toLowerCase().startsWith("bearer ")) {
@@ -71,7 +75,9 @@ function paymentFailureStatus(message: string) {
     normalized.includes("skyla_stripe_mode") ||
     normalized.includes("does not match") ||
     normalized.includes("terminal reader registry") ||
-    normalized.includes("skyla_terminal_reader_registry")
+    normalized.includes("skyla_terminal_reader_registry") ||
+    normalized.includes("skyla_pos_terminal_acceptance") ||
+    normalized.includes("not enabled")
   ) {
     return 503;
   }
@@ -103,6 +109,16 @@ export async function POST(request: Request) {
         {
           error: "Convex is not configured for Stripe Terminal",
           code: "convex_unconfigured"
+        },
+        { status: 503 }
+      );
+    }
+
+    if (!terminalAcceptanceEnabled()) {
+      return Response.json(
+        {
+          error: "POS Terminal acceptance is not enabled",
+          code: "pos_terminal_acceptance_required"
         },
         { status: 503 }
       );
