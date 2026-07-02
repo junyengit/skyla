@@ -2,21 +2,36 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { legacyRoutes, noindexAppRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
+import { legacyRoutes, nativePublicRoutes, noindexAppRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
 
 const publicDir = join(import.meta.dirname, "public");
 
 describe("legacy route bridge", () => {
   it("keeps a compatibility file for every legacy route", () => {
     expect(new Set(legacyRoutes).size).toBe(legacyRoutes.length);
-    expect(legacyRoutes).not.toContain("checkout");
-    expect(legacyRoutes).not.toContain("admin");
+    expect(new Set(nativePublicRoutes).size).toBe(nativePublicRoutes.length);
 
-    for (const route of legacyRoutes) {
+    for (const route of [...legacyRoutes, ...nativePublicRoutes]) {
       expect(existsSync(join(publicDir, `${route}.html`)), `${route}.html`).toBe(true);
     }
-    expect(existsSync(join(publicDir, "checkout.html")), "checkout.html legacy fallback").toBe(true);
     expect(existsSync(join(publicDir, "admin.html")), "admin.html legacy fallback").toBe(true);
+
+    for (const route of [...nativePublicRoutes, "admin"]) {
+      expect(legacyRoutes).not.toContain(route);
+    }
+  });
+
+  it("keeps legal pages native while preserving .html compatibility", () => {
+    const webDir = import.meta.dirname;
+    const privacyPage = readFileSync(join(webDir, "app/privacy/page.tsx"), "utf8");
+    const termsPage = readFileSync(join(webDir, "app/terms/page.tsx"), "utf8");
+    const legalComponent = readFileSync(join(webDir, "components/legal-page.tsx"), "utf8");
+
+    expect(privacyPage).toContain("Convex");
+    expect(privacyPage).not.toContain("stored using <strong>Supabase</strong>");
+    expect(privacyPage).not.toContain("shared-data.js");
+    expect(termsPage).not.toContain("shared-data.js");
+    expect(legalComponent).not.toContain("shared-data.js");
   });
 
   it("keeps admin and POS out of public indexing", () => {
@@ -35,7 +50,7 @@ describe("legacy route bridge", () => {
     const sitemap = readFileSync(join(publicDir, "sitemap.xml"), "utf8");
     const publicLegacyRoutes = legacyRoutes.filter((route) => !noindexLegacyRoutes.includes(route));
 
-    for (const route of publicLegacyRoutes) {
+    for (const route of [...publicLegacyRoutes, ...nativePublicRoutes]) {
       expect(sitemap).toContain(`https://skydeckla.com/${route}`);
     }
 

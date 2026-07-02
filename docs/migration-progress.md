@@ -379,7 +379,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/production-readiness-smoke`.
 - [x] Verify, review, and ship `codex/payment-hosting-readability-check`.
 - [x] Verify, review, and ship `codex/post-payment-hosting-state`.
-- [ ] Verify, review, and ship `codex/root-legacy-regression-guard`.
+- [x] Verify, review, and ship `codex/root-legacy-regression-guard`.
+- [ ] Verify, review, and ship `codex/legal-pages-app-router`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -424,6 +425,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Public member applications should follow the same fail-closed rule as payment
   execution: no "application received" success on the native path unless Convex
   accepted the mutation.
+- `/privacy` and `/terms` should be native App Router pages. Keep
+  `/privacy.html` and `/terms.html` as compatibility files until legacy links
+  and crawlers no longer need them.
 
 ## Risks To Track
 
