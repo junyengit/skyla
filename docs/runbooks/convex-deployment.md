@@ -22,6 +22,9 @@ setup and agents verifying the result afterward.
 Checkout draft persistence is now coded, but the route only persists when it
 has a real Convex URL and the caller sends an `idempotencyKey`. Until then, it
 keeps returning transient server-priced totals so the public site does not break.
+The native `/admin` operations route follows the same fail-closed pattern:
+without a real Convex URL it returns `convex_unconfigured`, and without a staff
+bearer token it returns `staff_auth_required`.
 
 ```mermaid
 flowchart LR
@@ -37,6 +40,24 @@ flowchart LR
   env -- yes --> key
   key -- no --> transient
   key -- yes --> convex --> stored
+```
+
+```mermaid
+flowchart LR
+  admin["/admin"]
+  token{"Bearer token?"}
+  api["/api/admin/operations"]
+  env{"Convex URL set?"}
+  query["admin.getOperationsSnapshot"]
+  staff["requireStaffUser(admin/viewer)"]
+  fail["Fail closed JSON"]
+  snapshot["Read-only ops snapshot"]
+
+  admin --> api --> token
+  token -- no --> fail
+  token -- yes --> env
+  env -- no --> fail
+  env -- yes --> query --> staff --> snapshot
 ```
 
 ## Dashboard Setup
@@ -77,7 +98,15 @@ PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_TERMINAL_READER_REGISTRY "
 Use Stripe test-mode values for Preview/Development. Do not paste secret values
 into PRs, logs, or docs.
 
-6. Pull local web envs if you want the Next route to use Convex locally:
+6. Seed staff users before testing native `/admin` or `/pos-next` against the
+   real deployment. The `subject` must match the Convex auth identity subject,
+   `active` must be `true`, and roles should be scoped:
+
+- `admin`: dashboard and POS operations
+- `viewer`: read-only admin operations snapshot
+- `pos`: POS sale draft and Terminal handoff only
+
+7. Pull local web envs if you want the Next route to use Convex locally:
 
 ```bash
 cd apps/web
@@ -145,6 +174,8 @@ these are true:
 - Stripe dashboard has a test-mode webhook endpoint for
   `https://<convex-site-url>/stripe-webhook`
 - Preview `/api/order-drafts/checkout` returns `persisted: true`
+- Preview `/api/admin/operations` returns `401` without a bearer token
+- Preview `/api/admin/operations` returns `200` with a valid admin/viewer token
 - `bun run check` passes
 - `bun run security:audit` passes
 - A Stripe test-mode checkout can be created from a stored `orderRef`

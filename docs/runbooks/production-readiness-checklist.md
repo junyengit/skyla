@@ -17,11 +17,13 @@ from a stored POS `saleRef` only. The primary `/checkout` page now uses the
 Next.js App Router and fails closed until the real Convex deployment, Vercel
 env vars, and Stripe dashboard webhook endpoint are ready.
 
-Live POS and admin are still legacy compatibility pages. A native `/pos-next`
-draft page exists for server-priced sale review, and the repo now has the
+Live POS is still a legacy compatibility page. A native `/pos-next` draft page
+exists for server-priced sale review, and the repo now has the
 server-authoritative Terminal action, but reader collection is still locked
-until staff auth, Convex envs, and Stripe Terminal acceptance are complete. The
-old static checkout is still reachable at `/checkout.html`, but its Stripe card
+until staff auth, Convex envs, and Stripe Terminal acceptance are complete. A
+native `/admin` read-only operations page is in progress; `/admin.html` remains
+the legacy fallback until booking/member/config workflows are rebuilt. The old
+static checkout is still reachable at `/checkout.html`, but its Stripe card
 creation path is disabled in code so it cannot mint browser-priced card charges
 from Vercel.
 
@@ -85,7 +87,10 @@ flowchart TD
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
   deployment checks passed for PR #29, the current-state documentation merge.
 - Admin and POS are marked `noindex, nofollow`.
-- `/pos-next` is marked `noindex, nofollow`.
+- `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
+  `noindex, nofollow` in the current code path.
+- Native `/admin` uses `/api/admin/operations` to request a staff-gated Convex
+  operations snapshot; it does not read or write Supabase from the browser.
 - Admin and POS dark-theme text is high contrast.
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
@@ -127,7 +132,8 @@ flowchart TD
 - `/pos-next` is not the live register yet because reader processing still needs
   real Convex/staff auth/Stripe test-reader acceptance plus final paid
   reconciliation.
-- Admin/POS are not rebuilt as protected App Router/Convex workflows yet.
+- Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
+  The native `/admin` read-only snapshot is only the first admin slice.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
 
@@ -149,6 +155,8 @@ flowchart TD
 - [ ] Keep secrets out of `NEXT_PUBLIC_*`.
 - [ ] Confirm `/pos-next` remains `X-Robots-Tag: noindex, nofollow` after every
       preview and production deploy.
+- [ ] Confirm `/admin` and `/admin.html` remain `X-Robots-Tag: noindex,
+      nofollow` after every preview and production deploy.
 
 ### Convex
 
@@ -162,6 +170,10 @@ flowchart TD
       locations that staff are allowed to use.
 - [ ] Run `bun run convex:env:check`.
 - [ ] Run `bun run convex:codegen`.
+- [ ] Seed active `staffUsers` records for admins/viewers before using native
+      `/admin`.
+- [ ] Verify `/api/admin/operations` returns `200` with a valid staff token and
+      `401`/`503` without auth or envs.
 
 ### Stripe
 
@@ -220,8 +232,10 @@ PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run tes
 6. Add Stripe Terminal final paid reconciliation through webhook or polling.
 7. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-8. Rebuild Admin and POS as protected App Router/Convex workflows.
-9. Migrate remaining Supabase data and disable legacy Supabase functions only
+8. Expand native Admin from read-only operations into audited booking/member
+   actions.
+9. Rebuild POS as the protected live App Router/Convex register.
+10. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff
@@ -235,6 +249,9 @@ What has been done:
 - The current live site does not have the secret Convex/Stripe settings yet, so
   card-payment APIs stop safely instead of trying to charge.
 - Admin, POS, and `/pos-next` use high-contrast dark staff screens.
+- `/admin` is being moved into Next.js first as a read-only staff operations
+  page; `/admin.html` remains as a fallback for the workflows that are not
+  rebuilt yet.
 
 What still needs to be done:
 
@@ -243,5 +260,5 @@ What still needs to be done:
 - Create the Stripe webhook endpoint in the Stripe dashboard.
 - Test checkout with Stripe test cards only.
 - Test POS Terminal with a Stripe test reader only.
-- Rebuild Admin and POS as protected Next.js/Convex pages, then retire the old
+- Finish the protected Admin and POS Next.js/Convex pages, then retire the old
   compatibility pages and Supabase functions.

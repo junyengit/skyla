@@ -176,6 +176,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verified live API probes across all three production bases: spoofed checkout total returns canonical `8505` cents, spoofed POS total/reader returns canonical `5800` cents with no reader fields, and Stripe payment routes fail closed with `convex_unconfigured` without exposing `clientSecret`.
 - [x] Raised staff-page text contrast again for legacy `/admin`, legacy `/pos`, and native `/pos-next`, and bumped legacy CSS cache versions.
 - [x] Upgraded safe patch dependencies: `next` and `eslint-config-next` to `16.2.10`, and `@types/node` to `26.1.0`; left ESLint `10.6.0` deferred because the current plugin stack still needs ESLint 9.
+- [x] Merged payment/hosting QA PR #30 into `main` as merge commit `a5f693ce487e0eb6fd2356a6fa21f088acc4f066`; Vercel production deployment `https://web-5k3rzg3px-junyen-enterprises.vercel.app` is READY and aliased to `skydeckla.com` and `www.skydeckla.com`.
+- [x] Started branch `codex/native-admin-ops-spine` for the first native App Router admin slice.
+- [x] Added native `/admin` App Router route and kept `/admin.html` as the legacy fallback.
+- [x] Added `/api/admin/operations`, which requires a staff bearer token and forwards it to a staff-gated Convex query instead of reading Supabase or localStorage in the browser.
+- [x] Added `admin.getOperationsSnapshot` with read-only readiness, order, POS, and payment summaries plus recent-record indexes.
+- [x] Updated smoke/route tests so `/admin` is treated as a noindex App Router route while `/admin.html` remains a noindex compatibility file.
 
 ## In Progress
 
@@ -196,7 +202,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/pos-next-draft-spine`.
 - [x] Verify, review, and ship `codex/terminal-sale-ref-hardening`.
 - [x] Verify, review, and ship `codex/pos-terminal-reader-process`.
-- [ ] Verify, review, and ship `codex/payment-hosting-qa-and-contrast`.
+- [x] Verify, review, and ship `codex/payment-hosting-qa-and-contrast`.
+- [ ] Verify, review, and ship `codex/native-admin-ops-spine`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -213,7 +220,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Deploy/disable old Supabase payment functions in the Supabase dashboard so any previously deployed legacy functions stop accepting browser totals.
 - [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
 - [ ] Real POS Terminal test-reader acceptance and final paid reconciliation from stored `saleRef` only.
-- [ ] Admin/POS protected App Router rebuild.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a read-only staff-token operations snapshot in `codex/native-admin-ops-spine`, but booking/member/config mutations and the live POS replacement still remain.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -242,3 +249,4 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
 - Repository copies of legacy Supabase Stripe Checkout and Terminal functions now fail closed unless explicitly re-enabled by transition env vars, but this does not change any already deployed Supabase function until it is redeployed or disabled in the Supabase dashboard.
+- The native `/admin` branch intentionally starts read-only: no local password fallback, no browser Supabase writes, no hard deletes, no bulk clears, and no config/catalog mutations until typed Convex validators and audit events exist.
