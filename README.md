@@ -154,10 +154,11 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   stored Terminal payment event. Live Terminal payment remains gated until
   Vercel/Convex envs, staff auth, Stripe dashboard endpoint setup, and
   test-reader acceptance are complete.
-- Legacy browser-authoritative Kaskade/crypto checkout is disabled in the
-  compatibility checkout and retired in the repo copy of the Supabase functions.
+- Legacy browser-authoritative Kaskade/crypto checkout is retired from the
+  public compatibility checkout and in the repo copy of the Supabase functions.
 - Public static page CTAs now point to `/checkout`, the App Router checkout
-  path; `/checkout.html` remains only as a disabled compatibility artifact.
+  path; `/checkout.html` is only a compatibility handoff to the native
+  checkout route and no longer ships the old checkout script or stylesheet.
 - Supabase functions remain legacy transition surfaces until Convex,
   server-authoritative payment creation, admin, and POS replacements are
   verified and the dashboard deployments are disabled or redeployed from the

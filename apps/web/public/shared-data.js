@@ -1,7 +1,7 @@
 /* ============================================================
    SKYLA — Shared Data Layer
    All editable site data lives in localStorage via this module.
-   Loaded on checkout.html, index.html, cafe.html, admin.html.
+   Loaded on legacy admin/POS compatibility pages only while those routes move.
    ============================================================ */
 
 const SkylaData = (() => {

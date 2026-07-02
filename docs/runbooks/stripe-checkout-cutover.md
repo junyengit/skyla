@@ -28,8 +28,9 @@ What changed in this slice:
 The primary `/checkout` page now uses the App Router and calls the server draft
 route first. It shows a closed payment state until the real Convex deployment,
 Stripe envs, and Stripe dashboard webhook endpoint exist. The old static
-checkout remains at `/checkout.html` only as a legacy reference during the
-cutover; its Stripe card creation path is disabled in code.
+checkout remains reachable at `/checkout.html` only as a compatibility handoff
+during the cutover; the old browser checkout script and stylesheet are no
+longer shipped.
 
 POS is a separate payment surface. `/pos-next` can review server-priced POS sale
 drafts, and the Terminal backend now creates payment intents from stored
@@ -104,14 +105,15 @@ Expected:
 2. Confirm Stripe action contract in code:
 
 ```bash
-rg -n "createStripeCheckoutSession|amountCents|totalCents|line_items" convex apps/web/public/checkout.js supabase/functions
+rg -n "createStripeCheckoutSession|amountCents|totalCents|line_items" convex apps/web/app apps/web/components supabase/functions
 ```
 
 Expected:
 
 - New Convex action accepts `orderRef`, not `amountCents`.
 - `/checkout` calls the Next/Convex route.
-- `/checkout.html` has `STRIPE_ENABLED = false`.
+- `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
+  `shared-data.js`, or Kaskade code.
 - Old Supabase payment creation actions return `410` permanently in repo code.
 
 3. Confirm the webhook route exists after the real Convex deployment is linked:

@@ -27,6 +27,7 @@ for (const baseUrl of baseUrls) {
   runSmokeScript(origin, "route matrix", "scripts/smoke/route-smoke.mjs", { SMOKE_BASE_URL: origin });
   await checkPaymentNoWrite(origin);
   await checkStaffStyles(origin);
+  await checkCheckoutPageNoLegacyWrites(origin);
   await checkMembersPageNoLegacyWrites(origin);
   await checkExperiencesPageNoLegacyWrites(origin);
   await checkMemberApplicationsNoWrite(origin);
@@ -45,6 +46,7 @@ console.log("Production readiness smoke passed.");
 console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(", ")}`);
 console.log("- Route matrix and noindex headers passed.");
 console.log("- Payment no-write probes kept server-owned totals and stopped before Stripe execution.");
+console.log("- Checkout compatibility page hands off to native /checkout without legacy payment scripts or assets.");
 console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
 console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
 console.log("- Member application no-write probe did not create data.");
@@ -78,6 +80,44 @@ async function checkStaffStyles(origin) {
 
     if (!html.includes(style.expected)) {
       failures.push(`${origin}${style.path}: expected ${style.label} ${style.expected}`);
+    }
+  }
+}
+
+async function checkCheckoutPageNoLegacyWrites(origin) {
+  for (const path of ["/checkout", "/checkout.html"]) {
+    const response = await fetch(new URL(path, origin), { redirect: "follow" });
+    const html = await response.text();
+
+    if (response.status !== 200) {
+      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
+      continue;
+    }
+
+    const exposedSharedLegacy =
+      html.includes("shared-data.js") ||
+      html.includes("checkout.js") ||
+      html.includes("checkout.css") ||
+      html.includes("SkylaData") ||
+      html.includes("SkylaData.addBooking") ||
+      html.includes("KASKADE_ENABLED") ||
+      html.includes("kaskade-payment");
+    const exposedHandoffOnlyLegacy = path === "/checkout.html" && html.includes("stripe-checkout");
+
+    if (exposedSharedLegacy || exposedHandoffOnlyLegacy) {
+      failures.push(`${origin}${path}: exposed legacy browser-authoritative checkout path`);
+    }
+
+    if (path === "/checkout" && !html.includes("Server totals only")) {
+      failures.push(`${origin}${path}: did not render the native checkout page`);
+    }
+  }
+
+  for (const assetPath of ["/checkout.js", "/checkout.css"]) {
+    const response = await fetch(new URL(assetPath, origin), { redirect: "manual" });
+
+    if (response.status === 200) {
+      failures.push(`${origin}${assetPath}: legacy checkout asset is still served`);
     }
   }
 }

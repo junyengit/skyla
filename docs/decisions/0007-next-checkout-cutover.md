@@ -4,8 +4,9 @@ Date: 2026-06-30
 
 ## Decision
 
-Use the Next.js App Router for the primary `/checkout` path and keep the old
-static checkout available only at `/checkout.html` during the migration.
+Use the Next.js App Router for the primary `/checkout` path. Keep
+`/checkout.html` only as a compatibility URL that hands off to `/checkout`
+during the migration.
 
 ## Why
 
@@ -40,8 +41,8 @@ the guest to reservations. This is safer than charging from browser totals.
 ## Agent Notes
 
 - `/checkout` is now an App Router page.
-- `/checkout.html` is still present as a compatibility artifact and must be
-  removed or disabled after Convex/Stripe acceptance.
+- `/checkout.html` is now only a compatibility handoff to `/checkout`; it must
+  not load the old browser checkout script, `shared-data.js`, or Kaskade code.
 - `/api/payments/stripe-checkout` should never accept amount, currency, line
   items, or product names from the browser.
 - Production readiness still requires Vercel `NEXT_PUBLIC_CONVEX_URL`, Convex

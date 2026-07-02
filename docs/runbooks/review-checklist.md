@@ -39,8 +39,8 @@ Use this after each major phase.
 - Admin and POS text remains high-contrast on the dark background
 - Admin/POS are not indexed
 - `/pos-next` is not indexed
-- Legacy `/checkout.html` card payment stays disabled while `/checkout` is the
-  card path
+- `/checkout.html` remains a handoff to `/checkout` and does not load
+  `shared-data.js`, `checkout.js`, or legacy browser payment code
 - Motion respects reduced motion
 - Legacy route bridge still covers `/pos`; `/about`, `/cafe`, `/checkout`,
   `/experiences`, `/members`, `/privacy`, `/terms`, `/admin`, and `/pos-next`
@@ -74,6 +74,10 @@ Use this after each major phase.
 - Preview checkout draft POST returns `persisted: true` before payment cutover
 - Stripe Checkout action takes `orderRef` and draft `idempotencyKey`
 - Stripe Checkout action does not accept `amountCents`, `currency`, or line items from the browser
+- `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
+  `checkout.css`, `shared-data.js`, `SkylaData`, or Kaskade browser payment
+  markers
+- `apps/web/public/checkout.js` and `apps/web/public/checkout.css` are absent
 - `/api/payments/stripe-terminal` takes `saleRef` and draft `idempotencyKey`
 - `/api/payments/stripe-terminal` does not accept `amountCents`, `readerId`, or
   `terminalLocationId` from the browser
