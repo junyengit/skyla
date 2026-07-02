@@ -26,12 +26,18 @@ describe("legacy route bridge", () => {
     const privacyPage = readFileSync(join(webDir, "app/privacy/page.tsx"), "utf8");
     const termsPage = readFileSync(join(webDir, "app/terms/page.tsx"), "utf8");
     const legalComponent = readFileSync(join(webDir, "components/legal-page.tsx"), "utf8");
+    const privacyFallback = readFileSync(join(publicDir, "privacy.html"), "utf8");
+    const termsFallback = readFileSync(join(publicDir, "terms.html"), "utf8");
 
     expect(privacyPage).toContain("Convex");
+    expect(privacyFallback).toContain("Convex");
     expect(privacyPage).not.toContain("stored using <strong>Supabase</strong>");
+    expect(privacyFallback).not.toContain("stored using <strong>Supabase</strong>");
     expect(privacyPage).not.toContain("shared-data.js");
     expect(termsPage).not.toContain("shared-data.js");
     expect(legalComponent).not.toContain("shared-data.js");
+    expect(privacyFallback).not.toContain("shared-data.js");
+    expect(termsFallback).not.toContain("shared-data.js");
   });
 
   it("keeps admin and POS out of public indexing", () => {

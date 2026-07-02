@@ -380,7 +380,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/payment-hosting-readability-check`.
 - [x] Verify, review, and ship `codex/post-payment-hosting-state`.
 - [x] Verify, review, and ship `codex/root-legacy-regression-guard`.
-- [ ] Verify, review, and ship `codex/legal-pages-app-router`.
+- [x] Verify, review, and ship `codex/legal-pages-app-router`.
+- [ ] Verify, review, and ship `codex/legal-compat-copy`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -427,7 +428,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   accepted the mutation.
 - `/privacy` and `/terms` should be native App Router pages. Keep
   `/privacy.html` and `/terms.html` as compatibility files until legacy links
-  and crawlers no longer need them.
+  and crawlers no longer need them, but keep their copy current and avoid
+  loading shared legacy data scripts on legal-only pages.
 
 ## Risks To Track
 
