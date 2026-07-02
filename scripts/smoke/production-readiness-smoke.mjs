@@ -27,6 +27,7 @@ for (const baseUrl of baseUrls) {
   runSmokeScript(origin, "route matrix", "scripts/smoke/route-smoke.mjs", { SMOKE_BASE_URL: origin });
   await checkPaymentNoWrite(origin);
   await checkStaffStyles(origin);
+  await checkMembersPageNoLegacyWrites(origin);
   await checkMemberApplicationsNoWrite(origin);
 }
 
@@ -42,6 +43,7 @@ console.log("Production readiness smoke passed.");
 console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(", ")}`);
 console.log("- Route matrix and noindex headers passed.");
 console.log("- Payment no-write probes kept server-owned totals and stopped before Stripe execution.");
+console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
 console.log("- Member application no-write probe did not create data.");
 console.log("- Legacy staff pages reference the current dark stylesheet cache keys.");
 for (const note of notes) {
@@ -72,6 +74,26 @@ async function checkStaffStyles(origin) {
 
     if (!html.includes(style.expected)) {
       failures.push(`${origin}${style.path}: expected ${style.label} ${style.expected}`);
+    }
+  }
+}
+
+async function checkMembersPageNoLegacyWrites(origin) {
+  for (const path of ["/members", "/members.html"]) {
+    const response = await fetch(new URL(path, origin), { redirect: "follow" });
+    const html = await response.text();
+
+    if (response.status !== 200) {
+      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
+      continue;
+    }
+
+    if (html.includes("shared-data.js") || html.includes("SkylaData.addMember")) {
+      failures.push(`${origin}${path}: exposed legacy member localStorage/Supabase write path`);
+    }
+
+    if (path === "/members" && !html.includes("Begin your application")) {
+      failures.push(`${origin}${path}: did not render the native member application page`);
     }
   }
 }

@@ -1,10 +1,9 @@
 export const legacyRoutes = [
   "experiences",
-  "members",
   "pos"
 ];
 
-export const nativePublicRoutes = ["about", "cafe", "checkout", "privacy", "terms"];
+export const nativePublicRoutes = ["about", "cafe", "checkout", "members", "privacy", "terms"];
 
 export const noindexLegacyRoutes = ["admin", "pos"];
 

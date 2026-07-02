@@ -399,6 +399,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       smoke against the Vercel deployment plus both custom domains. About/cafe
       are native App Router pages, their `.html` compatibility URLs still
       return `200`, and neither path loads `shared-data.js`.
+- [x] Started branch `codex/native-members-cutover` from clean `origin/main`
+      to move the visible `/members` page into App Router while keeping
+      `/members.html` as compatibility fallback.
+- [x] Added native `/members` page and client form that post to
+      `/api/members/applications` with an idempotency key and only show success
+      after the server accepts the application.
+- [x] Preserved membership lead tracking hooks after accepted submissions, but
+      removed the active `/members` route from the legacy
+      `SkylaData.addMember` localStorage/Supabase write path.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -419,10 +428,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Server-driven POS Terminal reader processing code from stored `saleRef` only.
 - [x] Stripe Terminal final webhook reconciliation from stored `saleRef` and stored Terminal payment events only.
 - [ ] Real POS Terminal test-reader acceptance with linked Convex, Vercel envs, Stripe dashboard webhook endpoint, and seeded staff.
-- [ ] Cut public `/members` over to the native application path after linked
-      Convex/Vercel envs are present. The server route now exists, but the
-      visible legacy form should not switch until submissions can persist
-      durably.
+- [x] Cut public `/members` over to the native application path with a
+      fail-closed server submission contract. Linked Convex/Vercel envs are
+      still required before real application acceptance succeeds in production.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
 - [ ] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.

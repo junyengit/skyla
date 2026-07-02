@@ -25,30 +25,41 @@ describe("legacy route bridge", () => {
     const webDir = import.meta.dirname;
     const aboutPage = readFileSync(join(webDir, "app/about/page.tsx"), "utf8");
     const cafePage = readFileSync(join(webDir, "app/cafe/page.tsx"), "utf8");
+    const membersPage = readFileSync(join(webDir, "app/members/page.tsx"), "utf8");
+    const membersClient = readFileSync(join(webDir, "components/members-application-client.tsx"), "utf8");
     const privacyPage = readFileSync(join(webDir, "app/privacy/page.tsx"), "utf8");
     const termsPage = readFileSync(join(webDir, "app/terms/page.tsx"), "utf8");
     const publicComponent = readFileSync(join(webDir, "components/public-page-shell.tsx"), "utf8");
     const legalComponent = readFileSync(join(webDir, "components/legal-page.tsx"), "utf8");
     const aboutFallback = readFileSync(join(publicDir, "about.html"), "utf8");
     const cafeFallback = readFileSync(join(publicDir, "cafe.html"), "utf8");
+    const membersFallback = readFileSync(join(publicDir, "members.html"), "utf8");
     const privacyFallback = readFileSync(join(publicDir, "privacy.html"), "utf8");
     const termsFallback = readFileSync(join(publicDir, "terms.html"), "utf8");
 
     expect(aboutPage).toContain("Best Space");
     expect(cafePage).toContain("cafeItems");
     expect(cafePage).toContain("@skyla/payments");
+    expect(membersPage).toContain("MembersApplicationClient");
+    expect(membersClient).toContain("/api/members/applications");
+    expect(membersClient).toContain("idempotencyKey");
     expect(privacyPage).toContain("Convex");
     expect(privacyFallback).toContain("Convex");
     expect(privacyPage).not.toContain("stored using <strong>Supabase</strong>");
     expect(privacyFallback).not.toContain("stored using <strong>Supabase</strong>");
     expect(aboutPage).not.toContain("shared-data.js");
     expect(cafePage).not.toContain("shared-data.js");
+    expect(membersPage).not.toContain("shared-data.js");
+    expect(membersClient).not.toContain("SkylaData.addMember");
     expect(privacyPage).not.toContain("shared-data.js");
     expect(termsPage).not.toContain("shared-data.js");
     expect(publicComponent).not.toContain("shared-data.js");
     expect(legalComponent).not.toContain("shared-data.js");
     expect(aboutFallback).not.toContain("shared-data.js");
     expect(cafeFallback).not.toContain("shared-data.js");
+    expect(membersFallback).toContain("url=/members");
+    expect(membersFallback).not.toContain("shared-data.js");
+    expect(membersFallback).not.toContain("SkylaData.addMember");
     expect(privacyFallback).not.toContain("shared-data.js");
     expect(termsFallback).not.toContain("shared-data.js");
   });
@@ -57,8 +68,11 @@ describe("legacy route bridge", () => {
     expect(noindexLegacyRoutes).toEqual(["admin", "pos"]);
     expect(noindexAppRoutes).toContain("admin");
     expect(noindexAppRoutes).toContain("pos-next");
+    expect(noindexLegacyRoutes).not.toContain("members");
+    expect(noindexAppRoutes).not.toContain("members");
 
     const robots = readFileSync(join(publicDir, "robots.txt"), "utf8");
+    expect(robots).not.toContain("Disallow: /members");
     for (const route of noindexLegacyRoutes) {
       expect(robots).toContain(`Disallow: /${route}`);
       expect(robots).toContain(`Disallow: /${route}.html`);
@@ -79,10 +93,18 @@ describe("legacy route bridge", () => {
   });
 
   it("loads Google Ads config before the tracking helper on conversion pages", () => {
-    for (const route of ["experiences", "members"]) {
-      const html = readFileSync(join(publicDir, `${route}.html`), "utf8");
-      const configIndex = html.indexOf('src="/ads-config.js"');
-      const helperIndex = html.indexOf('src="ads-tracking.js');
+    const experiences = readFileSync(join(publicDir, "experiences.html"), "utf8");
+    const membersPage = readFileSync(join(import.meta.dirname, "app/members/page.tsx"), "utf8");
+
+    for (const [route, contents] of [
+      ["experiences", experiences],
+      ["members", membersPage]
+    ]) {
+      const configIndex = contents.indexOf('src="/ads-config.js"');
+      const helperIndex = Math.max(
+        contents.indexOf('src="/ads-tracking.js'),
+        contents.indexOf('src="ads-tracking.js')
+      );
 
       expect(configIndex, `${route} config script`).toBeGreaterThan(-1);
       expect(helperIndex, `${route} tracking helper`).toBeGreaterThan(-1);

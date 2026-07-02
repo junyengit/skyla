@@ -25,7 +25,7 @@ flowchart LR
   next["apps/web Next.js App Router"]
   bridge["apps/web/public legacy bridge"]
   admin["Native /admin ops snapshot"]
-  members["Native member application API"]
+  members["Native /members application page + API"]
   posDraft["Native /pos-next draft"]
   supabase["Supabase auth, tables, edge functions"]
   payments["Stripe / Kaskade / EmailJS / Brevo"]
@@ -54,9 +54,9 @@ Why this is not the final state:
 - Supabase-era functions and data access are still outside the target architecture.
 - Compatibility files in `apps/web/public` are still legacy code and should be replaced with typed routes.
 - `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations plus audited booking/member status actions, while `/admin.html` remains available for legacy workflows until the remaining Convex admin mutations are complete.
-- The native member application API exists and fails closed until Convex is
-  configured; the visible `/members` form remains on the compatibility page
-  until that durable write path is available in production.
+- The native `/members` page now posts to the server application API and fails
+  closed until Convex is configured. `/members.html` remains as a compatibility
+  artifact while linked Convex acceptance is verified.
 
 ## Target Shape
 
@@ -213,8 +213,9 @@ Initial tables:
 Initial server boundaries:
 
 - Public inquiry/member submissions: Convex mutations.
-- Public member application submission now has a native API and Convex mutation
-  spine; the UI cutover remains gated by real Convex/Vercel envs.
+- Public member application submission now has a native page, native API, and
+  Convex mutation spine. Real application acceptance remains gated by real
+  Convex/Vercel envs.
 - Checkout/order creation: Convex mutation creates an order with canonical prices.
 - Stripe/Kaskade payment creation: Convex action uses stored order state.
 - Webhooks: Convex HTTP actions verify signatures, enforce expected amount/currency/status, and write idempotent events.
@@ -235,7 +236,8 @@ Priority order:
 1. Legal and content pages: `/privacy`, `/terms`, `/about`, and `/cafe` are
    native. `/experiences` remains on the compatibility bridge until its
    inquiry form and ad conversion tracking have a typed Convex/analytics path.
-2. Members flow: `/members`.
+2. Members flow: `/members` is native; linked Convex acceptance is still
+   required before treating it as live intake.
 3. Checkout flow: `/checkout`.
 4. Admin gate and dashboard: `/admin`.
 5. POS flow: `/pos`.
@@ -325,8 +327,12 @@ Current verified Vercel data:
 - Recorded verified payment/hosting/readability deployment ID: `dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
-  tested, and deployed; the visible `/members` form remains on the compatibility
-  page until the real Convex deployment URL is linked in Vercel.
+  tested, and deployed.
+- Native `/members` cutover branch: `codex/native-members-cutover`
+- Native `/members` cutover state: the visible page posts to
+  `/api/members/applications` with an idempotency key and does not use
+  `SkylaData.addMember`; application success remains gated until Convex is
+  linked in Vercel.
 - Staff contrast cache-bust PR: `#44`
 - Staff contrast state: `/admin`, `/admin.html`, `/pos-next`, and `/pos` use
   dark staff surfaces with readable white text; legacy `admin.html` and `pos`
