@@ -71,6 +71,7 @@ type TerminalProcessResponse = {
 type PosDraftClientProps = {
   tickets: TicketOption[];
   cafeItems: CafeOption[];
+  terminalAccepted: boolean;
 };
 
 type Tab = "tickets" | "cafe" | "custom";
@@ -97,7 +98,7 @@ function customCents(value: string) {
   return Math.round(Number(normalized) * 100);
 }
 
-export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
+export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraftClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("tickets");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
@@ -257,9 +258,11 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
       setTerminalResult(null);
       setMessage(
         nextDraft.persisted
-          ? nextDraft.draft.readerId
-            ? "Sale draft stored in Convex. Terminal handoff is ready for the stored reader."
-            : "Sale draft stored in Convex. Add a reader ID before review to enable Terminal handoff."
+          ? !terminalAccepted
+            ? "Sale draft stored in Convex. Reader handoff remains locked until test-reader acceptance is enabled."
+            : nextDraft.draft.readerId
+              ? "Sale draft stored in Convex. Terminal handoff is ready for the stored reader."
+              : "Sale draft stored in Convex. Add a reader ID before review to enable Terminal handoff."
           : "Server total reviewed. Terminal payment requires Convex, staff auth, and a stored reader."
       );
     } catch (error) {
@@ -274,6 +277,10 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
   async function sendToTerminalReader() {
     const saleRef = draft?.saleRef ?? draft?.draft.saleRef;
     const token = staffToken.trim();
+    if (!terminalAccepted) {
+      setMessage("Reader handoff remains locked until test-reader acceptance is enabled.");
+      return;
+    }
     if (!draft?.persisted || !saleRef) {
       setMessage("Store the sale in Convex before sending it to a reader.");
       return;
@@ -589,6 +596,7 @@ export function PosDraftClient({ tickets, cafeItems }: PosDraftClientProps) {
             disabled={
               isReviewing ||
               isSendingTerminal ||
+              !terminalAccepted ||
               !draft?.persisted ||
               !draft.saleRef ||
               !draft.draft.readerId ||

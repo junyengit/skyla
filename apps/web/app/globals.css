@@ -2297,7 +2297,7 @@ h3 {
 
 .posNextActions .primaryAction:disabled,
 .posNextActions .secondaryAction:disabled {
-  opacity: 0.5;
+  opacity: 0.72;
   cursor: not-allowed;
 }
 
@@ -2525,7 +2525,7 @@ h3 {
 }
 
 .adminOpsAccess .primaryAction:disabled {
-  opacity: 0.52;
+  opacity: 0.72;
   cursor: default;
 }
 
@@ -2775,7 +2775,7 @@ h3 {
 }
 
 .adminOpsConfigCard input:disabled {
-  opacity: 0.6;
+  opacity: 0.78;
 }
 
 .adminOpsInlineToggle {
@@ -2800,7 +2800,7 @@ h3 {
 
 .adminOpsConfigCard .secondaryAction:disabled {
   cursor: default;
-  opacity: 0.52;
+  opacity: 0.72;
 }
 
 .adminOpsHoursGrid {
@@ -2951,7 +2951,7 @@ h3 {
 
 .adminOpsRowActions button:disabled {
   cursor: default;
-  opacity: 0.52;
+  opacity: 0.72;
 }
 
 .adminOpsRowActions button.isDanger {

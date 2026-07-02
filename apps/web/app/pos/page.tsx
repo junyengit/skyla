@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PosRegisterPage } from "@/components/pos-register-page";
 
 export const metadata: Metadata = {
-  title: "POS Draft",
+  title: "POS",
   description: "Server-reviewed Sky LA POS sale drafts.",
   robots: {
     index: false,
@@ -10,6 +10,6 @@ export const metadata: Metadata = {
   }
 };
 
-export default function PosNextPage() {
-  return <PosRegisterPage variant="draft" />;
+export default function PosPage() {
+  return <PosRegisterPage variant="primary" />;
 }

@@ -26,9 +26,11 @@ It is not a live payment cutover runbook yet.
   selections, returns canonical ticket/cafe/custom totals, ignores browser
   totals, and calls Convex persistence only when a staff bearer token,
   `NEXT_PUBLIC_CONVEX_URL`, and `idempotencyKey` are present.
-- `apps/web/app/pos-next/page.tsx`: native staff POS draft review surface. It
+- `apps/web/app/pos/page.tsx`: native staff POS draft review surface. It
   reviews server totals and can hand a persisted sale to the server-driven
   Terminal route once Convex, staff auth, and a stored reader are configured.
+- `apps/web/app/pos-next/page.tsx`: compatibility URL for the same native POS
+  shell during rollout.
 - `convex/payments.ts`: a Stripe Checkout action that creates a Checkout
   Session from a stored checkout `orderRef` and matching draft idempotency key.
 - `convex/payments.ts`: Stripe Terminal actions that create a card-present
@@ -38,15 +40,15 @@ It is not a live payment cutover runbook yet.
 
 The primary checkout route is cut over to the Next.js App Router, but deployed
 payment creation is still gated until the real Convex deployment URL and Stripe
-env vars are configured. The POS draft bridge now exists at `/pos-next`; live
-Terminal capture still needs real staff auth, test-reader acceptance, and final
-Stripe reconciliation before it can replace the legacy register.
+env vars are configured. The POS draft bridge now owns `/pos`; live Terminal
+capture still needs real staff auth, test-reader acceptance, and final Stripe
+reconciliation before staff can treat it as the active card-present register.
 
 ```mermaid
 flowchart LR
   browser["Browser checkout or POS UI"]
   nextRoute["Current Next draft route"]
-  posNext["/pos-next draft review"]
+  posNext["/pos native draft review"]
   pricing["@skyla/payments pricing"]
   convexMutation["Convex orderDrafts mutations"]
   convexTables["orders, orderLineItems, posSales, posSaleLines"]

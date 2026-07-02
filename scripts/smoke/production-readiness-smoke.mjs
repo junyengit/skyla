@@ -10,7 +10,7 @@ const mode = process.env.SKYLA_ACCEPTANCE_MODE ?? "no-write";
 
 const staffStyles = [
   { path: "/admin.html", expected: "admin.css?v=8", label: "legacy admin stylesheet" },
-  { path: "/pos", expected: "pos.css?v=10", label: "legacy POS stylesheet" }
+  { path: "/pos.html", expected: "pos.css?v=10", label: "legacy POS fallback stylesheet" }
 ];
 
 const failures = [];
@@ -28,6 +28,7 @@ for (const baseUrl of baseUrls) {
   await checkPaymentNoWrite(origin);
   await checkStaffStyles(origin);
   await checkNativeAdminSurface(origin);
+  await checkNativePosSurface(origin);
   await checkCheckoutPageNoLegacyWrites(origin);
   await checkMembersPageNoLegacyWrites(origin);
   await checkExperiencesPageNoLegacyWrites(origin);
@@ -52,8 +53,9 @@ console.log("- Native member pages do not expose the legacy localStorage/Supabas
 console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
 console.log("- Member application no-write probe did not create data.");
 console.log("- Experience inquiry no-write probe did not create data.");
-console.log("- Legacy staff pages reference the current dark stylesheet cache keys.");
+console.log("- Legacy staff fallback pages reference the current dark stylesheet cache keys.");
 console.log("- Native admin exposes the staff-gated booking lookup panel.");
+console.log("- Native /pos renders the server-priced POS shell without legacy POS scripts.");
 for (const note of notes) {
   console.log(`- ${note}`);
 }
@@ -101,6 +103,28 @@ async function checkNativeAdminSurface(origin) {
 
   if (html.includes("SkylaData") || html.includes("shared-data.js")) {
     failures.push(`${origin}/admin: exposed legacy localStorage/Supabase admin path`);
+  }
+}
+
+async function checkNativePosSurface(origin) {
+  const response = await fetch(new URL("/pos", origin), { redirect: "follow" });
+  const html = await response.text();
+
+  if (response.status !== 200) {
+    failures.push(`${origin}/pos: expected HTTP 200, got ${response.status}`);
+    return;
+  }
+
+  for (const expected of ["Server-priced POS", "Current Sale", "Staff Token"]) {
+    if (!html.includes(expected)) {
+      failures.push(`${origin}/pos: did not render native POS control "${expected}"`);
+    }
+  }
+
+  for (const legacyMarker of ["shared-data.js", "pos.js", "SkylaData", "LEGACY_TERMINAL_PAYMENTS_ENABLED", "clientSecret"]) {
+    if (html.includes(legacyMarker)) {
+      failures.push(`${origin}/pos: exposed legacy POS marker ${legacyMarker}`);
+    }
   }
 }
 

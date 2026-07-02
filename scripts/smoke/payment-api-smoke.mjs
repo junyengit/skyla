@@ -144,7 +144,17 @@ const terminalAuthed = await postJson(
   { authorization: `Bearer ${fakeStaffToken}` }
 );
 
-expectFailClosed("Stripe Terminal fake auth", terminalAuthed, 503, "convex_unconfigured");
+expect(
+  "Stripe Terminal fake auth",
+  terminalAuthed.status === 503,
+  `expected HTTP 503, got ${terminalAuthed.status}`
+);
+expect(
+  "Stripe Terminal fake auth",
+  ["convex_unconfigured", "pos_terminal_acceptance_required"].includes(terminalAuthed.json?.code),
+  `expected convex_unconfigured or pos_terminal_acceptance_required, got ${terminalAuthed.json?.code ?? "none"}`
+);
+expectNoClientSecret("Stripe Terminal fake auth", terminalAuthed);
 
 const terminalProcess = await postJson(
   "/api/payments/stripe-terminal/process",
@@ -158,7 +168,17 @@ const terminalProcess = await postJson(
   { authorization: `Bearer ${fakeStaffToken}` }
 );
 
-expectFailClosed("Stripe Terminal process fake auth", terminalProcess, 503, "convex_unconfigured");
+expect(
+  "Stripe Terminal process fake auth",
+  terminalProcess.status === 503,
+  `expected HTTP 503, got ${terminalProcess.status}`
+);
+expect(
+  "Stripe Terminal process fake auth",
+  ["convex_unconfigured", "pos_terminal_acceptance_required"].includes(terminalProcess.json?.code),
+  `expected convex_unconfigured or pos_terminal_acceptance_required, got ${terminalProcess.json?.code ?? "none"}`
+);
+expectNoClientSecret("Stripe Terminal process fake auth", terminalProcess);
 
 if (failures.length > 0) {
   console.error(`Payment API smoke failed for ${baseUrl.origin}:`);
@@ -171,4 +191,4 @@ if (failures.length > 0) {
 console.log(`Payment API smoke passed for ${baseUrl.origin}.`);
 console.log(`- Checkout total: ${checkoutDraft.json.draft.totalCents} cents`);
 console.log(`- POS total: ${posDraft.json.draft.totalCents} cents`);
-console.log("- Stripe execution routes fail closed without real Convex/Stripe dashboard wiring.");
+console.log("- Stripe execution routes fail closed without real Convex/Stripe dashboard wiring and POS Terminal acceptance.");

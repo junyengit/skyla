@@ -35,6 +35,7 @@ const stripeSecretKey = env.STRIPE_SECRET_KEY ?? "";
 const stripeReturnOrigins = env.SKYLA_PAYMENT_RETURN_ORIGINS ?? "";
 const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
 const terminalReaderRegistry = env.SKYLA_TERMINAL_READER_REGISTRY ?? "";
+const terminalAcceptance = env.SKYLA_POS_TERMINAL_ACCEPTANCE ?? "";
 const staffBootstrapToken = env.SKYLA_STAFF_BOOTSTRAP_TOKEN ?? "";
 const stripeReturnOriginList = commaList(stripeReturnOrigins);
 const terminalReaderRegistryList = commaList(terminalReaderRegistry);
@@ -92,6 +93,12 @@ const checks = [
     note: terminalReaderRegistry ? "comma-separated reader or reader@location entries" : undefined
   },
   {
+    name: "SKYLA_POS_TERMINAL_ACCEPTANCE",
+    present: Boolean(terminalAcceptance),
+    ok: terminalAcceptance === "enabled",
+    note: terminalAcceptance ? "must be enabled only after Stripe test-reader acceptance passes" : undefined
+  },
+  {
     name: "SKYLA_STAFF_BOOTSTRAP_TOKEN",
     present: Boolean(staffBootstrapToken),
     ok: staffBootstrapToken.length >= 32 && !/\s/.test(staffBootstrapToken),
@@ -106,8 +113,8 @@ const output = {
   readyForCloudPersistence: checks[0].ok && checks[1].ok,
   readyForStripeCheckout: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[5].ok,
   readyForStripeWebhook: checks[0].ok && checks[3].ok && checks[6].ok,
-  readyForTerminalReaderHandoff: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[7].ok,
-  readyForStaffBootstrap: checks[0].ok && checks[8].ok,
+  readyForTerminalReaderHandoff: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[7].ok && checks[8].ok,
+  readyForStaffBootstrap: checks[0].ok && checks[9].ok,
   checks
 };
 

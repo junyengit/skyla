@@ -20,6 +20,11 @@ Convex the source of truth:
 No real card should be used for verification. Use Stripe test mode and a Stripe
 test reader until the full flow passes.
 
+The extensionless `/pos` route now renders the native server-priced POS shell.
+`/pos.html` remains the legacy fallback and must stay disabled for card-present
+charging. Treat `/pos` as a draft/register shell until Convex, staff auth,
+Stripe webhooks, and a test reader all pass acceptance.
+
 ## Flow
 
 ```mermaid
@@ -60,6 +65,8 @@ route because Vercel is not wired to a real Convex deployment yet.
   matches `SKYLA_STRIPE_MODE`.
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` with entries like
   `tmr_frontdesk@tml_lobby`.
+- `SKYLA_POS_TERMINAL_ACCEPTANCE` remains unset until the test reader path
+  passes, then is set to `enabled` for the accepted runtime.
 - Staff auth provider is configured for Convex.
 - At least one active `staffUsers` row exists with role `admin` or `pos`.
 - Stripe test-mode reader is registered and available.
@@ -178,18 +185,22 @@ Expected after Convex and Stripe webhook envs are wired:
       idempotency key.
 - [ ] Duplicate in-flight reader handoffs are rejected by the reservation lock.
 - [ ] Stripe test reader can process the stored intent.
+- [ ] `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` is set only after the test reader
+      path passes.
 - [ ] Successful reader handoff leaves the sale pending until Stripe webhook
       confirmation.
 - [ ] Signed Stripe PaymentIntent webhook records/updates the stored sale,
       `paymentEvents`, and `webhookEvents`.
 - [ ] Canceled/failed PaymentIntent webhooks record a safe non-paid state
       without downgrading an already-paid sale.
-- [ ] `/pos-next` is promoted only after the test-reader path passes.
-- [ ] Legacy `/pos` and Supabase Terminal bridge are removed or permanently
-      disabled after acceptance.
+- [ ] Native `/pos` test-reader path passes before staff use it for live
+      card-present payment.
+- [ ] Legacy `/pos.html` and Supabase Terminal bridge are removed or
+      permanently disabled after acceptance.
 
 ## Rollback
 
-If the new Terminal path fails during preview, keep `/pos-next` locked and do
-not promote it over `/pos`. Do not re-enable browser-authoritative payment
-creation; the repo no longer supports a legacy payment escape hatch.
+If the new Terminal path fails during preview, keep `/pos` in no-write draft
+mode and use `/pos.html` only as a disabled compatibility fallback. Do not
+re-enable browser-authoritative payment creation; the repo no longer supports a
+legacy payment escape hatch.

@@ -25,12 +25,13 @@ root.
 
 As of July 2, 2026:
 
-- Latest verified app-code production deployment from `main` is READY at
-  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`.
+- Latest verified app-code production deployment from `main` before this POS
+  route slice is READY at
+  `https://web-aaow8lg0e-junyen-enterprises.vercel.app`.
 - Latest verified app-code deployment ID:
-  `dpl_ArArkLGov88ksSxchCDM5TXBNGQe`.
+  `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`.
 - Latest verified merge commit:
-  `d0844856f82b764687ead620b9207a56b1cf7719` (PR #59).
+  `e5e4b75b477b7ffef20f5279a97491024fcb5cab` (PR #61).
 - Later docs-only merges can create newer Vercel deployment URLs with the same
   app behavior. Use the Vercel dashboard before recording fresh evidence.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
@@ -42,7 +43,7 @@ As of July 2, 2026:
   configured in Convex.
 - The latest production deployment metadata reports Bun serverless runtime
   usage, Turbopack bundling, target `production`, and commit
-  `d0844856f82b764687ead620b9207a56b1cf7719`.
+  `e5e4b75b477b7ffef20f5279a97491024fcb5cab`.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
 
@@ -57,10 +58,12 @@ As of July 2, 2026:
 ## Temporary Legacy Bridge
 
 During cutover, `apps/web` includes static compatibility files in
-`apps/web/public` for existing public routes. `next.config.mjs` rewrites only
-the remaining legacy extensionless URL, currently `/pos`, to its `.html`
-compatibility file. Native App Router routes such as `/checkout`,
-`/experiences`, and `/members` should own their extensionless URLs directly.
+`apps/web/public` for existing public routes. Extensionless routes should be
+owned by App Router; `/pos` is now native, and `/pos.html` is the explicit
+legacy fallback for manual comparison or emergency use while Terminal
+acceptance remains gated. Native App Router routes such as `/checkout`,
+`/experiences`, `/members`, and `/pos` should own their extensionless URLs
+directly.
 
 Keep the bridge until the equivalent App Router routes are rebuilt with server-authoritative payments, Convex data access, and authenticated admin/POS flows.
 

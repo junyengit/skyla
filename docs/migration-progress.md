@@ -457,10 +457,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `origin/main` after PR #58 to recheck admin/POS readability, Stripe/API
       safety, dependencies, and hosting state.
 - [x] Confirmed Vercel project `junyen-enterprises/web` is still on Node
-      `24.x`, the PR #59 production deployment
-      `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`
-      (`dpl_ArArkLGov88ksSxchCDM5TXBNGQe`) is READY from merge commit
-      `d0844856f82b764687ead620b9207a56b1cf7719`, and aliases include
+      `24.x`, the PR #61 production deployment
+      `https://web-aaow8lg0e-junyen-enterprises.vercel.app`
+      (`dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`) is READY from merge commit
+      `e5e4b75b477b7ffef20f5279a97491024fcb5cab`, and aliases include
       `skydeckla.com` and `www.skydeckla.com`. Later docs-only merges can
       create newer Vercel deployments with the same app behavior.
 - [x] Confirmed Vercel env vars are still absent, so payment/member/experience
@@ -515,7 +515,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Future Kaskade server-authoritative action.
 - [x] Stripe Terminal sale-ref PaymentIntent action and Next route.
 - [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
-- [x] Native `/pos-next` draft review route that server-prices POS carts without live Terminal capture.
+- [x] Native `/pos` draft review route that server-prices POS carts without
+      live Terminal capture; `/pos-next` remains as a compatibility URL for the
+      same shell.
 - [x] Disable `/checkout.html` legacy Stripe card fallback in the Vercel-served compatibility page.
 - [x] Replace `/checkout.html` with a handoff-only compatibility page and stop
       shipping the legacy checkout script/stylesheet in `apps/web/public`.
@@ -529,7 +531,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Cut public `/experiences` over to the native inquiry path with a
       fail-closed server submission contract. Linked Convex/Vercel envs are
       still required before real inquiry acceptance succeeds in production.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, and typed announcement/hours config, but pricing/menu/catalog/voucher/delete workflows and the live POS replacement still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, and typed announcement/hours config. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/voucher/delete workflows and live Stripe Terminal test-reader acceptance still remain.
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -576,7 +578,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   members, and experience lead routes are now native App Router pages. Replace
   the public helper with a typed analytics integration once dashboard wiring and
   acceptance are stable.
-- Shipped code now creates Stripe Terminal PaymentIntents from stored `saleRef` records only. Live reader collection still needs staff auth wiring and dashboard/env acceptance before `/pos-next` can replace `/pos`.
+- Shipped code now creates Stripe Terminal PaymentIntents from stored `saleRef`
+  records only. Native `/pos` has replaced the extensionless legacy POS route,
+  but live reader collection still needs staff auth wiring, dashboard/env
+  acceptance, and Stripe test-reader acceptance before staff should use it for
+  card-present payment.
 - The reader-processing work adds server-driven reader processing for stored POS sales. Reader handoff still stays non-final; signed Stripe `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` webhooks now reconcile the stored sale against `saleRef`, Terminal PaymentIntent ID, amount, currency, and webhook idempotency.
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
@@ -590,3 +596,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   excludes hard deletes, bulk clears, reset-all settings, voucher redemption,
   payment refunds, and pricing/menu/catalog mutations until typed validators,
   reconciliation rules, and rollback procedures exist.
+- Branch `codex/native-pos-route-cutover` moves extensionless `/pos` from the
+  legacy rewrite bridge to the native server-priced POS shell, keeps `/pos-next`
+  as a compatibility URL, and leaves `/pos.html` as the explicit disabled
+  legacy fallback. Live card-present payment remains blocked until real
+  Convex/staff auth/Stripe webhook/test-reader acceptance is complete.

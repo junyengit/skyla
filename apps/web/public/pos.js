@@ -351,7 +351,7 @@ let _charge = null;   // { clientSecret } — kept so a retry reuses the SAME Pa
 
 async function charge() {
   if (!LEGACY_TERMINAL_PAYMENTS_ENABLED) {
-    alert('Card-present payments are moving to the secure /pos-next flow and are disabled on this legacy POS screen.');
+    alert('Card-present payments are moving to the secure native /pos flow and are disabled on this legacy POS fallback.');
     return;
   }
   if (!connectedReader) { alert('Connect a reader first (top right).'); return; }

@@ -8,6 +8,7 @@ type Readiness = {
   stripeSecret: boolean;
   stripeWebhookSecret: boolean;
   terminalReaderRegistry: boolean;
+  terminalAcceptance: boolean;
   paymentReturnOrigins: boolean;
 };
 
@@ -157,6 +158,7 @@ const readinessLabels: Record<keyof Readiness, string> = {
   stripeSecret: "Stripe API",
   stripeWebhookSecret: "Webhook",
   terminalReaderRegistry: "Readers",
+  terminalAcceptance: "Terminal accepted",
   paymentReturnOrigins: "Return URLs"
 };
 
@@ -467,7 +469,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
             <CalendarDays size={22} />
             <div>
               <p>Readiness</p>
-              <h2>{snapshot ? `${readinessScore}/5 configured` : "Waiting"}</h2>
+              <h2>{snapshot ? `${readinessScore}/6 configured` : "Waiting"}</h2>
             </div>
           </div>
           <div className="adminOpsReadiness">

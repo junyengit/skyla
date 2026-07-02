@@ -97,9 +97,12 @@ describe("legacy route bridge", () => {
   it("keeps admin and POS out of public indexing", () => {
     expect(noindexLegacyRoutes).toEqual(["admin", "pos"]);
     expect(noindexAppRoutes).toContain("admin");
+    expect(noindexAppRoutes).toContain("pos");
     expect(noindexAppRoutes).toContain("pos-next");
     expect(noindexLegacyRoutes).not.toContain("members");
     expect(noindexAppRoutes).not.toContain("members");
+    expect(legacyRoutes).not.toContain("pos");
+    expect(existsSync(join(publicDir, "pos.html")), "pos.html legacy fallback").toBe(true);
 
     const robots = readFileSync(join(publicDir, "robots.txt"), "utf8");
     expect(robots).not.toContain("Disallow: /members");
@@ -155,7 +158,9 @@ describe("legacy route bridge", () => {
     const nativeAdmin = readFileSync(join(webDir, "app/admin/page.tsx"), "utf8");
     const nativeAdminClient = readFileSync(join(webDir, "components/admin-ops-client.tsx"), "utf8");
     const nativeAdminLookupRoute = readFileSync(join(webDir, "app/api/admin/bookings/lookup/route.ts"), "utf8");
+    const nativePrimaryPos = readFileSync(join(webDir, "app/pos/page.tsx"), "utf8");
     const nativePos = readFileSync(join(webDir, "app/pos-next/page.tsx"), "utf8");
+    const nativePosPage = readFileSync(join(webDir, "components/pos-register-page.tsx"), "utf8");
     const adminHtml = readFileSync(join(publicDir, "admin.html"), "utf8");
     const adminCss = readFileSync(join(publicDir, "admin.css"), "utf8");
     const posHtml = readFileSync(join(publicDir, "pos.html"), "utf8");
@@ -171,10 +176,16 @@ describe("legacy route bridge", () => {
     expect(nativeAdminLookupRoute).toContain("staffAuthRequiredResponse");
     expect(nativeAdminLookupRoute).toContain("convexUnconfiguredResponse");
     expect(nativeAdminLookupRoute).toContain("admin:lookupBookingForCheckIn");
-    expect(nativePos).toContain("posNextPage");
+    expect(nativePrimaryPos).toContain("PosRegisterPage");
+    expect(nativePos).toContain("PosRegisterPage");
+    expect(nativePosPage).toContain("posNextPage");
+    expect(nativePosPage).toContain('data-pos-route={variant}');
+    expect(nativePosPage).toContain('href="/pos.html"');
     expect(globalsCss).toContain(".adminOpsPage p,");
     expect(globalsCss).toContain(".posNextPage p,");
     expect(globalsCss).toContain("color: #fff");
+    expect(globalsCss).toContain(".posNextActions .primaryAction:disabled");
+    expect(globalsCss).toContain("opacity: 0.72");
     expect(adminHtml).toContain("admin.css?v=8");
     expect(adminCss).toContain("--gray:      #ffffff");
     expect(adminCss).toContain(".hours-input:disabled");
@@ -186,6 +197,6 @@ describe("legacy route bridge", () => {
     expect(posJs).toContain("escHtml(l.name)");
     expect(posJs).toContain("escHtml(i.name)");
     expect(posJs).toContain("LEGACY_TERMINAL_PAYMENTS_ENABLED = false");
-    expect(posJs).toContain("Card-present payments are moving to the secure /pos-next flow");
+    expect(posJs).toContain("Card-present payments are moving to the secure native /pos flow");
   });
 });

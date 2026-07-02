@@ -78,7 +78,8 @@ sequenceDiagram
 
 ## Consequences
 
-- `/pos-next` can now prepare a real server-driven Terminal handoff once Convex,
+- Native `/pos` and compatibility `/pos-next` can now prepare a real
+  server-driven Terminal handoff once Convex,
   staff auth, the trusted reader registry, Stripe, and a test reader are
   configured.
 - The public PaymentIntent route no longer returns `clientSecret`; the browser

@@ -96,6 +96,7 @@ export const createStripeTerminalPaymentIntent = action({
     idempotencyKey: v.string()
   },
   handler: async (ctx, args) => {
+    assertPosTerminalAcceptanceEnabled();
     const secretKey = stripeSecretKey();
 
     const snapshot: StripeTerminalSnapshot & { actorStaffUserId: Id<"staffUsers"> } = await ctx.runQuery(
@@ -252,4 +253,10 @@ function stripeSecretKey() {
   }
   assertStripeSecretMode(secretKey, parseStripeMode(process.env.SKYLA_STRIPE_MODE));
   return secretKey;
+}
+
+function assertPosTerminalAcceptanceEnabled() {
+  if (process.env.SKYLA_POS_TERMINAL_ACCEPTANCE !== "enabled") {
+    throw new Error("SKYLA_POS_TERMINAL_ACCEPTANCE is not enabled");
+  }
 }

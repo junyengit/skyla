@@ -44,10 +44,10 @@ flowchart LR
 As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest verified app-code production deployment for this slice:
-  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app` from merge commit
-  `d0844856f82b764687ead620b9207a56b1cf7719` (PR #59,
-  deployment `dpl_ArArkLGov88ksSxchCDM5TXBNGQe`).
+- Latest verified app-code production deployment before this POS route slice:
+  `https://web-aaow8lg0e-junyen-enterprises.vercel.app` from merge commit
+  `e5e4b75b477b7ffef20f5279a97491024fcb5cab` (PR #61,
+  deployment `dpl_35TH1egrSKMD6TLnSFLCbnGpFN6t`).
 - Docs-only follow-up merges can create newer Vercel deployment URLs with the
   same app behavior. Use the Vercel dashboard or `vercel ls` for the newest
   deployment before recording fresh evidence.
@@ -72,10 +72,10 @@ As of July 2, 2026:
   `junyen-enterprises/web` found no project environment variables on July 2,
   2026.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
-  `/members`, `/privacy`, `/terms`, checkout route, `/admin`, and `/pos-next`
-  draft review route. It still bridges `/pos` to a static compatibility page
-  in `apps/web/public`. The old `.html` URLs remain available during
-  route-by-route cutover.
+  `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
+  older `/pos-next` draft review URL through App Router. `/pos.html` remains as
+  the explicit static compatibility fallback during the remaining POS cutover.
+  The old `.html` URLs remain available during route-by-route cutover.
 
 ## Current Bun And Cleanup State
 
@@ -143,7 +143,7 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   `convex_unconfigured` pause instead of saving to browser localStorage or
   Supabase. `/experiences.html` remains as a compatibility artifact during the
   transition.
-- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; `/pos-next` still needs staff auth, Convex envs, Stripe dashboard webhook setup, and test-reader acceptance before it replaces the live register.
+- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the legacy `/pos.html` fallback UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; native `/pos` still needs staff auth, Convex envs, Stripe dashboard webhook setup, `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled`, and test-reader acceptance before live card-present payment is allowed.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
   calculates draft totals from selections only and persists Convex order drafts
@@ -155,7 +155,8 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   real Convex envs, Stripe envs, and Stripe dashboard endpoint setup. Convex
   also requires `SKYLA_STRIPE_MODE` so test keys/webhooks and live
   keys/webhooks cannot be mixed silently.
-- `/api/order-drafts/pos` and `/pos-next` add a native POS draft review path.
+- `/api/order-drafts/pos` and native `/pos` add a POS draft review path. The
+  older `/pos-next` URL still renders the same native shell during rollout.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser
   totals. The backend now creates Stripe Terminal intents and sends them to the
   stored reader from stored `saleRef` records only. Signed Stripe
