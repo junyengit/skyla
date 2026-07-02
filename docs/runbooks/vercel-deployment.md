@@ -25,11 +25,11 @@ root.
 
 As of July 2, 2026:
 
-- Recorded verified application deployment from `main` was READY at
-  `https://web-k294uhnw0-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_GN8Dw18L781T9wdQY25yCcNGBLg7`.
+- Recorded verified app/security deployment from `main` was READY at
+  `https://web-rmz8b793f-junyen-enterprises.vercel.app`.
+- Recorded verified deployment ID: `dpl_9ZNeHcaTqo7odZhpf4yAyGshYRQ9`.
 - Recorded verified merge commit:
-  `a82c0b10be1fd8f291d83bed57eb4ac14300bfcc`.
+  `e194abe670803c8484a32a48e669f61ed117f58b`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -39,7 +39,7 @@ As of July 2, 2026:
   configured in Convex.
 - The latest production build logs show Vercel installing Bun canary
   `1.4.0-canary.1+eba370b69`, detecting Next.js `16.2.10`, and deploying from
-  Git commit `a82c0b1`.
+  Git commit `e194abe`.
 
 ## Bun Deployment Changes
 
