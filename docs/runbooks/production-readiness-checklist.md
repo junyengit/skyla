@@ -33,11 +33,11 @@ from Vercel.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Production deployment checked on 2026-07-02:
-  `https://web-1eof6htpt-junyen-enterprises.vercel.app`
+  `https://web-4jzsjm853-junyen-enterprises.vercel.app`
 - Production deployment ID checked on 2026-07-02:
-  `dpl_Ap7UDu3G6c5MLEitvkWfgCgrm3oD`
+  `dpl_5N2NVHBtKbYPEtVBRW5PXdUQuT7J`
 - Merge commit checked on 2026-07-02:
-  `6560f5705c39daa6e832ed3e3944c2cb1d951935`
+  `be24d917c418d00f81847ba33b1ea965c6dbc5a9`
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -46,13 +46,12 @@ from Vercel.
 - Live API behavior checked on 2026-07-02 across the apex domain, `www`, and the
   latest Vercel deployment URL:
   - Spoofed checkout total `1` cent returned canonical server total `8505` cents.
-  - Spoofed POS total/reader returned canonical server total `9700` cents and no
-    reader fields in the transient draft.
+  - Spoofed POS total/reader/location returned canonical server total `9700`
+    cents and no reader/location fields in the transient draft.
   - `/api/payments/stripe-checkout`,
     `/api/payments/stripe-terminal`, and
-    `/api/payments/stripe-terminal/process` returned `503` with
-    `convex_unconfigured` when probed with the required staff auth where
-    applicable.
+    `/api/admin/config` returned `503` with `convex_unconfigured` when probed
+    with the required staff auth where applicable.
   - No response exposed a Stripe `clientSecret`.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: clean after the `postcss@8.5.16`
@@ -87,7 +86,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - GitHub CI, CodeQL workflow, GitHub Advanced Security CodeQL, and Vercel
-  deployment checks passed for PR #29, the current-state documentation merge.
+  deployment checks passed for PR #33, the native admin config merge.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
   `noindex, nofollow` in the current code path.
@@ -245,7 +244,7 @@ PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun audit
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
 PATH="$HOME/.bun/bin:$PATH" CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable
-PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-1eof6htpt-junyen-enterprises.vercel.app bun run test:smoke
+PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://web-4jzsjm853-junyen-enterprises.vercel.app bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 ```
