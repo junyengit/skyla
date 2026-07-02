@@ -19,7 +19,7 @@
 - Block force pushes and branch deletion.
 - Require conversation resolution before merge.
 - Keep secret scanning and push protection enabled.
-- Enable Dependabot security updates.
+- Keep Dependabot vulnerability alerts and automated security fixes enabled.
 
 Current GitHub branch-protection check, verified on July 2, 2026:
 
@@ -29,12 +29,14 @@ Current GitHub branch-protection check, verified on July 2, 2026:
 - Admins are included in enforcement.
 - Force pushes and branch deletion are disabled.
 - Conversations must be resolved before merge.
+- Dependabot vulnerability alerts and automated security fixes are enabled.
+- GitHub Pages is disabled; Vercel is the active deployment surface.
 
 ## Current Legacy Behavior
 
 The active hosting path is Vercel from `apps/web`. The old root static site has
 been removed from the active tree, so GitHub Pages is no longer the intended
-hosting rollback path.
+hosting rollback path and is currently disabled.
 
 Treat changes to these paths as production-affecting:
 

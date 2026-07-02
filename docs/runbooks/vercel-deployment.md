@@ -25,11 +25,11 @@ root.
 
 As of July 2, 2026:
 
-- Recorded verified payment/hosting/readability deployment from `main` was READY
-  at `https://web-5h8rxbvkt-junyen-enterprises.vercel.app`.
-- Recorded verified deployment ID: `dpl_H1kj5ydUA9KTxnUpXKY5t1S2nLZo`.
-- Recorded verified merge commit:
-  `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`.
+- Latest verified production deployment from `main` is READY at
+  `https://web-9adqy8vx3-junyen-enterprises.vercel.app`.
+- Latest verified deployment ID: `dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT`.
+- Latest verified merge commit:
+  `19c0e6d86f115f78cc24b842e14d406255e846c5` (PR #58).
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -37,18 +37,19 @@ As of July 2, 2026:
 - Production payment routes currently fail closed with `convex_unconfigured`
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
-- The recorded payment/hosting/readability production deployment metadata reports
-  Bun serverless runtime usage, Turbopack bundling, target `production`, and Git
-  commit
-  `6496f8d97d7f82f1b6a34c055edeee4cc5930d8b`.
-- A later docs-only deployment may have a newer Vercel URL without changing this
-  functional verification baseline.
+- The latest production deployment metadata reports Bun serverless runtime
+  usage, Turbopack bundling, target `production`, and commit
+  `19c0e6d86f115f78cc24b842e14d406255e846c5`.
+- Vercel env vars are still absent, so Convex-backed writes and Stripe
+  execution remain intentionally fail-closed until dashboard setup is complete.
 
 ## Bun Deployment Changes
 
 - `apps/web/vercel.json` commits the Bun/Vercel install and build commands.
 - Root GitHub Pages static files are removed from the active tree.
-- Hosting rollback should use Vercel deployment rollback, not root static rollback.
+- GitHub Pages was disabled on July 2, 2026.
+- Hosting rollback should use Vercel deployment rollback, not root static or
+  GitHub Pages rollback.
 
 ## Temporary Legacy Bridge
 

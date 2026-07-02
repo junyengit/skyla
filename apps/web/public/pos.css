@@ -88,7 +88,7 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.86); opaci
 }
 .pos-reader__btn:hover { border-color: var(--gold); }
 .pos-reader__sim { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; }
-.pos-reader__sim.is-disabled { opacity: 0.55; cursor: not-allowed; }
+.pos-reader__sim.is-disabled { opacity: 0.82; color: var(--text); cursor: not-allowed; }
 
 .pos-main { flex: 1; display: flex; overflow: hidden; }
 
@@ -174,7 +174,7 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.86); opaci
   width: 100%; background: var(--gold); color: #14161b; border: none; border-radius: 12px;
   padding: 16px; font-size: 1.05rem; font-weight: 700; cursor: pointer;
 }
-.pos-cart__charge:disabled { opacity: 0.4; cursor: default; }
+.pos-cart__charge:disabled { opacity: 0.72; cursor: default; }
 .pos-cart__clear {
   width: 100%; background: none; border: none; color: var(--muted);
   font-size: 0.82rem; padding: 10px; cursor: pointer; margin-top: 6px;

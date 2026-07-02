@@ -45,8 +45,8 @@ As of July 2, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest verified code-changing production deployment for this slice:
-  `https://web-ec9pf9hly-junyen-enterprises.vercel.app` from merge commit
-  `2d8b1a78fc7f0df3cd01218ec05a7579ebc5abf2`.
+  `https://web-9adqy8vx3-junyen-enterprises.vercel.app` from merge commit
+  `19c0e6d86f115f78cc24b842e14d406255e846c5` (PR #58).
 - Docs-only follow-up merges can create newer Vercel deployment URLs with the
   same app behavior. Use the Vercel dashboard or `vercel ls` for the newest
   deployment before recording fresh evidence.
@@ -57,6 +57,14 @@ As of July 2, 2026:
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
   pushes, branch deletion, and unresolved conversations are blocked.
 - GitHub CodeQL open alerts checked on July 2, 2026: none open.
+- GitHub repo homepage points to `https://skydeckla.com`; Dependabot
+  vulnerability alerts and automated security fixes are enabled.
+- GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
+  production was verified, so the old `github.io` surface is no longer an
+  active host.
+- Vercel environment variables checked on July 2, 2026: none are configured
+  yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
+  fail-closed until dashboard setup is finished.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
@@ -134,7 +142,7 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   `convex_unconfigured` pause instead of saving to browser localStorage or
   Supabase. `/experiences.html` remains as a compatibility artifact during the
   transition.
-- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; `/pos-next` still needs staff auth, Convex envs, and reader collection wiring before it replaces the live register.
+- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the POS UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; `/pos-next` still needs staff auth, Convex envs, Stripe dashboard webhook setup, and test-reader acceptance before it replaces the live register.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
   calculates draft totals from selections only and persists Convex order drafts

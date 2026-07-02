@@ -60,11 +60,11 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest code-changing production deployment checked on 2026-07-02:
-  `https://web-lbez0fbvp-junyen-enterprises.vercel.app`
+  `https://web-9adqy8vx3-junyen-enterprises.vercel.app`
 - Latest code-changing deployment ID checked on 2026-07-02:
-  `dpl_FCx8Urf1iuvG8j357tBP6eKKoFYT`
+  `dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT`
 - Latest code-changing merge commit checked on 2026-07-02:
-  `65d2764d2981c77cb33473d17cf24d480675f2bc`
+  `19c0e6d86f115f78cc24b842e14d406255e846c5` (PR #58)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -73,8 +73,8 @@ real event intake still depends on the dashboard setup below.
   - `https://www.skydeckla.com`
 - Vercel/Convex env behavior checked on 2026-07-02: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
-  still behaves as Convex-unconfigured, so checkout/POS execution is safely
-  blocked.
+  still behaves as Convex-unconfigured, so checkout/POS/member/experience
+  server writes and payment execution are safely blocked.
 - DNS TXT records checked by subagent on 2026-07-02: authoritative Vercel DNS
   did not return the older Apple/Brevo TXT values documented in the domain
   runbook. Restore them in Vercel DNS if those services are still needed, or
@@ -83,8 +83,15 @@ real event intake still depends on the dashboard setup below.
   strict required checks `ci-build`, `Analyze JavaScript and TypeScript`, and
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
   blocked.
-- GitHub CodeQL alerts checked on 2026-07-02 after the PR #56 `main` scan:
+- GitHub CodeQL alerts checked on 2026-07-02 after the PR #58 `main` scan:
   no open alerts.
+- GitHub security toggles checked on 2026-07-02: Dependabot vulnerability
+  alerts are enabled, automated security fixes are enabled, and the repo
+  homepage points to `https://skydeckla.com`.
+- GitHub Pages was disabled on 2026-07-02 after Vercel custom-domain production
+  was verified. The old `https://junyengit.github.io/skyla/` surface should
+  stay off unless Vercel rollback is unavailable and a deliberate Pages rollback
+  is planned.
 - Live API behavior checked on 2026-07-02 across the checked Vercel production
   deployment, apex domain, and `www` with `bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
@@ -109,7 +116,7 @@ real event intake still depends on the dashboard setup below.
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no error/fatal logs for deployment `dpl_FCx8Urf1iuvG8j357tBP6eKKoFYT` in the
+  no error/fatal logs for deployment `dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT` in the
   fetched log window. The visible 503/401 info logs are the expected
   Convex-unconfigured and staff-auth no-write gates.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
@@ -153,7 +160,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-02 for
-  `https://web-ec9pf9hly-junyen-enterprises.vercel.app`,
+  `https://web-9adqy8vx3-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
@@ -183,9 +190,15 @@ flowchart TD
 - Native `/experiences` posts to that API with an idempotency key and no longer
   writes event inquiries through `SkylaData.addInquiry`, browser localStorage,
   or the legacy Supabase mirror.
-- Admin and POS dark-theme text is high contrast.
-- Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` are
-  readable on the black staff surfaces, with no obvious text overlap.
+- Admin and POS dark-theme text is high contrast. Legacy `/admin.html`
+  currently references `admin.css?v=8`, and legacy `/pos` currently references
+  `pos.css?v=10`; keep the smoke script expected cache keys in sync when those
+  files change.
+- Prior Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` were
+  readable on the black staff surfaces. In this later audit, macOS window
+  capture returned only the desktop wallpaper, so the current slice relies on
+  automated route/payment/readiness smokes plus direct rendered HTML/CSS
+  assertions until Helium capture is available again.
 - `/pos-next` reviews a server-calculated POS total without using browser totals.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
@@ -400,11 +413,15 @@ flowchart TD
       `Vercel` checks.
 - [x] Block force pushes and branch deletion.
 - [x] Require conversation resolution before merge.
-- [ ] Keep Dependabot and secret scanning enabled.
+- [x] Keep Dependabot vulnerability alerts enabled.
+- [x] Keep Dependabot automated security fixes enabled.
+- [ ] Confirm secret scanning/secret protection in GitHub's Security dashboard.
+- [x] Disable the old GitHub Pages deployment after Vercel cutover verification.
 
 Current check: `main` protection is active through GitHub branch protection.
 The CI job is named `ci-build` so it cannot be confused with other GitHub or
-hosting integration checks named `build`.
+hosting integration checks named `build`. GitHub Pages is no longer an active
+deployment surface for this repo.
 
 ## Verification Commands
 
@@ -442,9 +459,10 @@ Current dependency note:
 
 - `bun audit --audit-level=low` reports no vulnerabilities.
 - `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
-  `10.6.0`) in `@skyla/web`. Leave that for a dedicated lint tooling slice
-  because the current Next/ESLint peer graph is stable on ESLint 9 and this
-  payment change does not require the major upgrade.
+  `10.6.0`) in `@skyla/web`. I tested that upgrade on 2026-07-02; lint fails
+  because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
+  the current Next lint stack. Keep ESLint on `9.39.4` until the upstream lint
+  plugin stack supports ESLint 10.
 
 ## Next Work Order
 
@@ -463,11 +481,13 @@ Current dependency note:
    test reader and matching Convex sale.
 9. Promote `/pos-next` into the live POS only after Terminal capture uses
    stored `saleRef` totals.
-10. Finish native Admin beyond status actions: vouchers, refunds, config,
+10. Build the next native admin slice as front-desk check-in lookup/actions,
+   using staff-gated Convex/Next APIs and the existing booking status mutation.
+11. Finish native Admin beyond status actions: vouchers, refunds, config,
    catalog, exports, and any destructive action with typed validators,
    audit logs, and rollback steps.
-11. Rebuild POS as the protected live App Router/Convex register.
-12. Migrate remaining Supabase data and disable legacy Supabase functions only
+12. Rebuild POS as the protected live App Router/Convex register.
+13. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff

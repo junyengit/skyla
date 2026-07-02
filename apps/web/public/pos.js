@@ -27,6 +27,15 @@ const LEGACY_TERMINAL_PAYMENTS_ENABLED = false;
 
 const fmt = (cents) => `$${(cents / 100).toFixed(2)}`;
 const dollarsToCents = (d) => Math.round(d * 100);
+function escHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+}
 const parseMoney = (value) => {
   const cleaned = String(value || "").replace(/[^0-9.]/g, "");
   if (!cleaned) return 0;
@@ -75,17 +84,17 @@ function cafeItems() {
 function renderCatalog() {
   const tg = document.getElementById('grid-tickets');
   tg.innerHTML = ticketPackages().map(p => `
-    <button class="pos-item pos-item--ticket" data-kind="ticket" data-key="${p.key}" data-name="${p.name}" data-price="${p.price}" type="button">
-      <span class="pos-item__name">${p.name}</span>
-      <span class="pos-item__price">$${p.price}</span>
+    <button class="pos-item pos-item--ticket" data-kind="ticket" data-key="${escHtml(p.key)}" data-name="${escHtml(p.name)}" data-price="${escHtml(p.price)}" type="button">
+      <span class="pos-item__name">${escHtml(p.name)}</span>
+      <span class="pos-item__price">$${escHtml(p.price)}</span>
     </button>`).join('');
 
   const cg = document.getElementById('grid-cafe');
   cg.innerHTML = cafeItems().map(it => `
-    <button class="pos-item" data-kind="cafe" data-key="${it.id}" data-name="${it.name}" data-price="${it.price}" type="button">
-      <span class="pos-item__emoji">${it.emoji}</span>
-      <span class="pos-item__name">${it.name}</span>
-      <span class="pos-item__price">$${it.price}</span>
+    <button class="pos-item" data-kind="cafe" data-key="${escHtml(it.id)}" data-name="${escHtml(it.name)}" data-price="${escHtml(it.price)}" type="button">
+      <span class="pos-item__emoji">${escHtml(it.emoji)}</span>
+      <span class="pos-item__name">${escHtml(it.name)}</span>
+      <span class="pos-item__price">$${escHtml(it.price)}</span>
     </button>`).join('');
 
   document.querySelectorAll('.pos-item').forEach(btn => {
@@ -157,13 +166,13 @@ function renderCart() {
       return `
         <div class="pos-line">
           <div class="pos-line__info">
-            <span class="pos-line__name">${l.name}</span>
+            <span class="pos-line__name">${escHtml(l.name)}</span>
             <span class="pos-line__price">${fmt(dollarsToCents(l.price) * l.qty)}</span>
           </div>
           <div class="pos-line__qty">
-            <button type="button" data-k="${k}" data-d="-1">−</button>
-            <span>${l.qty}</span>
-            <button type="button" data-k="${k}" data-d="1">+</button>
+            <button type="button" data-k="${escHtml(k)}" data-d="-1">−</button>
+            <span>${escHtml(l.qty)}</span>
+            <button type="button" data-k="${escHtml(k)}" data-d="1">+</button>
           </div>
         </div>`;
     }).join('');
@@ -457,16 +466,16 @@ function paySuccess(sale) {
   const icon = document.getElementById('pay-icon');
   icon.style.display = 'flex'; icon.textContent = '✓'; icon.className = 'pos-pay__icon is-ok';
   document.getElementById('pay-title').textContent = 'Paid ' + fmt(sale.total);
-  const lines = sale.items.map(i => `${i.qty}× ${i.name}`).join(' · ');
+  const lines = sale.items.map(i => `${escHtml(i.qty)}× ${escHtml(i.name)}`).join(' · ');
   let html = `<div class="pos-receipt-items">${lines}</div>`;
   if (sale.tickets.length) {
     html += sale.tickets.map(t => `
       <div class="pos-ticket">
-        <img src="${qrUrl(t.ref)}" alt="QR ${t.ref}" />
+        <img src="${escHtml(qrUrl(t.ref))}" alt="QR ${escHtml(t.ref)}" />
         <div class="pos-ticket__meta">
-          <strong>${t.name}${t.qty > 1 ? ` ×${t.qty}` : ''}</strong>
-          <span>${t.ref}</span>
-          ${t.vouchers.map(v => `<span class="pos-ticket__v">${v}</span>`).join('')}
+          <strong>${escHtml(t.name)}${t.qty > 1 ? ` ×${escHtml(t.qty)}` : ''}</strong>
+          <span>${escHtml(t.ref)}</span>
+          ${t.vouchers.map(v => `<span class="pos-ticket__v">${escHtml(v)}</span>`).join('')}
         </div>
       </div>`).join('');
   } else {

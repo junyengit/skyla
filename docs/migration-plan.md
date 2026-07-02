@@ -1,12 +1,12 @@
 # Skyla Modernization Plan
 
-Last updated: 2026-06-30
+Last updated: 2026-07-02
 
 ## Objective
 
 Move Skyla from a flat GitHub Pages static site with Supabase-era operational code into a modern, secure, maintainable Turborepo architecture on Vercel, using the latest verified core versions:
 
-- Next.js `16.2.9`
+- Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
 - Turborepo `2.10.2`
@@ -22,8 +22,9 @@ Skyla's public domain has been moved to Vercel DNS and Vercel reports both
 `skydeckla.com` and `www.skydeckla.com` as configured correctly. The Vercel
 production deployment is ready and route-compatible. Custom-domain smoke tests
 now pass for both apex and `www` without DNS overrides. Root GitHub Pages static
-files have been removed from the active tree; use Vercel deployment rollback for
-hosting rollback.
+files have been removed from the active tree, and GitHub Pages is disabled after
+Vercel custom-domain verification. Use Vercel deployment rollback for hosting
+rollback.
 
 The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel.
 
@@ -48,9 +49,9 @@ Remaining operating gaps:
 - Database migrations and environment documentation still need to be completed with the Convex and payment rebuild.
 - Payment amounts and paid booking creation are too client-controlled.
 - Admin/POS access is enforced mostly in browser UI and assumed Supabase RLS.
-- Dependabot, CodeQL, CODEOWNERS, and baseline security scripts are present in
-  repo config. Branch protection/dashboard enforcement and formal security
-  review are still pending.
+- Dependabot vulnerability alerts, automated security fixes, CodeQL,
+  CODEOWNERS, branch protection, and baseline security scripts are present.
+  Secret scanning should still be confirmed in the GitHub Security dashboard.
 - Legacy Supabase deployment surfaces must remain available until the Convex
   and server-authoritative payment migration is verified.
 

@@ -1009,7 +1009,11 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.86); opaci
   transition: border-color var(--transition);
 }
 .hours-input:focus { border-color: var(--gold); }
-.hours-input:disabled { opacity: 0.3; }
+.hours-input:disabled {
+  opacity: 0.75;
+  background: var(--dark-4);
+  color: var(--white);
+}
 
 /* ── SETTINGS ── */
 .settings-block {
@@ -1418,7 +1422,9 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.86); opaci
   border: 1px solid rgba(255,255,255,0.05);
   margin-bottom: 8px;
 }
-.voucher-row--done { opacity: 0.55; }
+.voucher-row--done {
+  opacity: 0.82;
+}
 .voucher-row--done .voucher-label { text-decoration: line-through; }
 
 .voucher-emoji { font-size: 1.15rem; flex-shrink: 0; }
