@@ -59,12 +59,12 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest code-changing production deployment checked on 2026-07-02:
-  `https://web-9adqy8vx3-junyen-enterprises.vercel.app`
-- Latest code-changing deployment ID checked on 2026-07-02:
-  `dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT`
-- Latest code-changing merge commit checked on 2026-07-02:
-  `19c0e6d86f115f78cc24b842e14d406255e846c5` (PR #58)
+- Latest app-code production deployment checked on 2026-07-02:
+  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`
+- Latest app-code deployment ID checked on 2026-07-02:
+  `dpl_ArArkLGov88ksSxchCDM5TXBNGQe`
+- Latest app-code merge commit checked on 2026-07-02:
+  `d0844856f82b764687ead620b9207a56b1cf7719` (PR #59)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -83,7 +83,7 @@ real event intake still depends on the dashboard setup below.
   strict required checks `ci-build`, `Analyze JavaScript and TypeScript`, and
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
   blocked.
-- GitHub CodeQL alerts checked on 2026-07-02 after the PR #58 `main` scan:
+- GitHub CodeQL alerts checked on 2026-07-02 after the PR #59 `main` scan:
   no open alerts.
 - GitHub security toggles checked on 2026-07-02: Dependabot vulnerability
   alerts are enabled, automated security fixes are enabled, and the repo
@@ -116,9 +116,8 @@ real event intake still depends on the dashboard setup below.
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no error/fatal logs for deployment `dpl_6LJkkcGgdmKm4hgvSZcgLbzjYYMT` in the
-  fetched log window. The visible 503/401 info logs are the expected
-  Convex-unconfigured and staff-auth no-write gates.
+  no error/fatal logs for deployment `dpl_ArArkLGov88ksSxchCDM5TXBNGQe` in
+  the fetched log window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -160,7 +159,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-02 for
-  `https://web-9adqy8vx3-junyen-enterprises.vercel.app`,
+  `https://web-nbe7iwh2f-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
