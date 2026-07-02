@@ -47,6 +47,8 @@ Use this after each major phase.
 - Preview smoke: `SMOKE_BASE_URL=<preview-url> bun run test:smoke`
 - Production apex smoke: `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`
 - Production `www` smoke: `SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke`
+- Protected branch checks are green: `ci-build`,
+  `Analyze JavaScript and TypeScript`, and `Vercel`
 - Production domain is not changed without approval
 - Old backend/payment surfaces are not disabled before replacement verification
 

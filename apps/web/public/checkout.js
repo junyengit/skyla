@@ -65,6 +65,15 @@ function qrUrl(ref) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&qzone=1&data=${encodeURIComponent(ref)}`;
 }
 
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // What each package includes at the venue. Keep in sync with admin.js PACKAGE_VOUCHERS.
 const PACKAGE_VOUCHERS = {
   general: [],
@@ -113,7 +122,7 @@ function vouchersToTicketHTML(list) {
       <div class="ticket__vouchers-label">Included Vouchers</div>
       <div class="ticket__vouchers-list">
         ${list.map(v =>
-          `<span class="ticket__voucher">${v.emoji} ${v.label}${v.qty > 1 ? ` <b>×${v.qty}</b>` : ''}</span>`
+          `<span class="ticket__voucher">${esc(v.emoji)} ${esc(v.label)}${v.qty > 1 ? ` <b>×${Number(v.qty) || 0}</b>` : ''}</span>`
         ).join('')}
       </div>
     </div>`;
@@ -125,7 +134,7 @@ function vouchersToEmailHTML(list) {
   return '<ul style="list-style:none;padding:0;margin:0">' +
     list.map(v =>
       `<li style="padding:7px 0;border-bottom:1px solid #eee;font-size:14px">` +
-      `${v.emoji} ${v.label}${v.qty > 1 ? ` <strong>×${v.qty}</strong>` : ''}</li>`
+      `${esc(v.emoji)} ${esc(v.label)}${v.qty > 1 ? ` <strong>×${Number(v.qty) || 0}</strong>` : ''}</li>`
     ).join('') +
     '</ul>';
 }
@@ -1011,15 +1020,46 @@ function showTicket(data) {
   // Confirmation status message reflects whether the email actually went out
   const statusEl = document.getElementById('confirm-status');
   if (statusEl) {
+    statusEl.replaceChildren();
     if (data.emailStatus === 'sent') {
-      statusEl.innerHTML = `Confirmation emailed to <strong>${data.email}</strong> — show the QR below at the front desk.` +
-        `<span class="confirm-note">Don't see it? Check your spam or junk folder.</span>`;
+      const strong = document.createElement('strong');
+      strong.textContent = data.email || '';
+      const note = document.createElement('span');
+      note.className = 'confirm-note';
+      note.textContent = "Don't see it? Check your spam or junk folder.";
+      statusEl.append(
+        document.createTextNode('Confirmation emailed to '),
+        strong,
+        document.createTextNode(' — show the QR below at the front desk.'),
+        note,
+      );
     } else if (data.emailStatus === 'failed') {
-      statusEl.innerHTML = `We couldn't email <strong>${data.email}</strong> just now — please print or screenshot your ticket below to check in.`;
+      const strong = document.createElement('strong');
+      strong.textContent = data.email || '';
+      statusEl.append(
+        document.createTextNode("We couldn't email "),
+        strong,
+        document.createTextNode(' just now — please print or screenshot your ticket below to check in.'),
+      );
     } else {
-      statusEl.innerHTML = `Save or print your ticket below and present the QR at the front desk. <span class="confirm-note">(Email delivery isn't configured yet.)</span>`;
+      const note = document.createElement('span');
+      note.className = 'confirm-note';
+      note.textContent = "(Email delivery isn't configured yet.)";
+      statusEl.append(
+        document.createTextNode('Save or print your ticket below and present the QR at the front desk. '),
+        note,
+      );
     }
   }
+
+  const bookingRef = esc(data.bookingRef);
+  const firstName = esc(data.firstName);
+  const lastName = esc(data.lastName);
+  const packageName = esc(data.packageName);
+  const visitDate = esc(data.date);
+  const entryTime = esc(data.time);
+  const guestText = esc(guestLine);
+  const total = Number(data.total) || 0;
 
   document.getElementById('ticket-wrap').innerHTML = `
     <div class="ticket" id="printable-ticket">
@@ -1035,30 +1075,30 @@ function showTicket(data) {
       <div class="ticket__fields">
         <div class="ticket__field ticket__field--wide">
           <div class="ticket__field-label">BOOKING REFERENCE</div>
-          <div class="ticket__field-value ticket__field-value--ref">${data.bookingRef}</div>
+          <div class="ticket__field-value ticket__field-value--ref">${bookingRef}</div>
         </div>
         <div class="ticket__field">
           <div class="ticket__field-label">GUEST</div>
-          <div class="ticket__field-value">${data.firstName} ${data.lastName}</div>
+          <div class="ticket__field-value">${firstName} ${lastName}</div>
         </div>
         <div class="ticket__field">
           <div class="ticket__field-label">PACKAGE</div>
-          <div class="ticket__field-value">${data.packageName}</div>
+          <div class="ticket__field-value">${packageName}</div>
         </div>
       </div>
 
       <div class="ticket__fields ticket__fields--row3">
         <div class="ticket__field">
           <div class="ticket__field-label">DATE</div>
-          <div class="ticket__field-value">${data.date}</div>
+          <div class="ticket__field-value">${visitDate}</div>
         </div>
         <div class="ticket__field">
           <div class="ticket__field-label">ENTRY TIME</div>
-          <div class="ticket__field-value">${data.time}</div>
+          <div class="ticket__field-value">${entryTime}</div>
         </div>
         <div class="ticket__field">
           <div class="ticket__field-label">GUESTS</div>
-          <div class="ticket__field-value">${guestLine}</div>
+          <div class="ticket__field-value">${guestText}</div>
         </div>
       </div>
 
@@ -1077,11 +1117,11 @@ function showTicket(data) {
       <div class="ticket__stub">
         <div class="ticket__barcode-wrap">
           ${buildBarcodeSVG(data.bookingRef)}
-          <div class="ticket__barcode-ref">${data.bookingRef}</div>
+          <div class="ticket__barcode-ref">${bookingRef}</div>
         </div>
         <div class="ticket__stub-total">
           <div class="ticket__stub-label">TOTAL PAID</div>
-          <div class="ticket__stub-amount">$${data.total.toFixed(2)}</div>
+          <div class="ticket__stub-amount">$${total.toFixed(2)}</div>
         </div>
       </div>
     </div>
@@ -1090,14 +1130,11 @@ function showTicket(data) {
   document.getElementById('ticket-modal').classList.add('visible');
 }
 
-// Real, scannable QR (encodes the booking reference). Falls back to the
-// decorative SVG if the QR image service can't be reached.
+// Real, scannable QR encoding the booking reference.
 function buildQR(ref) {
-  return `<img class="ticket__qr-img" src="${qrUrl(ref)}" width="120" height="120" ` +
-         `alt="Check-in QR ${ref}" loading="eager" ` +
-         `onerror="this.outerHTML = window.__qrFallback('${ref}')" />`;
+  return `<img class="ticket__qr-img" src="${esc(qrUrl(ref))}" width="120" height="120" ` +
+         `alt="Check-in QR ${esc(ref)}" loading="eager" />`;
 }
-window.__qrFallback = function (ref) { return buildQRSVG(ref); };
 
 function buildQRSVG(seed) {
   const size = 25, cs = 7, total = size * cs;

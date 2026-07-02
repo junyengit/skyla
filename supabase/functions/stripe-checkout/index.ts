@@ -68,7 +68,8 @@ async function handle(req: Request) {
 
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
-    return json({ error: String((e as Error)?.message || e) }, 400);
+    console.error("Legacy Stripe checkout function failed", e);
+    return json({ error: "Legacy Stripe checkout request failed" }, 400);
   }
 }
 
