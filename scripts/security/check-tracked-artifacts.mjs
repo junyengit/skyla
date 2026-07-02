@@ -14,6 +14,41 @@ const allowedPathPatterns = [
   /^docs\/marketing\/google-ads\/google-search-(ad-copy|campaign-keywords)\.csv$/
 ];
 
+const legacyRootCompatibilityFiles = new Set([
+  "CNAME",
+  "about.css",
+  "about.html",
+  "admin.css",
+  "admin.html",
+  "admin.js",
+  "ads-tracking.js",
+  "cafe.css",
+  "cafe.html",
+  "checkout.css",
+  "checkout.html",
+  "checkout.js",
+  "experiences.css",
+  "experiences.html",
+  "favicon.ico",
+  "index.html",
+  "members.css",
+  "members.html",
+  "pos.css",
+  "pos.html",
+  "pos.js",
+  "privacy.html",
+  "robots.txt",
+  "script.js",
+  "shared-data.js",
+  "sitemap.xml",
+  "styles.css",
+  "terms.html"
+]);
+
+const legacyRootPathPatterns = [/^images\//, /^marketing\//];
+
+const nonBunPackageManagerFiles = new Set(["package-lock.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "yarn.lock"]);
+
 const secretPatterns = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /\bsk_(live|test)_[A-Za-z0-9]{16,}\b/,
@@ -63,6 +98,18 @@ const failures = [];
 
 for (const file of trackedFiles) {
   const isAllowedTemplate = allowedPathPatterns.some((pattern) => pattern.test(file));
+  const isLegacyRootCompatibilityFile =
+    legacyRootCompatibilityFiles.has(file) || legacyRootPathPatterns.some((pattern) => pattern.test(file));
+  if (isLegacyRootCompatibilityFile) {
+    failures.push(`${file}: legacy compatibility assets belong under apps/web/public, not the repo root`);
+    continue;
+  }
+
+  if (nonBunPackageManagerFiles.has(file)) {
+    failures.push(`${file}: Skyla uses Bun canary with text bun.lock; do not reintroduce alternate package-manager files`);
+    continue;
+  }
+
   if (!isAllowedTemplate && forbiddenPathPatterns.some((pattern) => pattern.test(file))) {
     failures.push(`${file}: forbidden tracked artifact path`);
     continue;

@@ -13,6 +13,10 @@ Use this after each major phase.
 - `bun run security:audit`
 - `bun run check`
 - No accidental generated artifacts in `git status`
+- No legacy root static files are reintroduced; compatibility assets belong in
+  `apps/web/public`
+- No alternate package-manager lockfiles are reintroduced; Bun canary uses the
+  root text `bun.lock`
 - No secrets in source
 - No new client-trusted payment authority
 - Payment actions accept stored refs only, not browser totals

@@ -377,7 +377,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Verify, review, and ship `codex/post-member-application-production-state`.
 - [x] Verify, review, and ship `codex/staff-contrast-cache-bust`.
 - [x] Verify, review, and ship `codex/production-readiness-smoke`.
-- [ ] Verify, review, and ship `codex/payment-hosting-readability-check`.
+- [x] Verify, review, and ship `codex/payment-hosting-readability-check`.
+- [x] Verify, review, and ship `codex/post-payment-hosting-state`.
+- [ ] Verify, review, and ship `codex/root-legacy-regression-guard`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -409,6 +411,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
+- Keep the tracked artifact guard enforcing that old root static files, root
+  `images/`, `CNAME`, and root compatibility scripts/styles do not return.
 - Use `apps/web` as the Vercel project root.
 - Bridge legacy routes from Vercel to static compatibility files during cutover. This is a temporary reliability measure, not the final application architecture.
 - Do not commit or deploy `output/` or `tmp/`.
