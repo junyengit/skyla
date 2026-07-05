@@ -20,6 +20,11 @@ with a client secret. Skyla uses smart readers, so the safer direction is:
 This keeps amount, currency, lines, and reader choice tied to the persisted sale
 instead of loose browser payloads.
 
+A later selector-hardening slice moved native `/pos` from free-text reader and
+location fields to a staff-gated reader list. The browser now sends only a
+selected `readerId`; Convex derives any Terminal location from
+`SKYLA_TERMINAL_READER_REGISTRY`.
+
 ## Decision
 
 Add a server-driven Terminal handoff route:
@@ -59,9 +64,12 @@ sequenceDiagram
   participant Stripe as Stripe
   participant Reader as Stripe Reader
 
-  POS->>Next: sale selections + staff token + reader selector
+  POS->>Next: staff token
+  Next->>Convex: listTerminalReaders
+  Convex-->>POS: allowlisted readers
+  POS->>Next: sale selections + staff token + readerId selector
   Next->>Convex: createPosSaleDraft
-  Convex->>Convex: authorize selector against reader registry
+  Convex->>Convex: authorize readerId and derive location from registry
   Convex-->>Next: stored saleRef + stored readerId
   POS->>Next: saleRef + idempotencyKey
   Next->>Convex: createStripeTerminalPaymentIntent
@@ -84,9 +92,12 @@ sequenceDiagram
   configured.
 - The public PaymentIntent route no longer returns `clientSecret`; the browser
   does not need it for server-driven reader processing.
-- Browser-entered reader IDs are selectors only. Convex will not persist them
-  unless `SKYLA_TERMINAL_READER_REGISTRY` authorizes the reader and optional
-  location pairing.
+- Browser-entered free-text reader/location fields are no longer part of the
+  native POS flow. The POS screen loads staff-authorized readers from Convex,
+  sends only the selected `readerId`, and Convex will not persist it unless
+  `SKYLA_TERMINAL_READER_REGISTRY` authorizes the reader.
+- Browser-sent Terminal location IDs are ignored by the POS draft route. Stored
+  locations are derived from the trusted registry.
 - Stored readers are revalidated against `SKYLA_TERMINAL_READER_REGISTRY` again
   before PaymentIntent creation and before reader processing, so revoked readers
   stop working without editing stored draft rows.

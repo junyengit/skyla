@@ -40,6 +40,28 @@ async function postJson(path, body, headers = {}) {
   };
 }
 
+async function getJson(path, headers = {}) {
+  const url = new URL(path, baseUrl);
+  const response = await fetch(url, {
+    headers
+  });
+  const text = await response.text();
+  let json = null;
+
+  try {
+    json = text.length > 0 ? JSON.parse(text) : null;
+  } catch {
+    fail(path, `expected JSON response, got ${text.slice(0, 120)}`);
+  }
+
+  return {
+    path,
+    status: response.status,
+    json,
+    text
+  };
+}
+
 function hasSensitiveStripeField(value) {
   if (value === null || value === undefined) {
     return false;
@@ -114,6 +136,9 @@ expect(
   `expected no-write persistence reason, got ${posDraft.json?.persistenceReason ?? "none"}`
 );
 expectNoClientSecret("POS draft", posDraft);
+
+const posReadersUnauthed = await getJson("/api/pos/readers");
+expectFailClosed("POS reader registry unauthenticated", posReadersUnauthed, 401, "staff_auth_required");
 
 const checkoutPayment = await postJson("/api/payments/stripe-checkout", {
   orderRef: "SKY2607-SMOKE1",

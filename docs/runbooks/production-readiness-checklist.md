@@ -20,9 +20,11 @@ env vars, and Stripe dashboard webhook endpoint are ready.
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and
 `/pos.html` is now a compatibility handoff to `/pos`; it no longer loads the
-old POS browser app, Stripe Terminal SDK, or shared data facade. Reader
-collection is still locked until staff auth, Convex envs, Stripe webhooks, and
-Stripe Terminal test-reader acceptance are complete. Native `/admin` now has a
+old POS browser app, Stripe Terminal SDK, or shared data facade. The native POS
+screen now loads authorized Terminal readers from a staff-gated Convex route
+instead of asking staff to type Stripe reader/location IDs. Reader collection is
+still locked until staff auth, Convex envs, Stripe webhooks, and Stripe
+Terminal test-reader acceptance are complete. Native `/admin` now has a
 staff-token operations snapshot plus audited booking/member status actions.
 `/admin.html` is now a compatibility handoff to `/admin`; it no longer loads
 the old admin browser app or shared data facade. The old
@@ -49,14 +51,16 @@ real event intake still depends on the dashboard setup below.
 5. Create the Stripe webhook endpoint after Convex gives you the site URL.
 6. Use Stripe test cards and a test Terminal reader only.
 7. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until the test reader passes.
-8. Seed the first staff admin, then remove the bootstrap token.
-9. Confirm member and event forms save into Convex in Preview.
-10. Confirm checkout and POS stay server-priced with test payments.
-11. Disable or redeploy old Supabase payment functions from the fail-closed
+8. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
+9. Seed the first staff admin, then remove the bootstrap token.
+10. Confirm `/api/pos/readers` returns readers only with a valid staff token.
+11. Confirm member and event forms save into Convex in Preview.
+12. Confirm checkout and POS stay server-priced with test payments.
+13. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-12. Finish the native admin/POS rebuild and test-reader acceptance before
+14. Finish the native admin/POS rebuild and test-reader acceptance before
     removing the remaining compatibility handoffs.
-13. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+15. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
@@ -213,6 +217,11 @@ flowchart TD
   assertions until Helium capture is available again.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
+- Native `/pos` loads authorized Stripe Terminal readers through
+  `/api/pos/readers`; staff no longer type free-text `tmr_...` or `tml_...`
+  values into the sale screen.
+- `/api/order-drafts/pos` ignores browser-sent `terminalLocationId`. Convex
+  derives any stored Terminal location from `SKYLA_TERMINAL_READER_REGISTRY`.
 - Legacy `/pos.html` is now retired to a native handoff. The repo copy of the
   old Supabase Terminal function returns `410` for `setup-reader` as well as
   the old charge/reader bridge actions.

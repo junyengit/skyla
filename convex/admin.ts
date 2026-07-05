@@ -22,6 +22,7 @@ import {
 } from "./lib/adminOperations";
 import { buildAdminBookingVouchers, type AdminBookingVouchers } from "./lib/adminVouchers";
 import { requireStaffUser } from "./lib/auth";
+import { listTerminalReaderRegistry } from "./lib/terminalReaderRegistry";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -390,6 +391,25 @@ export const getOperationsSnapshot = query({
         bookings: publicRecentBookings,
         members: recentMembers.map(publicMember)
       }
+    };
+  }
+});
+
+export const listTerminalReaders = query({
+  args: {},
+  handler: async (ctx) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
+    const readers = listTerminalReaderRegistry(process.env.SKYLA_TERMINAL_READER_REGISTRY);
+
+    return {
+      staff: {
+        emailLower: staffUser.emailLower,
+        role: staffUser.role
+      },
+      readers: readers.map((reader, index) => ({
+        ...reader,
+        label: `Reader ${index + 1}`
+      }))
     };
   }
 });

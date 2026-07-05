@@ -358,6 +358,16 @@ async function checkPaymentNoWrite(origin) {
   );
   expectNoClientSecret(origin, "POS draft", posDraft);
 
+  const posReaders = await getJson(origin, "/api/pos/readers");
+  expectStatus(origin, "POS reader registry no-write", posReaders, 401);
+  expect(
+    origin,
+    "POS reader registry no-write",
+    posReaders.json?.code === "staff_auth_required",
+    `expected staff_auth_required, got ${posReaders.json?.code ?? "none"}`
+  );
+  expectNoClientSecret(origin, "POS reader registry no-write", posReaders);
+
   const checkoutPayment = await postJson(origin, "/api/payments/stripe-checkout", {});
   if (checkoutPayment.status === 503) {
     expect(
@@ -450,6 +460,20 @@ async function postJson(origin, path, body) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body)
   });
+  const text = await response.text();
+  let json = null;
+
+  try {
+    json = text.length > 0 ? JSON.parse(text) : null;
+  } catch {
+    failures.push(`${origin}${path}: expected JSON response, got ${text.slice(0, 120)}`);
+  }
+
+  return { status: response.status, json };
+}
+
+async function getJson(origin, path) {
+  const response = await fetch(new URL(path, origin));
   const text = await response.text();
   let json = null;
 

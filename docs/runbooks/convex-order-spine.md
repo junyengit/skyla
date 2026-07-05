@@ -224,10 +224,10 @@ If Convex is configured but the Next route does not receive a staff bearer
 token, it still returns the server-calculated draft and
 `persistenceReason: "staff_auth_required"`.
 
-The POS draft route accepts `readerId` and `terminalLocationId` only as a staff
-selector. Convex validates that selector against
-`SKYLA_TERMINAL_READER_REGISTRY` before storing it, and the later Terminal action
-trusts only the stored sale reader.
+The POS draft route accepts `readerId` only as a staff-selected reader
+selector. It does not forward browser-sent `terminalLocationId`; Convex derives
+the paired location from `SKYLA_TERMINAL_READER_REGISTRY` before storing the
+sale, and the later Terminal action trusts only the stored sale reader.
 
 For checkout orders, with `NEXT_PUBLIC_CONVEX_URL` configured and
 `idempotencyKey` supplied, `/api/order-drafts/checkout` calls

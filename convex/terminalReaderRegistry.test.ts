@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { authorizeTerminalReaderSelection, parseTerminalReaderRegistry } from "./lib/terminalReaderRegistry";
+import {
+  authorizeTerminalReaderSelection,
+  listTerminalReaderRegistry,
+  parseTerminalReaderRegistry
+} from "./lib/terminalReaderRegistry";
 
 describe("Terminal reader registry helpers", () => {
   it("authorizes a reader and fills the server-configured location", () => {
@@ -44,5 +48,18 @@ describe("Terminal reader registry helpers", () => {
       { readerId: "tmr_front_desk", terminalLocationId: "tml_lobby" },
       { readerId: "tmr_bar" }
     ]);
+  });
+
+  it("lists trusted readers and fails closed when the registry is empty", () => {
+    expect(listTerminalReaderRegistry("tmr_front_desk@tml_lobby")).toEqual([
+      { readerId: "tmr_front_desk", terminalLocationId: "tml_lobby" }
+    ]);
+    expect(() => listTerminalReaderRegistry(undefined)).toThrow("Trusted Terminal reader registry is not configured");
+  });
+
+  it("rejects duplicate reader IDs in the trusted registry", () => {
+    expect(() => listTerminalReaderRegistry("tmr_front_desk@tml_lobby,tmr_front_desk@tml_rooftop")).toThrow(
+      "Trusted Terminal reader registry must not include duplicate readerIds"
+    );
   });
 });
