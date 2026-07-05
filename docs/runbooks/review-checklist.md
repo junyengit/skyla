@@ -50,6 +50,10 @@ Use this after each major phase.
   `/terms`, `/admin`, `/pos`, and `/pos-next` are App Router routes with
   `.html` compatibility files where needed. `/pos.html` is the explicit legacy
   POS fallback; extensionless `/pos` should not be rewritten to it.
+- Public `.html` compatibility files for `/about`, `/cafe`, `/experiences`,
+  `/members`, `/privacy`, and `/terms` are handoff-only and do not load
+  `styles.css`, route-specific public page CSS, `script.js`, `shared-data.js`,
+  `SkylaData`, or third-party tracking snippets.
 - `/members` and `/members.html` do not expose `shared-data.js` or
   `SkylaData.addMember`
 - `/experiences` and `/experiences.html` do not expose `shared-data.js` or

@@ -21,11 +21,17 @@ from the compatibility copies for these content-only pages.
 The native `/cafe` page reads active cafe items from `@skyla/payments` so the
 public menu shares the same server-owned catalog source as POS and checkout.
 
+Follow-up [0022](0022-public-html-handoff-cleanup.md) reduces the remaining
+public `.html` compatibility files to small handoff pages and removes the old
+page-level public CSS/JS assets.
+
 ## Consequences
 
 - Public content pages ship as static Server Components with no legacy
   localStorage/Supabase bridge.
 - Old `.html` links continue to return `200`.
+- `.html` compatibility files should stay handoff-only once their native route
+  exists.
 - `/experiences` was intentionally left for a separate lead-form migration.
   That follow-up is now covered by
   [0018](0018-native-experiences-inquiry-cutover.md).
