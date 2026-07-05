@@ -337,15 +337,17 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified production commit:
+- Latest verified docs-state commit:
   `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76)
-- Latest verified production deployment:
+- Latest verified docs-state deployment evidence:
   `https://web-1n1r4myow-junyen-enterprises.vercel.app`
-- Latest verified production deployment ID:
+- Latest verified docs-state deployment ID:
   `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`
-- Latest verified app-code deployment before that docs-state follow-up:
+- Latest verified app-code deployment before docs-only follow-ups:
   `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
   (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from PR #75.
+- Later docs-only merges create newer Vercel production URLs with the same app
+  behavior; query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
