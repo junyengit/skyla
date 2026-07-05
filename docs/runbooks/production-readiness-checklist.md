@@ -123,7 +123,7 @@ real event intake still depends on the dashboard setup below.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
   no error/fatal logs for deployment `dpl_62iVfWRBejYwK6nRvrBgXfzbkoQP` in
   the fetched log window.
-- Bun checked locally: `1.4.0-canary.1+eba370b69`
+- Bun checked locally: `1.4.0-canary.1+fb50cce92`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
 - Dependency freshness checked on 2026-07-05: `bun outdated --recursive` only
@@ -294,10 +294,10 @@ flowchart TD
   Convex/staff auth/Stripe dashboard envs plus Stripe test-reader acceptance.
 - Admin/POS are not fully rebuilt as protected App Router/Convex workflows yet.
   The native `/admin` snapshot, booking lookup/check-in, status actions, and
-  announcement/hours config are only the first admin slices.
-- Native admin intentionally does not yet do voucher redemption, refunds,
-  hard delete, clear all, reset all, pricing/menu edits, or payment catalog
-  changes.
+  announcement/hours config are the first admin slices; voucher redemption now
+  uses the native event-ledger slice.
+- Native admin intentionally does not yet do refunds, hard delete, clear all,
+  reset all, pricing/menu edits, or payment catalog changes.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
 
@@ -510,9 +510,9 @@ Current dependency note:
 9. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-10. Finish native Admin beyond lookup/status actions: vouchers, refunds, config,
-   catalog, exports, and any destructive action with typed validators,
-   audit logs, and rollback steps.
+10. Finish native Admin beyond lookup/status/config/voucher actions: refunds,
+   catalog, exports, and any destructive action with typed validators, audit
+   logs, and rollback steps.
 11. Rebuild POS as the protected live App Router/Convex register.
 12. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
@@ -538,9 +538,10 @@ What has been done:
   succeeds after the server accepts the application.
 - Admin, native POS, `/pos-next`, and legacy fallbacks use high-contrast dark
   staff screens.
-- `/admin` is being moved into Next.js. It now has staff-gated operations plus
-  booking/member status buttons; `/admin.html` remains as a read/export fallback
-  only, with old write handlers disabled until missing workflows are rebuilt.
+- `/admin` is being moved into Next.js. It now has staff-gated operations,
+  booking/member status buttons, announcement/hours config, and voucher
+  redemption code; `/admin.html` remains as a read/export fallback only, with
+  old write handlers disabled until missing workflows are rebuilt.
 - `/pos` is now the native server-priced POS screen. `/pos.html` remains only
   as the old disabled fallback while Stripe Terminal test-reader acceptance is
   completed. The old reader setup bridge is retired in repo code too.

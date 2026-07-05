@@ -36,6 +36,9 @@ Use this after each major phase.
   `LEGACY_TERMINAL_READER_SETUP_ENABLED = false`
 - Legacy Supabase `stripe-terminal` returns `410` for `setup-reader` as well as
   charge/reader bridge actions
+- Native admin voucher redemption stores redeem/undo as
+  `voucherRedemptionEvents` plus `auditEvents`; the route must not accept
+  voucher quantities, totals, paid state, or entitlements from the browser
 
 ## Product
 
@@ -113,7 +116,7 @@ Use this after each major phase.
 - `/api/admin/config` writes only typed announcement/hours data, requires admin
   staff, and records `admin.config.update` audit events
 - Native admin booking lookup/check-in should stay limited to staff-gated lookup
-  plus allowed booking status transitions. Do not port voucher redemption,
+  plus allowed booking status transitions and voucher redeem/undo. Do not port
   refunds, hard deletes, clear-all, reset-all, pricing/menu edits, password
   changes, POS charging, or reader setup without typed Convex models, audit
   events, reconciliation rules, and rollback steps.

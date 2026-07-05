@@ -1,6 +1,7 @@
+import { projectVoucherRedemption } from "@skyla/payments";
 import { v } from "convex/values";
 
-import type { QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
   configAuditMetadata,
@@ -16,8 +17,10 @@ import {
   bookingStatusPatch,
   memberStatusPatch,
   normalizeAdminNote,
-  statusAuditMetadata
+  statusAuditMetadata,
+  voucherAuditMetadata
 } from "./lib/adminOperations";
+import { buildAdminBookingVouchers, type AdminBookingVouchers } from "./lib/adminVouchers";
 import { requireStaffUser } from "./lib/auth";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -25,6 +28,7 @@ declare const process: { env: Record<string, string | undefined> };
 const recentLimit = 12;
 const countLimit = 100;
 const bookingAdminStatus = v.union(v.literal("confirmed"), v.literal("checked-in"), v.literal("cancelled"));
+const bookingVoucherAction = v.union(v.literal("redeem"), v.literal("undo"));
 const memberAdminStatus = v.union(
   v.literal("pending"),
   v.literal("approved"),
@@ -128,7 +132,7 @@ function publicBooking(booking: {
   updatedAt?: number;
   legacyId?: string;
   rawLegacy?: unknown;
-}) {
+}, vouchers?: AdminBookingVouchers) {
   const firstName = booking.firstName ?? legacyString(booking.rawLegacy, "firstName");
   const lastName = booking.lastName ?? legacyString(booking.rawLegacy, "lastName");
   const partySize = booking.partySize ?? legacyNumber(booking.rawLegacy, "partySize") ?? legacyNumber(booking.rawLegacy, "guests");
@@ -146,7 +150,8 @@ function publicBooking(booking: {
     cancelledAt: booking.cancelledAt,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
-    legacyId: booking.legacyId
+    legacyId: booking.legacyId,
+    ...(vouchers ? { vouchers } : {})
   };
 }
 
@@ -253,6 +258,49 @@ async function configRow(ctx: QueryCtx, key: string) {
     .unique();
 }
 
+async function orderLinesForBooking(ctx: QueryCtx | MutationCtx, booking: { orderRef?: string }) {
+  const orderRef = booking.orderRef;
+  if (!orderRef) {
+    return [];
+  }
+  return await ctx.db
+    .query("orderLineItems")
+    .withIndex("by_orderRef", (q) => q.eq("orderRef", orderRef))
+    .take(100);
+}
+
+async function voucherEventsForBooking(ctx: QueryCtx | MutationCtx, bookingRef: string) {
+  return await ctx.db
+    .query("voucherRedemptionEvents")
+    .withIndex("by_bookingRef_createdAt", (q) => q.eq("bookingRef", bookingRef))
+    .order("asc")
+    .take(500);
+}
+
+async function bookingVoucherState(
+  ctx: QueryCtx | MutationCtx,
+  booking: {
+    bookingRef: string;
+    orderRef?: string;
+    partySize?: number;
+    rawLegacy?: unknown;
+  }
+) {
+  const [orderLines, events] = await Promise.all([
+    orderLinesForBooking(ctx, booking),
+    voucherEventsForBooking(ctx, booking.bookingRef)
+  ]);
+
+  return buildAdminBookingVouchers(booking, orderLines, events);
+}
+
+async function publicBookingWithVouchers(
+  ctx: QueryCtx | MutationCtx,
+  booking: Parameters<typeof publicBooking>[0]
+) {
+  return publicBooking(booking, await bookingVoucherState(ctx, booking));
+}
+
 export const getOperationsSnapshot = query({
   args: {
     limit: v.optional(v.number())
@@ -312,6 +360,8 @@ export const getOperationsSnapshot = query({
           .take(countLimit + 1)
       ]);
 
+    const publicRecentBookings = await Promise.all(recentBookings.map((booking) => publicBookingWithVouchers(ctx, booking)));
+
     return {
       staff: {
         emailLower: staffUser.emailLower,
@@ -337,7 +387,7 @@ export const getOperationsSnapshot = query({
         orders: recentOrders.map(publicOrder),
         posSales: recentPosSales.map(publicPosSale),
         paymentEvents: recentPaymentEvents.map(publicPaymentEvent),
-        bookings: recentBookings.map(publicBooking),
+        bookings: publicRecentBookings,
         members: recentMembers.map(publicMember)
       }
     };
@@ -373,7 +423,7 @@ export const lookupBookingForCheckIn = query({
         },
         query: queryText,
         matchType: "bookingRef" as const,
-        matches: [publicBooking(booking)]
+        matches: [await publicBookingWithVouchers(ctx, booking)]
       };
     }
 
@@ -391,7 +441,7 @@ export const lookupBookingForCheckIn = query({
         },
         query: queryText,
         matchType: "email" as const,
-        matches: matches.map(publicBooking)
+        matches: await Promise.all(matches.map((match) => publicBookingWithVouchers(ctx, match)))
       };
     }
 
@@ -532,6 +582,98 @@ export const updateBookingStatus = mutation({
     });
 
     return publicBooking({ ...booking, ...patch });
+  }
+});
+
+export const updateBookingVoucherRedemption = mutation({
+  args: {
+    bookingRef: v.string(),
+    voucherId: v.string(),
+    action: bookingVoucherAction,
+    note: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
+    const bookingRef = args.bookingRef.trim();
+    const voucherId = args.voucherId.trim();
+    if (!bookingRef) {
+      throw new Error("bookingRef is required");
+    }
+    if (!voucherId) {
+      throw new Error("voucherId is required");
+    }
+    if (voucherId.length > 80) {
+      throw new Error("voucherId must be 80 characters or fewer");
+    }
+
+    const idempotencyKey = args.idempotencyKey?.trim();
+    if (idempotencyKey && idempotencyKey.length > 120) {
+      throw new Error("idempotencyKey must be 120 characters or fewer");
+    }
+    const delta = args.action === "redeem" ? 1 : -1;
+
+    const booking = await ctx.db
+      .query("bookings")
+      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", bookingRef))
+      .unique();
+    if (!booking) {
+      throw new Error("Booking was not found");
+    }
+    if (booking.status === "cancelled") {
+      throw new Error("Cancelled bookings cannot redeem vouchers");
+    }
+
+    const orderRef = booking.orderRef;
+    if (orderRef) {
+      const linkedOrder = await ctx.db
+        .query("orders")
+        .withIndex("by_orderRef", (q) => q.eq("orderRef", orderRef))
+        .unique();
+      if (!linkedOrder) {
+        throw new Error("Linked order was not found for voucher redemption");
+      }
+      if (linkedOrder.status !== "paid") {
+        throw new Error("Linked order must be paid before vouchers can be redeemed");
+      }
+    }
+
+    if (idempotencyKey) {
+      const existingEvent = await ctx.db
+        .query("voucherRedemptionEvents")
+        .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", idempotencyKey))
+        .unique();
+      if (existingEvent) {
+        if (existingEvent.bookingRef !== bookingRef || existingEvent.voucherId !== voucherId || existingEvent.delta !== delta) {
+          throw new Error("Voucher redemption idempotency key was reused for a different action");
+        }
+        return await publicBookingWithVouchers(ctx, booking);
+      }
+    }
+
+    const note = normalizeAdminNote(args.note);
+    const vouchers = await bookingVoucherState(ctx, booking);
+    const projection = projectVoucherRedemption(vouchers.items, voucherId, delta);
+    const now = Date.now();
+
+    await ctx.db.insert("voucherRedemptionEvents", {
+      bookingRef,
+      voucherId,
+      delta,
+      actorStaffUserId: staffUser._id,
+      idempotencyKey: idempotencyKey || undefined,
+      createdAt: now
+    });
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: staffUser._id,
+      action: args.action === "redeem" ? "admin.bookingVoucher.redeem" : "admin.bookingVoucher.undo",
+      entityType: "booking",
+      entityRef: booking.bookingRef,
+      metadata: voucherAuditMetadata(args.action, projection, note),
+      createdAt: now
+    });
+
+    return await publicBookingWithVouchers(ctx, booking);
   }
 });
 

@@ -78,6 +78,23 @@ type OperationsSnapshot = {
       createdAt: number;
       updatedAt?: number;
       legacyId?: string;
+      vouchers?: {
+        summary: {
+          total: number;
+          redeemed: number;
+          remaining: number;
+        };
+        items: Array<{
+          id: string;
+          label: string;
+          quantity: number;
+          redeemed: number;
+          remaining: number;
+          source: "package" | "addon";
+          packageKey?: string;
+          addonKey?: string;
+        }>;
+      };
     }>;
     members: Array<{
       memberId: string;
