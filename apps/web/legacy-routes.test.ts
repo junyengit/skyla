@@ -169,11 +169,20 @@ describe("legacy route bridge", () => {
     }
   });
 
-  it("keeps Stripe reader setup gated by a manager setup token field", () => {
+  it("keeps legacy Stripe Terminal reader setup retired", () => {
     const pos = readFileSync(join(publicDir, "pos.html"), "utf8");
+    const posJs = readFileSync(join(publicDir, "pos.js"), "utf8");
+    const legacyTerminalFunction = readFileSync(join(import.meta.dirname, "../../supabase/functions/stripe-terminal/index.ts"), "utf8");
 
     expect(pos).toContain('id="reader-token"');
-    expect(pos).toContain('type="password"');
+    expect(pos).toContain("pos.js?v=6");
+    expect(posJs).toContain("LEGACY_TERMINAL_READER_SETUP_ENABLED = false");
+    expect(posJs).toContain("Legacy reader setup is disabled");
+    expect(posJs).not.toContain(["action", "'setup-reader'"].join(": "));
+    expect(legacyTerminalFunction).toContain('"setup-reader"');
+    expect(legacyTerminalFunction).toContain("Legacy Stripe Terminal bridge is permanently disabled");
+    expect(legacyTerminalFunction).not.toContain("SKYLA_TERMINAL_SETUP_TOKEN");
+    expect(legacyTerminalFunction).not.toContain("/terminal/readers");
   });
 
   it("keeps admin and POS staff surfaces high-contrast while legacy charging stays disabled", () => {
@@ -187,9 +196,11 @@ describe("legacy route bridge", () => {
     const nativePosPage = readFileSync(join(webDir, "components/pos-register-page.tsx"), "utf8");
     const adminHtml = readFileSync(join(publicDir, "admin.html"), "utf8");
     const adminCss = readFileSync(join(publicDir, "admin.css"), "utf8");
+    const adminJs = readFileSync(join(publicDir, "admin.js"), "utf8");
     const posHtml = readFileSync(join(publicDir, "pos.html"), "utf8");
     const posCss = readFileSync(join(publicDir, "pos.css"), "utf8");
     const posJs = readFileSync(join(publicDir, "pos.js"), "utf8");
+    const paymentsAction = readFileSync(join(import.meta.dirname, "../../convex/payments.ts"), "utf8");
 
     expect(nativeAdmin).toContain("adminOpsPage");
     expect(nativeAdmin).toContain("@skyla/payments");
@@ -211,16 +222,42 @@ describe("legacy route bridge", () => {
     expect(globalsCss).toContain(".posNextActions .primaryAction:disabled");
     expect(globalsCss).toContain("opacity: 0.72");
     expect(adminHtml).toContain("admin.css?v=8");
+    expect(adminHtml).toContain("admin.js?v=2");
     expect(adminCss).toContain("--gray:      #ffffff");
     expect(adminCss).toContain(".hours-input:disabled");
     expect(adminCss).toContain("opacity: 0.75");
     expect(posHtml).toContain("pos.css?v=10");
+    expect(posHtml).toContain("pos.js?v=6");
     expect(posCss).toContain("--muted: #ffffff");
     expect(posCss).toContain(".pos-cart__charge:disabled { opacity: 0.72");
+    expect(adminJs).toContain("const LEGACY_ADMIN_MUTATIONS_ENABLED = false");
+    expect(adminJs).toContain("Legacy admin writes are disabled");
+    for (const guard of [
+      "Booking status changes",
+      "Voucher redemption",
+      "Guest check-in",
+      "Pricing changes",
+      "Cafe menu changes",
+      "Hours changes",
+      "Announcement changes",
+      "Legacy password changes",
+      "Member status changes",
+      "Bulk booking deletion",
+      "Reset all settings"
+    ]) {
+      expect(adminJs).toContain(`legacyAdminMutationDisabled('${guard}')`);
+    }
     expect(posJs).toContain("function escHtml");
     expect(posJs).toContain("escHtml(l.name)");
     expect(posJs).toContain("escHtml(i.name)");
     expect(posJs).toContain("LEGACY_TERMINAL_PAYMENTS_ENABLED = false");
+    expect(posJs).toContain("LEGACY_TERMINAL_READER_SETUP_ENABLED = false");
     expect(posJs).toContain("Card-present payments are moving to the secure native /pos flow");
+    expect(paymentsAction).toMatch(
+      /export const createStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\) => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
+    );
+    expect(paymentsAction).toMatch(
+      /export const processStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\) => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
+    );
   });
 });

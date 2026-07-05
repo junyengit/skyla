@@ -19,12 +19,14 @@ env vars, and Stripe dashboard webhook endpoint are ready.
 
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and
-`/pos.html` remains as the legacy compatibility fallback. Reader collection is
-still locked until staff auth, Convex envs, Stripe webhooks, and Stripe
-Terminal test-reader acceptance are complete. Native `/admin` now has a
-staff-token operations snapshot plus audited
-booking/member status actions. `/admin.html` remains the legacy fallback until
-config, voucher, refund, and destructive workflows are rebuilt safely. The old
+`/pos.html` remains as the legacy compatibility fallback with Terminal payment
+and reader setup disabled. Reader collection is still locked until staff auth,
+Convex envs, Stripe webhooks, and Stripe Terminal test-reader acceptance are
+complete. Native `/admin` now has a staff-token operations snapshot plus audited
+booking/member status actions. `/admin.html` remains a read-only/export-only
+legacy fallback; its old booking, voucher, catalog, settings, password, and
+member write handlers are disabled until each workflow is rebuilt safely in
+Convex. The old
 static checkout URL is still reachable at `/checkout.html`, but it is now only
 a compatibility handoff to `/checkout`; the old browser checkout script and
 stylesheet are no longer shipped.
@@ -62,19 +64,19 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest app-code production deployment checked on 2026-07-02:
-  `https://web-g6cp2p7an-junyen-enterprises.vercel.app`
-- Latest app-code deployment ID checked on 2026-07-02:
-  `dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB`
-- Latest app-code merge commit checked on 2026-07-02:
-  `071ed79d9dd8c89c1ffca8eb849b7ec742090565` (PR #62)
+- Latest app-code production deployment checked on 2026-07-05:
+  `https://web-p6ry1h5jq-junyen-enterprises.vercel.app`
+- Latest app-code deployment ID checked on 2026-07-05:
+  `dpl_H9sffN8LnxwBNHJnqbnETJsyC558`
+- Latest app-code merge commit checked on 2026-07-05:
+  `1899a9f0ffcee96455bdab3f911850f45b339019` (PR #64)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
 - Custom domains checked on 2026-07-02:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel/Convex env behavior checked on 2026-07-02: `vercel env ls` for
+- Vercel/Convex env behavior checked on 2026-07-05: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
   still behaves as Convex-unconfigured, so checkout/POS/member/experience
   server writes and payment execution are safely blocked.
@@ -118,13 +120,13 @@ real event intake still depends on the dashboard setup below.
   and the latest Vercel deployment URL with an empty no-write payload:
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
-- Vercel production runtime errors checked on 2026-07-02 after smoke probes:
-  no error/fatal logs for deployment `dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB` in
+- Vercel production runtime errors checked on 2026-07-05 after smoke probes:
+  no error/fatal logs for deployment `dpl_H9sffN8LnxwBNHJnqbnETJsyC558` in
   the fetched log window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
-- Dependency audit checked on 2026-07-02: `bun audit --audit-level=low` reports
+- Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
-- Dependency freshness checked on 2026-07-02: `bun outdated --recursive` only
+- Dependency freshness checked on 2026-07-05: `bun outdated --recursive` only
   listed ESLint `10.6.0`.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
@@ -161,8 +163,8 @@ flowchart TD
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
-- The 23-route smoke test passed on 2026-07-02 for
-  `https://web-g6cp2p7an-junyen-enterprises.vercel.app`,
+- The 23-route smoke test passed on 2026-07-05 for
+  `https://web-p6ry1h5jq-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
@@ -181,6 +183,9 @@ flowchart TD
 - Native `/admin` can now load and save typed announcement/hours config through
   `/api/admin/config`; pricing, menu, catalog, vouchers, refunds, deletes, and
   resets remain intentionally unavailable.
+- Legacy `/admin.html` is now locked to read/export-only behavior in repo code:
+  `LEGACY_ADMIN_MUTATIONS_ENABLED` is false and the old write buttons/handlers
+  are disabled while missing workflows move into native Convex routes.
 - `/api/members/applications` is the new server-durable member application path.
   It validates applicant fields, requires Convex before accepting, dedupes exact
   retries with an idempotency key, and writes a pending Convex `members` row plus
@@ -197,8 +202,9 @@ flowchart TD
   or the legacy Supabase mirror.
 - Admin and POS dark-theme text is high contrast. Legacy `/admin.html`
   currently references `admin.css?v=8`, and legacy `/pos.html` currently
-  references `pos.css?v=10`; keep the smoke script expected cache keys in sync
-  when those files change.
+  references `pos.css?v=10`; legacy script cache keys are `admin.js?v=2` and
+  `pos.js?v=6`. Keep the smoke script expected cache keys in sync when those
+  files change.
 - Prior Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` were
   readable on the black staff surfaces. In this later audit, macOS window
   capture returned only the desktop wallpaper, so the current slice relies on
@@ -206,6 +212,9 @@ flowchart TD
   assertions until Helium capture is available again.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
+- Legacy `/pos.html` keeps Terminal payments and reader setup disabled; the repo
+  copy of the old Supabase Terminal function returns `410` for `setup-reader`
+  as well as the old charge/reader bridge actions.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
 - Convex Stripe actions now require `SKYLA_STRIPE_MODE`, and they reject a
@@ -246,7 +255,7 @@ flowchart TD
   App Router checkout path, instead of `checkout.html`.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
-- Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.2`,
+- Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.3`,
   TypeScript `6.0.3`, Vitest `4.1.9`, and Convex `1.42.1` are current for
   this stack.
 - `eslint@10.6.0` is intentionally held because the latest available
@@ -315,6 +324,11 @@ flowchart TD
       after every preview and production deploy.
 - [ ] Confirm `/admin` and `/admin.html` remain `X-Robots-Tag: noindex,
       nofollow` after every preview and production deploy.
+- [ ] Confirm `/admin.html` serves `admin.js?v=2` and keeps
+      `LEGACY_ADMIN_MUTATIONS_ENABLED = false`.
+- [ ] Confirm `/pos.html` serves `pos.js?v=6` and keeps both
+      `LEGACY_TERMINAL_PAYMENTS_ENABLED` and
+      `LEGACY_TERMINAL_READER_SETUP_ENABLED` false.
 - [ ] In Vercel DNS, confirm required TXT records still exist for Apple/Brevo or
       other external services. The 2026-07-02 live check did not see the older
       Apple/Brevo TXT values.
@@ -408,7 +422,7 @@ flowchart TD
       for browser-authoritative payment creation.
 - [ ] In Supabase Edge Functions, confirm whether `stripe-terminal` is deployed.
       It should be disabled or redeployed from the repo copy that returns `410`
-      for browser-authoritative Terminal charges.
+      for browser-authoritative Terminal charges and legacy reader setup.
 - [ ] In Supabase Edge Functions, confirm whether `stripe-webhook` is deployed.
       It should be disabled or redeployed from the repo copy that returns `410`.
       Stripe dashboard endpoints should point to Convex, not Supabase, before
@@ -473,7 +487,7 @@ Current dependency note:
 
 - `bun audit --audit-level=low` reports no vulnerabilities.
 - `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
-  `10.6.0`) in `@skyla/web`. I tested that upgrade on 2026-07-02; lint fails
+  `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-05; lint fails
   because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
   the current Next lint stack. Keep ESLint on `9.39.4` until the upstream lint
   plugin stack supports ESLint 10.
@@ -525,11 +539,11 @@ What has been done:
 - Admin, native POS, `/pos-next`, and legacy fallbacks use high-contrast dark
   staff screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations plus
-  booking/member status buttons; `/admin.html` remains as a fallback for the
-  workflows that are not rebuilt yet.
+  booking/member status buttons; `/admin.html` remains as a read/export fallback
+  only, with old write handlers disabled until missing workflows are rebuilt.
 - `/pos` is now the native server-priced POS screen. `/pos.html` remains only
   as the old disabled fallback while Stripe Terminal test-reader acceptance is
-  completed.
+  completed. The old reader setup bridge is retired in repo code too.
 
 What still needs to be done:
 

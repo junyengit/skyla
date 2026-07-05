@@ -29,6 +29,13 @@ Use this after each major phase.
 - Paid order and POS sale transitions require stored Convex order/sale,
   payment-event, amount, currency, status, and webhook idempotency
   reconciliation
+- Convex Terminal create-intent and reader-process actions both require
+  `SKYLA_POS_TERMINAL_ACCEPTANCE`, not just route-level checks
+- Legacy `/admin.html` keeps `LEGACY_ADMIN_MUTATIONS_ENABLED = false`
+- Legacy `/pos.html` keeps `LEGACY_TERMINAL_PAYMENTS_ENABLED = false` and
+  `LEGACY_TERMINAL_READER_SETUP_ENABLED = false`
+- Legacy Supabase `stripe-terminal` returns `410` for `setup-reader` as well as
+  charge/reader bridge actions
 
 ## Product
 
@@ -37,9 +44,9 @@ Use this after each major phase.
 - Legal pages are reachable
 - Ticket path is safe
 - Admin and POS text remains high-contrast on the dark background
-- Legacy staff stylesheet cache keys in `/admin.html`, `/pos.html`, and
+- Legacy staff stylesheet/script cache keys in `/admin.html`, `/pos.html`, and
   `scripts/smoke/production-readiness-smoke.mjs` stay in sync after staff CSS
-  changes
+  or fallback JS changes
 - Admin/POS are not indexed
 - `/pos` is an App Router route and is not indexed
 - `/pos-next` is not indexed
@@ -90,8 +97,8 @@ Use this after each major phase.
 - `/api/payments/stripe-terminal` takes `saleRef` and draft `idempotencyKey`
 - `/api/payments/stripe-terminal` does not accept `amountCents`, `readerId`, or
   `terminalLocationId` from the browser
-- Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation
-  return `410` permanently in repo code
+- Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation and
+  reader setup return `410` permanently in repo code
 - Convex has `SKYLA_STRIPE_MODE` in the correct environment
 - Convex has `STRIPE_SECRET_KEY` in the correct environment and matching
   `SKYLA_STRIPE_MODE`

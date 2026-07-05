@@ -17,7 +17,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   - Next.js `16.2.10`
   - React `19.2.7`
   - Motion `12.42.2`
-  - Turbo `2.10.2`
+  - Turbo `2.10.3`
   - TypeScript `6.0.3`
 - [x] Added `.gitignore` protection for generated/private artifacts.
 - [x] Added root Turborepo workspace files.
@@ -76,7 +76,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Started branch `codex/ads-pos-convex-prep` from `origin/main` to port useful dirty legacy changes without resurrecting root static files.
 - [x] Ported Google Ads conversion tracking into `apps/web/public` with a Vercel env-backed `/ads-config.js` route and tests.
 - [x] Moved Google Ads campaign docs/import CSVs under `docs/marketing/google-ads` and kept the security artifact guard narrow.
-- [x] Added a guarded `setup-reader` bridge in the legacy Stripe Terminal function requiring `SKYLA_TERMINAL_SETUP_TOKEN`.
+- [x] Added a guarded `setup-reader` bridge in the legacy Stripe Terminal function requiring `SKYLA_TERMINAL_SETUP_TOKEN`; this bridge was later retired by ADR 0023 on 2026-07-05.
 - [x] Merged bridge-hardening PR #12 into `main` as merge commit `07448b6e2a626a4b302056e5a155692ad2a9ba39`.
 - [x] Confirmed Vercel production deployment from `main` is READY: `https://web-kham7clfu-junyen-enterprises.vercel.app` (`dpl_69k9h2zKNC7uAGDHzgZmHGT9p6wX`).
 - [x] Re-ran post-merge custom-domain smoke tests without DNS overrides for both `https://skydeckla.com` and `https://www.skydeckla.com`; each 22-route matrix returned `200`.
@@ -500,6 +500,23 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       Helium/Computer Use visual capture still returns `cgWindowNotFound` or a
       wallpaper-only screenshot on this Mac, so the slice relies on rendered
       HTML/CSS assertions and smoke tests until browser capture is restored.
+- [x] Started branch `codex/legacy-staff-fallback-lockdown` from clean
+      `origin/main` after PR #64 to reduce the remaining staff/Supabase fallback
+      surface without dashboard secrets.
+- [x] Reviewed subagent audits for legacy admin writes, POS reader setup, Stripe
+      Terminal action latches, and Supabase function retirement guards.
+- [x] Locked legacy `/admin.html` writes behind
+      `LEGACY_ADMIN_MUTATIONS_ENABLED = false`, made old editor sections
+      read-only, and added route/security/smoke guards for the lock.
+- [x] Retired legacy `/pos.html` reader setup in repo code and made the
+      Supabase `stripe-terminal` copy return `410` for `setup-reader` as well as
+      old charge/reader bridge actions.
+- [x] Added `SKYLA_POS_TERMINAL_ACCEPTANCE` checking directly inside Convex
+      `payments.processStripeTerminalPaymentIntent`.
+- [x] Re-ran dependency checks on 2026-07-05. `bun audit --audit-level=low`
+      reports no vulnerabilities, `bun outdated --recursive` only reports
+      deferred `eslint@10.6.0`, and a direct ESLint 10 trial still fails through
+      `eslint-plugin-react@7.37.5`, so ESLint remains pinned to `9.39.4`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -535,6 +552,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       and removed the old public page CSS/navigation script assets from
       `apps/web/public`.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, and typed announcement/hours config. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/voucher/delete workflows and live Stripe Terminal test-reader acceptance still remain.
+      The legacy `/admin.html` fallback is now read/export-only in repo code, and
+      legacy `/pos.html` keeps Terminal payments plus reader setup disabled.
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -579,7 +598,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
-- Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.2` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
+- Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.3` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
 - Google Ads conversion tracking is still a transition bridge, but checkout,
   members, and experience lead routes are now native App Router pages. Replace
   the public helper with a typed analytics integration once dashboard wiring and

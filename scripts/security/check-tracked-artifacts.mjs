@@ -70,6 +70,22 @@ const retiredLegacyPaymentPatterns = [
     message: "legacy Kaskade browser-authoritative checkout must stay disabled"
   },
   {
+    pattern: /\bLEGACY_ADMIN_MUTATIONS_ENABLED\s*=\s*true\b/,
+    message: "legacy admin fallback writes must stay disabled"
+  },
+  {
+    pattern: /\bLEGACY_TERMINAL_READER_SETUP_ENABLED\s*=\s*true\b/,
+    message: "legacy Terminal reader setup must stay disabled"
+  },
+  {
+    pattern: /action\s*:\s*["']setup-reader["']/,
+    message: "legacy browser-reachable Terminal reader setup must not be reintroduced"
+  },
+  {
+    pattern: /payload\.action\s*===\s*["']setup-reader["']/,
+    message: "legacy Supabase Terminal setup-reader handling must stay retired"
+  },
+  {
     pattern: /WEBHOOK_SECRET\.(?:length|slice)\b/,
     message: "webhook signature errors must not expose secret diagnostics"
   },
