@@ -41,6 +41,9 @@ export function optionalString(value: unknown, label: string, maxLength = 160) {
 
 export function adminFailureStatus(message: string) {
   const normalized = message.toLowerCase();
+  if (normalized.includes("staff role") || normalized.includes("only admin")) {
+    return 403;
+  }
   if (
     message.includes("is required") ||
     message.includes("must be") ||
@@ -51,9 +54,6 @@ export function adminFailureStatus(message: string) {
   }
   if (normalized.includes("auth")) {
     return 401;
-  }
-  if (normalized.includes("staff role") || normalized.includes("only admin")) {
-    return 403;
   }
   if (normalized.includes("not configured")) {
     return 503;

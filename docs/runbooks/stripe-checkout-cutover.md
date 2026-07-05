@@ -131,6 +131,29 @@ Expected:
 4. Use Stripe test mode only after the real Convex deployment is linked. Use
    Stripe dashboard/test cards, never a real card, for the preview cutover.
 
+   The base linked acceptance harness should pass before any live cutover claim
+   about Convex persistence and staff-gated Preview readiness:
+
+   ```bash
+   ACCEPTANCE_BASE_URL="$VERCEL_PREVIEW_BRANCH_ALIAS" \
+   SKYLA_ACCEPTANCE_MODE=linked-test \
+   SKYLA_ACCEPTANCE_STRIPE_MODE=test \
+   SKYLA_ACCEPTANCE_NO_REAL_CARDS=1 \
+   SKYLA_STAFF_TEST_TOKEN="$STAFF_TEST_TOKEN" \
+   bun run test:acceptance:linked
+   ```
+
+   Use the `web-git-<branch>-junyen-enterprises.vercel.app` Preview branch
+   alias. The script asks the deployed backend for a staff-gated readiness
+   snapshot and refuses provider calls unless the remote backend reports
+   `SKYLA_STRIPE_MODE=test`.
+
+   Add `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT=1` only after Convex has Stripe test
+   env vars and the Stripe test webhook endpoint; that optional leg must pass
+   before claiming Stripe Checkout acceptance. Add
+   `SKYLA_ACCEPTANCE_TERMINAL_READER=1` only with a Stripe test reader ready;
+   that optional leg must pass before claiming Terminal reader acceptance.
+
 5. Confirm the POS draft route ignores browser totals:
 
 ```bash
@@ -193,6 +216,10 @@ Expected after Convex is wired:
 - [ ] Stripe dashboard has a test-mode endpoint pointing to Convex
       `/stripe-webhook`.
 - [ ] Preview order draft POST returns `persisted: true`.
+- [ ] `bun run test:acceptance:linked` passes against the Vercel Preview URL
+      with a seeded test staff token.
+- [ ] `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT=1 bun run test:acceptance:linked`
+      passes before Stripe Checkout acceptance is marked complete.
 - [ ] `/checkout` shows a persisted `orderRef` after review.
 - [ ] Stripe Checkout action rejects missing/incorrect `idempotencyKey`.
 - [ ] Stripe Checkout action rejects return URLs outside the allowlist.

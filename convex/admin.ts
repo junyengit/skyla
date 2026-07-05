@@ -42,6 +42,32 @@ function envConfigured(name: string) {
   return Boolean(process.env[name]?.trim());
 }
 
+function stripeMode() {
+  const mode = process.env.SKYLA_STRIPE_MODE?.trim();
+  if (mode === "test" || mode === "live") {
+    return mode;
+  }
+  return mode ? "invalid" : "unset";
+}
+
+function terminalReaderRegistryState() {
+  try {
+    const readers = listTerminalReaderRegistry(process.env.SKYLA_TERMINAL_READER_REGISTRY);
+    return {
+      configured: true,
+      valid: true,
+      readerCount: readers.length
+    };
+  } catch (error) {
+    return {
+      configured: envConfigured("SKYLA_TERMINAL_READER_REGISTRY"),
+      valid: false,
+      readerCount: 0,
+      error: error instanceof Error ? error.message : "Terminal reader registry is invalid"
+    };
+  }
+}
+
 function publicOrder(order: {
   orderRef: string;
   channel: "online" | "pos";
@@ -390,6 +416,50 @@ export const getOperationsSnapshot = query({
         paymentEvents: recentPaymentEvents.map(publicPaymentEvent),
         bookings: publicRecentBookings,
         members: recentMembers.map(publicMember)
+      }
+    };
+  }
+});
+
+export const getAcceptanceReadiness = query({
+  args: {},
+  handler: async (ctx) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
+    const mode = stripeMode();
+    const registry = terminalReaderRegistryState();
+    const stripeSecretConfigured = envConfigured("STRIPE_SECRET_KEY");
+    const paymentReturnOriginsConfigured = envConfigured("SKYLA_PAYMENT_RETURN_ORIGINS");
+    const stripeWebhookSecretConfigured = envConfigured("STRIPE_WEBHOOK_SECRET");
+    const terminalAcceptanceEnabled = process.env.SKYLA_POS_TERMINAL_ACCEPTANCE === "enabled";
+
+    return {
+      staff: {
+        emailLower: staffUser.emailLower,
+        role: staffUser.role
+      },
+      stripe: {
+        mode,
+        secretConfigured: stripeSecretConfigured,
+        paymentReturnOriginsConfigured,
+        webhookSecretConfigured: stripeWebhookSecretConfigured,
+        checkoutReady:
+          mode === "test" &&
+          stripeSecretConfigured &&
+          paymentReturnOriginsConfigured &&
+          stripeWebhookSecretConfigured
+      },
+      terminal: {
+        readerRegistryConfigured: registry.configured,
+        readerRegistryValid: registry.valid,
+        readerCount: registry.readerCount,
+        readerRegistryError: registry.error,
+        acceptanceEnabled: terminalAcceptanceEnabled,
+        readerProcessingReady:
+          mode === "test" &&
+          stripeSecretConfigured &&
+          registry.valid &&
+          registry.readerCount > 0 &&
+          terminalAcceptanceEnabled
       }
     };
   }

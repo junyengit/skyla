@@ -37,6 +37,22 @@ safe for browser code, secret means dashboard/server only.
 | `NEXT_PUBLIC_GOOGLE_ADS_TAG_ID` | yes | Vercel | Production/Preview | Google Ads tag for native conversion pages and remaining compatibility pages. | Optional; blank keeps tracking inert. |
 | `NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_CONVERSION` | yes | Vercel | Production/Preview | Purchase conversion label. | Optional until paid ads are active. |
 
+## Local Acceptance Harness Variables
+
+These are shell-only flags for `bun run test:acceptance:linked`. Do not set
+them as permanent Vercel or Convex runtime variables.
+
+| Variable | Required? | Example | Purpose |
+| --- | --- | --- | --- |
+| `ACCEPTANCE_BASE_URL` | yes | `https://web-git-<branch>-junyen-enterprises.vercel.app` | Vercel Preview branch alias under test. Direct deployment URLs and production aliases are refused by default. |
+| `SKYLA_ACCEPTANCE_MODE` | yes | `linked-test` | Explicitly opts into linked Preview writes. |
+| `SKYLA_ACCEPTANCE_STRIPE_MODE` | yes | `test` | Refuses acceptance unless the operator confirms Stripe test mode. |
+| `SKYLA_ACCEPTANCE_NO_REAL_CARDS` | yes | `1` | Confirms no real cards should be used. |
+| `SKYLA_STAFF_TEST_TOKEN` | yes | `<seeded staff token>` | Staff bearer token for reader and POS draft checks. |
+| `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT` | no | `1` | Also create a Stripe test-mode Checkout Session from the stored `orderRef`; requires the remote readiness snapshot to report Stripe Checkout ready in test mode. |
+| `SKYLA_ACCEPTANCE_TERMINAL_READER` | no | `1` | Also ask a Stripe test Terminal reader to process the stored sale; requires the remote readiness snapshot to report Terminal reader processing ready in test mode. |
+| `SKYLA_ALLOW_PRODUCTION_ACCEPTANCE` | no | `1` | Allows the harness to run against `skydeckla.com`; leave unset for Preview-first acceptance. |
+
 ## Stripe Return Origins
 
 `SKYLA_PAYMENT_RETURN_ORIGINS` must contain origins only, not full paths:

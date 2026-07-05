@@ -69,6 +69,7 @@ console.log("Production readiness smoke passed.");
 console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(", ")}`);
 console.log("- Route matrix and noindex headers passed.");
 console.log("- Payment no-write probes kept server-owned totals and stopped before Stripe execution.");
+console.log("- Acceptance readiness API stays staff-gated before exposing linked-mode state.");
 console.log("- Checkout compatibility page hands off to native /checkout without legacy payment scripts or assets.");
 console.log("- Public .html compatibility pages hand off to native App Router pages without legacy page CSS/JS.");
 console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
@@ -367,6 +368,16 @@ async function checkPaymentNoWrite(origin) {
     `expected staff_auth_required, got ${posReaders.json?.code ?? "none"}`
   );
   expectNoClientSecret(origin, "POS reader registry no-write", posReaders);
+
+  const acceptanceReadiness = await getJson(origin, "/api/admin/acceptance-readiness");
+  expectStatus(origin, "Acceptance readiness no-write", acceptanceReadiness, 401);
+  expect(
+    origin,
+    "Acceptance readiness no-write",
+    acceptanceReadiness.json?.code === "staff_auth_required",
+    `expected staff_auth_required, got ${acceptanceReadiness.json?.code ?? "none"}`
+  );
+  expectNoClientSecret(origin, "Acceptance readiness no-write", acceptanceReadiness);
 
   const checkoutPayment = await postJson(origin, "/api/payments/stripe-checkout", {});
   if (checkoutPayment.status === 503) {

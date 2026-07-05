@@ -226,6 +226,43 @@ Expected response markers:
 - totals are canonical: subtotal `8100`, fee `405`, total `8505`
 - the fake `totalCents: 1` is ignored
 
+The repeatable version of the linked Preview check is:
+
+```bash
+ACCEPTANCE_BASE_URL="$VERCEL_PREVIEW_BRANCH_ALIAS" \
+SKYLA_ACCEPTANCE_MODE=linked-test \
+SKYLA_ACCEPTANCE_STRIPE_MODE=test \
+SKYLA_ACCEPTANCE_NO_REAL_CARDS=1 \
+SKYLA_STAFF_TEST_TOKEN="$STAFF_TEST_TOKEN" \
+bun run test:acceptance:linked
+```
+
+What it proves:
+
+- checkout drafts persist into Convex and ignore fake browser totals
+- member applications and experience inquiries write through the new server APIs
+- `/api/admin/acceptance-readiness` is staff-gated and reports remote
+  `SKYLA_STRIPE_MODE=test`
+- staff auth gates `/api/pos/readers`
+- the authorized reader registry can create a stored POS sale draft
+- no API response exposes a Stripe `clientSecret`
+
+What it intentionally does not do by default:
+
+- it does not create a Stripe Checkout Session unless
+  `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT=1` is set and the remote readiness snapshot
+  reports Stripe Checkout ready in test mode
+- it does not ask a Stripe Terminal reader to collect payment unless
+  `SKYLA_ACCEPTANCE_TERMINAL_READER=1` is set and the remote readiness snapshot
+  reports Terminal reader processing ready in test mode
+- it refuses `skydeckla.com` and `www.skydeckla.com` unless
+  `SKYLA_ALLOW_PRODUCTION_ACCEPTANCE=1` is set
+- it refuses direct Vercel deployment URLs by default; use the
+  `web-git-<branch>-junyen-enterprises.vercel.app` Preview branch alias
+
+This script writes test records into the linked Convex project. Run it against a
+Vercel Preview URL first, with Stripe test mode and seeded test staff.
+
 ## Before Stripe Cutover
 
 Do not wire the public checkout page to Stripe through Convex until all of
@@ -243,8 +280,12 @@ these are true:
 - Preview `/api/order-drafts/checkout` returns `persisted: true`
 - Preview `/api/admin/operations` returns `401` without a bearer token
 - Preview `/api/admin/operations` returns `200` with a valid admin/viewer token
+- Preview `/api/admin/acceptance-readiness` returns `401` without a bearer token
+- Preview `/api/admin/acceptance-readiness` returns `200` with a valid admin/pos
+  token and reports `stripe.mode: "test"`
 - At least one active `admin` staff row exists, created through
   `staffBootstrap.upsertStaffUser` or an equivalent audited process
+- `bun run test:acceptance:linked` passes against the Vercel Preview URL
 - Preview `/api/admin/bookings/status` returns `401` without a bearer token
 - Preview `/api/admin/bookings/status` returns `400` for arbitrary statuses
 - Preview `/api/admin/bookings/status` lets admin/pos staff set `checked-in`

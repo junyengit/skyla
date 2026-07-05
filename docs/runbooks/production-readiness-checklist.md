@@ -54,13 +54,14 @@ real event intake still depends on the dashboard setup below.
 8. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
 9. Seed the first staff admin, then remove the bootstrap token.
 10. Confirm `/api/pos/readers` returns readers only with a valid staff token.
-11. Confirm member and event forms save into Convex in Preview.
-12. Confirm checkout and POS stay server-priced with test payments.
-13. Disable or redeploy old Supabase payment functions from the fail-closed
+11. Run the linked acceptance harness against a Vercel Preview URL.
+12. Confirm member and event forms save into Convex in Preview.
+13. Confirm checkout and POS stay server-priced with test payments.
+14. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-14. Finish the native admin/POS rebuild and test-reader acceptance before
+15. Finish the native admin/POS rebuild and test-reader acceptance before
     removing the remaining compatibility handoffs.
-15. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+16. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
@@ -128,6 +129,12 @@ real event intake still depends on the dashboard setup below.
   and the latest Vercel deployment URL with an empty no-write payload:
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
+- Linked acceptance harness: `bun run test:acceptance:linked` exists for the
+  first Convex/Vercel/Stripe test-mode Preview after dashboard wiring. It is
+  intentionally opt-in, uses the Vercel Preview branch alias by default, refuses
+  non-preview targets unless explicitly allowed, asks the deployed backend for a
+  staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
+  POS records only after the operator provides a seeded test staff token.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
   no error/fatal logs for deployment `dpl_L1sNjzQFh6TzLANFs6QzdZuJrC8J` in
   the fetched one-hour log window. The visible entries were expected info-level
@@ -252,6 +259,9 @@ flowchart TD
 - `/api/admin/bookings/status` and `/api/admin/members/status` require staff
   bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
+- `/api/admin/acceptance-readiness` requires staff bearer auth first, fails
+  closed when Convex is unconfigured, and returns only safe readiness booleans
+  and mode labels for linked Preview acceptance.
 - Production `/api/order-drafts/pos` ignores spoofed browser totals and returns
   the server catalog total.
 - The repo copy of legacy Supabase Stripe Checkout now returns `410`
@@ -383,11 +393,28 @@ flowchart TD
 - [ ] Verify `/api/admin/config` can load and save announcement/hours with a
       valid admin token, rejects viewer/pos writes, rejects malformed shapes,
       and writes an `admin.config.update` audit event.
+- [ ] Verify `/api/admin/acceptance-readiness` returns `401` without a bearer
+      token, then `200` with a valid admin/pos token and `stripe.mode: "test"`.
 - [ ] Verify `/api/members/applications` returns `503 convex_unconfigured`
       before env wiring, then returns `201` for a new preview application,
       `200` for an exact idempotent retry, and `409` for a conflicting retry.
 - [ ] Verify the created member appears in native `/admin` with name, email,
       phone, source, tier, bio, pending status, and timestamps.
+- [ ] Run linked acceptance against the Vercel Preview URL after staff is seeded:
+
+  ```bash
+  ACCEPTANCE_BASE_URL="$VERCEL_PREVIEW_BRANCH_ALIAS" \
+  SKYLA_ACCEPTANCE_MODE=linked-test \
+  SKYLA_ACCEPTANCE_STRIPE_MODE=test \
+  SKYLA_ACCEPTANCE_NO_REAL_CARDS=1 \
+  SKYLA_STAFF_TEST_TOKEN="$STAFF_TEST_TOKEN" \
+  bun run test:acceptance:linked
+  ```
+
+  This creates test records in Convex. Use the
+  `web-git-<branch>-junyen-enterprises.vercel.app` Preview branch alias first,
+  not `skydeckla.com`, unless you deliberately set
+  `SKYLA_ALLOW_PRODUCTION_ACCEPTANCE=1`.
 
 ### Stripe
 
@@ -414,6 +441,11 @@ flowchart TD
 - [ ] Copy the endpoint signing secret into Convex as
   `STRIPE_WEBHOOK_SECRET`.
 - [ ] Use Stripe test cards only until preview checkout passes.
+- [ ] After Convex persistence and staff checks pass, run the linked harness with
+      `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT=1` to create a Stripe test-mode Checkout
+      Session from the stored `orderRef`. The harness refuses this unless the
+      remote readiness snapshot reports Stripe Checkout ready in test mode. Do
+      not enter a real card.
 - [ ] Verify webhook delivery, duplicate replay behavior, amount mismatch
       rejection, and order/POS sale status transitions before live traffic.
 - [ ] Create a separate live-mode endpoint only after test mode passes.
@@ -427,6 +459,10 @@ flowchart TD
 - [ ] Wire native `/pos` to collect/process that Convex-created PaymentIntent
       on a real Stripe test reader, then set `SKYLA_POS_TERMINAL_ACCEPTANCE`
       to `enabled`.
+- [ ] Only with a Stripe test reader ready, run the linked harness with
+      `SKYLA_ACCEPTANCE_TERMINAL_READER=1` after the base linked acceptance
+      checks pass. The harness refuses this unless the remote readiness snapshot
+      reports Terminal reader processing ready in test mode.
 - [ ] Disable or redeploy legacy Supabase Stripe functions so any live old
       functions inherit the fail-closed behavior.
 
