@@ -57,6 +57,18 @@ export type CafeItem = CatalogItem & {
   category: "matcha" | "coffee" | "bites";
 };
 
+export type CatalogListOptions = {
+  activeOnly?: boolean;
+};
+
+export const catalogVersion = "skyla-payments-catalog-2026-07-05" as const;
+export const catalogProvenance = {
+  version: catalogVersion,
+  source: "@skyla/payments",
+  authority: "code-owned",
+  editableInAdmin: false
+} as const;
+
 export const bookingFeeRate = 0.05;
 export const childDiscountRate = 0.5;
 
@@ -141,4 +153,25 @@ export function childPriceCents(priceCents: number) {
 
 export function bookingFeeCents(subtotalCents: number) {
   return Math.round(subtotalCents * bookingFeeRate);
+}
+
+function catalogValues<T extends CatalogItem>(items: Record<string, T>, options: CatalogListOptions = {}) {
+  const values = Object.values(items);
+  return options.activeOnly === false ? values : values.filter((item) => item.active);
+}
+
+export function listTicketPackages(options?: CatalogListOptions) {
+  return catalogValues(ticketPackages, options);
+}
+
+export function listAddons(options?: CatalogListOptions) {
+  return catalogValues(addons, options);
+}
+
+export function listCafeItems(options?: CatalogListOptions) {
+  return catalogValues(cafeItems, options);
+}
+
+export function listCatalogItems(options?: CatalogListOptions) {
+  return [...listTicketPackages(options), ...listAddons(options), ...listCafeItems(options)];
 }

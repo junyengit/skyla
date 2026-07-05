@@ -169,6 +169,12 @@ type CatalogItem = {
 
 type AdminOpsClientProps = {
   catalog: CatalogItem[];
+  catalogState: {
+    version: string;
+    source: string;
+    authority: string;
+    editableInAdmin: boolean;
+  };
 };
 
 type AdminTab = "orders" | "bookings" | "members" | "pos" | "payments";
@@ -261,7 +267,7 @@ function maskedIdentifier(value?: string) {
   return `${text.slice(0, 4)}...${text.slice(-4)}`;
 }
 
-export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
+export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [staffToken, setStaffToken] = useState("");
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [configSnapshot, setConfigSnapshot] = useState<ConfigSnapshot | null>(null);
@@ -819,14 +825,22 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
                 </button>
               </div>
 
-              <div className="adminOpsCatalog" aria-label="Canonical catalog">
-                {catalog.map((item) => (
-                  <div className={item.active ? "" : "isInactive"} key={`${item.kind}:${item.key}`}>
-                    <span>{item.kind}</span>
-                    <strong>{item.name}</strong>
-                    <em>{money(item.priceCents)}</em>
-                  </div>
-                ))}
+              <div className="adminOpsCatalogWrap">
+                <div className="adminOpsConfigTitle">
+                  <strong>Catalog</strong>
+                  <span>
+                    {catalogState.authority} / {catalogState.editableInAdmin ? "editable" : "read-only"} / {catalogState.version}
+                  </span>
+                </div>
+                <div className="adminOpsCatalog" aria-label="Canonical catalog">
+                  {catalog.map((item) => (
+                    <div className={item.active ? "" : "isInactive"} key={`${item.kind}:${item.key}`}>
+                      <span>{item.kind}</span>
+                      <strong>{item.name}</strong>
+                      <em>{money(item.priceCents)}</em>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (

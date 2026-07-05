@@ -430,7 +430,7 @@ Current package baseline:
 - Turborepo `2.10.3`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
-- Last verified Bun revision: `1.4.0-canary.1+fb50cce92`
+- Last verified Bun revision: `1.4.0-canary.1+d37f52067`
 
 Useful verification commands:
 

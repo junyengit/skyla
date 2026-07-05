@@ -675,6 +675,28 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel reported no grouped runtime errors and no error/fatal
       logs for deployment `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR` in the checked
       one-hour window after smoke probes.
+- [x] Started branch `codex/current-state-qa-checklist` to refresh production
+      QA evidence, dependency state, catalog parity, and simple handoff docs
+      after the admin CSV export production deployment.
+- [x] Verified Vercel production deployment `dpl_HsyodqFxmmAyuRAKJoQ3szcmos79`
+      is ready for commit `a322ea0363d28683b6515bcb5261241b8c5535a3`, with
+      `skydeckla.com` and `www.skydeckla.com` attached.
+- [x] Re-ran route, payment, and production-readiness smokes against the
+      deployment URL, apex domain, and `www` domain. Payment probes still use
+      server-owned totals and fail closed before real Stripe execution while
+      Convex is unconfigured.
+- [x] Re-ran Bun canary dependency checks on `1.4.0-canary.1+d37f52067`.
+      `bun install --canary --frozen-lockfile` made no repo changes,
+      `bun audit --audit-level=low` found no vulnerabilities, and
+      `bun outdated --recursive` still reports only the intentionally deferred
+      ESLint 10 major.
+- [x] Added `@skyla/payments` catalog list/provenance helpers and routed public
+      ticket display, checkout, cafe, admin, and POS option lists through those
+      helpers so displayed prices stay aligned with payment-authoritative price
+      data.
+- [x] Added a plain-English current-state handoff at
+      `docs/current-state-simple.md` with architecture, dashboard checklist,
+      latest evidence, and next code work.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

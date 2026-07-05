@@ -158,7 +158,7 @@ real event intake still depends on the dashboard setup below.
   export deployment: no grouped runtime errors and no error/fatal logs for
   deployment `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR` in the fetched one-hour log
   window.
-- Bun checked locally: `1.4.0-canary.1+fb50cce92`
+- Bun checked locally: `1.4.0-canary.1+d37f52067`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
 - Dependency freshness checked on 2026-07-05: `bun outdated --recursive` only
@@ -560,6 +560,10 @@ Current dependency note:
   because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
   the current Next lint stack. Keep ESLint on `9.39.4` until the upstream lint
   plugin stack supports ESLint 10.
+- The public homepage, checkout, admin, POS, and cafe display prices now route
+  through `@skyla/payments` catalog helpers. Admin still shows this as a
+  code-owned read-only catalog until Convex catalog versioning, audit history,
+  and rollback rules are implemented.
 
 ## Next Work Order
 

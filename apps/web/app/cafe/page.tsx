@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { cafeItems, ticketPackages } from "@skyla/payments";
+import { listCafeItems, ticketPackages } from "@skyla/payments";
 import { ArrowLink, PublicHero, PublicPageShell } from "@/components/public-page-shell";
 
 export const metadata: Metadata = {
@@ -61,14 +61,13 @@ function money(cents: number) {
   }).format(cents / 100);
 }
 
-const cafeGroups = Object.values(cafeItems)
-  .filter((item) => item.active)
+const cafeGroups = listCafeItems()
   .reduce(
     (groups, item) => {
       groups[item.category].push(item);
       return groups;
     },
-    { matcha: [], coffee: [], bites: [] } as Record<keyof typeof categoryLabels, Array<(typeof cafeItems)[keyof typeof cafeItems]>>
+    { matcha: [], coffee: [], bites: [] } as Record<keyof typeof categoryLabels, Array<ReturnType<typeof listCafeItems>[number]>>
   );
 
 export default function CafePage() {

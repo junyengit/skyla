@@ -44,7 +44,7 @@ describe("legacy route bridge", () => {
     const termsFallback = readFileSync(join(publicDir, "terms.html"), "utf8");
 
     expect(aboutPage).toContain("Best Space");
-    expect(cafePage).toContain("cafeItems");
+    expect(cafePage).toContain("listCafeItems");
     expect(cafePage).toContain("@skyla/payments");
     expect(membersPage).toContain("MembersApplicationClient");
     expect(membersClient).toContain("/api/members/applications");

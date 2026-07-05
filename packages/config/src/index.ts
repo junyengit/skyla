@@ -1,3 +1,5 @@
+import { listTicketPackages } from "@skyla/payments";
+
 export const siteConfig = {
   name: "Sky LA",
   domain: "skydeckla.com",
@@ -8,17 +10,15 @@ export const siteConfig = {
   }
 } as const;
 
-export const ticketPackages = [
-  {
-    key: "general",
-    name: "General Admission",
-    price: 29,
-    description: "360-degree observation deck, indoor lounge, and timed entry."
-  },
-  {
-    key: "drink",
-    name: "Deck + Drink",
-    price: 37,
-    description: "Observation deck access with one coffee or matcha voucher."
-  }
-] as const;
+const ticketDescriptions: Record<string, string> = {
+  general: "360-degree observation deck, indoor lounge, and timed entry.",
+  drink: "Observation deck access with one coffee or matcha voucher."
+};
+
+export const ticketPackages = listTicketPackages().map((ticketPackage) => ({
+  key: ticketPackage.key,
+  name: ticketPackage.name,
+  price: ticketPackage.priceCents / 100,
+  priceCents: ticketPackage.priceCents,
+  description: ticketDescriptions[ticketPackage.key] ?? ticketPackage.name
+}));
