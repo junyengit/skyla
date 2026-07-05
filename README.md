@@ -44,20 +44,23 @@ flowchart LR
 As of July 5, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest verified app-code production deployment:
-  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app` from merge commit
-  `43628ae31de2d3f0f49a46ba0b6abb266b9991df` (PR #69,
-  deployment `dpl_2zLDfubZkh35R5qdRbeqafr98JKz`).
-- Docs-only follow-up merges can create newer Vercel deployment URLs with the
-  same app behavior. Use the Vercel dashboard or `vercel ls` for the newest
-  deployment before recording fresh evidence.
+- Latest verified production deployment:
+  `https://web-1n1r4myow-junyen-enterprises.vercel.app` from merge commit
+  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76,
+  deployment `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`).
+- Latest verified app-code deployment before that docs-state follow-up:
+  `https://web-l6id8jdjf-junyen-enterprises.vercel.app` from merge commit
+  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75,
+  deployment `dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`).
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
   pushes, branch deletion, and unresolved conversations are blocked.
-- GitHub CodeQL open alerts checked on July 5, 2026: none open.
+- CodeQL PR checks are passing. The Code Scanning open-alert API returned
+  `404` for the local `gh` token during the latest check, so use the GitHub
+  Security tab to confirm the current open-alert count.
 - GitHub repo homepage points to `https://skydeckla.com`; Dependabot
   vulnerability alerts and automated security fixes are enabled.
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain

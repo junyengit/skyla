@@ -68,15 +68,16 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest app-code production deployment checked on 2026-07-05:
+- Latest production deployment checked on 2026-07-05:
+  `https://web-1n1r4myow-junyen-enterprises.vercel.app`
+- Latest production deployment ID checked on 2026-07-05:
+  `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`
+- Latest production merge commit checked on 2026-07-05:
+  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76)
+- Latest app-code deployment before that docs-state follow-up:
   `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
-- Latest app-code deployment ID checked on 2026-07-05:
-  `dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`
-- Latest app-code merge commit checked on 2026-07-05:
-  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75)
-- Docs-only follow-up merges may create newer Vercel deployments with the same
-  app behavior. Use Vercel for the newest deployment URL before recording new
-  evidence.
+  (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from merge commit
+  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75).
 - Custom domains checked on 2026-07-05:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
@@ -137,7 +138,7 @@ real event intake still depends on the dashboard setup below.
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
-  no error/fatal logs for deployment `dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT` in
+  no error/fatal logs for deployment `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL` in
   the fetched one-hour log window. The visible entries were expected info-level
   route checks plus intentional staff-gated `401` and `503 convex_unconfigured`
   probes.
@@ -182,7 +183,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-05 for
-  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`,
+  `https://web-1n1r4myow-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
@@ -223,11 +224,9 @@ flowchart TD
   `/admin.html` and `/pos.html` are self-contained handoffs to the native
   routes, and production readiness checks fail if retired staff assets are
   served again.
-- Prior Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` were
-  readable on the black staff surfaces. In this later audit, macOS window
-  capture returned only the desktop wallpaper, so the current slice relies on
-  automated route/payment/readiness smokes plus direct rendered HTML/CSS
-  assertions until Helium capture is available again.
+- Helium visual QA on 2026-07-05 confirmed live `/admin` and `/pos-next` render
+  readable white text on black staff surfaces. The same contrast is pinned by
+  CSS and regression tests.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
 - Native `/pos` loads authorized Stripe Terminal readers through

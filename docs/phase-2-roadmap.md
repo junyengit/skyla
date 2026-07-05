@@ -337,14 +337,15 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified app-code production commit:
-  `43628ae31de2d3f0f49a46ba0b6abb266b9991df` (PR #69)
-- Latest verified app-code production deployment:
-  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`
-- Latest verified app-code production deployment ID:
-  `dpl_2zLDfubZkh35R5qdRbeqafr98JKz`
-- Later docs-only merges can create newer Vercel deployments with the same app
-  behavior; query Vercel before recording fresh operational evidence.
+- Latest verified production commit:
+  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76)
+- Latest verified production deployment:
+  `https://web-1n1r4myow-junyen-enterprises.vercel.app`
+- Latest verified production deployment ID:
+  `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`
+- Latest verified app-code deployment before that docs-state follow-up:
+  `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
+  (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from PR #75.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -379,7 +380,9 @@ Current verified Vercel data:
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
   TypeScript`, `Vercel`
-- GitHub CodeQL open alerts after PR #40 `main` scan: none
+- CodeQL PR checks are passing. The Code Scanning open-alert API returned
+  `404` for the local `gh` token during the latest check, so use the GitHub
+  Security tab to confirm the current open-alert count.
 
 Current order-spine state:
 
