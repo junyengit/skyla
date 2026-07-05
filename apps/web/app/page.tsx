@@ -10,6 +10,14 @@ const views = [
   { src: "/images/view-westside.jpg", label: "Westside skyline" }
 ];
 
+function money(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: cents % 100 === 0 ? 0 : 2
+  }).format(cents / 100);
+}
+
 export default function HomePage() {
   return (
     <main>
@@ -123,7 +131,7 @@ export default function HomePage() {
           {ticketPackages.map((ticket) => (
             <article key={ticket.key}>
               <span>{ticket.name}</span>
-              <strong>${ticket.price}</strong>
+              <strong>{money(ticket.priceCents)}</strong>
               <p>{ticket.description}</p>
             </article>
           ))}

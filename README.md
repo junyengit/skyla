@@ -97,7 +97,7 @@ As of July 5, 2026:
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+fb50cce92`.
+`1.4.0-canary.1+d37f52067`.
 
 ```bash
 bun upgrade --canary
@@ -193,6 +193,7 @@ Useful operator references:
 
 - [Environment Reference](docs/reference/environment.md)
 - [Production Readiness Checklist](docs/runbooks/production-readiness-checklist.md)
+- [Plain-English Current State](docs/current-state-simple.md)
 - [Stripe Checkout Cutover Runbook](docs/runbooks/stripe-checkout-cutover.md)
 - [Convex Deployment Runbook](docs/runbooks/convex-deployment.md)
 

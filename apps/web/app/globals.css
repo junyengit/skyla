@@ -2908,7 +2908,8 @@ h3 {
 }
 
 .adminOpsConfigCard,
-.adminOpsCatalog {
+.adminOpsCatalog,
+.adminOpsCatalogWrap {
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
@@ -2922,12 +2923,20 @@ h3 {
   padding: 16px;
 }
 
+.adminOpsCatalogWrap {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+}
+
 .adminOpsHoursCard {
   grid-row: span 2;
 }
 
 .adminOpsConfigTitle {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
@@ -2941,6 +2950,8 @@ h3 {
   color: #fff;
   font-size: 0.72rem;
   font-weight: 850;
+  overflow-wrap: anywhere;
+  text-align: right;
   text-transform: uppercase;
 }
 

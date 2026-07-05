@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cafeItems, ticketPackages } from "@skyla/payments";
+import { listCafeItems, listTicketPackages } from "@skyla/payments";
 import { ShieldCheck } from "@skyla/ui/icons";
 import { PosDraftClient } from "@/components/pos-draft-client";
 
@@ -12,15 +12,13 @@ function terminalAcceptanceEnabled() {
 }
 
 export function PosRegisterPage({ variant }: PosRegisterPageProps) {
-  const ticketOptions = Object.values(ticketPackages)
-    .filter((ticket) => ticket.active)
+  const ticketOptions = listTicketPackages()
     .map((ticket) => ({
       key: ticket.key,
       name: ticket.name,
       priceCents: ticket.priceCents
     }));
-  const cafeOptions = Object.values(cafeItems)
-    .filter((item) => item.active)
+  const cafeOptions = listCafeItems()
     .map((item) => ({
       key: item.key,
       name: item.name,

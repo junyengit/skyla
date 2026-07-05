@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { addons, ticketPackages } from "@skyla/payments";
+import { listAddons, listTicketPackages } from "@skyla/payments";
 import { ArrowRight, MapPin, ShieldCheck } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
 import { CheckoutClient } from "@/components/checkout-client";
@@ -20,15 +20,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   const params = await searchParams;
   const stripeStatus = firstParam(params.stripe);
   const orderRef = firstParam(params.order);
-  const packageOptions = Object.values(ticketPackages)
-    .filter((ticket) => ticket.active)
+  const packageOptions = listTicketPackages()
     .map((ticket) => ({
       key: ticket.key,
       name: ticket.name,
       priceCents: ticket.priceCents
     }));
-  const addonOptions = Object.values(addons)
-    .filter((addon) => addon.active)
+  const addonOptions = listAddons()
     .map((addon) => ({
       key: addon.key,
       name: addon.name,

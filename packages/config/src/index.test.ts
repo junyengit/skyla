@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { listTicketPackages } from "@skyla/payments";
 
 import { siteConfig, ticketPackages } from "./index";
 
@@ -28,13 +29,29 @@ describe("ticketPackages", () => {
       expect.objectContaining({
         key: "general",
         name: "General Admission",
-        price: 29
+        price: 29,
+        priceCents: 2900
       }),
       expect.objectContaining({
         key: "drink",
         name: "Deck + Drink",
-        price: 37
+        price: 37,
+        priceCents: 3700
       })
     ]);
+  });
+
+  it("derives public ticket prices from the payment catalog", () => {
+    expect(
+      ticketPackages.map((ticketPackage) => ({
+        key: ticketPackage.key,
+        priceCents: ticketPackage.priceCents
+      }))
+    ).toEqual(
+      listTicketPackages().map((ticketPackage) => ({
+        key: ticketPackage.key,
+        priceCents: ticketPackage.priceCents
+      }))
+    );
   });
 });
