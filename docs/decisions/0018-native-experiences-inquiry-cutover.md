@@ -101,7 +101,8 @@ Expected API states:
 ## Deferred
 
 - Linked Convex production acceptance.
-- Native inquiry review and CSV export in `/admin`.
+- Native inquiry review in `/admin`. The inquiry CSV export is now covered by
+  [0027](0027-native-admin-csv-exports.md).
 - Backfill from old `skyla_inquiries` / Supabase rows.
 - Removing `experiences.html` and inquiry-related legacy helper code after
   traffic and linked Convex acceptance are verified.

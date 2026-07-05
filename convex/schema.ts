@@ -219,6 +219,7 @@ export default defineSchema({
     legacyId: v.optional(v.string()),
     rawLegacy: v.optional(v.any())
   })
+    .index("by_createdAt", ["createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
     .index("by_idempotencyKey", ["idempotencyKey"]),

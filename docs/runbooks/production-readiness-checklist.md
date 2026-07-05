@@ -566,9 +566,9 @@ Current dependency note:
 9. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-10. Finish native Admin beyond lookup/status/config/voucher actions: refunds,
-   catalog, exports, and any destructive action with typed validators, audit
-   logs, and rollback steps.
+10. Finish native Admin beyond lookup/status/config/voucher/export actions:
+   refunds, catalog/pricing edits, and any destructive action with typed
+   validators, audit logs, and rollback steps.
 11. Rebuild POS as the protected live App Router/Convex register.
 12. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.

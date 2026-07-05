@@ -28,6 +28,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 const recentLimit = 12;
 const countLimit = 100;
+const adminExportLimit = 250;
 const bookingAdminStatus = v.union(v.literal("confirmed"), v.literal("checked-in"), v.literal("cancelled"));
 const bookingVoucherAction = v.union(v.literal("redeem"), v.literal("undo"));
 const memberAdminStatus = v.union(
@@ -35,6 +36,14 @@ const memberAdminStatus = v.union(
   v.literal("approved"),
   v.literal("waitlisted"),
   v.literal("rejected")
+);
+const adminExportKind = v.union(
+  v.literal("bookings"),
+  v.literal("members"),
+  v.literal("inquiries"),
+  v.literal("orders"),
+  v.literal("posSales"),
+  v.literal("payments")
 );
 const siteConfigKey = v.union(v.literal("announcement"), v.literal("hours"));
 
@@ -219,6 +228,45 @@ function publicMember(member: {
   };
 }
 
+function publicInquiry(inquiry: {
+  _id: string;
+  status: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  emailLower?: string;
+  experience?: string;
+  eventDate?: string;
+  guestCount?: string;
+  notes?: string;
+  source?: string;
+  createdAt: number;
+  updatedAt?: number;
+  legacyId?: string;
+  rawLegacy?: unknown;
+}) {
+  const firstName = inquiry.firstName ?? legacyString(inquiry.rawLegacy, "firstName");
+  const lastName = inquiry.lastName ?? legacyString(inquiry.rawLegacy, "lastName");
+  const email = inquiry.email ?? legacyString(inquiry.rawLegacy, "email") ?? inquiry.emailLower;
+
+  return {
+    inquiryId: inquiry._id,
+    firstName,
+    lastName,
+    email,
+    status: inquiry.status,
+    emailLower: inquiry.emailLower,
+    experience: inquiry.experience ?? legacyString(inquiry.rawLegacy, "experience"),
+    eventDate: inquiry.eventDate ?? legacyString(inquiry.rawLegacy, "eventDate"),
+    guestCount: inquiry.guestCount ?? legacyString(inquiry.rawLegacy, "guestCount"),
+    notes: inquiry.notes ?? legacyString(inquiry.rawLegacy, "notes"),
+    source: inquiry.source ?? legacyString(inquiry.rawLegacy, "source"),
+    createdAt: inquiry.createdAt,
+    updatedAt: inquiry.updatedAt,
+    legacyId: inquiry.legacyId
+  };
+}
+
 function legacyString(rawLegacy: unknown, key: string) {
   if (!rawLegacy || typeof rawLegacy !== "object" || Array.isArray(rawLegacy)) {
     return undefined;
@@ -246,6 +294,14 @@ function cappedCount(items: unknown[]) {
     value: Math.min(items.length, countLimit),
     capped: items.length > countLimit
   };
+}
+
+function boundedAdminExportLimit(value: number | undefined) {
+  const limit = value ?? adminExportLimit;
+  if (!Number.isInteger(limit) || limit < 1 || limit > adminExportLimit) {
+    throw new Error(`limit must be an integer between 1 and ${adminExportLimit}`);
+  }
+  return limit;
 }
 
 function publicConfigState(row: { updatedAt: number; updatedBy?: string } | null, invalid = false) {
@@ -418,6 +474,85 @@ export const getOperationsSnapshot = query({
         members: recentMembers.map(publicMember)
       }
     };
+  }
+});
+
+export const getAdminExportRows = query({
+  args: {
+    kind: adminExportKind,
+    limit: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin"]);
+    const limit = boundedAdminExportLimit(args.limit);
+    const staff = {
+      emailLower: staffUser.emailLower,
+      role: staffUser.role
+    };
+    const generatedAt = Date.now();
+
+    switch (args.kind) {
+      case "bookings": {
+        const bookings = await ctx.db.query("bookings").withIndex("by_createdAt").order("desc").take(limit);
+        return {
+          staff,
+          kind: args.kind,
+          generatedAt,
+          limit,
+          rows: await Promise.all(bookings.map((booking) => publicBookingWithVouchers(ctx, booking)))
+        };
+      }
+      case "members": {
+        const members = await ctx.db.query("members").withIndex("by_createdAt").order("desc").take(limit);
+        return {
+          staff,
+          kind: args.kind,
+          generatedAt,
+          limit,
+          rows: members.map(publicMember)
+        };
+      }
+      case "inquiries": {
+        const inquiries = await ctx.db.query("inquiries").withIndex("by_createdAt").order("desc").take(limit);
+        return {
+          staff,
+          kind: args.kind,
+          generatedAt,
+          limit,
+          rows: inquiries.map(publicInquiry)
+        };
+      }
+      case "orders": {
+        const orders = await ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(limit);
+        return {
+          staff,
+          kind: args.kind,
+          generatedAt,
+          limit,
+          rows: orders.map(publicOrder)
+        };
+      }
+      case "posSales": {
+        const sales = await ctx.db.query("posSales").withIndex("by_createdAt").order("desc").take(limit);
+        return {
+          staff,
+          kind: args.kind,
+          generatedAt,
+          limit,
+          rows: sales.map(publicPosSale)
+        };
+      }
+      case "payments": {
+        const events = await ctx.db.query("paymentEvents").withIndex("by_createdAt").order("desc").take(limit);
+        return {
+          staff,
+          kind: args.kind,
+          generatedAt,
+          limit,
+          rows: events.map(publicPaymentEvent)
+        };
+      }
+    }
   }
 });
 

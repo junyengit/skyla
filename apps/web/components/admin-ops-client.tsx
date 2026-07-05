@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, ShieldCheck } from "@skyla/ui/icons";
+import { ArrowRight, CalendarDays, Download, ShieldCheck } from "@skyla/ui/icons";
 
 type Readiness = {
   stripeMode: boolean;
@@ -172,6 +172,7 @@ type AdminOpsClientProps = {
 };
 
 type AdminTab = "orders" | "bookings" | "members" | "pos" | "payments";
+type ExportKind = "bookings" | "members" | "inquiries" | "orders" | "posSales" | "payments";
 type BookingAdminStatus = "confirmed" | "checked-in" | "cancelled";
 type MemberAdminStatus = "pending" | "approved" | "waitlisted" | "rejected";
 
@@ -185,6 +186,14 @@ const readinessLabels: Record<keyof Readiness, string> = {
 };
 
 const weekdays: Weekday[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const exportActions: Array<{ kind: ExportKind; label: string }> = [
+  { kind: "bookings", label: "Bookings" },
+  { kind: "members", label: "Members" },
+  { kind: "inquiries", label: "Inquiries" },
+  { kind: "orders", label: "Orders" },
+  { kind: "posSales", label: "POS" },
+  { kind: "payments", label: "Payments" }
+];
 
 const defaultAnnouncement: AnnouncementConfig = {
   active: false,
@@ -229,6 +238,29 @@ function countLabel(count?: { value: number; capped: boolean }) {
   return count.capped ? `${count.value}+` : String(count.value);
 }
 
+function exportLabel(kind: ExportKind) {
+  return exportActions.find((item) => item.kind === kind)?.label ?? kind;
+}
+
+function filenameFromContentDisposition(value: string | null, kind: ExportKind) {
+  const quoted = value?.match(/filename="([^"]+)"/);
+  if (quoted?.[1]) {
+    return quoted[1];
+  }
+  return `skyla-${kind}.csv`;
+}
+
+function maskedIdentifier(value?: string) {
+  if (!value?.trim()) {
+    return undefined;
+  }
+  const text = value.trim();
+  if (text.length <= 8) {
+    return `${text.slice(0, 2)}...`;
+  }
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+}
+
 export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
   const [staffToken, setStaffToken] = useState("");
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
@@ -240,6 +272,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [isLoading, setIsLoading] = useState(false);
   const [isLookupLoading, setIsLookupLoading] = useState(false);
+  const [exportKind, setExportKind] = useState<ExportKind | null>(null);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -429,6 +462,44 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
     }
   }
 
+  async function downloadExport(kind: ExportKind) {
+    const token = staffToken.trim();
+    if (!token) {
+      setMessage("Staff token required.");
+      return;
+    }
+
+    setExportKind(kind);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/admin/export?kind=${encodeURIComponent(kind)}&limit=250`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Export failed");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filenameFromContentDisposition(response.headers.get("content-disposition"), kind);
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setMessage(`${exportLabel(kind)} export downloaded.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Export failed");
+    } finally {
+      setExportKind(null);
+    }
+  }
+
   return (
     <section className="adminOpsShell" aria-label="Admin operations">
       <aside className="adminOpsPanel adminOpsAccess">
@@ -458,6 +529,25 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
           <div className="adminOpsStaff">
             <span>{snapshot.staff.role}</span>
             <strong>{snapshot.staff.emailLower}</strong>
+          </div>
+        ) : null}
+        {snapshot?.staff.role === "admin" ? (
+          <div className="adminOpsExports" aria-label="Admin exports">
+            <strong>Exports</strong>
+            <div className="adminOpsExportGrid">
+              {exportActions.map((item) => (
+                <button
+                  type="button"
+                  key={item.kind}
+                  disabled={Boolean(exportKind)}
+                  aria-label={`Download ${item.label} CSV`}
+                  onClick={() => void downloadExport(item.kind)}
+                >
+                  {exportKind === item.kind ? "Saving" : item.label}
+                  <Download size={15} />
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
       </aside>
@@ -813,7 +903,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
                   <div className="adminOpsRow" key={sale.saleRef}>
                     <div>
                       <strong>{sale.saleRef}</strong>
-                      <span>{[sale.customerEmailLower, sale.readerId].filter(Boolean).join(" / ")}</span>
+                      <span>{[sale.customerEmailLower, maskedIdentifier(sale.readerId)].filter(Boolean).join(" / ")}</span>
                     </div>
                     <span>{sale.status}</span>
                     <span>{money(sale.totalCents)}</span>
@@ -915,8 +1005,8 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
               ? snapshot?.recent.paymentEvents.map((event) => (
                   <div className="adminOpsRow" key={`${event.provider}:${event.providerPaymentId}:${event.createdAt}`}>
                     <div>
-                      <strong>{event.providerPaymentId}</strong>
-                      <span>{[event.orderRef, event.saleRef, event.rawEventId].filter(Boolean).join(" / ")}</span>
+                      <strong>{maskedIdentifier(event.providerPaymentId) ?? event.provider}</strong>
+                      <span>{[event.orderRef, event.saleRef, maskedIdentifier(event.rawEventId)].filter(Boolean).join(" / ")}</span>
                     </div>
                     <span>{event.provider}</span>
                     <span>{event.status}</span>

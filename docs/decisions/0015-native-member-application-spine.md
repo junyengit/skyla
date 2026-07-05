@@ -91,6 +91,7 @@ Expected states:
 
 - Cut over visible `/members` UI to the native route. Completed by
   [0017](0017-native-members-page-cutover.md).
-- Add a native member review detail drawer and CSV export in `/admin`.
+- Add a native member review detail drawer in `/admin`. The member CSV export
+  is now covered by [0027](0027-native-admin-csv-exports.md).
 - Backfill old `skyla_members` / Supabase rows into structured Convex fields.
 - Remove legacy member localStorage/Supabase code after acceptance.

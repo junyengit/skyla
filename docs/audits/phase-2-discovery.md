@@ -192,6 +192,10 @@ P1 findings:
   CODEOWNERS, and `SECURITY.md`; `main` branch protection now requires
   `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel`, and blocks
   force pushes, branch deletion, and unresolved conversations.
+- Native admin export work must keep bulk CSV downloads staff-gated and
+  formula-safe. Exports should use explicit column allowlists and exclude raw
+  Stripe/webhook payloads, idempotency keys, bearer tokens, payment
+  `clientSecret` values, and full provider/Terminal identifiers.
 
 P2 findings:
 
