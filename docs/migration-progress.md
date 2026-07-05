@@ -594,6 +594,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       Checkout session verification.
 - [x] Added artifact and route-test guards so the retired legacy verification
       branch and direct Stripe Checkout session lookups cannot return unnoticed.
+- [x] Merged Supabase checkout retirement PR #73 into `main` as merge commit
+      `ad51579cd77f03e1f6c4542c10b392c234a1321c`.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-7cpgrzyo6-junyen-enterprises.vercel.app`
+      (`dpl_L1sNjzQFh6TzLANFs6QzdZuJrC8J`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for the
+      production deployment URL, apex domain, and `www`; all passed.
+- [x] Checked Vercel logs for deployment
+      `dpl_L1sNjzQFh6TzLANFs6QzdZuJrC8J` after smoke probes; no error/fatal
+      logs appeared in the fetched one-hour window, and the visible entries were
+      expected info-level route checks plus intentional `401` and
+      `503 convex_unconfigured` probes.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
