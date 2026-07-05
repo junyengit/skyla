@@ -25,14 +25,16 @@ root.
 
 As of July 5, 2026:
 
-- Latest verified app-code production deployment from `main` is READY at
-  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`.
-- Latest verified app-code deployment ID:
-  `dpl_2zLDfubZkh35R5qdRbeqafr98JKz`.
-- Latest verified merge commit:
-  `43628ae31de2d3f0f49a46ba0b6abb266b9991df` (PR #69).
-- Later docs-only merges can create newer Vercel deployment URLs with the same
-  app behavior. Use the Vercel dashboard before recording fresh evidence.
+- Latest verified production deployment from `main` is READY at
+  `https://web-1n1r4myow-junyen-enterprises.vercel.app`.
+- Latest verified production deployment ID:
+  `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`.
+- Latest verified production merge commit:
+  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76).
+- Latest verified app-code deployment before that docs-state follow-up:
+  `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
+  (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from
+  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75).
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -42,7 +44,7 @@ As of July 5, 2026:
   configured in Convex.
 - The latest production deployment metadata reports Bun serverless runtime
   usage, Turbopack bundling, target `production`, and commit
-  `43628ae31de2d3f0f49a46ba0b6abb266b9991df`.
+  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec`.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
 
