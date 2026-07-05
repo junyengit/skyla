@@ -607,6 +607,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       logs appeared in the fetched one-hour window, and the visible entries were
       expected info-level route checks plus intentional `401` and
       `503 convex_unconfigured` probes.
+- [x] Started branch `codex/acceptance-readiness-harness` from clean
+      `origin/main` after PR #74 to make dashboard-linked Convex/Stripe Preview
+      acceptance repeatable.
+- [x] Added staff-gated `/api/admin/acceptance-readiness` and
+      `bun run test:acceptance:linked`, an opt-in linked Preview harness that
+      verifies remote test-mode readiness before writes, Convex persistence,
+      public intake APIs, staff-gated POS reader listing, POS draft persistence,
+      no `clientSecret` leaks, and optional Stripe Checkout/test-reader
+      acceptance without using real cards.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -661,6 +670,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Use `bun run test:payments` as the public payment/API safety smoke while
   production is expected to fail closed before real Convex/Stripe dashboard
   wiring.
+- Use `bun run test:acceptance:linked` only after Convex/Vercel envs and seeded
+  test staff exist. It writes test records, expects the remote backend to report
+  `SKYLA_STRIPE_MODE=test`, and refuses non-preview targets unless the operator
+  explicitly allows production acceptance.
 - Public member applications should follow the same fail-closed rule as payment
   execution: no "application received" success on the native path unless Convex
   accepted the mutation.
