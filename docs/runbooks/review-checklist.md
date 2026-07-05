@@ -126,10 +126,13 @@ Use this after each major phase.
 - `/api/admin/config` writes only typed announcement/hours data, requires admin
   staff, and records `admin.config.update` audit events
 - Native admin booking lookup/check-in should stay limited to staff-gated lookup
-  plus allowed booking status transitions and voucher redeem/undo. Do not port
-  refunds, hard deletes, clear-all, reset-all, pricing/menu edits, password
-  changes, POS charging, or reader setup without typed Convex models, audit
-  events, reconciliation rules, and rollback steps.
+  plus allowed booking status transitions, voucher redeem/undo, typed
+  announcement/hours config, and admin-only CSV exports. Export routes must use
+  fixed column allowlists, formula-safe CSV cells, masked payment/Terminal
+  identifiers, `Cache-Control: no-store`, and staff auth before Convex calls. Do
+  not port refunds, hard deletes, clear-all, reset-all, pricing/menu edits,
+  password changes, POS charging, or reader setup without typed Convex models,
+  audit events, reconciliation rules, and rollback steps.
 
 ## Why These Gates Exist
 

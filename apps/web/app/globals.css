@@ -2631,6 +2631,52 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.adminOpsExports {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adminOpsExports > strong {
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminOpsExportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adminOpsExportGrid button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 10px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsExportGrid button:hover {
+  border-color: var(--gold);
+}
+
+.adminOpsExportGrid button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 .adminOpsMain {
   display: grid;
   gap: 18px;
