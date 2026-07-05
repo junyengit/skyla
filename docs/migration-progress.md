@@ -616,6 +616,22 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       public intake APIs, staff-gated POS reader listing, POS draft persistence,
       no `clientSecret` leaks, and optional Stripe Checkout/test-reader
       acceptance without using real cards.
+- [x] Merged linked acceptance readiness PR #75 into `main` as merge commit
+      `a644ad1483f7b03b3fd54481d7d07441265e5d31`.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
+      (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for the
+      production deployment URL, apex domain, and `www`; all passed, including
+      the staff-gated `/api/admin/acceptance-readiness` probe.
+- [x] Confirmed the linked acceptance harness refuses `skydeckla.com` without
+      `SKYLA_ALLOW_PRODUCTION_ACCEPTANCE=1` after PR #75.
+- [x] Checked Vercel logs for deployment
+      `dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT` after smoke probes; no error/fatal logs
+      appeared in the fetched one-hour window, and the visible entries were
+      expected info-level route checks plus intentional staff-gated `401` and
+      `503 convex_unconfigured` probes.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
