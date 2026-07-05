@@ -24,6 +24,8 @@ let terminal = null;
 let connectedReader = null;
 const cart = {};   // key → { id, name, price, qty, kind, packageKey }
 const LEGACY_TERMINAL_PAYMENTS_ENABLED = false;
+const LEGACY_TERMINAL_READER_SETUP_ENABLED = false;
+const LEGACY_TERMINAL_DISABLED_MESSAGE = 'Use the secure native /pos workflow after Convex, staff auth, and Stripe test-reader acceptance are complete.';
 
 const fmt = (cents) => `$${(cents / 100).toFixed(2)}`;
 const dollarsToCents = (d) => Math.round(d * 100);
@@ -184,7 +186,10 @@ function renderCart() {
   document.getElementById('cart-total').textContent = fmt(total);
   document.getElementById('charge-amt').textContent = total ? fmt(total) : '';
   const chargeBtn = document.getElementById('cart-charge');
-  chargeBtn.disabled = total < 50;
+  chargeBtn.disabled = total < 50 || !LEGACY_TERMINAL_PAYMENTS_ENABLED;
+  if (!LEGACY_TERMINAL_PAYMENTS_ENABLED) {
+    chargeBtn.title = LEGACY_TERMINAL_DISABLED_MESSAGE;
+  }
 }
 
 // ── STRIPE TERMINAL ──
@@ -300,49 +305,18 @@ function closePicker() { document.getElementById('reader-picker').classList.remo
 function setPickerMsg(m) { document.getElementById('picker-msg').textContent = m; }
 
 function openReaderSetup(msg) {
-  document.getElementById('setup-msg').textContent = msg || 'Enter the pairing code shown on the reader.';
+  document.getElementById('setup-msg').textContent = LEGACY_TERMINAL_READER_SETUP_ENABLED
+    ? (msg || 'Enter the pairing code shown on the reader.')
+    : `Legacy reader setup is disabled. ${LEGACY_TERMINAL_DISABLED_MESSAGE}`;
   document.getElementById('reader-setup-panel').classList.add('visible');
-  setTimeout(() => document.getElementById('reader-code')?.focus(), 50);
+  if (LEGACY_TERMINAL_READER_SETUP_ENABLED) {
+    setTimeout(() => document.getElementById('reader-code')?.focus(), 50);
+  }
 }
 function closeReaderSetup() { document.getElementById('reader-setup-panel').classList.remove('visible'); }
 async function setupReader(e) {
   e.preventDefault();
-  const codeEl = document.getElementById('reader-code');
-  const nameEl = document.getElementById('reader-name');
-  const tokenEl = document.getElementById('reader-token');
-  const registrationCode = codeEl.value.trim();
-  const label = nameEl.value.trim() || 'Skyla reader';
-  const setupToken = tokenEl.value.trim();
-  if (!registrationCode) {
-    document.getElementById('setup-msg').textContent = 'Enter the pairing code shown on the reader.';
-    return;
-  }
-  if (!setupToken) {
-    document.getElementById('setup-msg').textContent = 'Enter the manager setup token for reader registration.';
-    return;
-  }
-
-  document.getElementById('setup-msg').textContent = 'Registering reader with Stripe…';
-  try {
-    const data = await SkylaData.invokeFunction('stripe-terminal', {
-      action: 'setup-reader',
-      registrationCode,
-      label,
-      setupToken,
-    });
-    if (!data?.reader?.id || !data?.location?.id) throw new Error(data?.error || 'Could not register reader');
-    _posLocation = data.location.id;
-    localStorage.setItem('skyla_pos_location', _posLocation);
-    codeEl.value = '';
-    nameEl.value = '';
-    tokenEl.value = '';
-    document.getElementById('reader-sim').checked = false;
-    closeReaderSetup();
-    openPicker(`${data.reader.label || 'Reader'} is registered. Searching so you can connect it…`);
-    await connectReader();
-  } catch (err) {
-    document.getElementById('setup-msg').textContent = 'Could not register reader: ' + (err.message || err);
-  }
+  document.getElementById('setup-msg').textContent = `Legacy reader setup is disabled. ${LEGACY_TERMINAL_DISABLED_MESSAGE}`;
 }
 
 // ── CHARGE ──
@@ -525,7 +499,8 @@ function boot() {
   renderCatalog();
   renderCart();
   lockProductionReaderMode();
-  hydrateTerminalLocation();
+  lockLegacyTerminalControls();
+  if (LEGACY_TERMINAL_PAYMENTS_ENABLED) hydrateTerminalLocation();
 
   document.querySelectorAll('.pos-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -554,4 +529,22 @@ function boot() {
 
   // Refresh prices if config arrives from cloud
   window.addEventListener('skyla:config', renderCatalog);
+}
+
+function lockLegacyTerminalControls() {
+  if (LEGACY_TERMINAL_PAYMENTS_ENABLED && LEGACY_TERMINAL_READER_SETUP_ENABLED) return;
+  const connect = document.getElementById('reader-connect');
+  const setup = document.getElementById('reader-setup');
+  const label = document.getElementById('reader-label');
+  if (connect && !LEGACY_TERMINAL_PAYMENTS_ENABLED) {
+    connect.disabled = true;
+    connect.title = LEGACY_TERMINAL_DISABLED_MESSAGE;
+  }
+  if (setup && !LEGACY_TERMINAL_READER_SETUP_ENABLED) {
+    setup.disabled = true;
+    setup.title = LEGACY_TERMINAL_DISABLED_MESSAGE;
+  }
+  if (label) {
+    label.textContent = 'Reader: legacy fallback disabled';
+  }
 }

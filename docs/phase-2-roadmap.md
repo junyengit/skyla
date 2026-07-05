@@ -283,7 +283,7 @@ Initial actions:
 - Add admin/POS authorization tests.
 - Add dependency and secret scanning workflows.
 - Protect `main`, require PRs, and require CI.
-- Track and fix current bridge risks: client-authoritative payment creation, local admin password fallback, stored-XSS surfaces, legacy POS Terminal charge authority, and POS/admin date-format drift. POS reader setup is temporarily bridged, but it still belongs in the future staff-authorized backend.
+- Track and fix current bridge risks: client-authoritative payment creation, local admin password fallback, stored-XSS surfaces, legacy POS Terminal charge authority, and POS/admin date-format drift. The legacy POS reader setup bridge is now retired in repo code; future reader setup belongs in the staff-authorized native backend.
 
 Definition of done:
 
@@ -358,12 +358,12 @@ Current verified Vercel data:
 - Staff contrast cache-bust PR: `#44`
 - Staff contrast state: `/admin`, `/admin.html`, `/pos`, `/pos-next`, and
   `/pos.html` use dark staff surfaces with readable white text; legacy
-  `admin.html` and `pos.html` currently reference `admin.css?v=8` and
-  `pos.css?v=10`.
+  `admin.html` and `pos.html` currently reference `admin.css?v=8`,
+  `admin.js?v=2`, `pos.css?v=10`, and `pos.js?v=6`.
 - Production-readiness smoke PR: `#45`
 - Production-readiness state: `bun run test:production-readiness` bundles the
   route matrix, no-write payment probes, member application and experience
-  inquiry no-write probes, and staff stylesheet cache-key check for custom
+  inquiry no-write probes, and staff asset/cache-key lock checks for custom
   domains plus an optional Vercel deployment URL.
 - Payment/hosting/readability PR: `#46`
 - Payment/hosting/readability state: Stripe actions require explicit
@@ -417,7 +417,7 @@ Current package baseline:
 - Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
-- Turborepo `2.10.2`
+- Turborepo `2.10.3`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
 - Last verified Bun revision: `1.4.0-canary.1+eba370b69`

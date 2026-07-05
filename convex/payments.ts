@@ -156,6 +156,7 @@ export const processStripeTerminalPaymentIntent = action({
     idempotencyKey: v.string()
   },
   handler: async (ctx, args) => {
+    assertPosTerminalAcceptanceEnabled();
     const secretKey = stripeSecretKey();
 
     const snapshot: StripeTerminalProcessSnapshot & { actorStaffUserId: Id<"staffUsers"> } =

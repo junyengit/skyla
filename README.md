@@ -41,13 +41,13 @@ flowchart LR
 
 ## Current Hosting State
 
-As of July 2, 2026:
+As of July 5, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest verified app-code production deployment:
-  `https://web-g6cp2p7an-junyen-enterprises.vercel.app` from merge commit
-  `071ed79d9dd8c89c1ffca8eb849b7ec742090565` (PR #62,
-  deployment `dpl_J73keiyGYXdQTtv1NKX3uhW6vDPB`).
+  `https://web-p6ry1h5jq-junyen-enterprises.vercel.app` from merge commit
+  `1899a9f0ffcee96455bdab3f911850f45b339019` (PR #64,
+  deployment `dpl_H9sffN8LnxwBNHJnqbnETJsyC558`).
 - Docs-only follow-up merges can create newer Vercel deployment URLs with the
   same app behavior. Use the Vercel dashboard or `vercel ls` for the newest
   deployment before recording fresh evidence.
@@ -57,19 +57,19 @@ As of July 2, 2026:
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
   pushes, branch deletion, and unresolved conversations are blocked.
-- GitHub CodeQL open alerts checked on July 2, 2026: none open.
+- GitHub CodeQL open alerts checked on July 5, 2026: none open.
 - GitHub repo homepage points to `https://skydeckla.com`; Dependabot
   vulnerability alerts and automated security fixes are enabled.
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
   production was verified, so the old `github.io` surface is no longer an
   active host.
-- Vercel environment variables checked on July 2, 2026: none are configured
+- Vercel environment variables checked on July 5, 2026: none are configured
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
-  `junyen-enterprises/web` found no project environment variables on July 2,
+  `junyen-enterprises/web` found no project environment variables on July 5,
   2026.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
@@ -143,7 +143,12 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   `convex_unconfigured` pause instead of saving to browser localStorage or
   Supabase. `/experiences.html` remains as a compatibility artifact during the
   transition.
-- Stripe Terminal reader registration now requires `SKYLA_TERMINAL_SETUP_TOKEN` in the legacy Supabase Edge Function and a manager setup token in the legacy `/pos.html` fallback UI. Legacy browser-authoritative card charging is disabled in the Vercel-served repo code; native `/pos` still needs staff auth, Convex envs, Stripe dashboard webhook setup, `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled`, and test-reader acceptance before live card-present payment is allowed.
+- Legacy Stripe Terminal reader registration is retired in repo code. `/pos.html`
+  no longer calls the old `setup-reader` bridge, and the repo copy of the
+  Supabase Terminal function returns `410` for every old bridge action. Native
+  `/pos` still needs staff auth, Convex envs, Stripe dashboard webhook setup,
+  `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled`, and test-reader acceptance before
+  live card-present payment is allowed.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
   calculates draft totals from selections only and persists Convex order drafts

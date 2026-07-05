@@ -203,7 +203,7 @@ P2 findings:
   `8.5.16`.
 - No tracked `.env`, `output`, `tmp`, CSV, PDF, or log artifacts were found.
 - Public client keys exist in legacy browser files; they are not secrets, but should become environment-scoped and provider-domain-restricted.
-- POS reader registration is now bridged through `stripe-terminal` with a `setup-reader` action gated by `SKYLA_TERMINAL_SETUP_TOKEN`; Terminal charge creation still needs Convex/server-authoritative replacement.
+- POS reader registration was bridged through `stripe-terminal` with a `setup-reader` action gated by `SKYLA_TERMINAL_SETUP_TOKEN`; this bridge was later retired in ADR 0023, and reader setup still needs a staff-authorized native backend.
 - POS writes display-formatted `visitDate`, while admin "today" logic expects ISO date strings.
 
 Recommended first QA/security gates:

@@ -4,6 +4,54 @@
 
 const BOOKING_FEE = 0.05;
 const CHILD_DISCOUNT = 0.5;
+const LEGACY_ADMIN_MUTATIONS_ENABLED = false;
+const LEGACY_ADMIN_DISABLED_MESSAGE =
+  'Legacy admin writes are disabled. Use the native /admin staff workflow; rebuild missing actions in Convex before re-enabling.';
+
+function legacyAdminMutationDisabled(action) {
+  if (LEGACY_ADMIN_MUTATIONS_ENABLED) return false;
+  const message = `${action} is disabled on the legacy admin fallback. ${LEGACY_ADMIN_DISABLED_MESSAGE}`;
+  console.warn(message);
+  try {
+    showToast(message, 'error');
+  } catch (e) {
+    window.alert?.(message);
+  }
+  return true;
+}
+
+function disableLegacyAdminWriteControl(el, action) {
+  if (!el || LEGACY_ADMIN_MUTATIONS_ENABLED) return;
+  el.disabled = true;
+  el.setAttribute('aria-disabled', 'true');
+  el.title = `${action} is disabled on this legacy fallback. Use /admin.`;
+}
+
+function disableLegacyAdminWriteControls(root = document) {
+  if (LEGACY_ADMIN_MUTATIONS_ENABLED) return;
+  [
+    ['save-pricing-btn', 'Pricing changes'],
+    ['save-cafe-btn', 'Cafe menu changes'],
+    ['save-hours-btn', 'Hours changes'],
+    ['save-ann-btn', 'Announcement changes'],
+    ['save-pwd-btn', 'Legacy password changes'],
+    ['clear-bookings-btn', 'Bulk booking deletion'],
+    ['danger-clear-bookings', 'Bulk booking deletion'],
+    ['danger-reset-all', 'Reset all settings']
+  ].forEach(([id, action]) => disableLegacyAdminWriteControl(root.getElementById?.(id), action));
+  root.querySelectorAll?.('.add-item-btn, .item-delete-btn').forEach((el) =>
+    disableLegacyAdminWriteControl(el, 'Catalog edits')
+  );
+}
+
+function makeLegacyEditorReadOnly(sectionId, action) {
+  const section = document.getElementById(sectionId);
+  if (!section || LEGACY_ADMIN_MUTATIONS_ENABLED) return;
+  section.querySelectorAll('input, textarea, select, button').forEach((el) => {
+    if (el.closest('#gate-form')) return;
+    disableLegacyAdminWriteControl(el, action);
+  });
+}
 
 // ── AUTH ──────────────────────────────────────────────────────
 // When the cloud is configured, the admin uses real Supabase Auth
@@ -238,6 +286,7 @@ function applyBookingFilters() {
 }
 
 function toggleCheckIn(id) {
+  if (legacyAdminMutationDisabled('Booking status changes')) return;
   const b = SkylaData.getBookings().find(x => x.id === id);
   if (!b) return;
   const newStatus = b.status === 'checked-in' ? 'confirmed' : 'checked-in';
@@ -251,6 +300,7 @@ function toggleCheckIn(id) {
 }
 
 async function cancelBooking(id) {
+  if (legacyAdminMutationDisabled('Booking cancellations')) return;
   if (!await confirm('Cancel booking?', 'This will mark the booking as cancelled.')) return;
   SkylaData.updateBooking(id, { status: 'cancelled' });
   allBookings = SkylaData.getBookings();
@@ -259,6 +309,7 @@ async function cancelBooking(id) {
 }
 
 async function deleteBooking(id) {
+  if (legacyAdminMutationDisabled('Booking deletion')) return;
   if (!await confirm('Delete booking?', 'This permanently removes the booking record.')) return;
   SkylaData.deleteBooking(id);
   allBookings = SkylaData.getBookings();
@@ -392,6 +443,7 @@ function renderVouchers(b) {
 }
 
 function redeemVoucher(bookingId, voucherId, max) {
+  if (legacyAdminMutationDisabled('Voucher redemption')) return;
   const b = SkylaData.getBookings().find(x => x.id === bookingId);
   if (!b) return;
   const red = { ...(b.redemptions || {}) };
@@ -405,6 +457,7 @@ function redeemVoucher(bookingId, voucherId, max) {
 }
 
 function unredeemVoucher(bookingId, voucherId) {
+  if (legacyAdminMutationDisabled('Voucher redemption changes')) return;
   const b = SkylaData.getBookings().find(x => x.id === bookingId);
   if (!b) return;
   const red = { ...(b.redemptions || {}) };
@@ -562,6 +615,7 @@ function renderCheckinResult(b, query) {
 }
 
 function doCheckin(id) {
+  if (legacyAdminMutationDisabled('Guest check-in')) return;
   SkylaData.updateBooking(id, { status: 'checked-in', checkedInAt: new Date().toISOString() });
   const b = SkylaData.getBookings().find(x => x.id === id);
   showToast(`${b?.firstName || 'Guest'} checked in ✓`);
@@ -571,6 +625,7 @@ function doCheckin(id) {
 }
 
 function undoCheckin(id) {
+  if (legacyAdminMutationDisabled('Guest check-in changes')) return;
   SkylaData.updateBooking(id, { status: 'confirmed', checkedInAt: null });
   const b = SkylaData.getBookings().find(x => x.id === id);
   showToast('Check-in undone');
@@ -643,9 +698,11 @@ function renderPricing() {
 
   document.getElementById('child-discount').value = 50;
   document.getElementById('booking-fee').value    = 5;
+  makeLegacyEditorReadOnly('section-pricing', 'Pricing changes');
 }
 
 function savePricing() {
+  if (legacyAdminMutationDisabled('Pricing changes')) return;
   const packages = SkylaData.getPackages();
   Object.keys(packages).forEach(key => {
     packages[key].name        = document.getElementById(`pkg-name-${key}`)?.value || packages[key].name;
@@ -667,6 +724,7 @@ function renderCafeMenu() {
   renderMenuTab('coffee');
   renderMenuTab('bites');
   renderAddonsTab();
+  makeLegacyEditorReadOnly('section-cafe', 'Cafe menu changes');
 }
 
 function renderMenuTab(tab) {
@@ -711,12 +769,14 @@ function syncMenuItem(tab, el) {
 }
 
 function deleteMenuItem(tab, id) {
+  if (legacyAdminMutationDisabled('Cafe menu edits')) return;
   localCafeMenu[tab] = (localCafeMenu[tab] || []).filter(x => x.id !== id);
   renderMenuTab(tab);
   showToast('Item removed — save to apply');
 }
 
 function addMenuItem(tab) {
+  if (legacyAdminMutationDisabled('Cafe menu edits')) return;
   const isBites = tab === 'bites';
   const newItem = isBites
     ? { id: `${tab}-${Date.now()}`, name: '', emoji: '🍽', price: 0, desc: '', active: true }
@@ -767,6 +827,7 @@ function syncAddon(el) {
 }
 
 function saveCafeMenu() {
+  if (legacyAdminMutationDisabled('Cafe menu changes')) return;
   SkylaData.saveCafeMenu(localCafeMenu);
   SkylaData.saveAddons(localAddons);
   showToast('Café menu saved ✓');
@@ -804,9 +865,11 @@ function renderHours() {
       }
     });
   });
+  makeLegacyEditorReadOnly('section-hours', 'Hours changes');
 }
 
 function saveHours() {
+  if (legacyAdminMutationDisabled('Hours changes')) return;
   const hours  = SkylaData.getHours();
   const editor = document.getElementById('hours-editor');
   Object.keys(hours).forEach(day => {
@@ -831,9 +894,11 @@ function renderSettings() {
   document.getElementById('pwd-new').value      = '';
   document.getElementById('pwd-confirm').value  = '';
   document.getElementById('pwd-error').textContent = '';
+  makeLegacyEditorReadOnly('section-settings', 'Legacy settings changes');
 }
 
 function saveAnnouncement() {
+  if (legacyAdminMutationDisabled('Announcement changes')) return;
   SkylaData.saveAnnouncement({
     active: document.getElementById('ann-active').checked,
     text:   document.getElementById('ann-text').value.trim(),
@@ -843,6 +908,7 @@ function saveAnnouncement() {
 }
 
 async function savePassword() {
+  if (legacyAdminMutationDisabled('Legacy password changes')) return;
   const current  = document.getElementById('pwd-current').value;
   const newPwd   = document.getElementById('pwd-new').value;
   const confirm2 = document.getElementById('pwd-confirm').value;
@@ -982,6 +1048,7 @@ function applyMemberFilters() {
 }
 
 function updateMemberStatus(id, newStatus) {
+  if (legacyAdminMutationDisabled('Member status changes')) return;
   SkylaData.updateMember(id, { status: newStatus });
   allMembers = getMembers();
   renderMemberStats();
@@ -990,6 +1057,7 @@ function updateMemberStatus(id, newStatus) {
 }
 
 async function deleteMember(id) {
+  if (legacyAdminMutationDisabled('Member application deletion')) return;
   if (!await confirm('Delete application?', 'This permanently removes the member application.')) return;
   SkylaData.deleteMember(id);
   allMembers = getMembers();
@@ -1088,6 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Password gate
   const gate  = document.getElementById('gate');
   const shell = document.getElementById('admin-shell');
+  disableLegacyAdminWriteControls();
 
   // Restore an existing session (async — Supabase)
   checkAuth().then(ok => {
@@ -1155,6 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
 
   document.getElementById('clear-bookings-btn').addEventListener('click', async () => {
+    if (legacyAdminMutationDisabled('Bulk booking deletion')) return;
     if (!await confirm('Clear all bookings?', 'This permanently deletes every booking record and cannot be undone.')) return;
     SkylaData.clearBookings();
     renderBookings();
@@ -1169,12 +1239,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Danger zone
   document.getElementById('danger-clear-bookings').addEventListener('click', async () => {
+    if (legacyAdminMutationDisabled('Bulk booking deletion')) return;
     if (!await confirm('Clear all bookings?', 'Permanently deletes every booking record.')) return;
     SkylaData.clearBookings();
     showToast('All bookings cleared');
   });
 
   document.getElementById('danger-reset-all').addEventListener('click', async () => {
+    if (legacyAdminMutationDisabled('Reset all settings')) return;
     if (!await confirm('Reset everything?', 'This restores all prices, menu items, and hours to the original defaults. Your bookings will NOT be deleted.')) return;
     const bookings = SkylaData.getBookings();
     SkylaData.resetAll();
