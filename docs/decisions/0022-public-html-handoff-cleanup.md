@@ -56,5 +56,6 @@ flowchart LR
 - Public content no longer has duplicate static page implementations.
 - The app serves less legacy CSS/JS from `apps/web/public`.
 - Route and production-readiness tests now guard this handoff contract.
-- Admin/POS fallbacks are unchanged; `/admin.html` and `/pos.html` still remain
-  explicit noindex staff compatibility surfaces.
+- Admin/POS fallbacks were unchanged in this slice. They were later retired to
+  native handoff pages in
+  [Decision 0025](./0025-staff-compatibility-handoff-retirement.md).

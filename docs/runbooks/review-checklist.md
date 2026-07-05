@@ -31,9 +31,8 @@ Use this after each major phase.
   reconciliation
 - Convex Terminal create-intent and reader-process actions both require
   `SKYLA_POS_TERMINAL_ACCEPTANCE`, not just route-level checks
-- Legacy `/admin.html` keeps `LEGACY_ADMIN_MUTATIONS_ENABLED = false`
-- Legacy `/pos.html` keeps `LEGACY_TERMINAL_PAYMENTS_ENABLED = false` and
-  `LEGACY_TERMINAL_READER_SETUP_ENABLED = false`
+- `/admin.html` and `/pos.html` are noindex handoffs to native `/admin` and
+  `/pos`; they must not load the retired staff JS/CSS/shared data facade
 - Legacy Supabase `stripe-terminal` returns `410` for `setup-reader` as well as
   charge/reader bridge actions
 - Native admin voucher redemption stores redeem/undo as
@@ -47,9 +46,8 @@ Use this after each major phase.
 - Legal pages are reachable
 - Ticket path is safe
 - Admin and POS text remains high-contrast on the dark background
-- Legacy staff stylesheet/script cache keys in `/admin.html`, `/pos.html`, and
-  `scripts/smoke/production-readiness-smoke.mjs` stay in sync after staff CSS
-  or fallback JS changes
+- Retired staff assets `admin.css`, `admin.js`, `pos.css`, `pos.js`, and
+  `shared-data.js` stay absent from `apps/web/public`
 - Admin/POS are not indexed
 - `/pos` is an App Router route and is not indexed
 - `/pos-next` is not indexed
@@ -58,8 +56,9 @@ Use this after each major phase.
 - Motion respects reduced motion
 - `/about`, `/cafe`, `/checkout`, `/experiences`, `/members`, `/privacy`,
   `/terms`, `/admin`, `/pos`, and `/pos-next` are App Router routes with
-  `.html` compatibility files where needed. `/pos.html` is the explicit legacy
-  POS fallback; extensionless `/pos` should not be rewritten to it.
+  `.html` compatibility files where needed. `/admin.html` and `/pos.html` are
+  handoff-only compatibility files; extensionless `/admin` and `/pos` should
+  not be rewritten to them.
 - Public `.html` compatibility files for `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, and `/terms` are handoff-only and do not load
   `styles.css`, route-specific public page CSS, `script.js`, `shared-data.js`,

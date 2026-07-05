@@ -15,8 +15,9 @@ card-present charging, but it still loaded the old browser/localStorage/Supabase
 code.
 
 This decision moves the extensionless `/pos` route onto the native App Router
-screen. The old file remains available only at `/pos.html` as a compatibility
-fallback while the remaining dashboard and reader acceptance work is finished.
+screen. At the time, the old file remained available only at `/pos.html` as a
+compatibility fallback while the remaining dashboard and reader acceptance work
+was finished. Decision 0025 later retired `/pos.html` to a native handoff page.
 
 ## Decision
 
@@ -24,7 +25,8 @@ fallback while the remaining dashboard and reader acceptance work is finished.
 - Keep `/pos-next` as a compatibility URL for the same native POS shell during
   rollout.
 - Remove `/pos` from the extensionless legacy rewrite list.
-- Keep `/pos.html` in `apps/web/public` as the explicit legacy fallback.
+- Keep `/pos.html` in `apps/web/public` as a compatibility URL. Decision 0025
+  later changed it from a legacy fallback into a handoff page.
 - Keep `/pos`, `/pos-next`, and `/pos.html` marked `noindex, nofollow`.
 - Keep live Terminal payment gated until real Convex, staff auth, Stripe
   webhooks, and Stripe test-reader acceptance pass.
@@ -49,7 +51,8 @@ flowchart LR
 ## Consequences
 
 - Staff and production smoke tests should treat `/pos` as the native route.
-- Legacy stylesheet cache-key checks should target `/pos.html`, not `/pos`.
+- Staff compatibility checks should target `/pos.html`, not `/pos`, but should
+  now verify handoff behavior and retired asset absence.
 - Any future live payment acceptance must test native `/pos`; `/pos.html`
   should not be re-enabled for browser-authoritative card-present charging.
 - The old `/pos-next` URL can be removed after dashboards, acceptance tests,

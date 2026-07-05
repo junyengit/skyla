@@ -7,8 +7,9 @@ Accepted.
 ## Context
 
 Legacy `/admin.html` could redeem package inclusions and add-on vouchers by
-mutating booking-local browser data. That fallback is now read/export-only, so
-staff needed a native replacement on `/admin` that fits the Convex migration.
+mutating booking-local browser data. That fallback was later retired to a
+native handoff, so staff needed a native replacement on `/admin` that fits the
+Convex migration.
 
 Voucher redemption is not a payment capture. It is an operations record that
 staff need during check-in, and it must not trust browser-provided voucher

@@ -584,8 +584,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       and removed the old public page CSS/navigation script assets from
       `apps/web/public`.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, typed announcement/hours config, and native voucher redemption code on the current branch. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/delete/refund workflows and live Stripe Terminal test-reader acceptance still remain.
-      The legacy `/admin.html` fallback is now read/export-only in repo code, and
-      legacy `/pos.html` keeps Terminal payments plus reader setup disabled.
+      The legacy `/admin.html` and `/pos.html` staff apps have now been retired
+      to native handoff pages, and the old `shared-data.js`, `admin.js`, and
+      `pos.js` assets are gone from `apps/web/public`.
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
@@ -656,9 +657,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   procedures exist.
 - Branch `codex/native-pos-route-cutover` moves extensionless `/pos` from the
   legacy rewrite bridge to the native server-priced POS shell, keeps `/pos-next`
-  as a compatibility URL, and leaves `/pos.html` as the explicit disabled
-  legacy fallback. Live card-present payment remains blocked until real
-  Convex/staff auth/Stripe webhook/test-reader acceptance is complete.
+  as a compatibility URL, and originally left `/pos.html` as the explicit
+  disabled legacy fallback. A later staff fallback retirement branch turns
+  `/pos.html` into a native handoff instead. Live card-present payment remains
+  blocked until real Convex/staff auth/Stripe webhook/test-reader acceptance is
+  complete.
 - PR #62 merged the native `/pos` route cutover into `main`. Production
   readiness and no-write payment smokes passed on
   `https://web-g6cp2p7an-junyen-enterprises.vercel.app`,

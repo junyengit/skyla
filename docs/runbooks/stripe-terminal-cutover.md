@@ -21,9 +21,10 @@ No real card should be used for verification. Use Stripe test mode and a Stripe
 test reader until the full flow passes.
 
 The extensionless `/pos` route now renders the native server-priced POS shell.
-`/pos.html` remains the legacy fallback and must stay disabled for card-present
-charging. Treat `/pos` as a draft/register shell until Convex, staff auth,
-Stripe webhooks, and a test reader all pass acceptance.
+`/pos.html` is now a noindex compatibility handoff to `/pos`; the old POS
+browser app and Terminal SDK are no longer shipped. Treat `/pos` as a
+draft/register shell until Convex, staff auth, Stripe webhooks, and a test
+reader all pass acceptance.
 
 ## Flow
 
@@ -195,12 +196,13 @@ Expected after Convex and Stripe webhook envs are wired:
       without downgrading an already-paid sale.
 - [ ] Native `/pos` test-reader path passes before staff use it for live
       card-present payment.
-- [ ] Legacy `/pos.html` and Supabase Terminal bridge are removed or
-      permanently disabled after acceptance.
+- [x] Legacy `/pos.html` no longer ships the old POS app; it hands off to
+      native `/pos`.
+- [ ] Supabase Terminal bridge is disabled in the deployed Supabase project
+      after acceptance.
 
 ## Rollback
 
 If the new Terminal path fails during preview, keep `/pos` in no-write draft
-mode and use `/pos.html` only as a disabled compatibility fallback. Do not
-re-enable browser-authoritative payment creation; the repo no longer supports a
-legacy payment escape hatch.
+mode and roll back through Vercel. Do not re-enable browser-authoritative
+payment creation; the repo no longer supports a legacy payment escape hatch.
