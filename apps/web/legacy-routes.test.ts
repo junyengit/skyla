@@ -213,6 +213,21 @@ describe("legacy route bridge", () => {
     expect(legacyTerminalFunction).not.toContain("/terminal/readers");
   });
 
+  it("keeps the legacy Supabase Stripe checkout function fully retired", () => {
+    const legacyCheckoutFunction = readFileSync(
+      join(import.meta.dirname, "../../supabase/functions/stripe-checkout/index.ts"),
+      "utf8"
+    );
+
+    expect(legacyCheckoutFunction).toContain("Legacy Stripe checkout function is permanently disabled");
+    expect(legacyCheckoutFunction).toContain("status = 410");
+    expect(legacyCheckoutFunction).not.toContain("STRIPE_SECRET_KEY");
+    expect(legacyCheckoutFunction).not.toContain("STRIPE_API");
+    expect(legacyCheckoutFunction).not.toContain("payload.action");
+    expect(legacyCheckoutFunction).not.toContain("checkout/sessions");
+    expect(legacyCheckoutFunction).not.toContain("withSupabase");
+  });
+
   it("keeps native admin and POS staff surfaces high-contrast with server-owned staff routes", () => {
     const webDir = import.meta.dirname;
     const globalsCss = readFileSync(join(webDir, "app/globals.css"), "utf8");

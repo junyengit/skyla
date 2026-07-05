@@ -115,7 +115,8 @@ Expected:
 - `/checkout` calls the Next/Convex route.
 - `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
   `shared-data.js`, or Kaskade code.
-- Old Supabase payment creation actions return `410` permanently in repo code.
+- Old Supabase payment creation and Checkout session verification actions
+  return `410` permanently in repo code.
 
 3. Confirm the webhook route exists after the real Convex deployment is linked:
 
@@ -203,8 +204,8 @@ Expected after Convex is wired:
       provider, and order status before marking the order paid.
 - [ ] Home page checkout links resolve to the App Router `/checkout` page, not
       the legacy static rewrite.
-- [x] Legacy Supabase Stripe card and Terminal payment creation fail closed by
-      default in repo code.
+- [x] Legacy Supabase Stripe card creation, old Checkout session verification,
+      and Terminal payment creation fail closed by default in repo code.
 - [ ] Confirm any already deployed legacy Supabase functions are redeployed from
       fail-closed code or disabled in the dashboard.
 - [x] POS Terminal create-intent accepts `saleRef` only before live

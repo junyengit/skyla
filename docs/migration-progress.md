@@ -586,6 +586,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel returned no production error/fatal logs for deployment
       `dpl_4sAftkmpovb9AqPrst3kv8hXKBe3` in the fetched one-hour window after
       smoke probes.
+- [x] Started branch `codex/supabase-checkout-retirement` from clean
+      `origin/main` after PR #72 to remove the final legacy Supabase Stripe
+      Checkout read path.
+- [x] Replaced the repo copy of `supabase/functions/stripe-checkout` with an
+      unconditional `410` stub for every non-OPTIONS request, including old
+      Checkout session verification.
+- [x] Added artifact and route-test guards so the retired legacy verification
+      branch and direct Stripe Checkout session lookups cannot return unnoticed.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -683,9 +691,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.
 - Repository copies of legacy Supabase Stripe Checkout, Terminal charge
   creation, Kaskade payment creation, and Kaskade webhook handling now return
-  `410` permanently where they could affect payment state, but this does not
-  change any already deployed Supabase function until it is redeployed or
-  disabled in the Supabase dashboard.
+  `410` permanently where they could affect payment state. The checkout copy
+  also returns `410` for old Checkout session verification. This does not change
+  any already deployed Supabase function until it is redeployed or disabled in
+  the Supabase dashboard.
 - The native `/admin` path now has front-desk booking lookup/check-in, audited
   status actions, announcement/hours config, and native voucher redemption on
   the current branch. It still intentionally excludes hard deletes, bulk
