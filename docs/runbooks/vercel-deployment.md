@@ -26,11 +26,11 @@ root.
 As of July 5, 2026:
 
 - Latest verified app-code production deployment from `main` is READY at
-  `https://web-7s20mwxo9-junyen-enterprises.vercel.app`.
+  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`.
 - Latest verified app-code deployment ID:
-  `dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk`.
+  `dpl_2zLDfubZkh35R5qdRbeqafr98JKz`.
 - Latest verified merge commit:
-  `1a4b52a0993ba8c69ad20456716246dc3d24370b` (PR #67).
+  `43628ae31de2d3f0f49a46ba0b6abb266b9991df` (PR #69).
 - Later docs-only merges can create newer Vercel deployment URLs with the same
   app behavior. Use the Vercel dashboard before recording fresh evidence.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
@@ -42,7 +42,7 @@ As of July 5, 2026:
   configured in Convex.
 - The latest production deployment metadata reports Bun serverless runtime
   usage, Turbopack bundling, target `production`, and commit
-  `1a4b52a0993ba8c69ad20456716246dc3d24370b`.
+  `43628ae31de2d3f0f49a46ba0b6abb266b9991df`.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
 
