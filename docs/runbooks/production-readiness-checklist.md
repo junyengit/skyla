@@ -65,15 +65,15 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest app-code production deployment checked on 2026-07-05:
-  `https://web-p6ry1h5jq-junyen-enterprises.vercel.app`
+  `https://web-decldr0pu-junyen-enterprises.vercel.app`
 - Latest app-code deployment ID checked on 2026-07-05:
-  `dpl_H9sffN8LnxwBNHJnqbnETJsyC558`
+  `dpl_62iVfWRBejYwK6nRvrBgXfzbkoQP`
 - Latest app-code merge commit checked on 2026-07-05:
-  `1899a9f0ffcee96455bdab3f911850f45b339019` (PR #64)
+  `33ba3854b686cb46ceef62e58806eb3ffff13ccf` (PR #65)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
-- Custom domains checked on 2026-07-02:
+- Custom domains checked on 2026-07-05:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
 - Vercel/Convex env behavior checked on 2026-07-05: `vercel env ls` for
@@ -97,7 +97,7 @@ real event intake still depends on the dashboard setup below.
   was verified. The old `https://junyengit.github.io/skyla/` surface should
   stay off unless Vercel rollback is unavailable and a deliberate Pages rollback
   is planned.
-- Live API behavior checked on 2026-07-02 across the checked Vercel production
+- Live API behavior checked on 2026-07-05 across the checked Vercel production
   deployment, apex domain, and `www` with `bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
@@ -112,16 +112,16 @@ real event intake still depends on the dashboard setup below.
   - `/api/payments/stripe-terminal` returned `401 staff_auth_required` before
     Convex configuration when no staff token was provided.
   - No response exposed a Stripe `clientSecret`.
-- Member application API checked on 2026-07-02 across the apex domain, `www`,
+- Member application API checked on 2026-07-05 across the apex domain, `www`,
   and the latest Vercel deployment URL with an empty no-write payload:
   `/api/members/applications` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
-- Experience inquiry API checked on 2026-07-02 across the apex domain, `www`,
+- Experience inquiry API checked on 2026-07-05 across the apex domain, `www`,
   and the latest Vercel deployment URL with an empty no-write payload:
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
-  no error/fatal logs for deployment `dpl_H9sffN8LnxwBNHJnqbnETJsyC558` in
+  no error/fatal logs for deployment `dpl_62iVfWRBejYwK6nRvrBgXfzbkoQP` in
   the fetched log window.
 - Bun checked locally: `1.4.0-canary.1+eba370b69`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
@@ -164,7 +164,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-05 for
-  `https://web-p6ry1h5jq-junyen-enterprises.vercel.app`,
+  `https://web-decldr0pu-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
