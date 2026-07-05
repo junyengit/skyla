@@ -697,6 +697,28 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added a plain-English current-state handoff at
       `docs/current-state-simple.md` with architecture, dashboard checklist,
       latest evidence, and next code work.
+- [x] Merged current-state QA PR #81 into `main` as merge commit
+      `7d93c3600d23f5df2ca449d2ef441066c735fab4`; GitHub/Vercel checks passed.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-2e5u36ye7-junyen-enterprises.vercel.app`
+      (`dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for
+      the deployment URL, apex domain, and `www`; all passed. Payment probes
+      returned checkout total `8505` cents and POS total `9700` cents, and
+      Stripe execution routes stayed fail-closed before real Convex/Stripe
+      dashboard wiring.
+- [x] Verified `/api/admin/export?kind=bookings` on the post-PR-81 production
+      deployment, apex domain, and `www` returns `401` without staff auth and
+      `503 convex_unconfigured` with a fake staff token. Responses stayed
+      `Cache-Control: no-store` and `Vary: Authorization`.
+- [x] Checked production `/admin` and `/pos` in Helium after PR #81. Both staff
+      surfaces rendered readable white text on black backgrounds; `/pos` hands
+      off to the native `/pos-next` shell during rollout.
+- [x] Confirmed Vercel runtime logs for deployment
+      `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn` showed expected public `200`,
+      staff-gated `401`, and Convex-unconfigured `503` smoke probes with no
+      error/fatal rows in the fetched one-hour window.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
