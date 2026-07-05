@@ -719,6 +719,20 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn` showed expected public `200`,
       staff-gated `401`, and Convex-unconfigured `503` smoke probes with no
       error/fatal rows in the fetched one-hour window.
+- [x] Started branch `codex/convex-catalog-versioning` for the next
+      no-dashboard Convex catalog governance slice.
+- [x] Added Convex catalog versioning tables, immutable product snapshots,
+      code-owned catalog seeding, audited version activation/rollback, and a
+      staff-gated `/api/admin/catalog` bridge.
+- [x] Kept checkout/POS runtime pricing on `@skyla/payments`; admin price edits
+      remain deferred until linked Convex acceptance proves the seeded catalog
+      path.
+- [x] Verified focused catalog gates locally:
+      `bunx vitest run convex/catalogVersioning.test.ts
+      apps/web/admin-catalog-route.test.ts`, `bun run convex:test:unit`,
+      `bun run convex:schema:typecheck`, `bun run convex:functions:typecheck`,
+      web typecheck, and anonymous
+      `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

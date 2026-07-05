@@ -48,6 +48,7 @@ export function adminFailureStatus(message: string) {
     message.includes("is required") ||
     message.includes("must be") ||
     normalized.includes("not recognized") ||
+    normalized.includes("cannot be submitted") ||
     normalized.includes("does not match validator")
   ) {
     return 400;

@@ -9,16 +9,20 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as catalog from "../catalog.js";
 import type * as http from "../http.js";
 import type * as inquiries from "../inquiries.js";
 import type * as lib_adminConfig from "../lib/adminConfig.js";
 import type * as lib_adminOperations from "../lib/adminOperations.js";
+import type * as lib_adminVouchers from "../lib/adminVouchers.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_catalogVersioning from "../lib/catalogVersioning.js";
 import type * as lib_inquiries from "../lib/inquiries.js";
 import type * as lib_memberApplications from "../lib/memberApplications.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
 import type * as lib_staffBootstrap from "../lib/staffBootstrap.js";
 import type * as lib_stripeCheckout from "../lib/stripeCheckout.js";
+import type * as lib_stripeMode from "../lib/stripeMode.js";
 import type * as lib_stripeTerminal from "../lib/stripeTerminal.js";
 import type * as lib_stripeWebhook from "../lib/stripeWebhook.js";
 import type * as lib_terminalReaderRegistry from "../lib/terminalReaderRegistry.js";
@@ -36,16 +40,20 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  catalog: typeof catalog;
   http: typeof http;
   inquiries: typeof inquiries;
   "lib/adminConfig": typeof lib_adminConfig;
   "lib/adminOperations": typeof lib_adminOperations;
+  "lib/adminVouchers": typeof lib_adminVouchers;
   "lib/auth": typeof lib_auth;
+  "lib/catalogVersioning": typeof lib_catalogVersioning;
   "lib/inquiries": typeof lib_inquiries;
   "lib/memberApplications": typeof lib_memberApplications;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
   "lib/staffBootstrap": typeof lib_staffBootstrap;
   "lib/stripeCheckout": typeof lib_stripeCheckout;
+  "lib/stripeMode": typeof lib_stripeMode;
   "lib/stripeTerminal": typeof lib_stripeTerminal;
   "lib/stripeWebhook": typeof lib_stripeWebhook;
   "lib/terminalReaderRegistry": typeof lib_terminalReaderRegistry;

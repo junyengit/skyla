@@ -572,32 +572,36 @@ Current dependency note:
   plugin stack supports ESLint 10.
 - The public homepage, checkout, admin, POS, and cafe display prices now route
   through `@skyla/payments` catalog helpers. Admin still shows this as a
-  code-owned read-only catalog until Convex catalog versioning, audit history,
-  and rollback rules are implemented.
+  code-owned read-only catalog. Convex now has catalog versioning, immutable
+  product snapshots, and an audited activation/rollback path, but the runtime
+  checkout/POS catalog remains code-owned until linked Convex acceptance passes.
 
 ## Next Work Order
 
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
 2. Seed initial staff with `staffBootstrap.upsertStaffUser`, verify native
    `/admin`, then remove `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
-3. Verify native `/members` applications persist through
+3. Seed the code-owned catalog with `POST /api/admin/catalog` and verify
+   `GET /api/admin/catalog` reports an active version before any future price
+   edit work.
+4. Verify native `/members` applications persist through
    `/api/members/applications` in preview and production after Convex is linked.
-4. Verify preview checkout draft persistence returns `persisted: true`.
-5. Create Stripe test webhook endpoint and set Convex Stripe env vars.
-6. Set Convex/Vercel env vars so the App Router checkout can persist orders
+5. Verify preview checkout draft persistence returns `persisted: true`.
+6. Create Stripe test webhook endpoint and set Convex Stripe env vars.
+7. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-7. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
+8. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-8. Accept Stripe Terminal final webhook reconciliation in test mode with a real
+9. Accept Stripe Terminal final webhook reconciliation in test mode with a real
    test reader and matching Convex sale.
-9. Allow staff to use native `/pos` for card-present payment only after
+10. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-10. Finish native Admin beyond lookup/status/config/voucher/export actions:
+11. Finish native Admin beyond lookup/status/config/voucher/export actions:
    refunds, catalog/pricing edits, and any destructive action with typed
    validators, audit logs, and rollback steps.
-11. Rebuild POS as the protected live App Router/Convex register.
-12. Migrate remaining Supabase data and disable legacy Supabase functions only
+12. Rebuild POS as the protected live App Router/Convex register.
+13. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff

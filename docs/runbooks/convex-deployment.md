@@ -166,7 +166,37 @@ For the native admin action slice:
 - Cancel/refund/payment reconciliation, hard delete, clear-all, reset-all,
   and config/catalog edits remain out of scope.
 
-7. Pull local web envs if you want the Next route to use Convex locally:
+7. Seed the code-owned payment catalog after the admin staff token works.
+
+The catalog seed does not let the browser submit prices. It copies the
+code-owned `@skyla/payments` catalog into Convex `products`, records immutable
+`productSnapshots`, marks one `catalogVersions` row active, and writes an audit
+event. Use a seeded admin bearer token:
+
+```bash
+curl -sS -X POST "$VERCEL_PREVIEW_URL/api/admin/catalog" \
+  -H "Authorization: Bearer $SKYLA_STAFF_TEST_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"action":"seedCodeOwnedCatalog","note":"initial code-owned catalog seed"}'
+
+curl -sS "$VERCEL_PREVIEW_URL/api/admin/catalog" \
+  -H "Authorization: Bearer $SKYLA_STAFF_TEST_TOKEN"
+```
+
+Rollback to an already-seeded version uses the same route and does not accept
+price payloads:
+
+```bash
+curl -sS -X POST "$VERCEL_PREVIEW_URL/api/admin/catalog" \
+  -H "Authorization: Bearer $SKYLA_STAFF_TEST_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"action":"activateVersion","version":"skyla-payments-catalog-2026-07-05","note":"rollback to checked catalog"}'
+```
+
+Keep checkout and POS runtime pricing on `@skyla/payments` until linked Convex
+acceptance has proven the seeded catalog and payment flows in Preview.
+
+8. Pull local web envs if you want the Next route to use Convex locally:
 
 ```bash
 cd apps/web
