@@ -45,9 +45,9 @@ As of July 5, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest verified app-code production deployment:
-  `https://web-decldr0pu-junyen-enterprises.vercel.app` from merge commit
-  `33ba3854b686cb46ceef62e58806eb3ffff13ccf` (PR #65,
-  deployment `dpl_62iVfWRBejYwK6nRvrBgXfzbkoQP`).
+  `https://web-7s20mwxo9-junyen-enterprises.vercel.app` from merge commit
+  `1a4b52a0993ba8c69ad20456716246dc3d24370b` (PR #67,
+  deployment `dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk`).
 - Docs-only follow-up merges can create newer Vercel deployment URLs with the
   same app behavior. Use the Vercel dashboard or `vercel ls` for the newest
   deployment before recording fresh evidence.

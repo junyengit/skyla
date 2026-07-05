@@ -538,8 +538,17 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       controls for voucher redeem/undo with high-contrast white staff text.
 - [x] Added voucher tests for shared payment helpers, Convex helper math, admin
       audit metadata, and the Next admin route contract.
-- [ ] Merge native admin voucher redemption PR and verify the production
-      deployment, apex domain, and `www` after checks pass.
+- [x] Merged native admin voucher redemption PR #67 into `main` as merge commit
+      `1a4b52a0993ba8c69ad20456716246dc3d24370b`.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-7s20mwxo9-junyen-enterprises.vercel.app`
+      (`dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for the
+      production deployment URL, apex domain, and `www`; all passed.
+- [x] Confirmed Vercel reported no grouped runtime errors and no error/fatal
+      logs for deployment `dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk` in the checked
+      one-hour window.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
