@@ -517,6 +517,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       reports no vulnerabilities, `bun outdated --recursive` only reports
       deferred `eslint@10.6.0`, and a direct ESLint 10 trial still fails through
       `eslint-plugin-react@7.37.5`, so ESLint remains pinned to `9.39.4`.
+- [x] Merged legacy staff fallback lockdown PR #65 into `main` as merge commit
+      `33ba3854b686cb46ceef62e58806eb3ffff13ccf`.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-decldr0pu-junyen-enterprises.vercel.app`
+      (`dpl_62iVfWRBejYwK6nRvrBgXfzbkoQP`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for the
+      production deployment URL, apex domain, and `www`; all passed.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
