@@ -574,6 +574,18 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Tightened `/api/order-drafts/pos` so browser-sent
       `terminalLocationId` is no longer forwarded; Convex derives stored
       Terminal location from the trusted reader registry.
+- [x] Merged POS reader registry selector PR #71 into `main` as merge commit
+      `64864f9366fbdc03a38eb1da2f1d307e3ff1b747`.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-3x58j0erd-junyen-enterprises.vercel.app`
+      (`dpl_4sAftkmpovb9AqPrst3kv8hXKBe3`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for the
+      production deployment URL, apex domain, and `www`; all passed, including
+      the new `/api/pos/readers` staff-auth gate.
+- [x] Confirmed Vercel returned no production error/fatal logs for deployment
+      `dpl_4sAftkmpovb9AqPrst3kv8hXKBe3` in the fetched one-hour window after
+      smoke probes.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
