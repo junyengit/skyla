@@ -40,7 +40,7 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for commit `a322ea0`.
+- Vercel production deployment is ready for PR #81 merge commit `7d93c36`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and compatibility handoff routes smoke-test successfully.
@@ -94,8 +94,10 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Production deployment | `dpl_HsyodqFxmmAyuRAKJoQ3szcmos79`, status `READY` |
-| Production commit | `a322ea0363d28683b6515bcb5261241b8c5535a3` |
+| Latest app-code production verification | PR #81, merged `2026-07-05T22:49:52Z` |
+| Verified production deployment | `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`, status `READY` |
+| Verified production URL | `https://web-2e5u36ye7-junyen-enterprises.vercel.app` |
+| Verified production commit | `7d93c3600d23f5df2ca449d2ef441066c735fab4` |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun install --canary --frozen-lockfile` | Passed, no changes |
@@ -106,6 +108,12 @@ safe behavior.
 | `bun run test:production-readiness` | Passed on deployment, apex, and `www` |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run check` | Passed |
+| Helium visual QA | Production `/admin` and `/pos` render white-on-black staff screens |
+| Admin export API | `401` without auth and `503 convex_unconfigured` with fake auth, both `no-store` and `Vary: Authorization` |
+
+Vercel will create newer production URLs for docs-only commits. Treat the
+deployment above as the latest checked app-code behavior, then query Vercel for
+the newest deployment before recording fresh operational evidence.
 
 ## Next Code Work
 

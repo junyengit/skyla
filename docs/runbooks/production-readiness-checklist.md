@@ -68,6 +68,12 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
+- Latest post-PR-81 app verification checked on 2026-07-05:
+  `https://web-2e5u36ye7-junyen-enterprises.vercel.app`
+- Latest post-PR-81 deployment ID checked on 2026-07-05:
+  `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`
+- Latest post-PR-81 merge commit checked on 2026-07-05:
+  `7d93c3600d23f5df2ca449d2ef441066c735fab4` (PR #81)
 - Latest docs-state deployment evidence checked on 2026-07-05:
   `https://web-1n1r4myow-junyen-enterprises.vercel.app`
 - Latest docs-state deployment ID checked on 2026-07-05:
@@ -126,9 +132,9 @@ real event intake still depends on the dashboard setup below.
   - `/api/pos/readers` returned `401 staff_auth_required` before exposing any
     Terminal reader records.
   - No response exposed a Stripe `clientSecret`.
-- Native admin export API checked on 2026-07-05 for production deployment
-  `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR`,
-  `https://skydeckla.com`, and `https://www.skydeckla.com`:
+- Native admin export API checked on 2026-07-05 for post-PR-81 production
+  deployment `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`, `https://skydeckla.com`,
+  and `https://www.skydeckla.com`:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
@@ -158,6 +164,10 @@ real event intake still depends on the dashboard setup below.
   export deployment: no grouped runtime errors and no error/fatal logs for
   deployment `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR` in the fetched one-hour log
   window.
+- Vercel production runtime logs checked again on 2026-07-05 after PR #81:
+  no error/fatal rows for deployment `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn` in the
+  fetched one-hour log window. The visible entries were expected public `200`,
+  staff-gated `401`, and Convex-unconfigured `503` smoke probes.
 - Bun checked locally: `1.4.0-canary.1+d37f52067`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
