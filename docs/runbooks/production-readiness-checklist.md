@@ -68,16 +68,19 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest production deployment checked on 2026-07-05:
+- Latest docs-state deployment evidence checked on 2026-07-05:
   `https://web-1n1r4myow-junyen-enterprises.vercel.app`
-- Latest production deployment ID checked on 2026-07-05:
+- Latest docs-state deployment ID checked on 2026-07-05:
   `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`
-- Latest production merge commit checked on 2026-07-05:
+- Latest docs-state merge commit checked on 2026-07-05:
   `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76)
-- Latest app-code deployment before that docs-state follow-up:
+- Latest app-code deployment before docs-only follow-ups:
   `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
   (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from merge commit
   `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75).
+- Later docs-only merges create newer Vercel production URLs with the same app
+  behavior. Query Vercel for the newest deployment URL before recording fresh
+  operational evidence.
 - Custom domains checked on 2026-07-05:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`

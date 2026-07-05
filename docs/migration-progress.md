@@ -634,12 +634,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `503 convex_unconfigured` probes.
 - [x] Merged acceptance harness docs-state PR #76 into `main` as merge commit
       `5a7e46a3e5dc28b72ff2681b896084ba91e045ec`.
-- [x] Confirmed final Vercel production deployment from `main` is READY:
+- [x] Confirmed docs-state Vercel production deployment evidence from `main`
+      was READY:
       `https://web-1n1r4myow-junyen-enterprises.vercel.app`
       (`dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`), aliased to `skydeckla.com` and
       `www.skydeckla.com`.
 - [x] Re-ran post-merge route, payment, and production-readiness smokes for the
-      final production deployment URL, apex domain, and `www`; all passed.
+      docs-state production deployment URL, apex domain, and `www`; all passed.
 - [x] Rechecked live `/admin` and `/pos-next` in Helium on 2026-07-05; both
       staff surfaces rendered readable white text on black backgrounds.
 - [x] Checked Vercel error/fatal runtime logs for deployment
