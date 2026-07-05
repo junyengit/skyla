@@ -64,11 +64,11 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest app-code production deployment checked on 2026-07-05:
-  `https://web-7s20mwxo9-junyen-enterprises.vercel.app`
+  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`
 - Latest app-code deployment ID checked on 2026-07-05:
-  `dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk`
+  `dpl_2zLDfubZkh35R5qdRbeqafr98JKz`
 - Latest app-code merge commit checked on 2026-07-05:
-  `1a4b52a0993ba8c69ad20456716246dc3d24370b` (PR #67)
+  `43628ae31de2d3f0f49a46ba0b6abb266b9991df` (PR #69)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -122,7 +122,7 @@ real event intake still depends on the dashboard setup below.
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
-  no error/fatal logs for deployment `dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk` in
+  no error/fatal logs for deployment `dpl_2zLDfubZkh35R5qdRbeqafr98JKz` in
   the fetched log window.
 - Bun checked locally: `1.4.0-canary.1+fb50cce92`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
@@ -165,7 +165,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-05 for
-  `https://web-7s20mwxo9-junyen-enterprises.vercel.app`,
+  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`,
   `https://skydeckla.com`, and `https://www.skydeckla.com`.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.

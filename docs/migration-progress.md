@@ -549,6 +549,20 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel reported no grouped runtime errors and no error/fatal
       logs for deployment `dpl_AVbzMd2HR6bKp8JLDWcaM2BvSBjk` in the checked
       one-hour window.
+- [x] Merged staff compatibility app retirement PR #69 into `main` as merge
+      commit `43628ae31de2d3f0f49a46ba0b6abb266b9991df`.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`
+      (`dpl_2zLDfubZkh35R5qdRbeqafr98JKz`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for the
+      production deployment URL, apex domain, and `www`; all passed.
+- [x] Confirmed `/admin.html` and `/pos.html` return `200` while retired staff
+      assets `admin.js`, `pos.js`, `shared-data.js`, `admin.css`, and `pos.css`
+      return `404` on the deployment URL, apex domain, and `www`.
+- [x] Confirmed Vercel reported no grouped runtime errors and no error/fatal
+      logs for deployment `dpl_2zLDfubZkh35R5qdRbeqafr98JKz` in the checked
+      one-hour window.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
