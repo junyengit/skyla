@@ -7,76 +7,25 @@
   <link rel="canonical" href="/members" />
   <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <title>Members — Sky LA</title>
+  <title>Members - Sky LA</title>
+  <script>
+    const target = `/members${window.location.search || ""}${window.location.hash || ""}`;
+    window.location.replace(target);
+  </script>
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #090909;
-      --text: #f7f3eb;
-      --muted: rgba(247, 243, 235, 0.72);
-      --gold: #f0cf73;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      min-height: 100vh;
-      margin: 0;
-      display: grid;
-      place-items: center;
-      background:
-        linear-gradient(180deg, rgba(9, 9, 9, 0.58), #090909),
-        url("images/checkin-desk.jpg") center / cover no-repeat;
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding: 24px;
-    }
-
-    main {
-      width: min(620px, 100%);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 8px;
-      background: rgba(9, 9, 9, 0.78);
-      padding: clamp(26px, 6vw, 48px);
-      text-align: center;
-    }
-
-    h1 {
-      margin: 0 0 14px;
-      color: var(--gold);
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(2.5rem, 9vw, 5rem);
-      line-height: 0.95;
-    }
-
-    p {
-      margin: 0 0 24px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    a {
-      display: inline-flex;
-      min-height: 44px;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      background: var(--gold);
-      color: #15120a;
-      font-size: 0.78rem;
-      font-weight: 800;
-      padding: 0 22px;
-      text-decoration: none;
-      text-transform: uppercase;
-    }
+    :root { color-scheme: dark; --bg: #070707; --text: #f7f3eb; --muted: rgba(247, 243, 235, 0.72); --gold: #f0cf73; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(7, 7, 7, 0.58), #070707), url("images/checkin-desk.jpg") center / cover no-repeat; color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 24px; }
+    main { width: min(620px, 100%); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px; background: rgba(7, 7, 7, 0.82); padding: clamp(28px, 6vw, 48px); text-align: center; }
+    h1 { margin: 0 0 14px; color: var(--gold); font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.4rem, 9vw, 4.7rem); line-height: 0.95; }
+    p { margin: 0 0 24px; color: var(--muted); line-height: 1.6; }
+    a { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 999px; background: var(--gold); color: #15120a; font-size: 0.78rem; font-weight: 800; padding: 0 22px; text-decoration: none; text-transform: uppercase; }
   </style>
 </head>
 <body>
   <main>
-    <h1>Sky LA Members</h1>
-    <p>The membership page has moved into the Sky LA app.</p>
+    <h1>Members</h1>
+    <p>This saved link now opens the Sky LA app.</p>
     <a href="/members">Open Members</a>
   </main>
 </body>

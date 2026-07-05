@@ -42,8 +42,8 @@
     "web:start": "bun run --cwd apps/web start"
   },
   "devDependencies": {
+    "turbo": "2.10.3",
     "typescript": "6.0.3",
-    "turbo": "2.10.2",
     "vitest": "4.1.9"
   },
   "dependencies": {

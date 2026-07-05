@@ -56,7 +56,6 @@ describe("legacy route bridge", () => {
     expect(checkoutClient).toContain("/api/order-drafts/checkout");
     expect(checkoutClient).toContain("/api/payments/stripe-checkout");
     expect(privacyPage).toContain("Convex");
-    expect(privacyFallback).toContain("Convex");
     expect(privacyPage).not.toContain("stored using <strong>Supabase</strong>");
     expect(privacyFallback).not.toContain("stored using <strong>Supabase</strong>");
     expect(aboutPage).not.toContain("shared-data.js");
@@ -71,9 +70,25 @@ describe("legacy route bridge", () => {
     expect(termsPage).not.toContain("shared-data.js");
     expect(publicComponent).not.toContain("shared-data.js");
     expect(legalComponent).not.toContain("shared-data.js");
-    expect(aboutFallback).not.toContain("shared-data.js");
-    expect(cafeFallback).not.toContain("shared-data.js");
-    expect(checkoutFallback).toContain("url=/checkout");
+    for (const [route, fallback] of [
+      ["/about", aboutFallback],
+      ["/cafe", cafeFallback],
+      ["/checkout", checkoutFallback],
+      ["/experiences", experiencesFallback],
+      ["/members", membersFallback],
+      ["/privacy", privacyFallback],
+      ["/terms", termsFallback]
+    ]) {
+      expect(fallback).toContain(`url=${route}`);
+      expect(fallback).toContain(`href="${route}"`);
+      expect(fallback).toContain("window.location.search");
+      expect(fallback).toContain("window.location.hash");
+      expect(fallback).toContain("window.location.replace");
+      expect(fallback).not.toContain("shared-data.js");
+      expect(fallback).not.toContain("SkylaData");
+      expect(fallback).not.toContain("connect.facebook.net");
+      expect(fallback).not.toContain('rel="stylesheet"');
+    }
     expect(checkoutFallback).not.toContain("shared-data.js");
     expect(checkoutFallback).not.toContain("checkout.js");
     expect(checkoutFallback).not.toContain("checkout.css");
@@ -84,14 +99,23 @@ describe("legacy route bridge", () => {
     expect(checkoutFallback).not.toContain("kaskade-payment");
     expect(existsSync(join(publicDir, "checkout.js"))).toBe(false);
     expect(existsSync(join(publicDir, "checkout.css"))).toBe(false);
-    expect(experiencesFallback).toContain("url=/experiences");
     expect(experiencesFallback).not.toContain("shared-data.js");
     expect(experiencesFallback).not.toContain("SkylaData.addInquiry");
-    expect(membersFallback).toContain("url=/members");
     expect(membersFallback).not.toContain("shared-data.js");
     expect(membersFallback).not.toContain("SkylaData.addMember");
     expect(privacyFallback).not.toContain("shared-data.js");
     expect(termsFallback).not.toContain("shared-data.js");
+
+    for (const retiredAsset of [
+      "about.css",
+      "cafe.css",
+      "experiences.css",
+      "members.css",
+      "styles.css",
+      "script.js"
+    ]) {
+      expect(existsSync(join(publicDir, retiredAsset)), retiredAsset).toBe(false);
+    }
   });
 
   it("keeps admin and POS out of public indexing", () => {

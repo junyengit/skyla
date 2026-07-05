@@ -54,7 +54,9 @@ Why this is not the final state:
 - Checkout and paid booking creation are still too browser-controlled.
 - Admin and POS rely heavily on client-side behavior.
 - Supabase-era functions and data access are still outside the target architecture.
-- Compatibility files in `apps/web/public` are still legacy code and should be replaced with typed routes.
+- Public content compatibility files in `apps/web/public` are now handoff-only
+  where typed App Router routes own the content. Staff fallbacks and remaining
+  backend legacy surfaces still need typed replacements.
 - `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations plus audited booking/member status actions, while `/admin.html` remains available for legacy workflows until the remaining Convex admin mutations are complete.
 - The native `/members` page now posts to the server application API and fails
   closed until Convex is configured. `/members.html` remains as a compatibility
@@ -402,6 +404,9 @@ Current order-spine state:
 - Legacy compatibility checkout has been reduced to a handoff at
   `apps/web/public/checkout.html`; the old browser checkout script and
   stylesheet are no longer shipped in `apps/web/public`.
+- Public content `.html` compatibility files have been reduced to handoffs for
+  native App Router pages; old public page CSS and the shared navigation script
+  are no longer shipped in `apps/web/public`.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
 - Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
 - Convex env gate: `bun run convex:env:check`

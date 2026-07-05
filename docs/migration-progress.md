@@ -530,6 +530,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Cut public `/experiences` over to the native inquiry path with a
       fail-closed server submission contract. Linked Convex/Vercel envs are
       still required before real inquiry acceptance succeeds in production.
+- [x] Reduced public content `.html` compatibility files to handoff pages for
+      `/about`, `/cafe`, `/experiences`, `/members`, `/privacy`, and `/terms`,
+      and removed the old public page CSS/navigation script assets from
+      `apps/web/public`.
 - [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, and typed announcement/hours config. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/voucher/delete workflows and live Stripe Terminal test-reader acceptance still remain.
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
@@ -560,6 +564,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - `/about` and `/cafe` should be native App Router pages. The native cafe page
   renders active menu items from `@skyla/payments` so public prices align with
   checkout/POS server-owned catalog data instead of browser localStorage.
+- Public `.html` compatibility files for native public content should be
+  handoff-only. Do not reintroduce full public page copies, page-level public
+  CSS, or shared navigation scripts once the App Router route owns the content.
 
 ## Risks To Track
 

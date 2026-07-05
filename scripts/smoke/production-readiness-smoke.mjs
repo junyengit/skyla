@@ -13,6 +13,16 @@ const staffStyles = [
   { path: "/pos.html", expected: "pos.css?v=10", label: "legacy POS fallback stylesheet" }
 ];
 
+const publicHandoffs = ["/about", "/cafe", "/experiences", "/members", "/privacy", "/terms"];
+const retiredPublicAssets = [
+  "/about.css",
+  "/cafe.css",
+  "/experiences.css",
+  "/members.css",
+  "/styles.css",
+  "/script.js"
+];
+
 const failures = [];
 const notes = [];
 
@@ -27,6 +37,7 @@ for (const baseUrl of baseUrls) {
   runSmokeScript(origin, "route matrix", "scripts/smoke/route-smoke.mjs", { SMOKE_BASE_URL: origin });
   await checkPaymentNoWrite(origin);
   await checkStaffStyles(origin);
+  await checkPublicCompatibilityHandoffs(origin);
   await checkNativeAdminSurface(origin);
   await checkNativePosSurface(origin);
   await checkCheckoutPageNoLegacyWrites(origin);
@@ -49,6 +60,7 @@ console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(
 console.log("- Route matrix and noindex headers passed.");
 console.log("- Payment no-write probes kept server-owned totals and stopped before Stripe execution.");
 console.log("- Checkout compatibility page hands off to native /checkout without legacy payment scripts or assets.");
+console.log("- Public .html compatibility pages hand off to native App Router pages without legacy page CSS/JS.");
 console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
 console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
 console.log("- Member application no-write probe did not create data.");
@@ -84,6 +96,46 @@ async function checkStaffStyles(origin) {
 
     if (!html.includes(style.expected)) {
       failures.push(`${origin}${style.path}: expected ${style.label} ${style.expected}`);
+    }
+  }
+}
+
+async function checkPublicCompatibilityHandoffs(origin) {
+  for (const route of publicHandoffs) {
+    const path = `${route}.html`;
+    const response = await fetch(new URL(path, origin), { redirect: "manual" });
+    const html = await response.text();
+
+    if (response.status !== 200) {
+      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
+      continue;
+    }
+
+    for (const expected of [`url=${route}`, `href="${route}"`, "window.location.search", "window.location.hash"]) {
+      if (!html.includes(expected)) {
+        failures.push(`${origin}${path}: did not preserve handoff marker ${expected}`);
+      }
+    }
+
+    for (const legacyMarker of [
+      "shared-data.js",
+      "SkylaData",
+      "connect.facebook.net",
+      'rel="stylesheet"',
+      "styles.css",
+      "script.js"
+    ]) {
+      if (html.includes(legacyMarker)) {
+        failures.push(`${origin}${path}: exposed retired public compatibility marker ${legacyMarker}`);
+      }
+    }
+  }
+
+  for (const assetPath of retiredPublicAssets) {
+    const response = await fetch(new URL(assetPath, origin), { redirect: "manual" });
+
+    if (response.status === 200) {
+      failures.push(`${origin}${assetPath}: retired public compatibility asset is still served`);
     }
   }
 }

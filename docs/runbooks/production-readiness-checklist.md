@@ -238,6 +238,10 @@ flowchart TD
   payment/webhook functions now returns `410` permanently.
 - `/checkout.html` now points to `/checkout` and no longer serves legacy Stripe
   card creation code from browser totals.
+- Public `.html` compatibility pages for `/about`, `/cafe`, `/experiences`,
+  `/members`, `/privacy`, and `/terms` now point to the native App Router
+  pages and no longer serve old page CSS, shared navigation JS, or third-party
+  tracking snippets.
 - Public static compatibility-page ticket links now point to `/checkout`, the
   App Router checkout path, instead of `checkout.html`.
 - No raw card number/CVC collection was found in the app code.
