@@ -68,11 +68,11 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest app-code production deployment checked on 2026-07-05:
-  `https://web-3x58j0erd-junyen-enterprises.vercel.app`
+  `https://web-7cpgrzyo6-junyen-enterprises.vercel.app`
 - Latest app-code deployment ID checked on 2026-07-05:
-  `dpl_4sAftkmpovb9AqPrst3kv8hXKBe3`
+  `dpl_L1sNjzQFh6TzLANFs6QzdZuJrC8J`
 - Latest app-code merge commit checked on 2026-07-05:
-  `64864f9366fbdc03a38eb1da2f1d307e3ff1b747` (PR #71)
+  `ad51579cd77f03e1f6c4542c10b392c234a1321c` (PR #73)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -92,10 +92,10 @@ real event intake still depends on the dashboard setup below.
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
   blocked.
 - GitHub CodeQL PR check passed on 2026-07-05 for native voucher redemption
-  PR #67 and POS reader registry selector PR #71. The Code Scanning open-alert
-  API returned `404` for the local `gh` token during an earlier docs pass, so
-  use the GitHub Security tab to refresh the open-alert count before recording
-  a new alert-list audit.
+  PR #67, POS reader registry selector PR #71, and Supabase checkout retirement
+  PR #73. The Code Scanning open-alert API returned `404` for the local `gh`
+  token during an earlier docs pass, so use the GitHub Security tab to refresh
+  the open-alert count before recording a new alert-list audit.
 - GitHub security toggles checked on 2026-07-02: Dependabot vulnerability
   alerts are enabled, automated security fixes are enabled, and the repo
   homepage points to `https://skydeckla.com`.
@@ -129,8 +129,9 @@ real event intake still depends on the dashboard setup below.
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
-  no error/fatal logs for deployment `dpl_4sAftkmpovb9AqPrst3kv8hXKBe3` in
-  the fetched log window.
+  no error/fatal logs for deployment `dpl_L1sNjzQFh6TzLANFs6QzdZuJrC8J` in
+  the fetched one-hour log window. The visible entries were expected info-level
+  route checks plus intentional `401` and `503 convex_unconfigured` probes.
 - Bun checked locally: `1.4.0-canary.1+fb50cce92`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
