@@ -162,9 +162,9 @@ For the native admin action slice:
   `pending`, `approved`, `waitlisted`, and `rejected`.
 - `admin`, `pos`, and `viewer` can use staff-gated booking lookup for exact
   booking references or exact guest emails; only `admin` and `pos` can mutate
-  booking check-in state through the separate status action.
+  booking check-in state and voucher redemption through separate actions.
 - Cancel/refund/payment reconciliation, hard delete, clear-all, reset-all,
-  voucher redemption, and config/catalog edits remain out of scope.
+  and config/catalog edits remain out of scope.
 
 7. Pull local web envs if you want the Next route to use Convex locally:
 

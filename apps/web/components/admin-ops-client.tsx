@@ -12,6 +12,43 @@ type Readiness = {
   paymentReturnOrigins: boolean;
 };
 
+type BookingVoucher = {
+  id: string;
+  label: string;
+  quantity: number;
+  redeemed: number;
+  remaining: number;
+  source: "package" | "addon";
+  packageKey?: string;
+  addonKey?: string;
+};
+
+type BookingVouchers = {
+  summary: {
+    total: number;
+    redeemed: number;
+    remaining: number;
+  };
+  items: BookingVoucher[];
+};
+
+type AdminBooking = {
+  bookingRef: string;
+  orderRef?: string;
+  visitDate?: string;
+  status: string;
+  emailLower?: string;
+  firstName?: string;
+  lastName?: string;
+  partySize?: number;
+  checkedInAt?: number;
+  cancelledAt?: number;
+  createdAt: number;
+  updatedAt?: number;
+  legacyId?: string;
+  vouchers?: BookingVouchers;
+};
+
 type OperationsSnapshot = {
   staff: {
     emailLower: string;
@@ -61,21 +98,7 @@ type OperationsSnapshot = {
       rawEventId?: string;
       createdAt: number;
     }>;
-    bookings: Array<{
-      bookingRef: string;
-      orderRef?: string;
-      visitDate?: string;
-      status: string;
-      emailLower?: string;
-      firstName?: string;
-      lastName?: string;
-      partySize?: number;
-      checkedInAt?: number;
-      cancelledAt?: number;
-      createdAt: number;
-      updatedAt?: number;
-      legacyId?: string;
-    }>;
+    bookings: AdminBooking[];
     members: Array<{
       memberId: string;
       firstName?: string;
@@ -93,7 +116,6 @@ type OperationsSnapshot = {
     }>;
   };
 };
-
 type AnnouncementType = "info" | "warning" | "success";
 type Weekday = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
 
@@ -267,7 +289,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
   }
 
   async function postAdminAction(
-    endpoint: "/api/admin/bookings/status" | "/api/admin/members/status",
+    endpoint: "/api/admin/bookings/status" | "/api/admin/bookings/vouchers" | "/api/admin/members/status",
     body: Record<string, string>
   ) {
     const token = staffToken.trim();
@@ -293,7 +315,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
         throw new Error(data.error ?? "Admin action failed");
       }
       await loadOperations();
-      if (endpoint === "/api/admin/bookings/status" && bookingLookupQuery.trim()) {
+      if ((endpoint === "/api/admin/bookings/status" || endpoint === "/api/admin/bookings/vouchers") && bookingLookupQuery.trim()) {
         await lookupBooking({ silent: true });
       }
       setMessage("Admin action saved.");
@@ -306,6 +328,10 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
 
   function updateBookingStatus(bookingRef: string, status: BookingAdminStatus) {
     void postAdminAction("/api/admin/bookings/status", { bookingRef, status });
+  }
+
+  function updateBookingVoucher(bookingRef: string, voucherId: string, action: "redeem" | "undo") {
+    void postAdminAction("/api/admin/bookings/vouchers", { bookingRef, voucherId, action });
   }
 
   function updateMemberStatus(memberId: string, status: MemberAdminStatus) {
@@ -516,6 +542,8 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
           <div className="adminOpsLookupResults">
             {bookingLookup?.matches.map((booking) => {
               const guestName = [booking.firstName, booking.lastName].filter(Boolean).join(" ");
+              const voucherSummary = booking.vouchers?.summary;
+              const canMutateBooking = bookingLookup.staff.role === "admin" || bookingLookup.staff.role === "pos";
               return (
                 <div className="adminOpsLookupCard" key={booking.bookingRef}>
                   <div>
@@ -532,7 +560,7 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
                         : "Ready"}
                   </span>
                   <div className="adminOpsRowActions">
-                    {booking.status === "checked-in" ? (
+                    {!canMutateBooking ? null : booking.status === "checked-in" ? (
                       <button
                         type="button"
                         disabled={Boolean(actionKey)}
@@ -548,6 +576,48 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
                       >
                         Check In
                       </button>
+                    )}
+                  </div>
+                  <div className="adminOpsVoucherList">
+                    <div className="adminOpsVoucherHeader">
+                      <strong>Vouchers</strong>
+                      <span>
+                        {voucherSummary && voucherSummary.total > 0
+                          ? `${voucherSummary.redeemed}/${voucherSummary.total} redeemed`
+                          : "No voucher entitlements"}
+                      </span>
+                    </div>
+                    {booking.vouchers?.items.length ? (
+                      booking.vouchers.items.map((voucher) => (
+                        <div className={voucher.remaining === 0 ? "adminOpsVoucherRow isComplete" : "adminOpsVoucherRow"} key={voucher.id}>
+                          <span>{voucher.label}</span>
+                          <em>
+                            {voucher.redeemed}/{voucher.quantity}
+                          </em>
+                          <div className="adminOpsRowActions">
+                            {canMutateBooking ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={Boolean(actionKey) || voucher.redeemed <= 0}
+                                  onClick={() => updateBookingVoucher(booking.bookingRef, voucher.id, "undo")}
+                                >
+                                  Undo
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={Boolean(actionKey) || voucher.remaining <= 0 || booking.status === "cancelled"}
+                                  onClick={() => updateBookingVoucher(booking.bookingRef, voucher.id, "redeem")}
+                                >
+                                  Redeem
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p>No cafe or package vouchers on this booking.</p>
                     )}
                   </div>
                 </div>
@@ -753,45 +823,57 @@ export function AdminOpsClient({ catalog }: AdminOpsClientProps) {
               : null}
 
             {activeTab === "bookings"
-              ? snapshot?.recent.bookings.map((booking) => (
-                  <div className="adminOpsRow adminOpsRowWithActions" key={booking.bookingRef}>
-                    <div>
-                      <strong>{booking.bookingRef}</strong>
-                      <span>{[booking.visitDate, booking.emailLower].filter(Boolean).join(" / ")}</span>
+              ? snapshot?.recent.bookings.map((booking) => {
+                  const voucherSummary = booking.vouchers?.summary;
+                  const canMutateBooking = snapshot.staff.role === "admin" || snapshot.staff.role === "pos";
+                  const voucherLabel =
+                    voucherSummary && voucherSummary.total > 0
+                      ? `${voucherSummary.redeemed}/${voucherSummary.total} vouchers`
+                      : booking.checkedInAt
+                        ? `In ${shortDate(booking.checkedInAt)}`
+                        : booking.cancelledAt
+                          ? `Cancelled ${shortDate(booking.cancelledAt)}`
+                          : "Open";
+                  return (
+                    <div className="adminOpsRow adminOpsRowWithActions" key={booking.bookingRef}>
+                      <div>
+                        <strong>{booking.bookingRef}</strong>
+                        <span>{[booking.visitDate, booking.emailLower].filter(Boolean).join(" / ")}</span>
+                      </div>
+                      <span>{booking.status}</span>
+                      <span>{voucherLabel}</span>
+                      <div className="adminOpsRowActions">
+                        {!canMutateBooking ? null : booking.status === "checked-in" ? (
+                          <button
+                            type="button"
+                            disabled={Boolean(actionKey)}
+                            onClick={() => updateBookingStatus(booking.bookingRef, "confirmed")}
+                          >
+                            Undo
+                          </button>
+                        ) : booking.status === "cancelled" ? null : (
+                          <button
+                            type="button"
+                            disabled={Boolean(actionKey)}
+                            onClick={() => updateBookingStatus(booking.bookingRef, "checked-in")}
+                          >
+                            Check In
+                          </button>
+                        )}
+                        {booking.status !== "cancelled" && snapshot?.staff.role === "admin" ? (
+                          <button
+                            className="isDanger"
+                            type="button"
+                            disabled={Boolean(actionKey)}
+                            onClick={() => updateBookingStatus(booking.bookingRef, "cancelled")}
+                          >
+                            Cancel
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    <span>{booking.status}</span>
-                    <span>{booking.checkedInAt ? `In ${shortDate(booking.checkedInAt)}` : booking.cancelledAt ? `Cancelled ${shortDate(booking.cancelledAt)}` : "Open"}</span>
-                    <div className="adminOpsRowActions">
-                      {booking.status === "checked-in" ? (
-                        <button
-                          type="button"
-                          disabled={Boolean(actionKey)}
-                          onClick={() => updateBookingStatus(booking.bookingRef, "confirmed")}
-                        >
-                          Undo
-                        </button>
-                      ) : booking.status === "cancelled" ? null : (
-                        <button
-                          type="button"
-                          disabled={Boolean(actionKey)}
-                          onClick={() => updateBookingStatus(booking.bookingRef, "checked-in")}
-                        >
-                          Check In
-                        </button>
-                      )}
-                      {booking.status !== "cancelled" && snapshot?.staff.role === "admin" ? (
-                        <button
-                          className="isDanger"
-                          type="button"
-                          disabled={Boolean(actionKey)}
-                          onClick={() => updateBookingStatus(booking.bookingRef, "cancelled")}
-                        >
-                          Cancel
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               : null}
 
             {activeTab === "members"

@@ -38,3 +38,28 @@ export function statusAuditMetadata(fromStatus: string | undefined, toStatus: st
   }
   return metadata;
 }
+
+export function voucherAuditMetadata(
+  action: "redeem" | "undo",
+  voucher: {
+    voucherId: string;
+    label: string;
+    fromRedeemed: number;
+    toRedeemed: number;
+    quantity: number;
+  },
+  note?: string
+) {
+  const metadata: Record<string, string | number> = {
+    action,
+    voucherId: voucher.voucherId,
+    label: voucher.label,
+    fromRedeemed: voucher.fromRedeemed,
+    toRedeemed: voucher.toRedeemed,
+    quantity: voucher.quantity
+  };
+  if (note) {
+    metadata.note = note;
+  }
+  return metadata;
+}

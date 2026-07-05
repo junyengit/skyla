@@ -57,7 +57,7 @@ Why this is not the final state:
 - Public content compatibility files in `apps/web/public` are now handoff-only
   where typed App Router routes own the content. Staff fallbacks and remaining
   backend legacy surfaces still need typed replacements.
-- `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations plus audited booking/member status actions, while `/admin.html` remains available for legacy workflows until the remaining Convex admin mutations are complete.
+- `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations, audited booking/member status actions, typed announcement/hours config, and voucher redemption code, while `/admin.html` remains available as a read/export fallback until the remaining Convex admin mutations are complete.
 - The native `/members` page now posts to the server application API and fails
   closed until Convex is configured. `/members.html` remains as a compatibility
   artifact while linked Convex acceptance is verified.
@@ -211,6 +211,7 @@ Initial tables:
 - `members`
 - `inquiries`
 - `config`
+- `voucherRedemptionEvents`
 - `orders`
 - `orderLineItems`
 - `posSales`
@@ -267,9 +268,10 @@ Current admin cutover rule:
 - New native admin code must use staff-gated Convex/Next server boundaries, not browser Supabase writes or local password/sessionStorage gates.
 - Booking/member status actions may be added when they validate allowed states,
   enforce staff roles on the server, and write audit events.
-- Destructive actions, refunds, voucher redemption, hard delete, clear all,
-  config/catalog writes, and reset all settings stay out until there are typed
-  validators, reconciliation rules, audit events, and rollback procedures.
+- Voucher redemption uses a native event ledger and staff-gated audit events.
+- Destructive actions, refunds, hard delete, clear all, config/catalog writes,
+  and reset all settings stay out until there are typed validators,
+  reconciliation rules, audit events, and rollback procedures.
 
 ### 5. QA, Security, And GitHub Hardening
 
@@ -420,7 +422,7 @@ Current package baseline:
 - Turborepo `2.10.3`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
-- Last verified Bun revision: `1.4.0-canary.1+eba370b69`
+- Last verified Bun revision: `1.4.0-canary.1+fb50cce92`
 
 Useful verification commands:
 

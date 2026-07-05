@@ -525,6 +525,21 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `www.skydeckla.com`.
 - [x] Re-ran post-merge route, payment, and production-readiness smokes for the
       production deployment URL, apex domain, and `www`; all passed.
+- [x] Started branch `codex/native-admin-voucher-redemption` from clean
+      `origin/main` after docs PR #66.
+- [x] Added shared voucher entitlement helpers in `@skyla/payments` so package
+      inclusions and purchased add-on vouchers are calculated from typed data
+      instead of browser constants.
+- [x] Added Convex `voucherRedemptionEvents` plus native admin voucher lookup
+      state and `admin.updateBookingVoucherRedemption`; redeem/undo requires
+      admin or POS staff, blocks cancelled bookings, requires linked native
+      orders to be `paid`, and records audit events.
+- [x] Added `/api/admin/bookings/vouchers` and native `/admin` lookup-card
+      controls for voucher redeem/undo with high-contrast white staff text.
+- [x] Added voucher tests for shared payment helpers, Convex helper math, admin
+      audit metadata, and the Next admin route contract.
+- [ ] Merge native admin voucher redemption PR and verify the production
+      deployment, apex domain, and `www` after checks pass.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -559,7 +574,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `/about`, `/cafe`, `/experiences`, `/members`, `/privacy`, and `/terms`,
       and removed the old public page CSS/navigation script assets from
       `apps/web/public`.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, and typed announcement/hours config. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/voucher/delete workflows and live Stripe Terminal test-reader acceptance still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, typed announcement/hours config, and native voucher redemption code on the current branch. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/delete/refund workflows and live Stripe Terminal test-reader acceptance still remain.
       The legacy `/admin.html` fallback is now read/export-only in repo code, and
       legacy `/pos.html` keeps Terminal payments plus reader setup disabled.
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
@@ -625,10 +640,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   change any already deployed Supabase function until it is redeployed or
   disabled in the Supabase dashboard.
 - The native `/admin` path now has front-desk booking lookup/check-in, audited
-  status actions, and announcement/hours config, but it still intentionally
-  excludes hard deletes, bulk clears, reset-all settings, voucher redemption,
-  payment refunds, and pricing/menu/catalog mutations until typed validators,
-  reconciliation rules, and rollback procedures exist.
+  status actions, announcement/hours config, and native voucher redemption on
+  the current branch. It still intentionally excludes hard deletes, bulk
+  clears, reset-all settings, payment refunds, and pricing/menu/catalog
+  mutations until typed validators, reconciliation rules, and rollback
+  procedures exist.
 - Branch `codex/native-pos-route-cutover` moves extensionless `/pos` from the
   legacy rewrite bridge to the native server-priced POS shell, keeps `/pos-next`
   as a compatibility URL, and leaves `/pos.html` as the explicit disabled

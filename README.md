@@ -88,7 +88,7 @@ As of July 5, 2026:
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+eba370b69`.
+`1.4.0-canary.1+fb50cce92`.
 
 ```bash
 bun upgrade --canary

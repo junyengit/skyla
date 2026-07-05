@@ -10,6 +10,7 @@ vi.mock("convex/server", () => ({
 
 const { fetchMutation } = await import("convex/nextjs");
 const bookingRoute = await import("./app/api/admin/bookings/status/route");
+const bookingVoucherRoute = await import("./app/api/admin/bookings/vouchers/route");
 const memberRoute = await import("./app/api/admin/members/status/route");
 
 function postRequest(path: string, body: Record<string, unknown>, headers?: HeadersInit) {
@@ -103,6 +104,117 @@ describe("admin action routes", () => {
       { bookingRef: "SKY2607-ABC123", status: "checked-in", note: "front desk" },
       { url: "https://example.convex.cloud", token: "staff_token" }
     );
+  });
+
+  it("requires staff bearer auth before booking voucher configuration checks", async () => {
+    delete process.env.NEXT_PUBLIC_CONVEX_URL;
+    delete process.env.CONVEX_URL;
+
+    const response = await bookingVoucherRoute.POST(
+      postRequest("/api/admin/bookings/vouchers", {
+        bookingRef: "SKY2607-ABC123",
+        voucherId: "addon-matcha",
+        action: "redeem"
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data).toMatchObject({ code: "staff_auth_required" });
+    expect(fetchMutation).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when booking voucher Convex is not configured", async () => {
+    delete process.env.NEXT_PUBLIC_CONVEX_URL;
+    delete process.env.CONVEX_URL;
+
+    const response = await bookingVoucherRoute.POST(
+      postRequest(
+        "/api/admin/bookings/vouchers",
+        { bookingRef: "SKY2607-ABC123", voucherId: "addon-matcha", action: "redeem" },
+        { Authorization: "Bearer staff_token" }
+      )
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(data).toMatchObject({ code: "convex_unconfigured" });
+    expect(fetchMutation).not.toHaveBeenCalled();
+  });
+
+  it("rejects arbitrary booking voucher actions before Convex mutation", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+
+    const response = await bookingVoucherRoute.POST(
+      postRequest(
+        "/api/admin/bookings/vouchers",
+        { bookingRef: "SKY2607-ABC123", voucherId: "addon-matcha", action: "refund" },
+        { Authorization: "Bearer staff_token" }
+      )
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("not recognized");
+    expect(fetchMutation).not.toHaveBeenCalled();
+  });
+
+  it("forwards valid voucher redemptions with the staff token", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    vi.mocked(fetchMutation).mockResolvedValueOnce({
+      bookingRef: "SKY2607-ABC123",
+      status: "confirmed",
+      vouchers: {
+        summary: { total: 2, redeemed: 1, remaining: 1 },
+        items: []
+      }
+    });
+
+    const response = await bookingVoucherRoute.POST(
+      postRequest(
+        "/api/admin/bookings/vouchers",
+        {
+          bookingRef: " SKY2607-ABC123 ",
+          voucherId: " addon-matcha ",
+          action: "redeem",
+          note: " front desk ",
+          idempotencyKey: " action-1 "
+        },
+        { Authorization: "Bearer staff_token" }
+      )
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.booking.vouchers.summary.redeemed).toBe(1);
+    expect(fetchMutation).toHaveBeenCalledWith(
+      "admin:updateBookingVoucherRedemption",
+      {
+        bookingRef: "SKY2607-ABC123",
+        voucherId: "addon-matcha",
+        action: "redeem",
+        note: "front desk",
+        idempotencyKey: "action-1"
+      },
+      { url: "https://example.convex.cloud", token: "staff_token" }
+    );
+  });
+
+  it("maps voucher business rule conflicts to 409", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    vi.mocked(fetchMutation).mockRejectedValueOnce(new Error("Voucher is already fully redeemed"));
+
+    const response = await bookingVoucherRoute.POST(
+      postRequest(
+        "/api/admin/bookings/vouchers",
+        { bookingRef: "SKY2607-ABC123", voucherId: "addon-matcha", action: "redeem" },
+        { Authorization: "Bearer staff_token" }
+      )
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toContain("fully redeemed");
   });
 
   it("omits blank optional action notes", async () => {

@@ -1941,10 +1941,16 @@ h3 {
 }
 
 .posNextPage .brand,
+.posNextPage h1,
+.posNextPage h2,
+.posNextPage h3,
 .posNextPage p,
 .posNextPage span,
 .posNextPage strong,
-.posNextPage label {
+.posNextPage label,
+.posNextPage em,
+.posNextPage small,
+.posNextPage time {
   color: #fff;
 }
 
@@ -2378,10 +2384,16 @@ h3 {
 }
 
 .adminOpsPage .brand,
+.adminOpsPage h1,
+.adminOpsPage h2,
+.adminOpsPage h3,
+.adminOpsPage h4,
 .adminOpsPage p,
 .adminOpsPage span,
 .adminOpsPage strong,
 .adminOpsPage label,
+.adminOpsPage em,
+.adminOpsPage small,
 .adminOpsPage time {
   color: #fff;
 }
@@ -2710,6 +2722,74 @@ h3 {
   font-style: normal;
 }
 
+.adminOpsVoucherList {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adminOpsVoucherHeader,
+.adminOpsVoucherRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(132px, auto);
+  align-items: center;
+  gap: 10px;
+}
+
+.adminOpsVoucherHeader {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.adminOpsVoucherHeader strong,
+.adminOpsVoucherHeader span,
+.adminOpsVoucherRow span,
+.adminOpsVoucherRow em,
+.adminOpsVoucherList p {
+  color: #fff;
+}
+
+.adminOpsVoucherHeader span,
+.adminOpsVoucherRow em {
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsVoucherRow {
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 8px 10px;
+}
+
+.adminOpsVoucherRow.isComplete {
+  border-color: rgba(141, 216, 178, 0.35);
+  background: rgba(141, 216, 178, 0.07);
+}
+
+.adminOpsVoucherRow span,
+.adminOpsVoucherRow em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsVoucherList p {
+  min-height: 42px;
+  display: grid;
+  align-items: center;
+  margin: 0;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 0.84rem;
+}
+
 .adminOpsConfig {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.4fr);
@@ -3001,7 +3081,8 @@ h3 {
   }
 
   .adminOpsLookupForm,
-  .adminOpsLookupCard {
+  .adminOpsLookupCard,
+  .adminOpsVoucherRow {
     grid-template-columns: 1fr;
   }
 

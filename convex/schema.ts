@@ -167,6 +167,18 @@ export default defineSchema({
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
     .index("by_createdAt", ["createdAt"]),
 
+  voucherRedemptionEvents: defineTable({
+    bookingRef: v.string(),
+    voucherId: v.string(),
+    delta: v.union(v.literal(1), v.literal(-1)),
+    actorStaffUserId: v.id("staffUsers"),
+    idempotencyKey: v.optional(v.string()),
+    createdAt: v.number()
+  })
+    .index("by_bookingRef_createdAt", ["bookingRef", "createdAt"])
+    .index("by_bookingRef_voucherId_createdAt", ["bookingRef", "voucherId", "createdAt"])
+    .index("by_idempotencyKey", ["idempotencyKey"]),
+
   members: defineTable({
     status: v.string(),
     firstName: v.optional(v.string()),

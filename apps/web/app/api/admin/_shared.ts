@@ -64,6 +64,13 @@ export function adminFailureStatus(message: string) {
   if (normalized.includes("cancelled bookings cannot")) {
     return 409;
   }
+  if (
+    normalized.includes("fully redeemed") ||
+    normalized.includes("no redemptions to undo") ||
+    normalized.includes("must be paid before vouchers")
+  ) {
+    return 409;
+  }
   return 502;
 }
 

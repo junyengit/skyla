@@ -4,7 +4,8 @@ import {
   bookingStatusPatch,
   memberStatusPatch,
   normalizeAdminNote,
-  statusAuditMetadata
+  statusAuditMetadata,
+  voucherAuditMetadata
 } from "./lib/adminOperations";
 
 const now = Date.UTC(2026, 6, 4, 12);
@@ -53,6 +54,30 @@ describe("admin operation helpers", () => {
     expect(statusAuditMetadata(undefined, "confirmed")).toEqual({
       fromStatus: "unknown",
       toStatus: "confirmed"
+    });
+  });
+
+  it("keeps voucher audit metadata flat and bounded", () => {
+    expect(
+      voucherAuditMetadata(
+        "redeem",
+        {
+          voucherId: "addon-matcha",
+          label: "Ceremonial Matcha Latte",
+          fromRedeemed: 1,
+          toRedeemed: 2,
+          quantity: 3
+        },
+        "front desk"
+      )
+    ).toEqual({
+      action: "redeem",
+      voucherId: "addon-matcha",
+      label: "Ceremonial Matcha Latte",
+      fromRedeemed: 1,
+      toRedeemed: 2,
+      quantity: 3,
+      note: "front desk"
     });
   });
 });
