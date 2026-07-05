@@ -68,11 +68,11 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest app-code production deployment checked on 2026-07-05:
-  `https://web-3qvcb9sh3-junyen-enterprises.vercel.app`
+  `https://web-3x58j0erd-junyen-enterprises.vercel.app`
 - Latest app-code deployment ID checked on 2026-07-05:
-  `dpl_2zLDfubZkh35R5qdRbeqafr98JKz`
+  `dpl_4sAftkmpovb9AqPrst3kv8hXKBe3`
 - Latest app-code merge commit checked on 2026-07-05:
-  `43628ae31de2d3f0f49a46ba0b6abb266b9991df` (PR #69)
+  `64864f9366fbdc03a38eb1da2f1d307e3ff1b747` (PR #71)
 - Docs-only follow-up merges may create newer Vercel deployments with the same
   app behavior. Use Vercel for the newest deployment URL before recording new
   evidence.
@@ -92,9 +92,10 @@ real event intake still depends on the dashboard setup below.
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
   blocked.
 - GitHub CodeQL PR check passed on 2026-07-05 for native voucher redemption
-  PR #67. The Code Scanning open-alert API returned `404` for the local `gh`
-  token during this docs pass, so use the GitHub Security tab to refresh the
-  open-alert count before recording a new alert-list audit.
+  PR #67 and POS reader registry selector PR #71. The Code Scanning open-alert
+  API returned `404` for the local `gh` token during an earlier docs pass, so
+  use the GitHub Security tab to refresh the open-alert count before recording
+  a new alert-list audit.
 - GitHub security toggles checked on 2026-07-02: Dependabot vulnerability
   alerts are enabled, automated security fixes are enabled, and the repo
   homepage points to `https://skydeckla.com`.
@@ -116,6 +117,8 @@ real event intake still depends on the dashboard setup below.
     applicable.
   - `/api/payments/stripe-terminal` returned `401 staff_auth_required` before
     Convex configuration when no staff token was provided.
+  - `/api/pos/readers` returned `401 staff_auth_required` before exposing any
+    Terminal reader records.
   - No response exposed a Stripe `clientSecret`.
 - Member application API checked on 2026-07-05 across the apex domain, `www`,
   and the latest Vercel deployment URL with an empty no-write payload:
@@ -126,7 +129,7 @@ real event intake still depends on the dashboard setup below.
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Vercel production runtime errors checked on 2026-07-05 after smoke probes:
-  no error/fatal logs for deployment `dpl_2zLDfubZkh35R5qdRbeqafr98JKz` in
+  no error/fatal logs for deployment `dpl_4sAftkmpovb9AqPrst3kv8hXKBe3` in
   the fetched log window.
 - Bun checked locally: `1.4.0-canary.1+fb50cce92`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
