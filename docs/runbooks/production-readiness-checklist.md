@@ -126,12 +126,21 @@ real event intake still depends on the dashboard setup below.
   - `/api/pos/readers` returned `401 staff_auth_required` before exposing any
     Terminal reader records.
   - No response exposed a Stripe `clientSecret`.
+- Native admin export API checked on 2026-07-05 for production deployment
+  `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR`,
+  `https://skydeckla.com`, and `https://www.skydeckla.com`:
+  - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
+    without a bearer token.
+  - The same route returned `503 convex_unconfigured` with a fake bearer token
+    while the real Convex deployment URL is not configured.
+  - Both responses included `Cache-Control: no-store` and `Vary:
+    Authorization`.
 - Member application API checked on 2026-07-05 across the apex domain, `www`,
-  and the latest Vercel deployment URL with an empty no-write payload:
+  and the checked Vercel deployment URL with an empty no-write payload:
   `/api/members/applications` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Experience inquiry API checked on 2026-07-05 across the apex domain, `www`,
-  and the latest Vercel deployment URL with an empty no-write payload:
+  and the checked Vercel deployment URL with an empty no-write payload:
   `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
   is safely blocked until Convex is linked.
 - Linked acceptance harness: `bun run test:acceptance:linked` exists for the
@@ -145,6 +154,10 @@ real event intake still depends on the dashboard setup below.
   the fetched one-hour log window. The visible entries were expected info-level
   route checks plus intentional staff-gated `401` and `503 convex_unconfigured`
   probes.
+- Vercel production runtime errors checked again on 2026-07-05 after the admin
+  export deployment: no grouped runtime errors and no error/fatal logs for
+  deployment `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR` in the fetched one-hour log
+  window.
 - Bun checked locally: `1.4.0-canary.1+fb50cce92`
 - Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
@@ -596,7 +609,10 @@ What has been done:
   high-contrast dark staff screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations,
   booking/member status buttons, announcement/hours config, and voucher
-  redemption code; `/admin.html` now hands off to the native route.
+  redemption code. It also has admin-only CSV exports for bookings, members,
+  inquiries, orders, POS sales, and payments. Those exports use fixed columns,
+  no-store responses, formula-safe cells, and masked payment/Terminal IDs.
+  `/admin.html` now hands off to the native route.
 - `/pos` is now the native server-priced POS screen. `/pos.html` now hands off
   to the native route while Stripe Terminal test-reader acceptance is completed.
   The old reader setup bridge is retired in repo code too.
@@ -609,7 +625,8 @@ What still needs to be done:
 - Create the Stripe webhook endpoint in the Stripe dashboard.
 - Test checkout with Stripe test cards only.
 - Test native `/pos` Terminal with a Stripe test reader only.
-- Finish the protected Admin and POS Next.js/Convex pages, then retire the old
-  compatibility pages and Supabase functions.
+- Finish the protected Admin and POS Next.js/Convex pages for refunds,
+  catalog/pricing edits, destructive admin actions, and live Terminal
+  acceptance, then disable old Supabase functions after dashboard acceptance.
 - Use Stripe test cards and a Stripe test Terminal reader first. Do not verify
   this migration with a real credit card.
