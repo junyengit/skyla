@@ -253,8 +253,10 @@ flowchart TD
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
 - Production `/api/order-drafts/pos` ignores spoofed browser totals and returns
   the server catalog total.
-- The repo copy of legacy Supabase Stripe Checkout, Terminal payment creation,
-  and Stripe webhook handling returns `410` permanently.
+- The repo copy of legacy Supabase Stripe Checkout now returns `410`
+  permanently for every non-OPTIONS request; it cannot create payments or
+  verify old Stripe Checkout sessions. Legacy Terminal payment creation and
+  Stripe webhook handling also return `410` permanently.
 - The checkout compatibility handoff no longer ships Kaskade/crypto or the old
   browser checkout script, and the repo copy of legacy Supabase Kaskade
   payment/webhook functions now returns `410` permanently.
@@ -299,7 +301,8 @@ flowchart TD
 - Any already deployed Supabase payment functions must still be disabled or
   redeployed from the permanently fail-closed repo code in the Supabase
   dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
-  `kaskade-payment`, and `kaskade-webhook`.
+  `kaskade-payment`, and `kaskade-webhook`; `stripe-checkout` should not create
+  payments or verify old Checkout sessions.
 - Legacy `/pos.html` reader connection and charge UI should stay disabled while
   the native `/pos` staff-authenticated Terminal flow is accepted.
 - Native `/pos` is not safe for live card-present payment yet because reader
@@ -430,7 +433,8 @@ flowchart TD
 
 - [ ] In Supabase Edge Functions, confirm whether `stripe-checkout` is deployed.
       It should be disabled or redeployed from the repo copy that returns `410`
-      for browser-authoritative payment creation.
+      for every non-OPTIONS request, including old Checkout session
+      verification.
 - [ ] In Supabase Edge Functions, confirm whether `stripe-terminal` is deployed.
       It should be disabled or redeployed from the repo copy that returns `410`
       for browser-authoritative Terminal charges and legacy reader setup.

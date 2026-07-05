@@ -109,8 +109,9 @@ Use this after each major phase.
   authenticated staff and returns `401 staff_auth_required` without auth
 - `SKYLA_TERMINAL_READER_REGISTRY` has no duplicate reader IDs; paired
   locations are derived server-side, not trusted from the browser
-- Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation and
-  reader setup return `410` permanently in repo code
+- Legacy Supabase `stripe-checkout` returns `410` permanently for creation and
+  old session verification in repo code; legacy `stripe-terminal` payment
+  creation and reader setup also return `410` permanently
 - Convex has `SKYLA_STRIPE_MODE` in the correct environment
 - Convex has `STRIPE_SECRET_KEY` in the correct environment and matching
   `SKYLA_STRIPE_MODE`

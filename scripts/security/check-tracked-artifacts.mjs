@@ -86,6 +86,14 @@ const retiredLegacyPaymentPatterns = [
     message: "legacy Supabase Terminal setup-reader handling must stay retired"
   },
   {
+    pattern: /payload\.action\s*===\s*["']verify["']/,
+    message: "legacy Supabase Stripe Checkout verification must stay retired"
+  },
+  {
+    pattern: /\/checkout\/sessions\/\$\{sessionId\}/,
+    message: "legacy Supabase Stripe Checkout session lookup must stay retired"
+  },
+  {
     pattern: /WEBHOOK_SECRET\.(?:length|slice)\b/,
     message: "webhook signature errors must not expose secret diagnostics"
   },
