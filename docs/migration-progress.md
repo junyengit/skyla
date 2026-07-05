@@ -654,6 +654,27 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       sales, and payment events. The CSV route uses explicit columns,
       formula-safe cell escaping, no-store responses, and masked
       Stripe/Terminal operational identifiers.
+- [x] Merged admin CSV exports PR #79 into `main` as merge commit
+      `7ae39fb6fc529b257ac640d0af7051cafc7835dd`; GitHub `ci-build`,
+      CodeQL, Vercel preview, and Vercel preview comments checks all passed.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-mdyodg473-junyen-enterprises.vercel.app`
+      (`dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route, payment, and production-readiness smokes for
+      the production deployment URL, apex domain, and `www`; all passed.
+- [x] Verified `/api/admin/export?kind=bookings` on the production deployment
+      URL, apex domain, and `www` returns `401 staff_auth_required` without
+      staff auth and `503 convex_unconfigured` with a fake staff token while
+      Convex envs are absent. Both paths returned `Cache-Control: no-store` and
+      `Vary: Authorization`.
+- [x] Checked production `/admin` and `/pos` screenshots after PR #79 with
+      local headless Chrome because Helium was running but exposed zero
+      accessibility windows in this run. Both staff surfaces rendered readable
+      white text on black backgrounds without obvious overlap.
+- [x] Confirmed Vercel reported no grouped runtime errors and no error/fatal
+      logs for deployment `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR` in the checked
+      one-hour window after smoke probes.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
