@@ -66,9 +66,10 @@ Use `test` until preview checkout and POS Terminal acceptance pass.
 
 ## Terminal Reader Registry
 
-`SKYLA_TERMINAL_READER_REGISTRY` is a Convex-only allowlist. The POS screen can
-send a reader selector, but Convex stores it only when the reader is in this
-registry.
+`SKYLA_TERMINAL_READER_REGISTRY` is a Convex-only allowlist. The native POS
+screen loads this list through the staff-gated `/api/pos/readers` route, then
+sends only the selected `readerId` when a sale draft is reviewed. Convex stores
+the reader only when it is in this registry.
 
 ```text
 tmr_frontdesk@tml_lobby,tmr_bar@tml_rooftop
@@ -80,8 +81,10 @@ Good:
 - `tmr_frontdesk`
 
 Use the paired `reader@location` form when possible. If a location is paired in
-the registry, browser-sent locations must match it; if no registry is set,
-reader persistence fails closed.
+the registry, Convex derives that location from the allowlist. Browser-sent
+Terminal locations are ignored by the Next POS draft route and must not be used
+as payment authority. If no registry is set, reader listing and reader
+persistence fail closed. Duplicate `readerId` entries also fail closed.
 
 ## Raw Agent Checks
 

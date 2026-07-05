@@ -22,6 +22,12 @@ Use this after each major phase.
 - Payment actions accept stored refs only, not browser totals
 - Stripe return URLs are allowlisted by server/Convex env
 - Stripe Terminal accepts stored `saleRef` and idempotency key only
+- Native POS loads Terminal readers through `/api/pos/readers`; no free-text
+  reader/location controls should return
+- `/api/pos/readers` requires staff auth and fails closed before exposing any
+  reader records
+- `/api/order-drafts/pos` may forward a staff-selected `readerId` selector, but
+  must not forward browser-sent `terminalLocationId`
 - Staff-only payment routes forward bearer auth to Convex and fail closed
   without it
 - Webhook work verifies signature, amount, currency, status, and idempotency
@@ -99,6 +105,10 @@ Use this after each major phase.
 - `/api/payments/stripe-terminal` takes `saleRef` and draft `idempotencyKey`
 - `/api/payments/stripe-terminal` does not accept `amountCents`, `readerId`, or
   `terminalLocationId` from the browser
+- `/api/pos/readers` returns only Convex allowlisted reader metadata to
+  authenticated staff and returns `401 staff_auth_required` without auth
+- `SKYLA_TERMINAL_READER_REGISTRY` has no duplicate reader IDs; paired
+  locations are derived server-side, not trusted from the browser
 - Legacy Supabase `stripe-checkout` and `stripe-terminal` payment creation and
   reader setup return `410` permanently in repo code
 - Convex has `SKYLA_STRIPE_MODE` in the correct environment

@@ -80,6 +80,21 @@ route because Vercel is not wired to a real Convex deployment yet.
 
 ## API Checks
 
+### Reader Registry Is Staff-Gated
+
+```bash
+curl -i "$PREVIEW_URL/api/pos/readers"
+```
+
+Expected:
+
+- `401` with `code: "staff_auth_required"` before any reader data is returned.
+- With a staff bearer token and no Convex URL, `503` with
+  `code: "convex_unconfigured"`.
+- With Convex and `SKYLA_TERMINAL_READER_REGISTRY` configured, a JSON list of
+  allowlisted readers from Convex. This route must not read Stripe reader IDs
+  from the browser or expose secret values.
+
 ### Fail Closed Without Convex
 
 ```bash
@@ -116,6 +131,8 @@ Expected after Convex is wired:
   return a `clientSecret`.
 - The browser-sent `amountCents`, `readerId`, and `terminalLocationId` are
   not used by the payment route.
+- The POS draft route forwards only the staff-selected `readerId`; Convex
+  derives any stored Terminal location from `SKYLA_TERMINAL_READER_REGISTRY`.
 - A `paymentEvents` row exists with provider `terminal`, status
   `requires_payment`, and the stored amount.
 

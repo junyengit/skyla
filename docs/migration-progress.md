@@ -563,6 +563,17 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirmed Vercel reported no grouped runtime errors and no error/fatal
       logs for deployment `dpl_2zLDfubZkh35R5qdRbeqafr98JKz` in the checked
       one-hour window.
+- [x] Started branch `codex/pos-reader-registry-selector` from clean
+      `origin/main` after PR #70 to remove free-text Terminal reader/location
+      entry from the native POS flow.
+- [x] Added staff-gated `/api/pos/readers` backed by Convex
+      `admin.listTerminalReaders`, with empty and duplicate
+      `SKYLA_TERMINAL_READER_REGISTRY` entries failing closed.
+- [x] Replaced native `/pos` reader and location text boxes with an authorized
+      reader selector loaded from Convex after staff auth.
+- [x] Tightened `/api/order-drafts/pos` so browser-sent
+      `terminalLocationId` is no longer forwarded; Convex derives stored
+      Terminal location from the trusted reader registry.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
@@ -597,7 +608,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `/about`, `/cafe`, `/experiences`, `/members`, `/privacy`, and `/terms`,
       and removed the old public page CSS/navigation script assets from
       `apps/web/public`.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, typed announcement/hours config, and native voucher redemption code on the current branch. Native `/pos` now owns the extensionless POS shell, but pricing/menu/catalog/delete/refund workflows and live Stripe Terminal test-reader acceptance still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, typed announcement/hours config, and native voucher redemption code on the current branch. Native `/pos` now owns the extensionless POS shell and staff-gated Terminal reader selector, but pricing/menu/catalog/delete/refund workflows and live Stripe Terminal test-reader acceptance still remain.
       The legacy `/admin.html` and `/pos.html` staff apps have now been retired
       to native handoff pages, and the old `shared-data.js`, `admin.js`, and
       `pos.js` assets are gone from `apps/web/public`.

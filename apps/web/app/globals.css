@@ -2116,7 +2116,8 @@ h3 {
 
 .posNextCustom input,
 .posNextEmail input,
-.posNextTerminalSetup input {
+.posNextTerminalSetup input,
+.posNextTerminalSetup select {
   width: 100%;
   min-height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -2228,6 +2229,8 @@ h3 {
 .posNextMessage,
 .posNextActions {
   margin-inline: 18px;
+  width: calc(100% - 36px);
+  max-width: calc(100% - 36px);
 }
 
 .posNextEmail {
@@ -2243,6 +2246,41 @@ h3 {
 
 .posNextTerminalSetup label:first-child {
   grid-column: 1 / -1;
+}
+
+.posNextTerminalPicker {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.posNextTerminalPicker label {
+  min-width: 0;
+}
+
+.posNextTerminalPicker .secondaryAction {
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.posNextTerminalPicker .secondaryAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.posNextTerminalNote {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .posNextTotals {
@@ -2339,8 +2377,30 @@ h3 {
 }
 
 @media (max-width: 600px) {
+  .posNextHeader,
+  .posNextShell {
+    width: calc(100vw - 28px);
+    max-width: calc(100vw - 28px);
+  }
+
   .posNextHeader nav {
     flex-wrap: wrap;
+  }
+
+  .posNextCatalog,
+  .posNextCart {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .posNextToolbar {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .posNextToolbar button {
+    flex: 0 0 auto;
+    min-width: 112px;
   }
 
   .posNextGrid {
@@ -2363,6 +2423,10 @@ h3 {
 
   .posNextTerminalSetup label:first-child {
     grid-column: auto;
+  }
+
+  .posNextTerminalPicker {
+    grid-template-columns: 1fr;
   }
 }
 

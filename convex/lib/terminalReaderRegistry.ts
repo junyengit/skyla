@@ -3,7 +3,7 @@ export type TerminalReaderSelection = {
   terminalLocationId?: string;
 };
 
-type TerminalReaderRecord = {
+export type TerminalReaderRecord = {
   readerId: string;
   terminalLocationId?: string;
 };
@@ -30,10 +30,7 @@ export function authorizeTerminalReaderSelection(
     throw new Error("Terminal reader is required before storing a Terminal location");
   }
 
-  const registry = parseTerminalReaderRegistry(registryValue);
-  if (registry.length === 0) {
-    throw new Error("Trusted Terminal reader registry is not configured");
-  }
+  const registry = listTerminalReaderRegistry(registryValue);
 
   const authorized = registry.find((record) => record.readerId === readerId);
   if (!authorized) {
@@ -50,6 +47,23 @@ export function authorizeTerminalReaderSelection(
     readerId: authorized.readerId,
     terminalLocationId: authorized.terminalLocationId
   });
+}
+
+export function listTerminalReaderRegistry(value: string | undefined): TerminalReaderRecord[] {
+  const registry = parseTerminalReaderRegistry(value);
+  if (registry.length === 0) {
+    throw new Error("Trusted Terminal reader registry is not configured");
+  }
+
+  const seenReaderIds = new Set<string>();
+  for (const record of registry) {
+    if (seenReaderIds.has(record.readerId)) {
+      throw new Error("Trusted Terminal reader registry must not include duplicate readerIds");
+    }
+    seenReaderIds.add(record.readerId);
+  }
+
+  return registry;
 }
 
 export function parseTerminalReaderRegistry(value: string | undefined): TerminalReaderRecord[] {

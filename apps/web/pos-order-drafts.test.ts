@@ -109,7 +109,7 @@ describe("/api/order-drafts/pos", () => {
     expect(fetchMutationMock).not.toHaveBeenCalled();
   });
 
-  it("persists through Convex when deployment URL, idempotency key, and staff token are present", async () => {
+  it("persists through Convex with a reader selector but no browser Terminal location authority", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     fetchMutationMock.mockResolvedValueOnce({
       saleRef: "SALE260704-ABC123",
@@ -122,7 +122,7 @@ describe("/api/order-drafts/pos", () => {
       },
       customerEmail: "guest@example.com",
       readerId: "tmr_browser_supplied",
-      terminalLocationId: "tml_browser_supplied",
+      terminalLocationId: "tml_registry_derived",
       lines: [
         {
           kind: "ticket",
@@ -156,7 +156,7 @@ describe("/api/order-drafts/pos", () => {
       draft: {
         saleRef: "SALE260704-ABC123",
         readerId: "tmr_browser_supplied",
-        terminalLocationId: "tml_browser_supplied",
+        terminalLocationId: "tml_registry_derived",
         subtotalCents: 2900,
         feeCents: 0,
         totalCents: 2900
@@ -168,7 +168,6 @@ describe("/api/order-drafts/pos", () => {
         lines: [{ kind: "ticket", packageKey: "general", quantity: 1 }],
         customerEmail: "guest@example.com",
         readerId: "tmr_browser_supplied",
-        terminalLocationId: "tml_browser_supplied",
         idempotencyKey: "pos_20260704_abc123"
       },
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }

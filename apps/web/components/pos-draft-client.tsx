@@ -68,6 +68,16 @@ type TerminalProcessResponse = {
   readerActionStatus: string;
 };
 
+type TerminalReaderOption = {
+  label: string;
+  readerId: string;
+  terminalLocationId?: string;
+};
+
+type TerminalReadersResponse = {
+  readers: TerminalReaderOption[];
+};
+
 type PosDraftClientProps = {
   tickets: TicketOption[];
   cafeItems: CafeOption[];
@@ -98,13 +108,19 @@ function customCents(value: string) {
   return Math.round(Number(normalized) * 100);
 }
 
+function readerOptionKey(option: TerminalReaderOption) {
+  return `${option.readerId}@${option.terminalLocationId ?? ""}`;
+}
+
 export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraftClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("tickets");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
   const [staffToken, setStaffToken] = useState("");
-  const [readerId, setReaderId] = useState("");
-  const [terminalLocationId, setTerminalLocationId] = useState("");
+  const [readerOptions, setReaderOptions] = useState<TerminalReaderOption[]>([]);
+  const [selectedReaderKey, setSelectedReaderKey] = useState("");
+  const [isLoadingReaders, setIsLoadingReaders] = useState(false);
+  const [readerMessage, setReaderMessage] = useState<string | null>(null);
   const [customName, setCustomName] = useState("");
   const [customAmount, setCustomAmount] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -123,6 +139,11 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
         return false;
       }),
     [activeTab, cafeItems]
+  );
+
+  const selectedReader = useMemo(
+    () => readerOptions.find((option) => readerOptionKey(option) === selectedReaderKey),
+    [readerOptions, selectedReaderKey]
   );
 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
@@ -218,9 +239,58 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
     };
   }
 
+  async function loadTerminalReaders() {
+    const token = staffToken.trim();
+    if (!token) {
+      setReaderMessage("Staff bearer token is required to load authorized readers.");
+      return;
+    }
+
+    setIsLoadingReaders(true);
+    setReaderMessage(null);
+
+    try {
+      const response = await fetch("/api/pos/readers", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = (await response.json()) as TerminalReadersResponse | { error?: string };
+      if (!response.ok) {
+        throw new Error("error" in data ? data.error ?? "Could not load authorized readers" : "Could not load authorized readers");
+      }
+
+      const readers = (data as TerminalReadersResponse).readers;
+      setReaderOptions(readers);
+      setSelectedReaderKey((current) => {
+        if (readers.some((option) => readerOptionKey(option) === current)) {
+          return current;
+        }
+        return readers[0] ? readerOptionKey(readers[0]) : "";
+      });
+      setReaderMessage(
+        readers.length > 0
+          ? `${readers.length} authorized reader${readers.length === 1 ? "" : "s"} loaded.`
+          : "No authorized readers are configured yet."
+      );
+      resetReview();
+    } catch (error) {
+      setReaderOptions([]);
+      setSelectedReaderKey("");
+      setReaderMessage(error instanceof Error ? error.message : "Could not load authorized readers");
+      resetReview();
+    } finally {
+      setIsLoadingReaders(false);
+    }
+  }
+
   async function reviewSale() {
     if (cart.length === 0) {
       setMessage("Cart is empty.");
+      return;
+    }
+    if (selectedReaderKey && !selectedReader) {
+      setMessage("Reload the authorized reader list before reviewing this sale.");
       return;
     }
     setIsReviewing(true);
@@ -229,8 +299,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
     const lines = cart.map(linePayload);
     const email = customerEmail || undefined;
     const token = staffToken.trim();
-    const storedReaderId = readerId.trim() || undefined;
-    const storedTerminalLocationId = terminalLocationId.trim() || undefined;
+    const storedReaderId = selectedReader?.readerId;
 
     try {
       const response = await fetch("/api/order-drafts/pos", {
@@ -242,7 +311,6 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
           lines,
           customerEmail: email,
           readerId: storedReaderId,
-          terminalLocationId: storedTerminalLocationId,
           idempotencyKey
         })
       });
@@ -262,7 +330,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
             ? "Sale draft stored in Convex. Reader handoff remains locked until test-reader acceptance is enabled."
             : nextDraft.draft.readerId
               ? "Sale draft stored in Convex. Terminal handoff is ready for the stored reader."
-              : "Sale draft stored in Convex. Add a reader ID before review to enable Terminal handoff."
+              : "Sale draft stored in Convex. Select an authorized reader before review to enable Terminal handoff."
           : "Server total reviewed. Terminal payment requires Convex, staff auth, and a stored reader."
       );
     } catch (error) {
@@ -286,7 +354,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       return;
     }
     if (!draft.draft.readerId) {
-      setMessage("Review the sale with a Stripe reader ID before sending it to Terminal.");
+      setMessage("Review the sale with an authorized Stripe reader before sending it to Terminal.");
       return;
     }
     if (!token) {
@@ -513,34 +581,42 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
               value={staffToken}
               onChange={(event) => {
                 setStaffToken(event.target.value);
+                setReaderOptions([]);
+                setSelectedReaderKey("");
+                setReaderMessage(null);
                 resetReview();
               }}
             />
           </label>
-          <label>
-            <span>Reader ID</span>
-            <input
-              autoComplete="off"
-              placeholder="tmr_..."
-              value={readerId}
-              onChange={(event) => {
-                setReaderId(event.target.value);
-                resetReview();
-              }}
-            />
-          </label>
-          <label>
-            <span>Location ID</span>
-            <input
-              autoComplete="off"
-              placeholder="tml_..."
-              value={terminalLocationId}
-              onChange={(event) => {
-                setTerminalLocationId(event.target.value);
-                resetReview();
-              }}
-            />
-          </label>
+          <div className="posNextTerminalPicker">
+            <label>
+              <span>Authorized Reader</span>
+              <select
+                value={selectedReaderKey}
+                disabled={readerOptions.length === 0}
+                onChange={(event) => {
+                  setSelectedReaderKey(event.target.value);
+                  resetReview();
+                }}
+              >
+                <option value="">No reader selected</option>
+                {readerOptions.map((option) => (
+                  <option key={readerOptionKey(option)} value={readerOptionKey(option)}>
+                    {[option.label, option.readerId, option.terminalLocationId].filter(Boolean).join(" / ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="secondaryAction"
+              type="button"
+              disabled={isLoadingReaders || !staffToken.trim()}
+              onClick={loadTerminalReaders}
+            >
+              {isLoadingReaders ? "Loading" : "Load Readers"}
+            </button>
+          </div>
+          {readerMessage ? <p className="posNextTerminalNote">{readerMessage}</p> : null}
         </div>
 
         <div className="posNextTotals">
