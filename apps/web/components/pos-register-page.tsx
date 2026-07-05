@@ -42,15 +42,11 @@ export function PosRegisterPage({ variant }: PosRegisterPageProps) {
           <Link href="/admin" prefetch={false}>
             Admin
           </Link>
-          {variant === "primary" ? (
-            <Link href="/pos.html" prefetch={false}>
-              Legacy POS
-            </Link>
-          ) : (
+          {variant === "draft" ? (
             <Link href="/pos" prefetch={false}>
               Live POS
             </Link>
-          )}
+          ) : null}
         </nav>
       </header>
 

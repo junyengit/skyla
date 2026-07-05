@@ -14,7 +14,7 @@ describe("legacy route bridge", () => {
     for (const route of [...legacyRoutes, ...nativePublicRoutes]) {
       expect(existsSync(join(publicDir, `${route}.html`)), `${route}.html`).toBe(true);
     }
-    expect(existsSync(join(publicDir, "admin.html")), "admin.html legacy fallback").toBe(true);
+    expect(existsSync(join(publicDir, "admin.html")), "admin.html staff handoff").toBe(true);
 
     for (const route of [...nativePublicRoutes, "admin"]) {
       expect(legacyRoutes).not.toContain(route);
@@ -126,7 +126,7 @@ describe("legacy route bridge", () => {
     expect(noindexLegacyRoutes).not.toContain("members");
     expect(noindexAppRoutes).not.toContain("members");
     expect(legacyRoutes).not.toContain("pos");
-    expect(existsSync(join(publicDir, "pos.html")), "pos.html legacy fallback").toBe(true);
+    expect(existsSync(join(publicDir, "pos.html")), "pos.html staff handoff").toBe(true);
 
     const robots = readFileSync(join(publicDir, "robots.txt"), "utf8");
     expect(robots).not.toContain("Disallow: /members");
@@ -169,23 +169,51 @@ describe("legacy route bridge", () => {
     }
   });
 
-  it("keeps legacy Stripe Terminal reader setup retired", () => {
+  it("keeps staff compatibility pages as native handoffs without legacy staff scripts", () => {
+    const admin = readFileSync(join(publicDir, "admin.html"), "utf8");
     const pos = readFileSync(join(publicDir, "pos.html"), "utf8");
-    const posJs = readFileSync(join(publicDir, "pos.js"), "utf8");
     const legacyTerminalFunction = readFileSync(join(import.meta.dirname, "../../supabase/functions/stripe-terminal/index.ts"), "utf8");
 
-    expect(pos).toContain('id="reader-token"');
-    expect(pos).toContain("pos.js?v=6");
-    expect(posJs).toContain("LEGACY_TERMINAL_READER_SETUP_ENABLED = false");
-    expect(posJs).toContain("Legacy reader setup is disabled");
-    expect(posJs).not.toContain(["action", "'setup-reader'"].join(": "));
+    expect(admin).toContain("url=/admin");
+    expect(admin).toContain('href="/admin"');
+    expect(admin).toContain("window.location.search");
+    expect(admin).toContain("window.location.hash");
+    expect(pos).toContain("url=/pos");
+    expect(pos).toContain('href="/pos"');
+    expect(pos).toContain("window.location.search");
+    expect(pos).toContain("window.location.hash");
+    for (const [label, html] of [
+      ["admin", admin],
+      ["pos", pos]
+    ]) {
+      for (const legacyMarker of [
+        "shared-data.js",
+        "admin.js",
+        "pos.js",
+        "admin.css",
+        "pos.css",
+        "SkylaData",
+        "LEGACY_ADMIN_MUTATIONS_ENABLED",
+        "LEGACY_TERMINAL_PAYMENTS_ENABLED",
+        "clientSecret",
+        "create-intent",
+        "setup-reader",
+        "js.stripe.com/terminal",
+        "html5-qrcode"
+      ]) {
+        expect(html, `${label} handoff contains ${legacyMarker}`).not.toContain(legacyMarker);
+      }
+    }
+    for (const retiredStaffAsset of ["admin.css", "admin.js", "pos.css", "pos.js", "shared-data.js"]) {
+      expect(existsSync(join(publicDir, retiredStaffAsset)), retiredStaffAsset).toBe(false);
+    }
     expect(legacyTerminalFunction).toContain('"setup-reader"');
     expect(legacyTerminalFunction).toContain("Legacy Stripe Terminal bridge is permanently disabled");
     expect(legacyTerminalFunction).not.toContain("SKYLA_TERMINAL_SETUP_TOKEN");
     expect(legacyTerminalFunction).not.toContain("/terminal/readers");
   });
 
-  it("keeps admin and POS staff surfaces high-contrast while legacy charging stays disabled", () => {
+  it("keeps native admin and POS staff surfaces high-contrast with server-owned staff routes", () => {
     const webDir = import.meta.dirname;
     const globalsCss = readFileSync(join(webDir, "app/globals.css"), "utf8");
     const nativeAdmin = readFileSync(join(webDir, "app/admin/page.tsx"), "utf8");
@@ -195,11 +223,7 @@ describe("legacy route bridge", () => {
     const nativePos = readFileSync(join(webDir, "app/pos-next/page.tsx"), "utf8");
     const nativePosPage = readFileSync(join(webDir, "components/pos-register-page.tsx"), "utf8");
     const adminHtml = readFileSync(join(publicDir, "admin.html"), "utf8");
-    const adminCss = readFileSync(join(publicDir, "admin.css"), "utf8");
-    const adminJs = readFileSync(join(publicDir, "admin.js"), "utf8");
     const posHtml = readFileSync(join(publicDir, "pos.html"), "utf8");
-    const posCss = readFileSync(join(publicDir, "pos.css"), "utf8");
-    const posJs = readFileSync(join(publicDir, "pos.js"), "utf8");
     const paymentsAction = readFileSync(join(import.meta.dirname, "../../convex/payments.ts"), "utf8");
 
     expect(nativeAdmin).toContain("adminOpsPage");
@@ -215,44 +239,15 @@ describe("legacy route bridge", () => {
     expect(nativePos).toContain("PosRegisterPage");
     expect(nativePosPage).toContain("posNextPage");
     expect(nativePosPage).toContain('data-pos-route={variant}');
-    expect(nativePosPage).toContain('href="/pos.html"');
+    expect(nativePosPage).not.toContain('href="/pos.html"');
+    expect(nativeAdmin).not.toContain('href="/admin.html"');
     expect(globalsCss).toContain(".adminOpsPage p,");
     expect(globalsCss).toContain(".posNextPage p,");
     expect(globalsCss).toContain("color: #fff");
     expect(globalsCss).toContain(".posNextActions .primaryAction:disabled");
     expect(globalsCss).toContain("opacity: 0.72");
-    expect(adminHtml).toContain("admin.css?v=8");
-    expect(adminHtml).toContain("admin.js?v=2");
-    expect(adminCss).toContain("--gray:      #ffffff");
-    expect(adminCss).toContain(".hours-input:disabled");
-    expect(adminCss).toContain("opacity: 0.75");
-    expect(posHtml).toContain("pos.css?v=10");
-    expect(posHtml).toContain("pos.js?v=6");
-    expect(posCss).toContain("--muted: #ffffff");
-    expect(posCss).toContain(".pos-cart__charge:disabled { opacity: 0.72");
-    expect(adminJs).toContain("const LEGACY_ADMIN_MUTATIONS_ENABLED = false");
-    expect(adminJs).toContain("Legacy admin writes are disabled");
-    for (const guard of [
-      "Booking status changes",
-      "Voucher redemption",
-      "Guest check-in",
-      "Pricing changes",
-      "Cafe menu changes",
-      "Hours changes",
-      "Announcement changes",
-      "Legacy password changes",
-      "Member status changes",
-      "Bulk booking deletion",
-      "Reset all settings"
-    ]) {
-      expect(adminJs).toContain(`legacyAdminMutationDisabled('${guard}')`);
-    }
-    expect(posJs).toContain("function escHtml");
-    expect(posJs).toContain("escHtml(l.name)");
-    expect(posJs).toContain("escHtml(i.name)");
-    expect(posJs).toContain("LEGACY_TERMINAL_PAYMENTS_ENABLED = false");
-    expect(posJs).toContain("LEGACY_TERMINAL_READER_SETUP_ENABLED = false");
-    expect(posJs).toContain("Card-present payments are moving to the secure native /pos flow");
+    expect(adminHtml).toContain("The old admin file has been retired");
+    expect(posHtml).toContain("The old POS file has been retired");
     expect(paymentsAction).toMatch(
       /export const createStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\) => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
     );

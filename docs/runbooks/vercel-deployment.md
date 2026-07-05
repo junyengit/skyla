@@ -58,11 +58,10 @@ As of July 5, 2026:
 
 During cutover, `apps/web` includes static compatibility files in
 `apps/web/public` for existing public routes. Extensionless routes should be
-owned by App Router; `/pos` is now native, and `/pos.html` is the explicit
-legacy fallback for manual comparison or emergency use while Terminal
-acceptance remains gated. Native App Router routes such as `/checkout`,
-`/experiences`, `/members`, and `/pos` should own their extensionless URLs
-directly.
+owned by App Router; `/admin.html` and `/pos.html` are now handoff-only
+compatibility files to native `/admin` and `/pos`, not emergency legacy apps.
+Native App Router routes such as `/checkout`, `/experiences`, `/members`,
+`/admin`, and `/pos` should own their extensionless URLs directly.
 
 Keep the bridge until the equivalent App Router routes are rebuilt with server-authoritative payments, Convex data access, and authenticated admin/POS flows.
 

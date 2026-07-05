@@ -23,8 +23,9 @@ Move `/admin` to a native App Router page first, but start with a read-only
 operations snapshot:
 
 - `/admin` renders a Next.js staff operations surface.
-- `/admin.html` remains available as the noindex legacy fallback while missing
-  workflows are rebuilt.
+- `/admin.html` remained available as the noindex legacy fallback in this
+  slice. Decision 0025 later retired it to a native handoff page; missing
+  workflows should continue moving into native Convex routes.
 - `/api/admin/operations` accepts only a bearer token, requires a Convex URL,
   and forwards the token to Convex.
 - `admin.getOperationsSnapshot` requires an active `admin` or `viewer` staff

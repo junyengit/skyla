@@ -55,9 +55,10 @@ Why this is not the final state:
 - Admin and POS rely heavily on client-side behavior.
 - Supabase-era functions and data access are still outside the target architecture.
 - Public content compatibility files in `apps/web/public` are now handoff-only
-  where typed App Router routes own the content. Staff fallbacks and remaining
-  backend legacy surfaces still need typed replacements.
-- `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations, audited booking/member status actions, typed announcement/hours config, and voucher redemption code, while `/admin.html` remains available as a read/export fallback until the remaining Convex admin mutations are complete.
+  where typed App Router routes own the content. Staff compatibility files are
+  now handoffs too; the old staff JS/CSS/localStorage facade has been removed
+  from the active public bundle.
+- `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations, audited booking/member status actions, typed announcement/hours config, and voucher redemption code, while `/admin.html` hands off to native `/admin`.
 - The native `/members` page now posts to the server application API and fails
   closed until Convex is configured. `/members.html` remains as a compatibility
   artifact while linked Convex acceptance is verified.
@@ -66,8 +67,8 @@ Why this is not the final state:
   compatibility artifact while linked Convex acceptance is verified.
 - The native `/pos` page now renders the server-priced App Router POS shell.
   `/pos-next` remains as a compatibility URL for the same shell, and
-  `/pos.html` remains as the disabled legacy fallback until Stripe test-reader
-  acceptance is complete.
+  `/pos.html` hands off to native `/pos`. Live Terminal collection still waits
+  on Stripe test-reader acceptance and dashboard env setup.
 
 ## Target Shape
 
@@ -264,7 +265,8 @@ Definition of done:
 Current admin cutover rule:
 
 - `/admin` should move to native App Router functionality first.
-- `/admin.html` may remain as a noindex compatibility page while missing workflows are rebuilt.
+- `/admin.html` is a noindex compatibility handoff to native `/admin`; do not
+  reintroduce the old browser admin app.
 - New native admin code must use staff-gated Convex/Next server boundaries, not browser Supabase writes or local password/sessionStorage gates.
 - Booking/member status actions may be added when they validate allowed states,
   enforce staff roles on the server, and write audit events.
@@ -359,14 +361,15 @@ Current verified Vercel data:
   linked in Vercel.
 - Staff contrast cache-bust PR: `#44`
 - Staff contrast state: `/admin`, `/admin.html`, `/pos`, `/pos-next`, and
-  `/pos.html` use dark staff surfaces with readable white text; legacy
-  `admin.html` and `pos.html` currently reference `admin.css?v=8`,
-  `admin.js?v=2`, `pos.css?v=10`, and `pos.js?v=6`.
+  `/pos.html` use dark staff surfaces with readable white text. Staff
+  compatibility pages are now self-contained handoffs and the retired
+  `admin.css`, `admin.js`, `pos.css`, `pos.js`, and `shared-data.js` assets are
+  absent from `apps/web/public`.
 - Production-readiness smoke PR: `#45`
 - Production-readiness state: `bun run test:production-readiness` bundles the
   route matrix, no-write payment probes, member application and experience
-  inquiry no-write probes, and staff asset/cache-key lock checks for custom
-  domains plus an optional Vercel deployment URL.
+  inquiry no-write probes, and staff compatibility handoff/retired-asset checks
+  for custom domains plus an optional Vercel deployment URL.
 - Payment/hosting/readability PR: `#46`
 - Payment/hosting/readability state: Stripe actions require explicit
   `SKYLA_STRIPE_MODE`, Terminal no longer returns public `clientSecret`, the

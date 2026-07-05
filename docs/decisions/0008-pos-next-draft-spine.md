@@ -50,6 +50,6 @@ are ignored.
 
 The migration was not complete after this decision. Later work added
 sale-ref-only Terminal actions, server-driven reader processing, webhook
-reconciliation, and then moved the extensionless `/pos` route onto the native
-App Router shell. `/pos.html` remains as the explicit legacy fallback until
-dashboard wiring and test-reader acceptance are complete.
+reconciliation, moved the extensionless `/pos` route onto the native App Router
+shell, and retired `/pos.html` to a native handoff page. Dashboard wiring and
+test-reader acceptance are still required before live card-present payment.

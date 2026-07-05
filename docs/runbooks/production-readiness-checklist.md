@@ -19,14 +19,13 @@ env vars, and Stripe dashboard webhook endpoint are ready.
 
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and
-`/pos.html` remains as the legacy compatibility fallback with Terminal payment
-and reader setup disabled. Reader collection is still locked until staff auth,
-Convex envs, Stripe webhooks, and Stripe Terminal test-reader acceptance are
-complete. Native `/admin` now has a staff-token operations snapshot plus audited
-booking/member status actions. `/admin.html` remains a read-only/export-only
-legacy fallback; its old booking, voucher, catalog, settings, password, and
-member write handlers are disabled until each workflow is rebuilt safely in
-Convex. The old
+`/pos.html` is now a compatibility handoff to `/pos`; it no longer loads the
+old POS browser app, Stripe Terminal SDK, or shared data facade. Reader
+collection is still locked until staff auth, Convex envs, Stripe webhooks, and
+Stripe Terminal test-reader acceptance are complete. Native `/admin` now has a
+staff-token operations snapshot plus audited booking/member status actions.
+`/admin.html` is now a compatibility handoff to `/admin`; it no longer loads
+the old admin browser app or shared data facade. The old
 static checkout URL is still reachable at `/checkout.html`, but it is now only
 a compatibility handoff to `/checkout`; the old browser checkout script and
 stylesheet are no longer shipped.
@@ -56,7 +55,7 @@ real event intake still depends on the dashboard setup below.
 11. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
 12. Finish the native admin/POS rebuild and test-reader acceptance before
-    removing the legacy fallbacks.
+    removing the remaining compatibility handoffs.
 13. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
@@ -185,9 +184,10 @@ flowchart TD
 - Native `/admin` can now load and save typed announcement/hours config through
   `/api/admin/config`; pricing, menu, catalog, vouchers, refunds, deletes, and
   resets remain intentionally unavailable.
-- Legacy `/admin.html` is now locked to read/export-only behavior in repo code:
-  `LEGACY_ADMIN_MUTATIONS_ENABLED` is false and the old write buttons/handlers
-  are disabled while missing workflows move into native Convex routes.
+- Legacy `/admin.html` is now retired to a native handoff. The old
+  `admin.js`, `admin.css`, and `shared-data.js` staff browser assets are absent
+  from `apps/web/public`, so missing workflows must move into native Convex
+  routes instead of reviving browser Supabase writes.
 - `/api/members/applications` is the new server-durable member application path.
   It validates applicant fields, requires Convex before accepting, dedupes exact
   retries with an idempotency key, and writes a pending Convex `members` row plus
@@ -202,11 +202,10 @@ flowchart TD
 - Native `/experiences` posts to that API with an idempotency key and no longer
   writes event inquiries through `SkylaData.addInquiry`, browser localStorage,
   or the legacy Supabase mirror.
-- Admin and POS dark-theme text is high contrast. Legacy `/admin.html`
-  currently references `admin.css?v=8`, and legacy `/pos.html` currently
-  references `pos.css?v=10`; legacy script cache keys are `admin.js?v=2` and
-  `pos.js?v=6`. Keep the smoke script expected cache keys in sync when those
-  files change.
+- Admin and POS dark-theme text is high contrast. Staff compatibility pages
+  `/admin.html` and `/pos.html` are self-contained handoffs to the native
+  routes, and production readiness checks fail if retired staff assets are
+  served again.
 - Prior Helium visual QA on 2026-07-02 confirmed `/admin` and `/pos-next` were
   readable on the black staff surfaces. In this later audit, macOS window
   capture returned only the desktop wallpaper, so the current slice relies on
@@ -214,9 +213,9 @@ flowchart TD
   assertions until Helium capture is available again.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
-- Legacy `/pos.html` keeps Terminal payments and reader setup disabled; the repo
-  copy of the old Supabase Terminal function returns `410` for `setup-reader`
-  as well as the old charge/reader bridge actions.
+- Legacy `/pos.html` is now retired to a native handoff. The repo copy of the
+  old Supabase Terminal function returns `410` for `setup-reader` as well as
+  the old charge/reader bridge actions.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
 - Convex Stripe actions now require `SKYLA_STRIPE_MODE`, and they reject a
@@ -236,7 +235,7 @@ flowchart TD
   any supplied base URL without using a real card or writing Convex data.
 - `bun run test:production-readiness` now bundles route, noindex, payment
   no-write, member no-write, experience inquiry no-write, and staff
-  contrast/cache-key checks for the custom domains.
+  compatibility handoff checks for the custom domains.
 - `/api/admin/bookings/status` and `/api/admin/members/status` require staff
   bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
@@ -326,11 +325,9 @@ flowchart TD
       after every preview and production deploy.
 - [ ] Confirm `/admin` and `/admin.html` remain `X-Robots-Tag: noindex,
       nofollow` after every preview and production deploy.
-- [ ] Confirm `/admin.html` serves `admin.js?v=2` and keeps
-      `LEGACY_ADMIN_MUTATIONS_ENABLED = false`.
-- [ ] Confirm `/pos.html` serves `pos.js?v=6` and keeps both
-      `LEGACY_TERMINAL_PAYMENTS_ENABLED` and
-      `LEGACY_TERMINAL_READER_SETUP_ENABLED` false.
+- [ ] Confirm `/admin.html` and `/pos.html` are handoff-only pages that preserve
+      query/hash, point to `/admin` and `/pos`, and do not serve the retired
+      `admin.js`, `pos.js`, or `shared-data.js` assets.
 - [ ] In Vercel DNS, confirm required TXT records still exist for Apple/Brevo or
       other external services. The 2026-07-02 live check did not see the older
       Apple/Brevo TXT values.
@@ -482,8 +479,8 @@ write prerequisites, and payment execution routes stop at validation or missing
 staff auth before any Stripe action can run. It checks the route matrix, noindex
 headers, server-owned totals, checkout handoff/retired asset checks, the native
 POS no-legacy check, the member application no-write gate, the experience
-inquiry no-write gate, and staff admin/POS fallback stylesheet cache keys across
-the custom domains plus an optional `VERCEL_PRODUCTION_URL`.
+inquiry no-write gate, and staff handoff/retired asset checks across the custom
+domains plus an optional `VERCEL_PRODUCTION_URL`.
 
 Current dependency note:
 
@@ -535,18 +532,17 @@ What has been done:
   behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
 - There is also a one-command production-readiness smoke that bundles route,
   payment no-write, member no-write, experience inquiry no-write, and staff
-  contrast/cache-key checks.
+  compatibility handoff checks.
 - `/members` is now a Next.js page. Its form does not save locally; it only
   succeeds after the server accepts the application.
-- Admin, native POS, `/pos-next`, and legacy fallbacks use high-contrast dark
-  staff screens.
+- Admin, native POS, `/pos-next`, and staff compatibility handoffs use
+  high-contrast dark staff screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations,
   booking/member status buttons, announcement/hours config, and voucher
-  redemption code; `/admin.html` remains as a read/export fallback only, with
-  old write handlers disabled until missing workflows are rebuilt.
-- `/pos` is now the native server-priced POS screen. `/pos.html` remains only
-  as the old disabled fallback while Stripe Terminal test-reader acceptance is
-  completed. The old reader setup bridge is retired in repo code too.
+  redemption code; `/admin.html` now hands off to the native route.
+- `/pos` is now the native server-priced POS screen. `/pos.html` now hands off
+  to the native route while Stripe Terminal test-reader acceptance is completed.
+  The old reader setup bridge is retired in repo code too.
 
 What still needs to be done:
 

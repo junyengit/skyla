@@ -73,9 +73,11 @@ As of July 5, 2026:
   2026.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
-  older `/pos-next` draft review URL through App Router. `/pos.html` remains as
-  the explicit static compatibility fallback during the remaining POS cutover.
-  The old `.html` URLs remain available during route-by-route cutover.
+  older `/pos-next` draft review URL through App Router. Staff compatibility
+  URLs `/admin.html` and `/pos.html` now hand off to the native routes and no
+  longer ship the retired `shared-data.js`, `admin.js`, or `pos.js` browser
+  apps. The old public `.html` URLs remain available during route-by-route
+  cutover.
 
 ## Current Bun And Cleanup State
 
@@ -143,10 +145,11 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   `convex_unconfigured` pause instead of saving to browser localStorage or
   Supabase. `/experiences.html` remains as a compatibility artifact during the
   transition.
-- Legacy Stripe Terminal reader registration is retired in repo code. `/pos.html`
-  no longer calls the old `setup-reader` bridge, and the repo copy of the
-  Supabase Terminal function returns `410` for every old bridge action. Native
-  `/pos` still needs staff auth, Convex envs, Stripe dashboard webhook setup,
+- Legacy Stripe Terminal reader registration is retired in repo code. The old
+  staff browser assets have been removed from `apps/web/public`, `/pos.html`
+  now hands off to native `/pos`, and the repo copy of the Supabase Terminal
+  function returns `410` for every old bridge action. Native `/pos` still needs
+  staff auth, Convex envs, Stripe dashboard webhook setup,
   `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled`, and test-reader acceptance before
   live card-present payment is allowed.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`

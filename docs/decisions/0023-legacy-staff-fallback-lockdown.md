@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Accepted, then superseded by
+[Decision 0025](./0025-staff-compatibility-handoff-retirement.md).
 
 ## Context
 
@@ -17,7 +18,7 @@ Stripe Terminal reader setup through Supabase/localStorage.
 
 ## Decision
 
-Keep the fallback pages reachable and noindexed for now, but make them
+At the time, keep the fallback pages reachable and noindexed, but make them
 read-only or disabled for operational writes:
 
 - `/admin.html` may display/export old data, but legacy write handlers are
@@ -39,7 +40,9 @@ mutation paths.
 
 ## Follow-Up
 
-- Build native voucher redemption.
+- Native voucher redemption has moved into `/admin`.
+- `/admin.html` and `/pos.html` have been retired to native handoff pages by
+  Decision 0025.
 - Replace free-text POS reader entry with a staff-gated registry selector.
 - Finish native catalog/pricing, refunds, deletes, and reset workflows with
   typed validators.

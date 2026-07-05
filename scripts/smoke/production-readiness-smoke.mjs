@@ -8,18 +8,20 @@ const baseUrls = uniqueUrls([
 ]);
 const mode = process.env.SKYLA_ACCEPTANCE_MODE ?? "no-write";
 
-const staffStyles = [
+const staffHandoffs = [
   {
     path: "/admin.html",
-    expected: ["admin.css?v=8", "admin.js?v=2"],
-    label: "legacy admin assets"
+    target: "/admin",
+    label: "admin compatibility handoff"
   },
   {
     path: "/pos.html",
-    expected: ["pos.css?v=10", "pos.js?v=6"],
-    label: "legacy POS fallback assets"
+    target: "/pos",
+    label: "POS compatibility handoff"
   }
 ];
+
+const retiredStaffAssets = ["/admin.css", "/admin.js", "/pos.css", "/pos.js", "/shared-data.js"];
 
 const publicHandoffs = ["/about", "/cafe", "/experiences", "/members", "/privacy", "/terms"];
 const retiredPublicAssets = [
@@ -44,7 +46,7 @@ for (const baseUrl of baseUrls) {
   const origin = new URL(baseUrl).origin;
   runSmokeScript(origin, "route matrix", "scripts/smoke/route-smoke.mjs", { SMOKE_BASE_URL: origin });
   await checkPaymentNoWrite(origin);
-  await checkStaffStyles(origin);
+  await checkStaffCompatibilityHandoffs(origin);
   await checkPublicCompatibilityHandoffs(origin);
   await checkNativeAdminSurface(origin);
   await checkNativePosSurface(origin);
@@ -73,7 +75,7 @@ console.log("- Native member pages do not expose the legacy localStorage/Supabas
 console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
 console.log("- Member application no-write probe did not create data.");
 console.log("- Experience inquiry no-write probe did not create data.");
-console.log("- Legacy staff fallback pages reference current staff assets and keep legacy write/payment/setup latches disabled.");
+console.log("- Staff .html compatibility pages hand off to native routes without legacy staff scripts.");
 console.log("- Native admin exposes the staff-gated booking lookup panel.");
 console.log("- Native /pos renders the server-priced POS shell without legacy POS scripts.");
 for (const note of notes) {
@@ -92,62 +94,54 @@ function runSmokeScript(origin, label, script, extraEnv) {
   }
 }
 
-async function checkStaffStyles(origin) {
-  for (const style of staffStyles) {
-    const response = await fetch(new URL(style.path, origin), { redirect: "follow" });
+async function checkStaffCompatibilityHandoffs(origin) {
+  for (const handoff of staffHandoffs) {
+    const response = await fetch(new URL(handoff.path, origin), { redirect: "manual" });
     const html = await response.text();
 
     if (response.status !== 200) {
-      failures.push(`${origin}${style.path}: expected HTTP 200, got ${response.status}`);
+      failures.push(`${origin}${handoff.path}: expected HTTP 200, got ${response.status}`);
       continue;
     }
 
-    for (const expected of style.expected) {
+    for (const expected of [
+      `url=${handoff.target}`,
+      `href="${handoff.target}"`,
+      "window.location.search",
+      "window.location.hash",
+      "window.location.replace"
+    ]) {
       if (!html.includes(expected)) {
-        failures.push(`${origin}${style.path}: expected ${style.label} ${expected}`);
+        failures.push(`${origin}${handoff.path}: ${handoff.label} missing ${expected}`);
+      }
+    }
+
+    for (const legacyMarker of [
+      "shared-data.js",
+      "admin.js",
+      "pos.js",
+      "admin.css",
+      "pos.css",
+      "SkylaData",
+      "LEGACY_ADMIN_MUTATIONS_ENABLED",
+      "LEGACY_TERMINAL_PAYMENTS_ENABLED",
+      "clientSecret",
+      "create-intent",
+      "setup-reader",
+      "js.stripe.com/terminal"
+    ]) {
+      if (html.includes(legacyMarker)) {
+        failures.push(`${origin}${handoff.path}: exposed retired staff marker ${legacyMarker}`);
       }
     }
   }
 
-  await checkLegacyStaffFallbackScripts(origin);
-}
+  for (const assetPath of retiredStaffAssets) {
+    const response = await fetch(new URL(assetPath, origin), { redirect: "manual" });
 
-async function checkLegacyStaffFallbackScripts(origin) {
-  const [adminResponse, posResponse] = await Promise.all([
-    fetch(new URL("/admin.js?v=2", origin), { redirect: "follow" }),
-    fetch(new URL("/pos.js?v=6", origin), { redirect: "follow" })
-  ]);
-  const adminJs = await adminResponse.text();
-  const posJs = await posResponse.text();
-
-  if (adminResponse.status !== 200) {
-    failures.push(`${origin}/admin.js?v=2: expected HTTP 200, got ${adminResponse.status}`);
-  }
-  if (posResponse.status !== 200) {
-    failures.push(`${origin}/pos.js?v=6: expected HTTP 200, got ${posResponse.status}`);
-  }
-  if (!adminJs.includes("const LEGACY_ADMIN_MUTATIONS_ENABLED = false")) {
-    failures.push(`${origin}/admin.js?v=2: legacy admin writes are not locked`);
-  }
-  const adminWritesEnabled = ["LEGACY_ADMIN_MUTATIONS_ENABLED", "true"].join(" = ");
-  if (adminJs.includes(adminWritesEnabled)) {
-    failures.push(`${origin}/admin.js?v=2: legacy admin writes were re-enabled`);
-  }
-  if (!posJs.includes("LEGACY_TERMINAL_PAYMENTS_ENABLED = false")) {
-    failures.push(`${origin}/pos.js?v=6: legacy Terminal payments are not locked`);
-  }
-  if (!posJs.includes("LEGACY_TERMINAL_READER_SETUP_ENABLED = false")) {
-    failures.push(`${origin}/pos.js?v=6: legacy Terminal reader setup is not locked`);
-  }
-  const terminalPaymentsEnabled = ["LEGACY_TERMINAL_PAYMENTS_ENABLED", "true"].join(" = ");
-  const terminalReaderSetupEnabled = ["LEGACY_TERMINAL_READER_SETUP_ENABLED", "true"].join(" = ");
-  if (posJs.includes(terminalPaymentsEnabled) || posJs.includes(terminalReaderSetupEnabled)) {
-    failures.push(`${origin}/pos.js?v=6: a legacy Terminal fallback was re-enabled`);
-  }
-  const singleQuotedSetupAction = ["action", "'setup-reader'"].join(": ");
-  const doubleQuotedSetupAction = ["action", '"setup-reader"'].join(": ");
-  if (posJs.includes(singleQuotedSetupAction) || posJs.includes(doubleQuotedSetupAction)) {
-    failures.push(`${origin}/pos.js?v=6: legacy Terminal reader setup action is still browser-callable`);
+    if (response.status === 200) {
+      failures.push(`${origin}${assetPath}: retired staff asset is still served`);
+    }
   }
 }
 

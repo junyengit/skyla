@@ -52,9 +52,6 @@ export default function AdminPage() {
           <Link href="/pos" prefetch={false}>
             POS
           </Link>
-          <Link href="/admin.html" prefetch={false}>
-            Legacy Admin
-          </Link>
         </nav>
       </header>
 
