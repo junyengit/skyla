@@ -765,6 +765,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       ready.
 - [x] Verified the preflight with a local stub server: authenticated readiness
       and POS reader probes passed, and the harness made zero write requests.
+- [x] Started branch `codex/acceptance-harness-tests` after PR #86 to add
+      durable script-level tests for the no-write preflight and required
+      Convex env gates.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
