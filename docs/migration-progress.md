@@ -690,6 +690,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `bun audit --audit-level=low` found no vulnerabilities, and
       `bun outdated --recursive` still reports only the intentionally deferred
       ESLint 10 major.
+- [x] Re-ran the dependency sweep on 2026-07-06 in branch
+      `codex/convex-catalog-versioning`: upgraded `vitest` from `4.1.9` to
+      `4.1.10`, confirmed `bun install --canary --frozen-lockfile` passes, and
+      re-tested ESLint `10.6.0`. ESLint 10 still fails through
+      `eslint-plugin-react@7.37.5`, so web lint remains pinned to
+      `eslint@9.39.4`.
 - [x] Added `@skyla/payments` catalog list/provenance helpers and routed public
       ticket display, checkout, cafe, admin, and POS option lists through those
       helpers so displayed prices stay aligned with payment-authoritative price

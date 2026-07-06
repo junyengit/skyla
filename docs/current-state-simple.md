@@ -108,7 +108,7 @@ safe behavior.
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun install --canary --frozen-lockfile` | Passed, no changes |
 | `bun audit --audit-level=low` | No vulnerabilities found |
-| `bun outdated --recursive` | Only ESLint `9.39.4 -> 10.6.0`, intentionally deferred |
+| Dependency sweep | `vitest` upgraded to `4.1.10`; only ESLint `9.39.4 -> 10.6.0` remains intentionally deferred |
 | `bun run test:smoke` | Passed on deployment, apex, and `www` |
 | `bun run test:payments` | Passed on deployment, apex, and `www`; no real Stripe charge |
 | `bun run test:production-readiness` | Passed on deployment, apex, and `www` |

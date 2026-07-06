@@ -169,10 +169,10 @@ real event intake still depends on the dashboard setup below.
   fetched one-hour log window. The visible entries were expected public `200`,
   staff-gated `401`, and Convex-unconfigured `503` smoke probes.
 - Bun checked locally: `1.4.0-canary.1+d37f52067`
-- Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
+- Dependency audit checked on 2026-07-06: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
-- Dependency freshness checked on 2026-07-05: `bun outdated --recursive` only
-  listed ESLint `10.6.0`.
+- Dependency freshness checked on 2026-07-06: `vitest` is patched to `4.1.10`;
+  `bun outdated --recursive` only lists ESLint `10.6.0`.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
   compatible.
@@ -565,8 +565,9 @@ domains plus an optional `VERCEL_PRODUCTION_URL`.
 Current dependency note:
 
 - `bun audit --audit-level=low` reports no vulnerabilities.
+- `vitest` is patched to `4.1.10`.
 - `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
-  `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-05; lint fails
+  `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-06; lint fails
   because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
   the current Next lint stack. Keep ESLint on `9.39.4` until the upstream lint
   plugin stack supports ESLint 10.
