@@ -700,6 +700,18 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       showed default cache headers on the new admin catalog route. Shared staff
       JSON responses now set `Cache-Control: no-store` and
       `Vary: Authorization`, with regression coverage.
+- [x] Merged Convex catalog versioning PR #83 into `main` as merge commit
+      `2c0a5990629245e64a147118120c9846994470e4`. GitHub CI, CodeQL, and
+      Vercel checks passed.
+- [x] Merged staff API cache header PR #84 into `main` as merge commit
+      `c52239079288e45e7fb5c8758a312753bdb420d4`. Production deployment
+      `dpl_4MFjVoPD8ewFLtC9DRHSTawMpoZF` reached `READY`, aliases attached, and
+      route, payment, and production-readiness smokes passed on the deployment
+      URL, `skydeckla.com`, and `www.skydeckla.com`.
+- [x] Verified PR #84 production header probes: `/api/admin/catalog` and
+      `/api/pos/readers` return `Cache-Control: no-store` and
+      `Vary: Authorization` for staff-gated and fail-closed responses. Vercel
+      runtime checks showed no grouped runtime errors and no error/fatal logs.
 - [x] Added `@skyla/payments` catalog list/provenance helpers and routed public
       ticket display, checkout, cafe, admin, and POS option lists through those
       helpers so displayed prices stay aligned with payment-authoritative price
