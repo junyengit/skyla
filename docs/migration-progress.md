@@ -1062,6 +1062,17 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       test:production-readiness`; apex and `www` passed.
 - [x] Queried Vercel error logs for `dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`; no
       error logs were found in the checked 30-minute window.
+- [x] Started branch `codex/acceptance-provenance-gates` to move the line
+      provenance contract into the reusable no-write payment/readiness smokes.
+- [x] Added script-level tests for `scripts/smoke/payment-api-smoke.mjs` so the
+      smoke fails when catalog-priced draft lines omit provenance or custom POS
+      lines reflect browser-supplied catalog metadata.
+- [x] Tightened the shared smoke provenance helper to assert exact product
+      hashes, quantities, unit amounts, and line totals for checkout and POS
+      probes.
+- [x] Added the same provenance gate to linked acceptance so persisted
+      checkout/POS draft readbacks are checked before optional Stripe Checkout
+      or Terminal reader legs.
 
 ## Decisions
 

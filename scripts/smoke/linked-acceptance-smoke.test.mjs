@@ -8,6 +8,11 @@ import { describe, expect, it } from "vitest";
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scriptPath = resolve(repoRoot, "scripts/smoke/linked-acceptance-smoke.mjs");
 const staffToken = "staff.jwt.token";
+const catalogMetadata = {
+  catalogVersion: "skyla-payments-catalog-2026-07-05",
+  catalogSource: "@skyla/payments",
+  catalogAuthority: "code-owned"
+};
 
 async function withServer(handler, run) {
   const requests = [];
@@ -237,7 +242,33 @@ describe("linked acceptance write flow", () => {
           persisted: true,
           orderRef: "ORD260706-ACCEPT",
           draft: {
-            totalCents: 6090
+            totalCents: 8505,
+            lines: [
+              {
+                kind: "ticket",
+                productKey: "general",
+                quantity: 2,
+                unitAmountCents: 2900,
+                lineTotalCents: 5800,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:1f58cd3b:92" }
+              },
+              {
+                kind: "ticket",
+                productKey: "general",
+                quantity: 1,
+                unitAmountCents: 1500,
+                lineTotalCents: 1500,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:1f58cd3b:92", childDiscountRate: 0.5 }
+              },
+              {
+                kind: "addon",
+                productKey: "matcha",
+                quantity: 1,
+                unitAmountCents: 800,
+                lineTotalCents: 800,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:ef7db060:95" }
+              }
+            ]
           }
         });
         return;
@@ -280,7 +311,32 @@ describe("linked acceptance write flow", () => {
           saleRef: "POS260706-ACCEPT",
           draft: {
             totalCents: 9700,
-            terminalLocationId: "tml_lobby"
+            terminalLocationId: "tml_lobby",
+            lines: [
+              {
+                kind: "ticket",
+                productKey: "drink",
+                quantity: 2,
+                unitAmountCents: 3700,
+                lineTotalCents: 7400,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:ee2426f7:85" }
+              },
+              {
+                kind: "cafe",
+                productKey: "b1",
+                quantity: 3,
+                unitAmountCents: 600,
+                lineTotalCents: 1800,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:b86957e2:102" }
+              },
+              {
+                kind: "custom",
+                quantity: 1,
+                unitAmountCents: 500,
+                lineTotalCents: 500,
+                metadata: { reason: "Manager approved" }
+              }
+            ]
           }
         });
         return;
@@ -319,7 +375,7 @@ describe("linked acceptance write flow", () => {
           provider: "stripe",
           checkoutSessionId: "cs_test_acceptance",
           url: "https://checkout.stripe.com/c/pay/cs_test_acceptance",
-          amountCents: 6090,
+          amountCents: 8505,
           currency: "usd"
         });
         return;
@@ -353,6 +409,9 @@ describe("linked acceptance write flow", () => {
       expect(terminalProcess.body.idempotencyKey).toBe(posDraft.body.idempotencyKey);
       expect(terminalIntent.body.idempotencyKey).not.toMatch(/^acc_terminal_/);
       expect(stripeCheckout.body.idempotencyKey).not.toMatch(/^acc_stripe_checkout_/);
+      expect(checkoutDraft.body.catalogVersion).toBe("browser-spoof");
+      expect(posDraft.body.lines[0].metadata.catalogVersion).toBe("browser-spoof");
+      expect(posDraft.body.lines[2].metadata.catalogAuthority).toBe("browser-spoof");
     } finally {
       await new Promise((resolveClose) => {
         server.close(resolveClose);

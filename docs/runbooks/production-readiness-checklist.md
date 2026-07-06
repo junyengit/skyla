@@ -138,6 +138,9 @@ stored line amounts remain the payment authority.
   - `/api/pos/readers` returned `401 staff_auth_required` before exposing any
     Terminal reader records.
   - No response exposed a Stripe `clientSecret`.
+  - Checkout/POS catalog-priced lines returned exact code-owned catalog
+    provenance metadata with canonical line amounts, and custom POS lines did
+    not claim catalog provenance.
 - Payment code audit on 2026-07-06 found no raw card PAN/CVC collection or
   storage, no public `clientSecret` exposure, and server-owned amount authority
   for Checkout and Terminal payment creation. Route tests now include explicit
@@ -148,7 +151,11 @@ stored line amounts remain the payment authority.
   `catalogContentHash` metadata. Tests verify browser-supplied catalog metadata
   is ignored, custom POS lines do not receive catalog provenance, and the line
   hash matches the immutable Convex `productSnapshots` hash for the same
-  code-owned catalog item.
+  code-owned catalog item. The public `bun run test:payments` and
+  `bun run test:production-readiness` smokes also fail if live no-write draft
+  responses lose this metadata or drift from canonical line amounts. Linked
+  acceptance checks the same shape after Convex persistence before optional
+  Stripe Checkout or Terminal reader legs.
 - Legacy Supabase retirement guard: `bun run security:supabase-retired` checks
   all five repo copies of the old Stripe/Kaskade payment and webhook functions.
   They must stay HTTP-410 retired surfaces and must not initialize Supabase

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { checkoutDraftProvenanceIssues, posDraftProvenanceIssues } from "./payment-provenance.mjs";
 
 const failures = [];
 const notes = [];
@@ -126,7 +127,9 @@ const checkoutDraft = await postJson("/api/order-drafts/checkout", {
   customerEmail,
   idempotencyKey: checkoutDraftIdempotencyKey,
   totalCents: 1,
-  amountCents: 1
+  amountCents: 1,
+  metadata: { catalogVersion: "browser-spoof" },
+  catalogVersion: "browser-spoof"
 });
 
 expectStatus("checkout draft", checkoutDraft, 200);
@@ -135,6 +138,14 @@ expect("checkout draft", typeof checkoutDraft.json?.orderRef === "string", "expe
 expect("checkout draft", checkoutDraft.json?.draft?.totalCents > 1, "expected canonical server total");
 expect("checkout draft", checkoutDraft.json?.draft?.totalCents !== 1, "browser total was trusted");
 expectNoClientSecret("checkout draft", checkoutDraft);
+for (const issue of checkoutDraftProvenanceIssues(checkoutDraft.json?.draft?.lines)) {
+  fail("checkout draft provenance", issue);
+}
+
+if (failures.length > 0) {
+  printFailures();
+  process.exit(1);
+}
 
 const memberApplication = await postJson("/api/members/applications", {
   firstName: "Acceptance",
@@ -188,7 +199,24 @@ if (firstReader?.readerId) {
   const posDraft = await postJson(
     "/api/order-drafts/pos",
     {
-      lines: [{ kind: "ticket", packageKey: "general", quantity: 2, unitAmountCents: 1 }],
+      lines: [
+        {
+          kind: "ticket",
+          packageKey: "drink",
+          quantity: 2,
+          unitAmountCents: 1,
+          metadata: { catalogVersion: "browser-spoof" }
+        },
+        { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1, catalogVersion: "browser-spoof" },
+        {
+          kind: "custom",
+          name: "Service recovery",
+          amountCents: 500,
+          quantity: 1,
+          reason: "Manager approved",
+          metadata: { catalogAuthority: "browser-spoof" }
+        }
+      ],
       customerEmail,
       readerId: firstReader.readerId,
       idempotencyKey: posDraftIdempotencyKey,
@@ -209,6 +237,14 @@ if (firstReader?.readerId) {
     "browser Terminal location was trusted"
   );
   expectNoClientSecret("POS draft", posDraft);
+  for (const issue of posDraftProvenanceIssues(posDraft.json?.draft?.lines)) {
+    fail("POS draft provenance", issue);
+  }
+
+  if (failures.length > 0) {
+    printFailures();
+    process.exit(1);
+  }
 
   await maybeRunTerminalReaderAcceptance(posDraft.json?.saleRef, posDraftIdempotencyKey, headers);
 }
