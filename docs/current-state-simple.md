@@ -100,10 +100,10 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest app-code production verification | PR #81, merged `2026-07-05T22:49:52Z` |
-| Verified production deployment | `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`, status `READY` |
-| Verified production URL | `https://web-2e5u36ye7-junyen-enterprises.vercel.app` |
-| Verified production commit | `7d93c3600d23f5df2ca449d2ef441066c735fab4` |
+| Latest app-code production verification | PR #84, merged `2026-07-06T10:32:27Z` |
+| Verified app-code production deployment | `dpl_4MFjVoPD8ewFLtC9DRHSTawMpoZF`, status `READY` |
+| Verified app-code production URL | `https://web-ifbsn97wt-junyen-enterprises.vercel.app` |
+| Verified app-code production commit | `c52239079288e45e7fb5c8758a312753bdb420d4` |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun install --canary --frozen-lockfile` | Passed, no changes |
@@ -116,7 +116,7 @@ safe behavior.
 | `bun run check` | Passed |
 | Helium visual QA | Production `/admin` and `/pos` render white-on-black staff screens |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
-| Catalog versioning local gate | Focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
+| Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 
 Vercel will create newer production URLs for docs-only commits. Treat the
 deployment above as the latest checked app-code behavior, then query Vercel for

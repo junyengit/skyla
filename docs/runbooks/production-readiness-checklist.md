@@ -168,6 +168,14 @@ real event intake still depends on the dashboard setup below.
   no error/fatal rows for deployment `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn` in the
   fetched one-hour log window. The visible entries were expected public `200`,
   staff-gated `401`, and Convex-unconfigured `503` smoke probes.
+- Vercel production runtime logs checked again on 2026-07-06 after PR #84:
+  no grouped runtime errors and no error/fatal rows for deployment
+  `dpl_4MFjVoPD8ewFLtC9DRHSTawMpoZF` in the fetched 30-minute log window. The
+  visible entries were expected public `200`, staff-gated `401`, and
+  Convex-unconfigured `503` smoke probes.
+- Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
+  `/api/pos/readers` now return `Cache-Control: no-store` and
+  `Vary: Authorization` for staff-gated and fail-closed responses.
 - Bun checked locally: `1.4.0-canary.1+d37f52067`
 - Dependency audit checked on 2026-07-06: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
