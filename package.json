@@ -35,6 +35,7 @@
     "convex:test:unit": "vitest run convex",
     "convex:env:check": "node scripts/setup/check-convex-env.mjs",
     "vercel:env:check": "node scripts/setup/check-vercel-env.mjs",
+    "dashboard:readiness": "node scripts/setup/check-dashboard-readiness.mjs",
     "convex:schema:typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck convex/schema.ts",
     "convex:functions:typecheck": "tsc -p convex/tsconfig.json --noEmit",
     "convex:codegen": "convex codegen --typecheck enable",

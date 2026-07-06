@@ -1000,6 +1000,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       successful `200` responses plus expected `401` staff-auth and `503`
       Convex-unconfigured gates.
 
+### 2026-07-06 Dashboard Readiness Summary
+
+- [x] Added `bun run dashboard:readiness`, a safe aggregate dashboard verifier
+      that runs the existing Convex and Vercel env checks, reports no secret
+      values, and emits one JSON status for humans and agents.
+- [x] The command fails until linked Preview no-write preflight has the minimum
+      dashboard shape: Vercel `NEXT_PUBLIC_CONVEX_URL` in Preview/Production,
+      no misplaced Vercel payment/staff secrets, cloud Convex persistence,
+      Stripe Checkout envs, and Stripe webhook envs.
+- [x] The output includes ordered `nextActions` for dashboard work and keeps
+      `safeToUseRealCards: false` so test-mode acceptance cannot be confused
+      with live-card readiness.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.

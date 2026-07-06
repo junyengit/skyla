@@ -108,6 +108,7 @@ persistence fail closed. Duplicate `readerId` entries also fail closed.
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
 PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check
+PATH="$HOME/.bun/bin:$PATH" bun run dashboard:readiness
 PATH="$HOME/.bun/bin:$PATH" bun --revision
 ```
 
@@ -117,6 +118,14 @@ PATH="$HOME/.bun/bin:$PATH" bun --revision
 Stripe, staff, or Terminal secrets are accidentally placed in the Vercel
 project instead of Convex. Do not print secret values in logs, PRs, or docs.
 Check presence, scope, and shape only.
+
+`dashboard:readiness` combines the safe Vercel and Convex env checks into one
+JSON report. It exits non-zero until the linked Preview no-write preflight has
+the minimum dashboard shape: Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and
+Production, Vercel has no misplaced payment/staff secrets, Convex is cloud
+linked, Stripe Checkout envs are present, and Stripe webhook envs are present.
+The report includes ordered `nextActions` for the dashboards and always keeps
+`safeToUseRealCards: false` during migration verification.
 
 ## Staff Bootstrap Token
 
