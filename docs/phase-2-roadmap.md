@@ -338,14 +338,14 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified production commit:
-  `c6f9301f48d7a9a25700381b9931846c5b9d22f8` (PR #87)
-- Latest verified production deployment evidence:
-  `https://web-ll86xe2or-junyen-enterprises.vercel.app`
-- Latest verified production deployment ID:
-  `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`
-- Future merges create newer Vercel production URLs; query Vercel before
-  recording fresh operational evidence.
+- Latest verified app-code production commit:
+  `fe58c15d613db72218d8067d62eb894373468c25` (PR #88)
+- Latest verified app-code production deployment evidence:
+  `https://web-7w0hqfpoq-junyen-enterprises.vercel.app`
+- Latest verified app-code production deployment ID:
+  `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`
+- Future docs-only merges may create newer Vercel production URLs with the same
+  app behavior; query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -375,8 +375,8 @@ Current verified Vercel data:
 - Payment/hosting/readability state: Stripe actions require explicit
   `SKYLA_STRIPE_MODE`, Terminal no longer returns public `clientSecret`, the
   legacy Supabase Stripe webhook repo copy is fail-closed, and live admin/POS
-  surfaces were rechecked in Helium after production deploy.
-- Post-PR87 readiness refresh state: public Stripe Checkout and Terminal routes
+  surfaces were rechecked after production deploy.
+- Post-PR88 readiness refresh state: public Stripe Checkout and Terminal routes
   return allowlisted response shapes, even if a lower layer accidentally
   includes `clientSecret` or `client_secret`; active admin/POS controls use
   white text on dark staff surfaces.

@@ -784,6 +784,23 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Started branch `codex/post-pr87-readiness-refresh` to refresh stale
       readiness docs, keep staff UI text white-on-dark, and harden public
       Stripe response allowlists against accidental `clientSecret` leakage.
+- [x] Merged post-PR87 readiness refresh PR #88 into `main` as merge commit
+      `fe58c15d613db72218d8067d62eb894373468c25`; GitHub CI, CodeQL, Vercel,
+      and Vercel Preview Comments checks passed.
+- [x] Confirmed Vercel production deployment from PR #88 is READY:
+      `https://web-7w0hqfpoq-junyen-enterprises.vercel.app`
+      (`dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`), with `skydeckla.com` and
+      `www.skydeckla.com` attached to the project.
+- [x] Re-ran post-PR88 route, payment, and production-readiness smokes on
+      `https://skydeckla.com`; the production-readiness smoke also checked
+      `https://www.skydeckla.com`. All passed, with payment execution still
+      fail-closed before Convex/Stripe dashboard wiring and no real Stripe
+      charge attempted.
+- [x] Checked Vercel runtime evidence after PR #88: no grouped runtime errors
+      in the selected 30-minute window and no error/fatal logs for deployment
+      `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`.
+- [x] Started branch `codex/post-pr88-production-evidence` to record PR #88
+      production evidence without changing app behavior.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

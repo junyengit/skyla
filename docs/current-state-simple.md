@@ -41,7 +41,7 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #87 merge commit `c6f9301`.
+- Vercel production deployment is ready for PR #88 merge commit `fe58c15`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and compatibility handoff routes smoke-test successfully.
@@ -107,29 +107,29 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest production verification | PR #87, merged to `main` on July 6, 2026 |
-| Verified production deployment | `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`, status `READY` |
-| Verified production URL | `https://web-ll86xe2or-junyen-enterprises.vercel.app` |
-| Verified production commit | `c6f9301f48d7a9a25700381b9931846c5b9d22f8` |
+| Latest app-code production verification | PR #88, merged to `main` on July 6, 2026 |
+| Verified app-code production deployment | `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`, status `READY` |
+| Verified app-code production URL | `https://web-7w0hqfpoq-junyen-enterprises.vercel.app` |
+| Verified app-code production commit | `fe58c15d613db72218d8067d62eb894373468c25` |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=high` | No vulnerabilities found |
 | Dependency sweep | `bun outdated` produced no upgrade table; Dependabot covers Bun and GitHub Actions weekly |
-| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #87 |
+| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #88 |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge |
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
-| `bun run check` | Passed on PR #87; focused Stripe route tests passed for this follow-up |
+| `bun run check` | Passed on PR #88 |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
-| Helium visual QA | Production `/admin` and `/pos` render white-on-black staff screens; this follow-up keeps active staff controls white-on-dark too |
+| Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; local production screenshots for PR #88 verified active and disabled staff controls stay white-on-dark |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 
-Vercel creates a new production URL after every merge. Query Vercel before
-recording fresh operational evidence, then rerun the route/payment smoke checks
-against the custom domain.
+Vercel creates a new production URL after every merge. Treat the app-code
+deployment above as the latest checked behavior, then query Vercel and rerun
+the route/payment smoke checks before recording fresh operational evidence.
 
 ## Next Code Work
 
