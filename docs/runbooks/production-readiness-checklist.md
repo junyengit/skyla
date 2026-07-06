@@ -131,6 +131,10 @@ real event intake still depends on the dashboard setup below.
   for Checkout and Terminal payment creation. Route tests now include explicit
   `clientSecret`/`client_secret` regression fixtures for public payment
   responses.
+- Legacy Supabase retirement guard: `bun run security:supabase-retired` checks
+  all five repo copies of the old Stripe/Kaskade payment and webhook functions.
+  They must stay HTTP-410 retired surfaces and must not initialize Supabase
+  helpers or call Stripe/Kaskade APIs.
 - Native admin export API checked on 2026-07-05 and carried forward after the
   PR #88 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`

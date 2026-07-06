@@ -233,6 +233,9 @@ Expected after Convex is wired:
       the legacy static rewrite.
 - [x] Legacy Supabase Stripe card creation, old Checkout session verification,
       and Terminal payment creation fail closed by default in repo code.
+- [x] `bun run security:supabase-retired` enforces that the repo copies of the
+      retired Supabase Stripe/Kaskade payment and webhook functions stay HTTP
+      `410` dead ends without Supabase helper or provider API calls.
 - [ ] Confirm any already deployed legacy Supabase functions are redeployed from
       fail-closed code or disabled in the dashboard.
 - [x] POS Terminal create-intent accepts `saleRef` only before live

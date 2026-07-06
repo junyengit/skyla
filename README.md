@@ -190,7 +190,9 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 - Supabase functions remain legacy transition surfaces until Convex,
   server-authoritative payment creation, admin, and POS replacements are
   verified and the dashboard deployments are disabled or redeployed from the
-  fail-closed repo copies.
+  fail-closed repo copies. `bun run security:supabase-retired` now guards the
+  repo copies so Stripe/Kaskade/Supabase helper calls cannot quietly return to
+  those retired functions.
 
 Useful operator references:
 
