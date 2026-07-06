@@ -45,12 +45,10 @@ flowchart LR
 As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Current production alias checked on July 6, 2026:
-  `https://web-5nzoujeod-junyen-enterprises.vercel.app` from merge commit
-  `daa7605cc2cf586b94e51c069c427cc0d5f67601` (PR #106,
-  deployment `dpl_59RHYSuQhkBar871iwErMPrZMsRM`, status `READY`).
-- Most recent full app/payment production verification recorded here is PR #105
-  deployment `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`. PR #106 was docs-only.
+- Latest full app/payment production verification recorded here:
+  `https://web-kafot1r2n-junyen-enterprises.vercel.app` from merge commit
+  `704bcbe03c2c5c49e0443443d99cfca70d95f550` (PR #107,
+  deployment `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`, status `READY`).
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
   the remaining Convex/Stripe env setup. It reports only env names/scopes,
   fails until `NEXT_PUBLIC_CONVEX_URL` is in Preview/Production, and fails if
