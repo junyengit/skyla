@@ -138,6 +138,8 @@ Expected after Convex is wired:
   not used by the payment route.
 - The POS draft route forwards only the staff-selected `readerId`; Convex
   derives any stored Terminal location from `SKYLA_TERMINAL_READER_REGISTRY`.
+- The stored POS sale lines keep exact catalog provenance on ticket/cafe lines
+  and only staff reason metadata on custom lines.
 - A `paymentEvents` row exists with provider `terminal`, status
   `requires_payment`, and the stored amount.
 

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { paymentDraftProvenanceIssues } from "./payment-provenance.mjs";
 
 const defaultBaseUrls = ["https://skydeckla.com", "https://www.skydeckla.com"];
 const envBaseUrls = process.env.PRODUCTION_READINESS_BASE_URLS ?? process.env.SMOKE_BASE_URLS;
@@ -68,7 +69,7 @@ if (failures.length > 0) {
 console.log("Production readiness smoke passed.");
 console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(", ")}`);
 console.log("- Route matrix and noindex headers passed.");
-console.log("- Payment no-write probes kept server-owned totals and stopped before Stripe execution.");
+console.log("- Payment no-write probes kept server-owned totals, catalog provenance, and stopped before Stripe execution.");
 console.log("- Acceptance readiness API stays staff-gated before exposing linked-mode state.");
 console.log("- Checkout compatibility page hands off to native /checkout without legacy payment scripts or assets.");
 console.log("- Public .html compatibility pages hand off to native App Router pages without legacy page CSS/JS.");
@@ -311,7 +312,9 @@ async function checkPaymentNoWrite(origin) {
     children: 1,
     addons: { matcha: 1 },
     totalCents: 1,
-    amountCents: 1
+    amountCents: 1,
+    metadata: { catalogVersion: "browser-spoof" },
+    catalogVersion: "browser-spoof"
   });
 
   expectStatus(origin, "checkout draft", checkoutDraft, 200);
@@ -333,9 +336,22 @@ async function checkPaymentNoWrite(origin) {
     totalCents: 1,
     amountCents: 1,
     lines: [
-      { kind: "ticket", packageKey: "drink", quantity: 2, unitAmountCents: 1 },
-      { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1 },
-      { kind: "custom", name: "Service recovery", amountCents: 500, quantity: 1, reason: "Manager approved" }
+      {
+        kind: "ticket",
+        packageKey: "drink",
+        quantity: 2,
+        unitAmountCents: 1,
+        metadata: { catalogVersion: "browser-spoof" }
+      },
+      { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1, catalogVersion: "browser-spoof" },
+      {
+        kind: "custom",
+        name: "Service recovery",
+        amountCents: 500,
+        quantity: 1,
+        reason: "Manager approved",
+        metadata: { catalogAuthority: "browser-spoof" }
+      }
     ],
     customerEmail: "GUEST@EXAMPLE.COM",
     readerId: "tmr_browser_supplied",
@@ -358,6 +374,10 @@ async function checkPaymentNoWrite(origin) {
     `expected no-write persistence reason, got ${posDraft.json?.persistenceReason ?? "none"}`
   );
   expectNoClientSecret(origin, "POS draft", posDraft);
+
+  for (const issue of paymentDraftProvenanceIssues({ checkoutDraft: checkoutDraft.json, posDraft: posDraft.json })) {
+    failures.push(`${origin} payment draft provenance: ${issue}`);
+  }
 
   const posReaders = await getJson(origin, "/api/pos/readers");
   expectStatus(origin, "POS reader registry no-write", posReaders, 401);

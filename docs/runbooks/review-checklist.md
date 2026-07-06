@@ -20,6 +20,8 @@ Use this after each major phase.
 - No secrets in source
 - No new client-trusted payment authority
 - Payment actions accept stored refs only, not browser totals
+- Checkout/POS catalog-priced lines carry exact code-owned catalog provenance
+  and canonical line amounts; custom POS lines keep only staff reason metadata
 - Stripe return URLs are allowlisted by server/Convex env
 - Stripe Terminal accepts stored `saleRef` and idempotency key only
 - Native POS loads Terminal readers through `/api/pos/readers`; no free-text
@@ -87,6 +89,8 @@ Use this after each major phase.
 - Production `www` smoke: `SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke`
 - Production payment smoke on the latest Vercel deployment, apex, and `www`
 - Production readiness smoke on the latest Vercel deployment, apex, and `www`
+- Payment/readiness smokes fail if no-write draft line provenance or canonical
+  line amounts drift from the code-owned catalog
 - Protected branch checks are green: `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel`
 - Production domain is not changed without approval
@@ -95,6 +99,9 @@ Use this after each major phase.
 ## Payment Readiness
 
 - `/api/order-drafts/checkout` returns canonical totals and ignores fake client totals
+- `/api/order-drafts/checkout` returns catalog provenance and canonical line
+  amounts for adult, child, and add-on lines; linked acceptance verifies the
+  same shape after Convex persistence
 - Preview checkout draft POST returns `persisted: true` before payment cutover
 - Stripe Checkout action takes `orderRef` and draft `idempotencyKey`
 - Stripe Checkout action does not accept `amountCents`, `currency`, or line items from the browser
@@ -107,6 +114,9 @@ Use this after each major phase.
   `terminalLocationId` from the browser
 - `/api/pos/readers` returns only Convex allowlisted reader metadata to
   authenticated staff and returns `401 staff_auth_required` without auth
+- `/api/order-drafts/pos` returns catalog provenance and canonical line amounts
+  for ticket/cafe lines, while custom lines keep only reason metadata; linked
+  acceptance verifies the same shape after Convex persistence
 - `SKYLA_TERMINAL_READER_REGISTRY` has no duplicate reader IDs; paired
   locations are derived server-side, not trusted from the browser
 - Legacy Supabase `stripe-checkout` returns `410` permanently for creation and

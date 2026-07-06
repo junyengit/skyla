@@ -102,6 +102,9 @@ Expected:
 - `persisted: true`
 - `orderRef` starts with `SKY`
 - totals are canonical and ignore `totalCents: 1`
+- adult, child, and add-on lines include `catalogVersion`, `catalogSource`,
+  `catalogAuthority`, and the expected `catalogContentHash`; child lines also
+  keep `childDiscountRate: 0.5`
 
 2. Confirm Stripe action contract in code:
 
@@ -112,6 +115,8 @@ rg -n "createStripeCheckoutSession|amountCents|totalCents|line_items" convex app
 Expected:
 
 - New Convex action accepts `orderRef`, not `amountCents`.
+- Stripe session creation reads stored order lines/totals; catalog provenance is
+  audit context, not a new browser-supplied pricing authority.
 - `/checkout` calls the Next/Convex route.
 - `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
   `shared-data.js`, or Kaskade code.

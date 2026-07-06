@@ -1,3 +1,5 @@
+import { paymentDraftProvenanceIssues } from "./payment-provenance.mjs";
+
 const baseUrl = new URL(process.env.PAYMENT_SMOKE_BASE_URL ?? process.env.SMOKE_BASE_URL ?? "https://www.skydeckla.com");
 
 const fakeStaffToken = "smoke.fake.staff.token";
@@ -97,7 +99,9 @@ const checkoutDraft = await postJson("/api/order-drafts/checkout", {
   children: 1,
   addons: { matcha: 1 },
   totalCents: 1,
-  amountCents: 1
+  amountCents: 1,
+  metadata: { catalogVersion: "browser-spoof" },
+  catalogVersion: "browser-spoof"
 });
 
 expect("checkout draft", checkoutDraft.status === 200, `expected HTTP 200, got ${checkoutDraft.status}`);
@@ -113,9 +117,22 @@ const posDraft = await postJson("/api/order-drafts/pos", {
   totalCents: 1,
   amountCents: 1,
   lines: [
-    { kind: "ticket", packageKey: "drink", quantity: 2, unitAmountCents: 1 },
-    { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1 },
-    { kind: "custom", name: "Service recovery", amountCents: 500, quantity: 1, reason: "Manager approved" }
+    {
+      kind: "ticket",
+      packageKey: "drink",
+      quantity: 2,
+      unitAmountCents: 1,
+      metadata: { catalogVersion: "browser-spoof" }
+    },
+    { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1, catalogVersion: "browser-spoof" },
+    {
+      kind: "custom",
+      name: "Service recovery",
+      amountCents: 500,
+      quantity: 1,
+      reason: "Manager approved",
+      metadata: { catalogAuthority: "browser-spoof" }
+    }
   ],
   customerEmail: "GUEST@EXAMPLE.COM",
   readerId: "tmr_browser_supplied",
@@ -136,6 +153,10 @@ expect(
   `expected no-write persistence reason, got ${posDraft.json?.persistenceReason ?? "none"}`
 );
 expectNoClientSecret("POS draft", posDraft);
+
+for (const issue of paymentDraftProvenanceIssues({ checkoutDraft: checkoutDraft.json, posDraft: posDraft.json })) {
+  fail("payment draft provenance", issue);
+}
 
 const posReadersUnauthed = await getJson("/api/pos/readers");
 expectFailClosed("POS reader registry unauthenticated", posReadersUnauthed, 401, "staff_auth_required");
@@ -216,4 +237,5 @@ if (failures.length > 0) {
 console.log(`Payment API smoke passed for ${baseUrl.origin}.`);
 console.log(`- Checkout total: ${checkoutDraft.json.draft.totalCents} cents`);
 console.log(`- POS total: ${posDraft.json.draft.totalCents} cents`);
+console.log("- Checkout/POS catalog-priced lines include code-owned catalog provenance metadata.");
 console.log("- Stripe execution routes fail closed without real Convex/Stripe dashboard wiring and POS Terminal acceptance.");
