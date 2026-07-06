@@ -368,6 +368,9 @@ flowchart TD
   `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`.
 - [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Preview and Production after Convex is
       linked.
+- [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check` after adding
+      Vercel envs. It should report `readyForConvexUrl: true` and
+      `safeSecretPlacement: true`.
 - [ ] Confirm only public browser config is in Vercel. Stripe secrets,
       webhook secrets, staff bootstrap token, and Terminal reader registry
       belong in Convex, not `NEXT_PUBLIC_*`.

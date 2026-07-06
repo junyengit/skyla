@@ -961,6 +961,18 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       successful `200` responses plus expected `401` staff-auth and `503`
       Convex-unconfigured gates.
 
+### 2026-07-06 Vercel Env Readiness Checker
+
+- [x] Added `bun run vercel:env:check`, a safe Vercel dashboard verifier that
+      reads `vercel env ls --format json` for the linked `apps/web` project and
+      reports env names/scopes only.
+- [x] The checker fails until `NEXT_PUBLIC_CONVEX_URL` exists in Preview and
+      Production, and it fails if Stripe, staff bootstrap, or Terminal secrets
+      are placed in Vercel instead of Convex.
+- [x] Added fixture-based tests for empty-dashboard, ready, and misplaced-secret
+      states so the command can be verified without hitting the real Vercel
+      dashboard.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.

@@ -73,7 +73,9 @@ As of July 6, 2026:
   active host.
 - Vercel environment variables checked on July 6, 2026: none are configured
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
-  fail-closed until dashboard setup is finished.
+  fail-closed until dashboard setup is finished. After adding Vercel envs, run
+  `bun run vercel:env:check` to verify `NEXT_PUBLIC_CONVEX_URL` is present in
+  Preview/Production and payment/staff secrets were not placed in Vercel.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
@@ -83,10 +85,12 @@ As of July 6, 2026:
   collection or storage, no public `clientSecret` response exposure, and
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
-- Vercel production runtime checks after PR #92 showed no grouped runtime
-  errors and no error/fatal logs for the new production deployment. The
-  observed non-200 responses were expected staff-auth `401` and
-  Convex-unconfigured `503` gates from the smoke probes.
+- Vercel production runtime checks show no grouped runtime errors and no
+  error/fatal logs for the latest checked production deployment. The observed
+  non-200 responses were expected staff-auth `401` and Convex-unconfigured
+  `503` gates from the smoke probes. See
+  [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
+  deployment ID and evidence.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
   older `/pos-next` draft review URL through App Router. Staff compatibility
