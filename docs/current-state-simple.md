@@ -41,7 +41,7 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #88 merge commit `fe58c15`.
+- Vercel production deployment is ready for PR #90 merge commit `f4ea5dd`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and compatibility handoff routes smoke-test successfully.
@@ -107,21 +107,21 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest app-code production verification | PR #88, merged to `main` on July 6, 2026 |
-| Verified app-code production deployment | `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`, status `READY` |
-| Verified app-code production URL | `https://web-7w0hqfpoq-junyen-enterprises.vercel.app` |
-| Verified app-code production commit | `fe58c15d613db72218d8067d62eb894373468c25` |
+| Latest app-code production verification | PR #90, merged to `main` on July 6, 2026 |
+| Verified app-code production deployment | `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`, status `READY` |
+| Verified app-code production URL | `https://web-dpvhq5x3y-junyen-enterprises.vercel.app` |
+| Verified app-code production commit | `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=high` | No vulnerabilities found |
 | Dependency sweep | `bun outdated` produced no upgrade table; Dependabot covers Bun and GitHub Actions weekly |
-| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #88 |
+| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #90 |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge |
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
-| `bun run check` | Passed on PR #88 |
+| `bun run check` | Passed on PR #90 |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
 | Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; local production screenshots for PR #88 verified active and disabled staff controls stay white-on-dark |

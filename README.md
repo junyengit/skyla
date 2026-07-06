@@ -46,11 +46,12 @@ As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest verified app-code production deployment evidence:
-  `https://web-7w0hqfpoq-junyen-enterprises.vercel.app` from merge commit
-  `fe58c15d613db72218d8067d62eb894373468c25` (PR #88,
-  deployment `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`, status `READY`).
-- PR #88 hardened public payment response allowlists, kept admin/POS staff
-  controls white-on-dark, and refreshed the readiness docs after PR #87.
+  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app` from merge commit
+  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90,
+  deployment `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`, status `READY`).
+- PR #90 added an automated guard for the retired Supabase payment/webhook
+  functions and removed the Supabase helper wrapper from the retired legacy
+  Terminal stub.
 - Future docs-only merges may create newer production URLs with the same app
   behavior. Use Vercel project `junyen-enterprises/web` or `vercel ls web
   --scope junyen-enterprises` before recording fresh operational evidence.

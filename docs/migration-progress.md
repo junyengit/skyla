@@ -811,6 +811,22 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       checks all five legacy Supabase Stripe/Kaskade payment and webhook
       function stubs for HTTP-410 retired behavior and blocks Supabase helper,
       Stripe API, or Kaskade API calls from returning.
+- [x] Merged Supabase retirement guard PR #90 into `main` as merge commit
+      `f4ea5dd4cd6143a355324959d8e07f5418c21ae0`; GitHub CI, CodeQL, Vercel,
+      and Vercel Preview Comments checks passed.
+- [x] Confirmed Vercel production deployment from PR #90 is READY:
+      `https://web-dpvhq5x3y-junyen-enterprises.vercel.app`
+      (`dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`).
+- [x] Re-ran post-PR90 route, payment, and production-readiness smokes on
+      `https://skydeckla.com`; the production-readiness smoke also checked
+      `https://www.skydeckla.com`. All passed, with Stripe execution still
+      fail-closed before Convex/Stripe dashboard wiring and no real Stripe
+      charge attempted.
+- [x] Checked Vercel runtime evidence after PR #90: no grouped runtime errors
+      in the selected 30-minute window and no error/fatal logs for deployment
+      `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`.
+- [x] Started branch `codex/post-pr90-production-evidence` to record PR #90
+      production evidence without changing app behavior.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

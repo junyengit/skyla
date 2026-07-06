@@ -26,13 +26,13 @@ root.
 As of July 6, 2026:
 
 - Latest verified app-code production deployment from `main` was READY at
-  `https://web-7w0hqfpoq-junyen-enterprises.vercel.app`.
+  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app`.
 - Latest verified app-code production deployment ID:
-  `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`.
+  `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`.
 - Latest verified app-code production merge commit:
-  `fe58c15d613db72218d8067d62eb894373468c25` (PR #88).
-- PR #88 hardened public payment response allowlists, kept admin/POS staff
-  controls white-on-dark, and refreshed readiness docs.
+  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90).
+- PR #90 added an automated retired-Supabase payment/webhook guard and removed
+  the Supabase helper wrapper from the retired legacy Terminal stub.
 - Future docs-only merges may create newer Vercel production URLs with the same
   app behavior. Query Vercel before recording fresh operational evidence.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
@@ -43,7 +43,7 @@ As of July 6, 2026:
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
 - The latest checked app-code deployment metadata reports target
-  `production`, commit `fe58c15d613db72218d8067d62eb894373468c25`, framework
+  `production`, commit `f4ea5dd4cd6143a355324959d8e07f5418c21ae0`, framework
   `nextjs`, Node `24.x`, and the Bun canary install path from repo config.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.

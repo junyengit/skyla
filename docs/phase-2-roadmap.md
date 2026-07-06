@@ -339,11 +339,11 @@ Current verified Vercel data:
 - Vercel project root: `apps/web`
 - Production branch: `main`
 - Latest verified app-code production commit:
-  `fe58c15d613db72218d8067d62eb894373468c25` (PR #88)
+  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90)
 - Latest verified app-code production deployment evidence:
-  `https://web-7w0hqfpoq-junyen-enterprises.vercel.app`
+  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app`
 - Latest verified app-code production deployment ID:
-  `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`
+  `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`
 - Future docs-only merges may create newer Vercel production URLs with the same
   app behavior; query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
@@ -380,6 +380,10 @@ Current verified Vercel data:
   return allowlisted response shapes, even if a lower layer accidentally
   includes `clientSecret` or `client_secret`; active admin/POS controls use
   white text on dark staff surfaces.
+- Post-PR90 Supabase retirement state: all five repo copies of the old
+  Supabase Stripe/Kaskade payment and webhook functions are guarded by
+  `bun run security:supabase-retired` so they stay HTTP-410 retired surfaces
+  without Supabase helper or provider API calls.
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
