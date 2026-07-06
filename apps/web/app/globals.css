@@ -3011,7 +3011,20 @@ h3 {
   cursor: pointer;
 }
 
+.adminOpsCatalogActions .secondaryAction {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
 .adminOpsConfigCard .secondaryAction:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.adminOpsCatalogActions .secondaryAction:disabled,
+.adminOpsCatalogVersions button:disabled {
   cursor: default;
   opacity: 1;
 }
@@ -3038,6 +3051,93 @@ h3 {
   gap: 8px;
   overflow-y: auto;
   padding: 12px;
+}
+
+.adminOpsCatalogActions {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.adminOpsCatalogActions label {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalogActions input {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  padding: 0 12px;
+}
+
+.adminOpsCatalogVersions {
+  display: grid;
+  gap: 8px;
+}
+
+.adminOpsCatalogVersions > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+}
+
+.adminOpsCatalogVersions > div.isActive {
+  border-color: rgba(141, 216, 178, 0.45);
+  background: rgba(141, 216, 178, 0.07);
+}
+
+.adminOpsCatalogVersions div div {
+  min-width: 0;
+}
+
+.adminOpsCatalogVersions strong,
+.adminOpsCatalogVersions span,
+.adminOpsCatalogVersions time {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsCatalogVersions span,
+.adminOpsCatalogVersions time {
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalogVersions button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalogVersions button:hover {
+  border-color: var(--gold);
 }
 
 .adminOpsCatalog div {
@@ -3249,6 +3349,8 @@ h3 {
   }
 
   .adminOpsHoursRow,
+  .adminOpsCatalogActions,
+  .adminOpsCatalogVersions > div,
   .adminOpsCatalog div {
     grid-template-columns: 1fr;
   }

@@ -152,20 +152,26 @@ type ConfigSnapshot = {
 type CatalogSnapshot = {
   activeVersion: {
     version: string;
+    source: string;
+    authority: string;
     status: "active" | "inactive";
     itemCount: number;
     activeItemCount: number;
     contentHash: string;
     editableInAdmin: boolean;
+    createdAt: number;
     activatedAt?: number;
   } | null;
   versions: Array<{
     version: string;
+    source: string;
+    authority: string;
     status: "active" | "inactive";
     itemCount: number;
     activeItemCount: number;
     contentHash: string;
     editableInAdmin: boolean;
+    createdAt: number;
     activatedAt?: number;
   }>;
   currentProducts: CatalogItem[];
@@ -298,6 +304,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [bookingLookupQuery, setBookingLookupQuery] = useState("");
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementConfig>(defaultAnnouncement);
   const [hoursDraft, setHoursDraft] = useState<HoursConfig>(defaultHours);
+  const [catalogNote, setCatalogNote] = useState("");
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [isLoading, setIsLoading] = useState(false);
   const [isLookupLoading, setIsLookupLoading] = useState(false);
@@ -306,6 +313,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const readinessScore = useMemo(() => (snapshot ? totalReady(snapshot.readiness) : 0), [snapshot]);
+  const canManageCatalog = snapshot?.staff.role === "admin";
 
   async function loadOperations() {
     const token = staffToken.trim();
@@ -494,6 +502,63 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       setMessage("Config saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Config update failed");
+    } finally {
+      setActionKey(null);
+    }
+  }
+
+  async function runCatalogAction(action: "seedCodeOwnedCatalog" | "activateVersion", version?: string) {
+    const token = staffToken.trim();
+    if (!token) {
+      setMessage("Staff token required.");
+      return;
+    }
+    if (action === "activateVersion" && !version) {
+      setMessage("Catalog version required.");
+      return;
+    }
+
+    setActionKey(`catalog:${action}:${version ?? catalogState.version}`);
+    setMessage(null);
+
+    try {
+      const note = catalogNote.trim();
+      const response = await fetch("/api/admin/catalog", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action,
+          ...(version ? { version } : {}),
+          ...(note ? { note } : {})
+        })
+      });
+      const data = (await response.json()) as { catalog?: { version: string; syncedProducts: number }; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Catalog action failed");
+      }
+      const snapshotResponse = await fetch("/api/admin/catalog", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const snapshotData = (await snapshotResponse.json()) as CatalogSnapshot | { error?: string };
+      if (!snapshotResponse.ok) {
+        throw new Error(
+          "error" in snapshotData ? snapshotData.error ?? "Catalog refresh failed" : "Catalog refresh failed"
+        );
+      }
+      setConvexCatalogSnapshot(snapshotData as CatalogSnapshot);
+      setCatalogNote("");
+      setMessage(
+        data.catalog
+          ? `Catalog ${data.catalog.version} synced with ${data.catalog.syncedProducts} products.`
+          : "Catalog action saved."
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Catalog action failed");
     } finally {
       setActionKey(null);
     }
@@ -871,6 +936,51 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                       : "not seeded"}
                   </span>
                 </div>
+                {canManageCatalog ? (
+                  <div className="adminOpsCatalogActions" aria-label="Catalog version actions">
+                    <label>
+                      <span>Catalog Note</span>
+                      <input
+                        maxLength={180}
+                        placeholder="Initial seed"
+                        value={catalogNote}
+                        onChange={(event) => setCatalogNote(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      className="secondaryAction"
+                      type="button"
+                      disabled={Boolean(actionKey)}
+                      onClick={() => void runCatalogAction("seedCodeOwnedCatalog")}
+                    >
+                      Seed Code Catalog
+                    </button>
+                  </div>
+                ) : null}
+                {convexCatalogSnapshot?.versions.length ? (
+                  <div className="adminOpsCatalogVersions" aria-label="Catalog versions">
+                    {convexCatalogSnapshot.versions.map((version) => (
+                      <div className={version.status === "active" ? "isActive" : ""} key={version.version}>
+                        <div>
+                          <strong>{version.version}</strong>
+                          <span>
+                            {version.status} / {version.itemCount} items / {version.authority}
+                          </span>
+                        </div>
+                        <time>{shortDate(version.activatedAt ?? version.createdAt)}</time>
+                        {canManageCatalog ? (
+                          <button
+                            type="button"
+                            disabled={Boolean(actionKey) || version.status === "active"}
+                            onClick={() => void runCatalogAction("activateVersion", version.version)}
+                          >
+                            Activate
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="adminOpsCatalog" aria-label="Canonical catalog">
                   {catalog.map((item) => (
                     <div className={item.active ? "" : "isInactive"} key={`${item.kind}:${item.key}`}>

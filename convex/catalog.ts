@@ -8,6 +8,7 @@ import {
   catalogVersionAuditMetadata,
   codeOwnedCatalogSeed,
   snapshotSeedFromRows,
+  staleCatalogProductKeys,
   type CatalogSeedItem,
   type NormalizedCatalogSeed
 } from "./lib/catalogVersioning";
@@ -150,6 +151,15 @@ async function syncCurrentProducts(
   staffUserId: Id<"staffUsers">
 ) {
   const rows = catalogSnapshotRows(seed, now);
+  const existingProducts = await ctx.db.query("products").take(maxCatalogItems);
+  const staleKeys = new Set(staleCatalogProductKeys(existingProducts.map((product) => product.key), rows));
+
+  for (const product of existingProducts) {
+    if (staleKeys.has(product.key)) {
+      await ctx.db.delete(product._id);
+    }
+  }
+
   for (const row of rows) {
     const patch = withoutUndefined({
       key: row.key,

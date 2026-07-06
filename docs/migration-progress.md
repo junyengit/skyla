@@ -1013,6 +1013,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `safeToUseRealCards: false` so test-mode acceptance cannot be confused
       with live-card readiness.
 
+### 2026-07-06 Admin Catalog Readiness
+
+- [x] Added native `/admin` controls for admin-only code-owned catalog seeding
+      and version activation through `/api/admin/catalog`.
+- [x] Kept browser price editing out of the staff UI: catalog actions send only
+      `action`, optional `version`, and optional `note`, while the API still
+      rejects `products` or `prices` payloads before calling Convex.
+- [x] Tightened Convex catalog activation so the current `products` mirror
+      deletes product keys omitted from the active snapshot; immutable
+      `productSnapshots` keep the history.
+- [x] Added focused tests for the admin catalog UI contract and catalog content
+      hashing/stale-key detection.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.

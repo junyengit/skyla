@@ -10,6 +10,7 @@ Skyla now has a Convex path for catalog governance:
 - store immutable product snapshots for each catalog version
 - keep one catalog version active
 - reactivate an older seeded version for rollback
+- keep `products` as an exact current mirror of the active version
 - audit seed and activation events
 
 This does not make ticket, add-on, or cafe prices editable in admin yet.
@@ -55,8 +56,8 @@ flowchart TD
 ## Raw Agent Contract
 
 - Read: `GET /api/admin/catalog`
-- Seed: `POST /api/admin/catalog`
-- Rollback/activate: `POST /api/admin/catalog`
+- Seed: native `/admin` or `POST /api/admin/catalog`
+- Rollback/activate: native `/admin` or `POST /api/admin/catalog`
 - Auth: staff bearer token required before Convex is called
 - Admin role required in Convex for seed and activation mutations
 - Browser-submitted `products` or `prices` payloads are rejected before Convex
@@ -85,7 +86,9 @@ Activate payload:
 3. Reconstructed snapshot content must match the version `contentHash`.
 4. Activating a version deactivates other active versions.
 5. Current `products` rows are rewritten from the immutable snapshots.
-6. The activation writes an audit event with the version, source, authority,
+6. Product keys omitted from the activated version are deleted from the current
+   `products` mirror; their historical `productSnapshots` rows remain.
+7. The activation writes an audit event with the version, source, authority,
    item counts, and content hash.
 
 ## Deferred

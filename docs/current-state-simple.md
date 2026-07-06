@@ -20,9 +20,9 @@ webhook, seeded staff account, and Stripe test-reader setup before checkout or
 POS should run a real payment flow.
 
 Admin and POS staff screens use white text on black staff surfaces. The current
-catalog is code-owned in `@skyla/payments`; Convex now has code paths for
-versioned catalog seeding and audited rollback, but admin cannot edit prices
-yet.
+catalog is code-owned in `@skyla/payments`; Convex now has code paths and
+native admin controls for versioned catalog seeding and audited rollback, but
+admin cannot edit prices yet.
 
 ## Architecture
 
@@ -62,8 +62,10 @@ flowchart LR
   announcement/hours config, voucher redemption, and POS reader selection are
   native Next/Convex-shaped flows.
 - Catalog versioning is modeled in Convex code: admins can seed the code-owned
-  catalog, store immutable snapshots, and activate a previous version for
-  rollback after the real Convex project is linked.
+  catalog from native `/admin`, store immutable snapshots, and activate a
+  previous version for rollback after the real Convex project is linked. The
+  current `products` mirror deletes SKUs omitted from the active snapshot, while
+  historical `productSnapshots` remain for audits.
 - Admin and POS staff pages render high-contrast white text on dark surfaces.
 - Bun canary is the package manager and frozen install makes no lockfile
   changes.
@@ -97,8 +99,9 @@ safe behavior.
       production origins.
 - [ ] Seed initial staff with the bootstrap mutation.
 - [ ] Remove or unset `SKYLA_STAFF_BOOTSTRAP_TOKEN` after staff is seeded.
-- [ ] Seed the code-owned catalog through `POST /api/admin/catalog` with
-      `{"action":"seedCodeOwnedCatalog"}` and a valid admin staff token.
+- [ ] Seed the code-owned catalog from native `/admin`, or through
+      `POST /api/admin/catalog` with `{"action":"seedCodeOwnedCatalog"}`, using
+      a valid admin staff token.
 - [ ] Set Convex `SKYLA_TERMINAL_READER_REGISTRY` with test reader IDs.
 - [ ] Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
       webhook setup, and reader registry checks pass; then enable it only for
@@ -152,6 +155,7 @@ safe behavior.
 | Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; `apps/web/staff-contrast.test.ts` now guards that admin/POS text stays white on dark staff surfaces |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
+| Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
 | Vercel runtime evidence | After PR #96 smoke probes, Vercel reported no grouped runtime errors and no error/fatal logs for `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
 
 Vercel creates a new production URL after every merge, including docs-only
@@ -162,8 +166,8 @@ smoke checks before recording fresh exact-deployment evidence.
 ## Next Code Work
 
 1. Keep runtime catalog/pricing code-owned until linked Convex acceptance passes.
-2. After dashboard setup, seed the code-owned catalog into Convex and verify
-   `/api/admin/catalog` shows an active version.
+2. After dashboard setup, seed the code-owned catalog into Convex from native
+   `/admin` and verify `/api/admin/catalog` shows an active version.
 3. Only then design admin catalog/pricing edits on top of versioned drafts.
 4. Finish refunds with Stripe reconciliation and audit events.
 5. Finish destructive admin actions only with typed validators and rollback

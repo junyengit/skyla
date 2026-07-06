@@ -226,8 +226,9 @@ flowchart TD
   through `/api/admin/bookings/lookup`, then check in or undo check-in through
   the same audited status route. It still fails closed until Convex is linked.
 - Native `/admin` can now load and save typed announcement/hours config through
-  `/api/admin/config`; pricing, menu, catalog, vouchers, refunds, deletes, and
-  resets remain intentionally unavailable.
+  `/api/admin/config`; it can also seed or activate the code-owned catalog
+  through the audited admin catalog route. Pricing/menu edits, refunds,
+  deletes, and resets remain intentionally unavailable.
 - Legacy `/admin.html` is now retired to a native handoff. The old
   `admin.js`, `admin.css`, and `shared-data.js` staff browser assets are absent
   from `apps/web/public`, so missing workflows must move into native Convex
@@ -354,7 +355,7 @@ flowchart TD
   announcement/hours config are the first admin slices; voucher redemption now
   uses the native event-ledger slice.
 - Native admin intentionally does not yet do refunds, hard delete, clear all,
-  reset all, pricing/menu edits, or payment catalog changes.
+  reset all, pricing/menu edits, or browser-submitted payment catalog changes.
 - Supabase functions should not be removed until checkout, POS, admin, and data
   migration acceptance tests pass.
 
@@ -646,17 +647,19 @@ Current dependency note:
 - The public homepage, checkout, admin, POS, and cafe display prices now route
   through `@skyla/payments` catalog helpers. Admin still shows this as a
   code-owned read-only catalog. Convex now has catalog versioning, immutable
-  product snapshots, and an audited activation/rollback path, but the runtime
-  checkout/POS catalog remains code-owned until linked Convex acceptance passes.
+  product snapshots, an audited activation/rollback path, and an exact current
+  `products` mirror that deletes SKUs omitted from the active snapshot, but the
+  runtime checkout/POS catalog remains code-owned until linked Convex acceptance
+  passes.
 
 ## Next Work Order
 
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
 2. Seed initial staff with `staffBootstrap.upsertStaffUser`, verify native
    `/admin`, then remove `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
-3. Seed the code-owned catalog with `POST /api/admin/catalog` and verify
-   `GET /api/admin/catalog` reports an active version before any future price
-   edit work.
+3. Seed the code-owned catalog from native `/admin` or
+   `POST /api/admin/catalog`, then verify `GET /api/admin/catalog` reports an
+   active version before any future price edit work.
 4. Verify native `/members` applications persist through
    `/api/members/applications` in preview and production after Convex is linked.
 5. Verify preview checkout draft persistence returns `persisted: true`.
