@@ -1073,6 +1073,21 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added the same provenance gate to linked acceptance so persisted
       checkout/POS draft readbacks are checked before optional Stripe Checkout
       or Terminal reader legs.
+- [x] Merged acceptance provenance gates PR #103 into `main` as merge commit
+      `2758335f507d64b0bdaaf7c7350d0626ae78c0b8`.
+- [x] Confirmed Vercel production deployment from PR #103 is READY:
+      `https://web-powem7zir-junyen-enterprises.vercel.app`
+      (`dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran route and payment smokes on the raw Vercel production URL and
+      `https://skydeckla.com`; all passed with checkout total `8505` cents,
+      POS total `9700` cents, exact catalog provenance checks, and Stripe
+      execution still fail-closed before Convex/Stripe dashboard wiring.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:production-readiness`; apex and `www` passed with the new
+      provenance gate.
+- [x] Queried Vercel error logs for `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`; no
+      error logs were found in the checked 30-minute window.
 
 ## Decisions
 
