@@ -140,6 +140,8 @@ Expected after Convex is wired:
   derives any stored Terminal location from `SKYLA_TERMINAL_READER_REGISTRY`.
 - The stored POS sale lines keep exact catalog provenance on ticket/cafe lines
   and only staff reason metadata on custom lines.
+- Convex rejects Terminal PaymentIntent creation if stored catalog-priced lines
+  have missing or mismatched code-owned catalog provenance.
 - A `paymentEvents` row exists with provider `terminal`, status
   `requires_payment`, and the stored amount.
 
@@ -161,6 +163,8 @@ Expected after Convex and a test reader are wired:
 
 - The reader used by Stripe is the stored sale reader, not the browser-sent
   `readerId`.
+- Convex re-checks stored POS line provenance before sending the stored
+  PaymentIntent to the reader.
 - Stripe's response echoes a `process_payment_intent` action for the stored
   PaymentIntent before Convex records the handoff.
 - The response is `processing` or `failed`; it is not treated as paid.
@@ -202,6 +206,8 @@ Expected after Convex and Stripe webhook envs are wired:
 - [ ] Terminal route does not accept browser amount/currency/line data.
 - [ ] Convex action creates Stripe `card_present` PaymentIntent from stored sale
       only.
+- [ ] Convex payment snapshots reject stored ticket/cafe lines whose catalog
+      provenance is missing or spoofed before Terminal handoff.
 - [ ] The public route does not return `clientSecret` for the server-driven
       reader flow.
 - [ ] Duplicate PaymentIntent and reader-process requests use separate stable
