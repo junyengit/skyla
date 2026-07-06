@@ -103,6 +103,27 @@ NEXT_PUBLIC_GOOGLE_ADS_BEGIN_CHECKOUT_CONVERSION=AW-XXXXXXXXX/label
 
 Leave any conversion env var blank to keep that event disabled. Do not hard-code Google Ads IDs in public static files.
 
+After adding Vercel env vars, run the safe presence/scope checker from the repo
+root:
+
+```bash
+PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check
+```
+
+If the local checkout is not linked, link the Vercel project from the Vercel
+project root first:
+
+```bash
+cd apps/web
+PATH="$HOME/.bun/bin:$PATH" bunx vercel link --yes --scope junyen-enterprises --project web
+cd ../..
+```
+
+It uses `vercel env ls --format json` for the linked `apps/web` project, checks
+that `NEXT_PUBLIC_CONVEX_URL` exists in Preview and Production, and fails if
+Stripe, staff, or Terminal secrets are present in Vercel. It reports env names
+and scopes only; do not print secret values in PRs, logs, or docs.
+
 ## Git Workflow
 
 1. Open a PR from the migration branch.

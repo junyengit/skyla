@@ -107,12 +107,16 @@ persistence fail closed. Duplicate `readerId` entries also fail closed.
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
-PATH="$HOME/.bun/bin:$PATH" bunx vercel env ls
+PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check
 PATH="$HOME/.bun/bin:$PATH" bun --revision
 ```
 
-Do not print secret values in logs, PRs, or docs. Check presence, scope, and
-shape only.
+`vercel:env:check` reads `vercel env ls --format json` from the linked
+`apps/web` project and reports only names/scopes. It fails until
+`NEXT_PUBLIC_CONVEX_URL` exists in Preview and Production, and it also fails if
+Stripe, staff, or Terminal secrets are accidentally placed in the Vercel
+project instead of Convex. Do not print secret values in logs, PRs, or docs.
+Check presence, scope, and shape only.
 
 ## Staff Bootstrap Token
 

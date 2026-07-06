@@ -81,6 +81,9 @@ safe behavior.
 
 - [ ] Link or create the real Skyla Convex cloud project.
 - [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Vercel Preview and Production.
+- [ ] Run `bun run vercel:env:check` after Vercel env setup. It should pass
+      only when `NEXT_PUBLIC_CONVEX_URL` is present in Preview/Production and
+      Stripe/staff/Terminal secrets are absent from Vercel.
 - [ ] Add Convex deployment details locally only when needed for linked codegen.
 - [ ] Set Convex `SKYLA_STRIPE_MODE=test`.
 - [ ] Set Convex `STRIPE_SECRET_KEY` with a test key first.
