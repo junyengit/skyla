@@ -2,6 +2,7 @@ import {
   addons,
   bookingFeeCents,
   cafeItems,
+  catalogLineMetadata,
   childPriceCents,
   type AddonKey,
   type CafeItemKey,
@@ -112,7 +113,8 @@ export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrd
     productKey: ticket.key,
     name: ticket.name,
     quantity: adults,
-    unitAmountCents: ticket.priceCents
+    unitAmountCents: ticket.priceCents,
+    metadata: catalogLineMetadata(ticket)
   });
 
   if (children > 0) {
@@ -122,7 +124,7 @@ export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrd
       name: `${ticket.name} Child`,
       quantity: children,
       unitAmountCents: childPriceCents(ticket.priceCents),
-      metadata: { childDiscountRate: 0.5 }
+      metadata: { ...catalogLineMetadata(ticket), childDiscountRate: 0.5 }
     });
   }
 
@@ -138,7 +140,8 @@ export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrd
       productKey: addon.key,
       name: addon.name,
       quantity,
-      unitAmountCents: addon.priceCents
+      unitAmountCents: addon.priceCents,
+      metadata: catalogLineMetadata(addon)
     });
   }
 
@@ -176,7 +179,8 @@ export function createPosSaleDraft(input: PosSaleInput): PosSaleDraft {
         productKey: ticket.key,
         name: ticket.name,
         quantity,
-        unitAmountCents: ticket.priceCents
+        unitAmountCents: ticket.priceCents,
+        metadata: catalogLineMetadata(ticket)
       });
       continue;
     }
@@ -191,7 +195,8 @@ export function createPosSaleDraft(input: PosSaleInput): PosSaleDraft {
         productKey: item.key,
         name: item.name,
         quantity,
-        unitAmountCents: item.priceCents
+        unitAmountCents: item.priceCents,
+        metadata: catalogLineMetadata(item)
       });
       continue;
     }

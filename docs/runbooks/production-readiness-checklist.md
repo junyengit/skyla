@@ -42,6 +42,12 @@ of the legacy localStorage/Supabase write path. It correctly refuses to accept
 event inquiries when Convex is not configured, so the page is safe to serve but
 real event intake still depends on the dashboard setup below.
 
+Checkout and POS catalog lines now carry code-owned catalog provenance metadata
+on the stored draft lines. That metadata records the catalog version, source,
+authority, and deterministic item content hash that produced each ticket, add-on,
+or cafe line. It is evidence for audits and future catalog migration work; the
+stored line amounts remain the payment authority.
+
 ## Plain-English Next Checklist
 
 1. Link the real Skyla Convex project.
@@ -71,11 +77,11 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Most recent full production verification recorded here on 2026-07-06:
-  `https://web-4jgzocjsd-junyen-enterprises.vercel.app`
+  `https://web-lk4atrfwh-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-06:
-  `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`
+  `dpl_7vV4SCyfrvrukWRtLWuNj2WKudW9`
 - Evidence merge commit checked on 2026-07-06:
-  `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96).
+  `840ceec1fd7ca93e952221fa01c43288ebcfbfbd` (PR #100).
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
   Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
@@ -137,12 +143,18 @@ real event intake still depends on the dashboard setup below.
   for Checkout and Terminal payment creation. Route tests now include explicit
   `clientSecret`/`client_secret` regression fixtures for public payment
   responses.
+- Catalog-priced checkout and POS draft lines now include
+  `catalogVersion`, `catalogSource`, `catalogAuthority`, and
+  `catalogContentHash` metadata. Tests verify browser-supplied catalog metadata
+  is ignored, custom POS lines do not receive catalog provenance, and the line
+  hash matches the immutable Convex `productSnapshots` hash for the same
+  code-owned catalog item.
 - Legacy Supabase retirement guard: `bun run security:supabase-retired` checks
   all five repo copies of the old Stripe/Kaskade payment and webhook functions.
   They must stay HTTP-410 retired surfaces and must not initialize Supabase
   helpers or call Stripe/Kaskade APIs.
 - Native admin export API checked on 2026-07-05 and carried forward after the
-  PR #96 smoke pass:
+  PR #100 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
@@ -158,10 +170,9 @@ real event intake still depends on the dashboard setup below.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-06 after PR #96 and the
-  latest smoke probes: no grouped runtime errors in the selected 30-minute
-  window and no error/fatal logs for deployment
-  `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`. Non-200 responses were expected:
+- Vercel production runtime errors checked on 2026-07-06 after PR #100 and the
+  latest smoke probes: `vercel logs --level error --since 30m` returned no
+  logs for deployment `dpl_7vV4SCyfrvrukWRtLWuNj2WKudW9`. Non-200 responses were expected:
   `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
   gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
@@ -208,7 +219,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
-  after PR #96 reached production.
+  after PR #100 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
@@ -258,6 +269,9 @@ flowchart TD
   running with zero visible windows in the desktop session.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
+- Stored checkout/POS catalog line metadata proves which code-owned catalog
+  version and item hash priced the line; payment routes must still use stored
+  rows and totals as authority, not re-price from that metadata.
 - Native `/pos` loads authorized Stripe Terminal readers through
   `/api/pos/readers`; staff no longer type free-text `tmr_...` or `tml_...`
   values into the sale screen.

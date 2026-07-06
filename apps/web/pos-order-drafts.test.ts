@@ -1,5 +1,6 @@
 import { fetchMutation } from "convex/nextjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cafeItems, catalogLineMetadata, ticketPackages } from "@skyla/payments";
 
 import { POST } from "./app/api/order-drafts/pos/route";
 
@@ -33,9 +34,28 @@ describe("/api/order-drafts/pos", () => {
         amountCents: 1,
         totalCents: 1,
         lines: [
-          { kind: "ticket", packageKey: "drink", quantity: 2, unitAmountCents: 1 },
-          { kind: "cafe", itemKey: "b1", quantity: 3, priceCents: 1 },
-          { kind: "custom", name: "Service recovery", amountCents: 500, quantity: 1, reason: "Manager approved" }
+          {
+            kind: "ticket",
+            packageKey: "drink",
+            quantity: 2,
+            unitAmountCents: 1,
+            metadata: { catalogVersion: "browser-spoof" }
+          },
+          {
+            kind: "cafe",
+            itemKey: "b1",
+            quantity: 3,
+            priceCents: 1,
+            catalogVersion: "browser-spoof"
+          },
+          {
+            kind: "custom",
+            name: "Service recovery",
+            amountCents: 500,
+            quantity: 1,
+            reason: "Manager approved",
+            metadata: { catalogAuthority: "browser-spoof" }
+          }
         ],
         customerEmail: "GUEST@EXAMPLE.COM",
         readerId: "tmr_browser_supplied",
@@ -61,7 +81,8 @@ describe("/api/order-drafts/pos", () => {
             name: "Deck + Drink",
             quantity: 2,
             unitAmountCents: 3700,
-            lineTotalCents: 7400
+            lineTotalCents: 7400,
+            metadata: catalogLineMetadata(ticketPackages.drink)
           },
           {
             kind: "cafe",
@@ -69,18 +90,24 @@ describe("/api/order-drafts/pos", () => {
             name: "Butter Croissant",
             quantity: 3,
             unitAmountCents: 600,
-            lineTotalCents: 1800
+            lineTotalCents: 1800,
+            metadata: catalogLineMetadata(cafeItems.b1)
           },
           {
             kind: "custom",
             name: "Service recovery",
             quantity: 1,
             unitAmountCents: 500,
-            lineTotalCents: 500
+            lineTotalCents: 500,
+            metadata: {
+              reason: "Manager approved"
+            }
           }
         ]
       }
     });
+    expect(body.draft.lines[2].metadata).toEqual({ reason: "Manager approved" });
+    expect(body.draft.lines[2].metadata).not.toHaveProperty("catalogAuthority");
     expect(body.draft).not.toHaveProperty("readerId");
     expect(body.draft).not.toHaveProperty("terminalLocationId");
     expect(fetchMutationMock).not.toHaveBeenCalled();
