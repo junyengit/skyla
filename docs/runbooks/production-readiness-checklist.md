@@ -13,9 +13,10 @@ The new safer payment backend is partly built in Convex code: orders and POS
 sale drafts can be priced from server-owned data, Stripe Checkout sessions can
 be created from a stored `orderRef`, and Stripe webhooks can verify signatures
 before marking an order paid. Stripe Terminal PaymentIntents can now be created
-from a stored POS `saleRef` only. The primary `/checkout` page now uses the
-Next.js App Router and fails closed until the real Convex deployment, Vercel
-env vars, and Stripe dashboard webhook endpoint are ready.
+from a stored POS `saleRef` only, and only after the stored sale has a trusted
+Terminal reader saved on it. The primary `/checkout` page now uses the Next.js
+App Router and fails closed until the real Convex deployment, Vercel env vars,
+and Stripe dashboard webhook endpoint are ready.
 
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and
@@ -76,12 +77,14 @@ stored line amounts remain the payment authority.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Most recent full production verification recorded here on 2026-07-06:
-  `https://web-powem7zir-junyen-enterprises.vercel.app`
-- Evidence deployment ID checked on 2026-07-06:
-  `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`
-- Evidence merge commit checked on 2026-07-06:
-  `2758335f507d64b0bdaaf7c7350d0626ae78c0b8` (PR #103).
+- Current production alias checked on 2026-07-06:
+  `https://web-5nzoujeod-junyen-enterprises.vercel.app`
+- Current production deployment ID checked on 2026-07-06:
+  `dpl_59RHYSuQhkBar871iwErMPrZMsRM`
+- Current production merge commit checked on 2026-07-06:
+  `daa7605cc2cf586b94e51c069c427cc0d5f67601` (PR #106 docs-only).
+- Most recent full app/payment production verification recorded here remains
+  PR #105 deployment `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
   Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
@@ -104,19 +107,21 @@ stored line amounts remain the payment authority.
   did not return the older Apple/Brevo TXT values documented in the domain
   runbook. Restore them in Vercel DNS if those services are still needed, or
   update the domain runbook after confirming they are intentionally removed.
-- GitHub branch protection checked on 2026-07-02: `main` is protected with
+- GitHub branch protection checked on 2026-07-06: `main` is protected with
   strict required checks `ci-build`, `Analyze JavaScript and TypeScript`, and
   `Vercel`; force pushes, branch deletion, and unresolved conversations are
-  blocked.
+  blocked; admins are included in enforcement.
 - GitHub CodeQL PR check passed on 2026-07-05 for native voucher redemption
   PR #67, POS reader registry selector PR #71, and Supabase checkout retirement
   PR #73, and linked acceptance readiness PR #75. The Code Scanning open-alert
   API returned `404` for the local `gh` token during an earlier docs pass, so
   use the GitHub Security tab to refresh the open-alert count before recording a
   new alert-list audit.
-- GitHub security toggles checked on 2026-07-02: Dependabot vulnerability
-  alerts are enabled, automated security fixes are enabled, and the repo
-  homepage points to `https://skydeckla.com`.
+- GitHub security toggles checked on 2026-07-06: Dependabot vulnerability
+  alerts are enabled (`GET /vulnerability-alerts` returned `204`), automated
+  security fixes are enabled and not paused (`GET /automated-security-fixes`
+  returned `{"enabled":true,"paused":false}`), and the repo homepage points to
+  `https://skydeckla.com`.
 - GitHub Pages was disabled on 2026-07-02 after Vercel custom-domain production
   was verified. The old `https://junyengit.github.io/skyla/` surface should
   stay off unless Vercel rollback is unavailable and a deliberate Pages rollback
@@ -161,7 +166,7 @@ stored line amounts remain the payment authority.
   They must stay HTTP-410 retired surfaces and must not initialize Supabase
   helpers or call Stripe/Kaskade APIs.
 - Native admin export API checked on 2026-07-05 and carried forward after the
-  PR #103 smoke pass:
+  PR #105 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
@@ -177,9 +182,9 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-06 after PR #103 and the
+- Vercel production runtime errors checked on 2026-07-06 after PR #105 and the
   latest smoke probes: `vercel logs --level error --since 30m` returned no
-  logs for deployment `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`. Non-200 responses were expected:
+  logs for deployment `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`. Non-200 responses were expected:
   `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
   gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
@@ -226,7 +231,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
-  after PR #103 reached production.
+  after PR #105 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
@@ -269,11 +274,10 @@ flowchart TD
   `/admin.html` and `/pos.html` are self-contained handoffs to the native
   routes, and production readiness checks fail if retired staff assets are
   served again.
-- Helium visual QA on 2026-07-05 confirmed live `/admin` and `/pos-next` render
-  readable white text on black staff surfaces. This follow-up also keeps
-  primary, active, and disabled staff controls white-on-dark in CSS. The
-  PR #88 final visual pass used local production screenshots because Helium was
-  running with zero visible windows in the desktop session.
+- Helium visual QA on 2026-07-06 confirmed live `/admin`, `/pos`, and
+  `/pos-next` render readable white text on black staff surfaces. This
+  follow-up also keeps primary, active, and disabled staff controls
+  white-on-dark in CSS.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
 - Stored checkout/POS catalog line metadata proves which code-owned catalog
@@ -289,6 +293,8 @@ flowchart TD
   the old charge/reader bridge actions.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
   requires a staff bearer token, and forwards to Convex.
+- Convex Terminal PaymentIntent snapshots fail before Stripe if the stored POS
+  sale does not already have a trusted Terminal reader.
 - Convex Stripe actions now require `SKYLA_STRIPE_MODE`, and they reject a
   Stripe secret key whose `sk_test_` or `sk_live_` prefix does not match it.
 - Convex Stripe webhooks now reject events whose `livemode` flag does not match

@@ -932,10 +932,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `bun outdated`, `bun update --latest --dry-run`, `bun run test:smoke`,
       `bun run test:payments`, and `bun run test:production-readiness`.
       No dependency upgrade was needed and live production smokes still passed.
-- [ ] Helium visual QA is still blocked by Computer Use returning
-      `cgWindowNotFound` for the running Helium app. Current contrast evidence
-      comes from `apps/web/staff-contrast.test.ts` plus production-readiness
-      smoke, not a Helium screenshot.
+- [x] Re-ran Helium/Computer Use visual QA on July 6, 2026. Production
+      `/admin`, `/pos`, and `/pos-next` render readable white text on black
+      staff surfaces; `apps/web/staff-contrast.test.ts` continues to guard this
+      contrast in automated tests.
 
 ### 2026-07-06 PR #94 Production Evidence
 
@@ -1115,6 +1115,29 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       test:production-readiness`; apex and `www` passed after PR #105.
 - [x] Queried Vercel error logs for `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`; no
       error logs were found in the checked 30-minute window.
+
+### 2026-07-06 PR #106 Production And Governance Evidence
+
+- [x] Merged post-PR #105 production-evidence docs PR #106 into `main` as merge
+      commit `daa7605cc2cf586b94e51c069c427cc0d5f67601`.
+- [x] Confirmed the current Vercel production alias is READY:
+      `https://web-5nzoujeod-junyen-enterprises.vercel.app`
+      (`dpl_59RHYSuQhkBar871iwErMPrZMsRM`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran custom-domain route, payment, and production-readiness smokes
+      after PR #106; all passed with production still fail-closed before
+      Convex/Stripe dashboard wiring.
+- [x] Queried Vercel error logs after the PR #106 smoke probes; no error logs
+      were found in the checked window.
+- [x] Rechecked GitHub governance on July 6, 2026: `main` branch protection is
+      strict for `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel`;
+      admins are enforced; force pushes and branch deletion are disabled;
+      conversation resolution is required; Dependabot vulnerability alerts and
+      automated security fixes are enabled.
+- [x] Tightened Terminal PaymentIntent readiness after a payment/API audit:
+      Convex now rejects Terminal PaymentIntent snapshots before Stripe when
+      the stored POS sale has no trusted reader, instead of letting reader
+      processing fail later.
 
 ## Decisions
 
