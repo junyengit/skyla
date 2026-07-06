@@ -4,6 +4,7 @@ import {
   assertStripeReturnOriginAllowed,
   buildStripeCheckoutSessionRequest,
   parseStripeReturnOriginAllowlist,
+  stripeApiVersion,
   stripeCheckoutIdempotencyKey,
   stripeCheckoutLineItems
 } from "./lib/stripeCheckout";
@@ -47,6 +48,8 @@ describe("Stripe Checkout helpers", () => {
     });
 
     expect(request.endpoint).toBe("/checkout/sessions");
+    expect(request.apiVersion).toBe(stripeApiVersion);
+    expect(stripeApiVersion).toBe("2026-02-25.clover");
     expect(request.idempotencyKey).toBe("skyla:checkout-session:SKY2607-ABC123");
     expect(request.body.get("mode")).toBe("payment");
     expect(request.body.get("client_reference_id")).toBe("SKY2607-ABC123");

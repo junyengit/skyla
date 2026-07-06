@@ -10,7 +10,7 @@ For current package-manager and root-layout state, use
 
 ## Convex And Functionality Findings
 
-Current runtime reality:
+Historical runtime reality from this pre-cleanup snapshot:
 
 - `apps/web/app/page.tsx` is the only rebuilt App Router product page.
 - `apps/web/next.config.mjs` rewrites legacy routes such as `/checkout`, `/admin`, `/pos`, and `/members` into static files under `apps/web/public`.

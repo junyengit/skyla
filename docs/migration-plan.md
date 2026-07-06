@@ -1,6 +1,6 @@
 # Skyla Modernization Plan
 
-Last updated: 2026-07-02
+Last updated: 2026-07-06
 
 ## Objective
 
@@ -28,7 +28,7 @@ rollback.
 
 The Vercel/Turborepo foundation has been merged to `main`. Vercel project `junyen-enterprises/web` deploys `apps/web`, and the custom domains are attached in Vercel.
 
-Current backend/data dependencies:
+Historical backend/data dependencies from the original static/Supabase app:
 
 - Browser data facade in `shared-data.js`
 - Supabase Auth for admin/POS
@@ -39,6 +39,15 @@ Current backend/data dependencies:
 - EmailJS/Brevo confirmation emails
 - Meta Pixel and planned Google Ads conversion tracking
 
+Current runtime state is tracked in [current-state-simple.md](current-state-simple.md)
+and [migration-progress.md](migration-progress.md). In short: the app now ships
+from `apps/web` on Vercel, root legacy static files are gone, native public,
+checkout, admin, and POS routes are in the Next.js App Router, and old
+Supabase payment functions in this repo are fail-closed retired stubs. Convex,
+Stripe Checkout, Stripe webhook, and Stripe Terminal code paths exist, but live
+payment acceptance remains dashboard-gated until Convex, Vercel envs, Stripe
+webhooks, staff seeding, and test-reader acceptance are completed.
+
 Resolved foundation gaps:
 
 - Repo-level README, runbooks, CI, package manifest, lockfile, Turborepo config, and initial Vercel project setup now exist on `main`.
@@ -46,14 +55,16 @@ Resolved foundation gaps:
 
 Remaining operating gaps:
 
-- Database migrations and environment documentation still need to be completed with the Convex and payment rebuild.
-- Payment amounts and paid booking creation are too client-controlled.
-- Admin/POS access is enforced mostly in browser UI and assumed Supabase RLS.
+- Convex/Vercel envs, staff seeding, Stripe dashboard webhooks, and Stripe
+  Terminal test-reader acceptance still need dashboard completion before live
+  card or reader payment acceptance.
+- Supabase dashboard retirement must be confirmed by disabling or redeploying
+  old Edge Functions and proving Stripe no longer points to Supabase endpoints.
 - Dependabot vulnerability alerts, automated security fixes, CodeQL,
   CODEOWNERS, branch protection, and baseline security scripts are present.
   Secret scanning should still be confirmed in the GitHub Security dashboard.
-- Legacy Supabase deployment surfaces must remain available until the Convex
-  and server-authoritative payment migration is verified.
+- Legacy Supabase deployment surfaces should be disabled or redeployed to the
+  repo's HTTP-410 retired stubs after Convex/Stripe acceptance passes.
 
 ## Target Architecture
 
@@ -135,18 +146,21 @@ Status: in progress
 
 ### Phase 4: Secure Data And Payment Boundary
 
-Status: planned
+Status: code largely shipped; live acceptance dashboard-gated
 
-- Add server-side order model before accepting payment.
-- Payment server creates order with canonical pricing and expected amount.
-- Stripe/Kaskade actions create provider payments from stored orders.
-- Webhooks validate order ID, expected amount, currency, status, and idempotency before issuing tickets.
-- Add payment event ledger and webhook event ledger.
-- Remove client-created paid bookings.
+- Server-side checkout and POS draft models exist and calculate canonical
+  pricing before payment.
+- Stripe Checkout and Stripe Terminal actions create provider payments from
+  stored orders/sales instead of browser totals.
+- Webhooks validate order/sale refs, provider IDs, expected amounts, currency,
+  status, and idempotency before recording payment state.
+- Payment and webhook event ledgers exist in Convex.
+- Live acceptance still requires Convex deployment/env linking, Stripe webhook
+  dashboard setup, seeded staff users, and controlled test-mode acceptance.
 
 ### Phase 5: Convex Migration
 
-Status: planned
+Status: schema/functions shipped; cloud deployment and data import gated
 
 Target Convex tables:
 
@@ -188,14 +202,19 @@ Migration steps:
 
 ### Phase 6: Admin And POS Rebuild
 
-Status: planned
+Status: native routes shipped; live operations gated by Convex/staff setup
 
-- Rebuild admin and POS as authenticated Next routes.
-- Enforce authorization server-side in Convex queries/mutations/actions.
-- Remove fallback local password behavior.
-- Add staff roles: `admin`, `pos`, `viewer`.
-- Add audit logging for booking updates, check-in, POS reader setup, POS charge creation, refunds/cancellations, and config changes.
-- Split reader setup from daily POS charging and require elevated permission.
+- Native `/admin`, `/pos`, and `/pos-next` staff surfaces are in the Next.js
+  App Router and keep readable white text on dark staff backgrounds.
+- Staff-gated APIs require bearer tokens before returning operations, POS
+  readers, sale drafts, or payment handoffs.
+- Convex staff roles exist as `admin`, `pos`, and `viewer`.
+- Booking/member status actions and POS sale/payment flows write audit/payment
+  events where implemented.
+- Live use remains blocked until Convex is linked, staff users are seeded, and
+  dashboard payment gates are verified.
+- Refund/cancellation policy workflows and deeper config/catalog editing are
+  future slices.
 
 ### Phase 7: Vercel Setup And Domain Cutover
 

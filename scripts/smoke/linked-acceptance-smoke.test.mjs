@@ -15,7 +15,8 @@ async function withServer(handler, run) {
     requests.push({
       method: request.method,
       url: request.url,
-      authorized: request.headers.authorization === `Bearer ${staffToken}`
+      authorized: request.headers.authorization === `Bearer ${staffToken}`,
+      body: undefined
     });
     handler(request, response);
   });
@@ -44,7 +45,7 @@ function json(response, body, status = 200) {
   response.end(JSON.stringify(body));
 }
 
-function linkedReadiness({ registryConfigured = true } = {}) {
+function linkedReadiness({ registryConfigured = true, terminalReady = false } = {}) {
   return {
     staff: {
       emailLower: "pos@example.com",
@@ -61,8 +62,8 @@ function linkedReadiness({ registryConfigured = true } = {}) {
       readerRegistryConfigured: registryConfigured,
       readerRegistryValid: registryConfigured,
       readerCount: registryConfigured ? 1 : 0,
-      acceptanceEnabled: false,
-      readerProcessingReady: false
+      acceptanceEnabled: terminalReady,
+      readerProcessingReady: terminalReady
     }
   };
 }
@@ -112,7 +113,7 @@ function linkedHandler(options = {}) {
   };
 }
 
-async function runPreflight(baseUrl) {
+async function runAcceptance(baseUrl, extraEnv = {}) {
   const child = spawn(process.execPath, [scriptPath], {
     cwd: repoRoot,
     env: {
@@ -122,7 +123,7 @@ async function runPreflight(baseUrl) {
       SKYLA_ACCEPTANCE_STRIPE_MODE: "test",
       SKYLA_ACCEPTANCE_NO_REAL_CARDS: "1",
       SKYLA_STAFF_TEST_TOKEN: staffToken,
-      SKYLA_ACCEPTANCE_PREFLIGHT: "1"
+      ...extraEnv
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -145,6 +146,18 @@ async function runPreflight(baseUrl) {
     stdout,
     stderr
   };
+}
+
+async function runPreflight(baseUrl) {
+  return runAcceptance(baseUrl, { SKYLA_ACCEPTANCE_PREFLIGHT: "1" });
+}
+
+async function readJsonBody(request) {
+  let text = "";
+  for await (const chunk of request) {
+    text += chunk;
+  }
+  return text ? JSON.parse(text) : {};
 }
 
 describe("linked acceptance preflight", () => {
@@ -177,5 +190,173 @@ describe("linked acceptance preflight", () => {
         requests.filter((request) => request.url === "/api/pos/readers" && request.authorized)
       ).toHaveLength(0);
     });
+  }, 10_000);
+});
+
+describe("linked acceptance write flow", () => {
+  it("reuses the stored draft idempotency keys for optional Stripe legs", async () => {
+    const requests = [];
+    const memberIdempotencyKeys = new Set();
+    const server = createServer(async (request, response) => {
+      const record = {
+        method: request.method,
+        url: request.url,
+        authorized: request.headers.authorization === `Bearer ${staffToken}`,
+        body: request.method === "POST" ? await readJsonBody(request) : undefined
+      };
+      requests.push(record);
+
+      if (request.url === "/api/admin/acceptance-readiness") {
+        if (!record.authorized) {
+          json(response, { code: "staff_auth_required" }, 401);
+          return;
+        }
+        json(response, linkedReadiness({ terminalReady: true }));
+        return;
+      }
+
+      if (request.url === "/api/pos/readers") {
+        if (!record.authorized) {
+          json(response, { code: "staff_auth_required" }, 401);
+          return;
+        }
+        json(response, {
+          readers: [
+            {
+              label: "Front Desk",
+              readerId: "tmr_frontdesk",
+              terminalLocationId: "tml_lobby"
+            }
+          ]
+        });
+        return;
+      }
+
+      if (request.url === "/api/order-drafts/checkout") {
+        json(response, {
+          persisted: true,
+          orderRef: "ORD260706-ACCEPT",
+          draft: {
+            totalCents: 6090
+          }
+        });
+        return;
+      }
+
+      if (request.url === "/api/members/applications") {
+        const replayed = memberIdempotencyKeys.has(record.body.idempotencyKey);
+        memberIdempotencyKeys.add(record.body.idempotencyKey);
+        json(
+          response,
+          {
+            member: {
+              status: "pending",
+              emailLower: record.body.email,
+              replayed
+            }
+          },
+          replayed ? 200 : 201
+        );
+        return;
+      }
+
+      if (request.url === "/api/experiences/inquiries") {
+        json(
+          response,
+          {
+            inquiry: {
+              status: "pending",
+              emailLower: record.body.email
+            }
+          },
+          201
+        );
+        return;
+      }
+
+      if (request.url === "/api/order-drafts/pos") {
+        json(response, {
+          persisted: true,
+          saleRef: "POS260706-ACCEPT",
+          draft: {
+            totalCents: 9700,
+            terminalLocationId: "tml_lobby"
+          }
+        });
+        return;
+      }
+
+      if (request.url === "/api/payments/stripe-terminal") {
+        json(response, {
+          saleRef: record.body.saleRef,
+          provider: "terminal",
+          paymentIntentId: "pi_terminal_acceptance",
+          amountCents: 9700,
+          currency: "usd",
+          status: "requires_payment"
+        });
+        return;
+      }
+
+      if (request.url === "/api/payments/stripe-terminal/process") {
+        json(response, {
+          saleRef: record.body.saleRef,
+          provider: "terminal",
+          paymentIntentId: "pi_terminal_acceptance",
+          readerId: "tmr_frontdesk",
+          amountCents: 9700,
+          currency: "usd",
+          status: "processing",
+          readerStatus: "online",
+          readerActionStatus: "in_progress"
+        });
+        return;
+      }
+
+      if (request.url === "/api/payments/stripe-checkout") {
+        json(response, {
+          orderRef: record.body.orderRef,
+          provider: "stripe",
+          checkoutSessionId: "cs_test_acceptance",
+          url: "https://checkout.stripe.com/c/pay/cs_test_acceptance",
+          amountCents: 6090,
+          currency: "usd"
+        });
+        return;
+      }
+
+      json(response, { error: "not found" }, 404);
+    });
+
+    await new Promise((resolveListen) => {
+      server.listen(0, "127.0.0.1", resolveListen);
+    });
+
+    try {
+      const address = server.address();
+      const result = await runAcceptance(`http://127.0.0.1:${address.port}`, {
+        SKYLA_ACCEPTANCE_STRIPE_CHECKOUT: "1",
+        SKYLA_ACCEPTANCE_TERMINAL_READER: "1"
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe("");
+
+      const checkoutDraft = requests.find((request) => request.url === "/api/order-drafts/checkout");
+      const stripeCheckout = requests.find((request) => request.url === "/api/payments/stripe-checkout");
+      const posDraft = requests.find((request) => request.url === "/api/order-drafts/pos");
+      const terminalIntent = requests.find((request) => request.url === "/api/payments/stripe-terminal");
+      const terminalProcess = requests.find((request) => request.url === "/api/payments/stripe-terminal/process");
+
+      expect(stripeCheckout.body.idempotencyKey).toBe(checkoutDraft.body.idempotencyKey);
+      expect(terminalIntent.body.idempotencyKey).toBe(posDraft.body.idempotencyKey);
+      expect(terminalProcess.body.idempotencyKey).toBe(posDraft.body.idempotencyKey);
+      expect(terminalIntent.body.idempotencyKey).not.toMatch(/^acc_terminal_/);
+      expect(stripeCheckout.body.idempotencyKey).not.toMatch(/^acc_stripe_checkout_/);
+    } finally {
+      await new Promise((resolveClose) => {
+        server.close(resolveClose);
+      });
+    }
   }, 10_000);
 });

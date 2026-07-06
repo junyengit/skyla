@@ -197,11 +197,15 @@ curl -sS -X POST "$PREVIEW_URL/api/payments/stripe-terminal" \
 
 Expected before Convex is wired:
 
-- `503` with `code: "convex_unconfigured"`, or `401` if no staff token is sent
+- `401` with `code: "staff_auth_required"` if no staff token is sent
+- `503` with `code: "convex_unconfigured"` when a staff token is sent but
+  Convex is not wired
 
 Expected after Convex is wired:
 
 - amount comes back from stored Convex sale data, not `amountCents: 1`
+- if the Terminal acceptance latch is still off, the route returns `503` with
+  `code: "pos_terminal_acceptance_required"` before contacting Stripe
 
 ## Acceptance Checklist
 

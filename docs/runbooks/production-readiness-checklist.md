@@ -515,6 +515,14 @@ flowchart TD
 
 ### Supabase Legacy
 
+- [ ] In the Supabase dashboard, identify the old Skyla project before making
+      changes. Record the project ref from the URL or API settings; the live
+      function base URL should be
+      `https://<project-ref>.supabase.co/functions/v1`.
+- [ ] Open Edge Functions and record each function's current deployed/disabled
+      status and last deployment time. Do not delete a function until the
+      Stripe dashboard and live smoke evidence below prove it is no longer in
+      the payment path.
 - [ ] In Supabase Edge Functions, confirm whether `stripe-checkout` is deployed.
       It should be disabled or redeployed from the repo copy that returns `410`
       for every non-OPTIONS request, including old Checkout session
@@ -529,6 +537,22 @@ flowchart TD
 - [ ] In Supabase Edge Functions, confirm whether `kaskade-payment` and
       `kaskade-webhook` are deployed. They should be disabled or redeployed from
       the repo copies that return `410`.
+- [ ] Choose one retirement posture per function:
+      disabled `404`, or redeployed retired `410`. Prefer redeployed `410` while
+      cutover confidence is still being gathered because it gives explicit
+      evidence that old clients hit a retired surface.
+- [ ] In the Stripe dashboard, confirm webhook endpoints no longer point to
+      `https://<project-ref>.supabase.co/functions/v1/stripe-webhook` or any
+      other Supabase function URL. Stripe should point to the Convex HTTP
+      webhook URL for the active environment before live payment acceptance.
+- [ ] In the Stripe dashboard, confirm no Terminal or Checkout integration notes
+      still reference Supabase function URLs. Record the dashboard path checked
+      and the date in this checklist or the migration progress log.
+- [ ] In Stripe Workbench, confirm the active account and webhook endpoint API
+      version plan. The code currently sends `Stripe-Version:
+      2026-02-25.clover`; Stripe documents `2026-06-24.dahlia` as current, but
+      upgrading across named releases should be a controlled change with
+      webhook endpoint version alignment and linked acceptance evidence.
 - [ ] Run the live retirement smoke after dashboard changes:
 
   ```bash

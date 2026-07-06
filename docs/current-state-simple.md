@@ -10,6 +10,9 @@ agents to keep going safely.
 Skyla is now a Next.js app in a Turborepo and is hosted on Vercel. The public
 domain works on Vercel, and the code is set up so checkout and POS prices are
 calculated by trusted server-side code instead of browser-submitted totals.
+The linked acceptance harness also checks that payment creation reuses the
+stored draft idempotency keys, so Stripe Checkout and Terminal cannot drift
+away from the server-owned order or POS sale draft.
 
 Real card charging is still intentionally blocked. That is good for now. The
 site needs the real Convex project, Vercel environment variable, Stripe test
@@ -49,6 +52,9 @@ flowchart LR
   server-owned totals.
 - Stripe execution routes fail closed while Convex and Stripe dashboards are not
   configured.
+- Checkout webhook reconciliation now refuses late failed/canceled events after
+  an order is already paid, recording the webhook as failed instead of adding a
+  contradictory failed payment event.
 - Public Stripe Checkout and Terminal routes return allowlisted response
   shapes, so accidental `clientSecret` or `client_secret` fields from a lower
   layer are stripped before reaching the browser.
@@ -114,10 +120,11 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
+| Latest production evidence refresh | PR #93, merged to `main` on July 6, 2026 |
+| Latest production deployment | `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi`, status `READY` |
+| Latest production URL | `https://web-6lx1ttp9e-junyen-enterprises.vercel.app` |
+| Latest production commit | `24bcc740100f9080afce50d216852af70f098236` |
 | Latest app-code production verification | PR #92, merged to `main` on July 6, 2026 |
-| Verified app-code production deployment | `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`, status `READY` |
-| Verified app-code production URL | `https://web-4keycalzp-junyen-enterprises.vercel.app` |
-| Verified app-code production commit | `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3` |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
@@ -132,6 +139,7 @@ safe behavior.
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
+| Stripe API version pin | Requests send `Stripe-Version: 2026-02-25.clover`. Stripe currently documents `2026-06-24.dahlia` as the current API version, but this crosses a named major release and should be upgraded only with a Workbench/webhook endpoint version plan and linked acceptance tests. |
 | Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; `apps/web/staff-contrast.test.ts` now guards that admin/POS text stays white on dark staff surfaces |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |

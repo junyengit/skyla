@@ -1,3 +1,5 @@
+// Intentionally pinned until the Stripe dashboard webhook endpoint is upgraded
+// in the same controlled acceptance window.
 export const stripeApiVersion = "2026-02-25.clover";
 export const stripeApiBaseUrl = "https://api.stripe.com/v1";
 
