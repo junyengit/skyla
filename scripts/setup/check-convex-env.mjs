@@ -37,6 +37,7 @@ const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
 const terminalReaderRegistry = env.SKYLA_TERMINAL_READER_REGISTRY ?? "";
 const terminalAcceptance = env.SKYLA_POS_TERMINAL_ACCEPTANCE ?? "";
 const staffBootstrapToken = env.SKYLA_STAFF_BOOTSTRAP_TOKEN ?? "";
+const requiredGateNames = commaList(env.SKYLA_CONVEX_ENV_REQUIRE ?? "");
 const stripeReturnOriginList = commaList(stripeReturnOrigins);
 const terminalReaderRegistryList = commaList(terminalReaderRegistry);
 
@@ -108,19 +109,48 @@ const checks = [
   }
 ];
 
+const gates = {
+  cloud: checks[0].ok && checks[1].ok,
+  "stripe-checkout": checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[5].ok,
+  "stripe-webhook": checks[0].ok && checks[3].ok && checks[6].ok,
+  "terminal-reader":
+    checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[6].ok && checks[7].ok && checks[8].ok,
+  "staff-bootstrap": checks[0].ok && checks[9].ok
+};
+
+const allowedRequiredGates = Object.keys(gates);
+const requiredGates = allowedRequiredGates.filter((name) => requiredGateNames.includes(name)).map((name) => ({
+  name,
+  ok: gates[name]
+}));
+const unknownRequiredGateCount = requiredGateNames.length - requiredGates.length;
+
 const output = {
   filesChecked: files,
-  readyForCloudPersistence: checks[0].ok && checks[1].ok,
-  readyForStripeCheckout: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[5].ok,
-  readyForStripeWebhook: checks[0].ok && checks[3].ok && checks[6].ok,
-  readyForTerminalReaderHandoff: checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[7].ok && checks[8].ok,
-  readyForStaffBootstrap: checks[0].ok && checks[9].ok,
+  readyForCloudPersistence: gates.cloud,
+  readyForStripeCheckout: gates["stripe-checkout"],
+  readyForStripeWebhook: gates["stripe-webhook"],
+  readyForTerminalReaderHandoff: gates["terminal-reader"],
+  readyForStaffBootstrap: gates["staff-bootstrap"],
+  allowedRequiredGates,
+  requiredGates,
+  unknownRequiredGateCount,
   checks
 };
 
 console.log(JSON.stringify(output, null, 2));
 
-if (!output.readyForCloudPersistence) {
+const failedRequiredGates = requiredGates.filter((gate) => !gate.ok);
+
+if (unknownRequiredGateCount > 0) {
+  console.error(
+    `Unknown SKYLA_CONVEX_ENV_REQUIRE gate count: ${unknownRequiredGateCount}. See allowedRequiredGates in JSON output.`
+  );
+  process.exitCode = 1;
+} else if (requiredGateNames.length > 0 && failedRequiredGates.length > 0) {
+  console.error("One or more required Convex env gates are not ready. See requiredGates in JSON output.");
+  process.exitCode = 1;
+} else if (requiredGateNames.length === 0 && !output.readyForCloudPersistence) {
   process.exitCode = 1;
 }
 

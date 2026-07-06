@@ -11,6 +11,7 @@ const noRealCardsAck = process.env.SKYLA_ACCEPTANCE_NO_REAL_CARDS === "1";
 const allowProduction = process.env.SKYLA_ALLOW_PRODUCTION_ACCEPTANCE === "1";
 const runStripeCheckout = process.env.SKYLA_ACCEPTANCE_STRIPE_CHECKOUT === "1";
 const runTerminalReader = process.env.SKYLA_ACCEPTANCE_TERMINAL_READER === "1";
+const preflightOnly = process.env.SKYLA_ACCEPTANCE_PREFLIGHT === "1";
 
 if (mode !== "linked-test") {
   fail("setup", "set SKYLA_ACCEPTANCE_MODE=linked-test to run linked acceptance");
@@ -103,6 +104,18 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+const readers = await checkPosReaders(headers, { requireReaders: !preflightOnly });
+
+if (failures.length > 0) {
+  printFailures();
+  process.exit(1);
+}
+
+if (preflightOnly) {
+  printPreflightSummary(readiness.json, readers.json);
+  process.exit(0);
+}
+
 const checkoutDraft = await postJson("/api/order-drafts/checkout", {
   packageKey: "general",
   adults: 2,
@@ -167,20 +180,6 @@ expectStatus("experience inquiry", inquiry, 201);
 expect("experience inquiry", inquiry.json?.inquiry?.status === "pending", "expected pending inquiry");
 expect("experience inquiry", inquiry.json?.inquiry?.emailLower === customerEmail, "expected normalized email");
 expectNoClientSecret("experience inquiry", inquiry);
-
-const readersUnauthenticated = await getJson("/api/pos/readers");
-expectStatus("POS readers unauthenticated", readersUnauthenticated, 401);
-expect(
-  "POS readers unauthenticated",
-  readersUnauthenticated.json?.code === "staff_auth_required",
-  "expected staff_auth_required"
-);
-
-const readers = await getJson("/api/pos/readers", headers);
-expectStatus("POS readers authenticated", readers, 200);
-expect("POS readers authenticated", Array.isArray(readers.json?.readers), "expected readers array");
-expect("POS readers authenticated", readers.json?.readers?.length > 0, "expected at least one test reader");
-expectNoClientSecret("POS readers authenticated", readers);
 
 const firstReader = readers.json?.readers?.[0];
 if (firstReader?.readerId) {
@@ -303,6 +302,53 @@ async function maybeRunTerminalReaderAcceptance(saleRef, id, authHeaders) {
   notes.push("Stripe Terminal test-reader processing passed.");
 }
 
+async function checkPosReaders(authHeaders, options) {
+  const readersUnauthenticated = await getJson("/api/pos/readers");
+  expectStatus("POS readers unauthenticated", readersUnauthenticated, 401);
+  expect(
+    "POS readers unauthenticated",
+    readersUnauthenticated.json?.code === "staff_auth_required",
+    "expected staff_auth_required"
+  );
+  expectNoClientSecret("POS readers unauthenticated", readersUnauthenticated);
+
+  if (!options.requireReaders && !readiness.json?.terminal?.readerRegistryConfigured) {
+    notes.push("POS reader registry is not configured; authenticated reader listing skipped in preflight.");
+    return { json: { readers: [] } };
+  }
+
+  const authenticatedReaders = await getJson("/api/pos/readers", authHeaders);
+  expectStatus("POS readers authenticated", authenticatedReaders, 200);
+  expect("POS readers authenticated", Array.isArray(authenticatedReaders.json?.readers), "expected readers array");
+  if (options.requireReaders) {
+    expect("POS readers authenticated", authenticatedReaders.json?.readers?.length > 0, "expected at least one test reader");
+  }
+  expectNoClientSecret("POS readers authenticated", authenticatedReaders);
+  return authenticatedReaders;
+}
+
+function printPreflightSummary(readinessResult, readerResult) {
+  console.log(`Linked acceptance preflight passed for ${baseUrl.origin}.`);
+  console.log("- No write APIs were called.");
+  console.log(`- Staff token accepted as ${readinessResult.staff.emailLower} (${readinessResult.staff.role}).`);
+  console.log(
+    `- Stripe mode: ${readinessResult.stripe.mode}; checkout ready: ${yesNo(readinessResult.stripe.checkoutReady)}; webhook configured: ${yesNo(readinessResult.stripe.webhookSecretConfigured)}.`
+  );
+  console.log(
+    `- Terminal registry configured: ${yesNo(readinessResult.terminal.readerRegistryConfigured)}; valid: ${yesNo(readinessResult.terminal.readerRegistryValid)}; configured readers: ${readinessResult.terminal.readerCount}.`
+  );
+  console.log(
+    `- Terminal reader processing ready: ${yesNo(readinessResult.terminal.readerProcessingReady)}; acceptance enabled: ${yesNo(readinessResult.terminal.acceptanceEnabled)}.`
+  );
+  if (Array.isArray(readerResult?.readers) && readerResult.readers.length > 0) {
+    console.log(`- Authenticated POS reader listing returned ${readerResult.readers.length} reader(s).`);
+  }
+  for (const note of notes) {
+    console.log(`- ${note}`);
+  }
+  console.log("- Omit SKYLA_ACCEPTANCE_PREFLIGHT=1 to run the write acceptance after the dashboard gates are ready.");
+}
+
 async function postJson(path, body, extraHeaders = {}) {
   return requestJson(path, {
     method: "POST",
@@ -383,6 +429,10 @@ function classifyTarget(url) {
     return "vercel-unknown";
   }
   return "unknown";
+}
+
+function yesNo(value) {
+  return value ? "yes" : "no";
 }
 
 function printFailures() {

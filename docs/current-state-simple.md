@@ -1,6 +1,6 @@
 # Skyla Current State
 
-Last checked: 2026-07-05.
+Last checked: 2026-07-06.
 
 This is the plain-English handoff for people, plus enough raw detail for future
 agents to keep going safely.
@@ -84,8 +84,12 @@ safe behavior.
 - [ ] Seed the code-owned catalog through `POST /api/admin/catalog` with
       `{"action":"seedCodeOwnedCatalog"}` and a valid admin staff token.
 - [ ] Set Convex `SKYLA_TERMINAL_READER_REGISTRY` with test reader IDs.
-- [ ] Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until the test reader flow
-      passes.
+- [ ] Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
+      webhook setup, and reader registry checks pass; then enable it only for
+      the controlled test-reader attempt.
+- [ ] Run `bun run test:acceptance:preflight` against the Vercel Preview branch
+      alias to verify staff auth, remote readiness, and reader gating without
+      writing test records.
 - [ ] Verify `/members` writes to Convex in preview.
 - [ ] Verify `/experiences` writes to Convex in preview.
 - [ ] Verify checkout creates a Stripe Checkout session in test mode.
@@ -131,4 +135,5 @@ the newest deployment before recording fresh operational evidence.
 4. Finish refunds with Stripe reconciliation and audit events.
 5. Finish destructive admin actions only with typed validators and rollback
    runbooks.
-6. Run linked Convex/Stripe acceptance after dashboard setup.
+6. Run no-write linked acceptance preflight after dashboard setup.
+7. Run linked Convex/Stripe write acceptance after the preflight passes.

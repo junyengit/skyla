@@ -592,6 +592,7 @@ export const getAcceptanceReadiness = query({
         readerProcessingReady:
           mode === "test" &&
           stripeSecretConfigured &&
+          stripeWebhookSecretConfigured &&
           registry.valid &&
           registry.readerCount > 0 &&
           terminalAcceptanceEnabled
