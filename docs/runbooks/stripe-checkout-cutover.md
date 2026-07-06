@@ -116,7 +116,9 @@ Expected:
 
 - New Convex action accepts `orderRef`, not `amountCents`.
 - Stripe session creation reads stored order lines/totals; catalog provenance is
-  audit context, not a new browser-supplied pricing authority.
+  audit context, not a new browser-supplied pricing authority. The Convex
+  payment snapshot must reject missing or mismatched code-owned catalog
+  provenance before contacting Stripe.
 - `/checkout` calls the Next/Convex route.
 - `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
   `shared-data.js`, or Kaskade code.
@@ -233,6 +235,8 @@ Expected after Convex is wired:
 - [ ] Stripe Checkout action rejects missing/incorrect `idempotencyKey`.
 - [ ] Stripe Checkout action rejects return URLs outside the allowlist.
 - [ ] Stripe Checkout action creates sessions from stored Convex totals only.
+- [ ] Stripe Checkout action rejects stored catalog-priced lines whose
+      provenance metadata is missing or does not match the code-owned catalog.
 - [ ] `paymentEvents` records Stripe session id, amount, currency, and idempotency key.
 - [ ] Webhook verifies raw-body signatures and records duplicate event IDs
       idempotently.

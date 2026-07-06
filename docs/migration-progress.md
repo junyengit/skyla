@@ -1088,6 +1088,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       provenance gate.
 - [x] Queried Vercel error logs for `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`; no
       error logs were found in the checked 30-minute window.
+- [x] Started branch `codex/payment-snapshot-provenance-gate` to close the
+      remaining replay gap where Stripe Checkout, Terminal PaymentIntent
+      creation, and Terminal reader processing validated stored amounts but did
+      not re-check stored catalog provenance before handoff.
+- [x] Added `assertStoredPaymentLineProvenance` and wired it into the Convex
+      payment snapshot queries so catalog-priced lines must still match the
+      code-owned catalog version/source/authority/hash and amount, while custom
+      POS lines must not spoof catalog metadata.
+- [x] Added Convex unit coverage proving Checkout snapshots reject missing
+      provenance and Terminal reader processing rejects spoofed catalog hashes.
+- [x] Re-ran `bun run check`, `bun run security`, live payment smoke, and
+      production-readiness smoke against `https://skydeckla.com`; all passed,
+      with production still fail-closed before dashboard wiring.
 
 ## Decisions
 

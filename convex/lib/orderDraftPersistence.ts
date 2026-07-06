@@ -1,6 +1,9 @@
 import {
   addons,
   cafeItems,
+  catalogLineMetadata,
+  childDiscountRate,
+  childPriceCents,
   checkoutOrderLineRecords,
   checkoutOrderRecord,
   createCheckoutOrderDraft,
@@ -8,6 +11,7 @@ import {
   posSaleLineRecords,
   posSaleRecord,
   ticketPackages,
+  type CatalogPricedItem,
   type AddonKey,
   type CafeItemKey,
   type CheckoutOrderDraft,
@@ -391,6 +395,101 @@ function draftLineResult(line: DraftResultLine) {
     lineTotalCents: line.lineTotalCents,
     metadata: line.metadata
   });
+}
+
+export function assertStoredPaymentLineProvenance(lines: DraftResultLine[], label: string) {
+  if (!lines.length) {
+    throw new Error(`${label} payment requires stored line items`);
+  }
+
+  for (const [index, line] of lines.entries()) {
+    const lineLabel = `${label} line ${index + 1}`;
+    if (line.kind === "custom") {
+      assertCustomLineMetadata(line, lineLabel);
+      continue;
+    }
+
+    const item = catalogItemForLine(line, lineLabel);
+    const metadata = assertMetadata(line.metadata, lineLabel);
+    const expectedMetadata = catalogLineMetadata(item);
+
+    for (const [key, value] of Object.entries(expectedMetadata)) {
+      if (metadata[key] !== value) {
+        throw new Error(`${lineLabel} has mismatched catalog provenance: ${key}`);
+      }
+    }
+
+    assertCatalogLineAmount(line, item, metadata, lineLabel);
+  }
+}
+
+function catalogItemForLine(line: DraftResultLine, lineLabel: string): CatalogPricedItem {
+  if (!line.productKey) {
+    throw new Error(`${lineLabel} is missing a productKey`);
+  }
+
+  if (line.kind === "ticket" && line.productKey in ticketPackages) {
+    return ticketPackages[line.productKey as TicketPackageKey];
+  }
+  if (line.kind === "addon" && line.productKey in addons) {
+    return addons[line.productKey as AddonKey];
+  }
+  if (line.kind === "cafe" && line.productKey in cafeItems) {
+    return cafeItems[line.productKey as CafeItemKey];
+  }
+
+  throw new Error(`${lineLabel} references an unknown code-owned catalog item`);
+}
+
+function assertMetadata(
+  metadata: DraftResultLine["metadata"],
+  lineLabel: string
+): Record<string, string | number | boolean> {
+  if (!metadata || typeof metadata !== "object") {
+    throw new Error(`${lineLabel} is missing catalog provenance metadata`);
+  }
+  return metadata;
+}
+
+function assertCatalogLineAmount(
+  line: DraftResultLine,
+  item: CatalogPricedItem,
+  metadata: Record<string, string | number | boolean>,
+  lineLabel: string
+) {
+  const isChildTicket = line.kind === "ticket" && metadata.childDiscountRate === childDiscountRate;
+  if (line.kind !== "ticket" && metadata.childDiscountRate !== undefined) {
+    throw new Error(`${lineLabel} has child pricing metadata on a non-ticket line`);
+  }
+
+  const expectedName = isChildTicket ? `${item.name} Child` : item.name;
+  const expectedUnitAmountCents = isChildTicket ? childPriceCents(item.priceCents) : item.priceCents;
+
+  if (line.name !== expectedName) {
+    throw new Error(`${lineLabel} name does not match the code-owned catalog`);
+  }
+  if (line.unitAmountCents !== expectedUnitAmountCents) {
+    throw new Error(`${lineLabel} price does not match the code-owned catalog`);
+  }
+  if (line.quantity * line.unitAmountCents !== line.lineTotalCents) {
+    throw new Error(`${lineLabel} total is inconsistent with quantity and unit price`);
+  }
+}
+
+function assertCustomLineMetadata(line: DraftResultLine, lineLabel: string) {
+  const metadata = line.metadata ?? {};
+  if (
+    metadata.catalogVersion !== undefined ||
+    metadata.catalogSource !== undefined ||
+    metadata.catalogAuthority !== undefined ||
+    metadata.catalogContentHash !== undefined
+  ) {
+    throw new Error(`${lineLabel} is custom but includes catalog provenance metadata`);
+  }
+
+  if (typeof metadata.reason !== "string" || !metadata.reason.trim()) {
+    throw new Error(`${lineLabel} is custom and requires a stored reason`);
+  }
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): T {

@@ -1,12 +1,29 @@
 import { describe, expect, it } from "vitest";
+import { catalogLineMetadata, cafeItems, ticketPackages } from "@skyla/payments";
 
 import { stripeTerminalIntentIdempotencyKey } from "./lib/stripeTerminal";
-import { recordStripeCheckoutWebhook, recordStripeTerminalWebhook } from "./paymentInternals";
+import {
+  getCheckoutPaymentSnapshot,
+  getStripeTerminalReaderProcessSnapshot,
+  recordStripeCheckoutWebhook,
+  recordStripeTerminalWebhook
+} from "./paymentInternals";
 
-type TableName = "orders" | "posSales" | "paymentEvents" | "webhookEvents" | "auditEvents";
+type TableName =
+  | "orders"
+  | "orderLineItems"
+  | "posSales"
+  | "posSaleLines"
+  | "paymentEvents"
+  | "webhookEvents"
+  | "auditEvents"
+  | "staffUsers";
 type MockDoc = Record<string, unknown> & { _id: string; _creationTime: number };
 type MockState = Record<TableName, MockDoc[]>;
 type MockCtx = {
+  auth: {
+    getUserIdentity: () => Promise<{ subject: string } | null>;
+  };
   db: {
     query: (table: TableName) => {
       withIndex: (
@@ -57,6 +74,66 @@ const orderRef = "ORD260704-ABC123";
 const saleRef = "SALE260704-ABC123";
 const providerPaymentId = "pi_terminal_123";
 const checkoutProviderPaymentId = "cs_test_123";
+
+declare const process: { env: Record<string, string | undefined> };
+
+describe("payment snapshot provenance gates", () => {
+  it("rejects Checkout payment snapshots whose catalog line provenance disappeared", async () => {
+    const { ctx } = createCheckoutSnapshotCtx({
+      lineMetadata: undefined
+    });
+
+    await expect(
+      runCheckoutPaymentSnapshot(ctx, {
+        orderRef,
+        idempotencyKey: "acc_checkout_test"
+      })
+    ).rejects.toThrow("Checkout line 1 is missing catalog provenance metadata");
+  });
+
+  it("returns Checkout payment snapshots when stored catalog provenance is intact", async () => {
+    const { ctx } = createCheckoutSnapshotCtx();
+
+    await expect(
+      runCheckoutPaymentSnapshot(ctx, {
+        orderRef,
+        idempotencyKey: "acc_checkout_test"
+      })
+    ).resolves.toMatchObject({
+      orderRef,
+      totalCents: 6090,
+      lines: [
+        {
+          name: "General Admission",
+          quantity: 2,
+          unitAmountCents: 2900,
+          lineTotalCents: 5800
+        }
+      ]
+    });
+  });
+
+  it("rejects Terminal reader processing when stored POS line provenance is spoofed", async () => {
+    const { ctx } = createTerminalProcessSnapshotCtx({
+      lineMetadata: {
+        ...catalogLineMetadata(cafeItems.b1),
+        catalogContentHash: "fnv1a32:00000000:102"
+      }
+    });
+    const previousRegistry = process.env.SKYLA_TERMINAL_READER_REGISTRY;
+    process.env.SKYLA_TERMINAL_READER_REGISTRY = "tmr_test_123@tml_test_123";
+    try {
+      await expect(
+        runTerminalReaderProcessSnapshot(ctx, {
+          saleRef,
+          idempotencyKey: "possale_000001"
+        })
+      ).rejects.toThrow("POS Terminal reader process line 1 has mismatched catalog provenance: catalogContentHash");
+    } finally {
+      process.env.SKYLA_TERMINAL_READER_REGISTRY = previousRegistry;
+    }
+  });
+});
 
 describe("Stripe Checkout webhook internals", () => {
   it("marks a stored checkout order paid when the signed webhook matches the stored payment session", async () => {
@@ -259,6 +336,124 @@ async function runCheckoutWebhook(ctx: MockCtx, args: CheckoutWebhookArgs): Prom
   return mutation._handler(ctx, args);
 }
 
+async function runCheckoutPaymentSnapshot(
+  ctx: MockCtx,
+  args: { orderRef: string; idempotencyKey: string }
+) {
+  const query = getCheckoutPaymentSnapshot as unknown as {
+    _handler: (ctx: MockCtx, args: { orderRef: string; idempotencyKey: string }) => Promise<unknown>;
+  };
+  return query._handler(ctx, args);
+}
+
+async function runTerminalReaderProcessSnapshot(
+  ctx: MockCtx,
+  args: { saleRef: string; idempotencyKey: string }
+) {
+  const query = getStripeTerminalReaderProcessSnapshot as unknown as {
+    _handler: (ctx: MockCtx, args: { saleRef: string; idempotencyKey: string }) => Promise<unknown>;
+  };
+  return query._handler(ctx, args);
+}
+
+function createCheckoutSnapshotCtx(
+  options: { lineMetadata?: Record<string, string | number | boolean> } = {}
+): { ctx: MockCtx; state: MockState } {
+  const state = createEmptyState();
+  state.orders.push({
+    _id: "orders_1",
+    _creationTime: 1,
+    orderRef,
+    channel: "online",
+    status: "draft",
+    currency: "usd",
+    subtotalCents: 5800,
+    feeCents: 290,
+    totalCents: 6090,
+    idempotencyKey: "acc_checkout_test",
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.orderLineItems.push({
+    _id: "orderLineItems_1",
+    _creationTime: 1,
+    orderRef,
+    kind: "ticket",
+    productKey: "general",
+    name: "General Admission",
+    quantity: 2,
+    unitAmountCents: 2900,
+    lineTotalCents: 5800,
+    ...(options.lineMetadata === undefined
+      ? {}
+      : { metadata: options.lineMetadata ?? catalogLineMetadata(ticketPackages.general) })
+  });
+
+  if (!("lineMetadata" in options)) {
+    state.orderLineItems[0].metadata = catalogLineMetadata(ticketPackages.general);
+  }
+
+  return createMockCtx(state);
+}
+
+function createTerminalProcessSnapshotCtx(
+  options: { lineMetadata?: Record<string, string | number | boolean> } = {}
+): { ctx: MockCtx; state: MockState } {
+  const state = createEmptyState();
+  state.staffUsers.push({
+    _id: "staffUsers_1",
+    _creationTime: 1,
+    subject: "staff_subject",
+    emailLower: "pos@example.com",
+    role: "pos",
+    active: true,
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.posSales.push({
+    _id: "posSales_1",
+    _creationTime: 1,
+    saleRef,
+    status: "payment_pending",
+    currency: "usd",
+    subtotalCents: 600,
+    feeCents: 0,
+    totalCents: 600,
+    staffUserId: "staffUsers_1",
+    readerId: "tmr_test_123",
+    terminalLocationId: "tml_test_123",
+    idempotencyKey: "possale_000001",
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.posSaleLines.push({
+    _id: "posSaleLines_1",
+    _creationTime: 1,
+    saleRef,
+    kind: "cafe",
+    productKey: "b1",
+    name: "Butter Croissant",
+    quantity: 1,
+    unitAmountCents: 600,
+    lineTotalCents: 600,
+    metadata: options.lineMetadata ?? catalogLineMetadata(cafeItems.b1)
+  });
+  state.paymentEvents.push({
+    _id: "paymentEvents_1",
+    _creationTime: 1,
+    saleRef,
+    provider: "terminal",
+    providerPaymentId,
+    idempotencyKey: stripeTerminalIntentIdempotencyKey(saleRef),
+    status: "requires_payment",
+    currency: "usd",
+    amountCents: 600,
+    createdAt: 1
+  });
+
+  return createMockCtx(state);
+}
+
 function createCheckoutWebhookCtx(
   options: { orderStatus?: string; includePaidEvent?: boolean } = {}
 ): { ctx: MockCtx; state: MockState } {
@@ -348,10 +543,13 @@ function createTerminalWebhookCtx(
 function createEmptyState(): MockState {
   return {
     orders: [],
+    orderLineItems: [],
     posSales: [],
+    posSaleLines: [],
     paymentEvents: [],
     webhookEvents: [],
-    auditEvents: []
+    auditEvents: [],
+    staffUsers: []
   };
 }
 
@@ -359,6 +557,11 @@ function createMockCtx(state: MockState): { ctx: MockCtx; state: MockState } {
   let nextId = 2;
 
   const ctx: MockCtx = {
+    auth: {
+      async getUserIdentity() {
+        return { subject: "staff_subject" };
+      }
+    },
     db: {
       query(table) {
         return {

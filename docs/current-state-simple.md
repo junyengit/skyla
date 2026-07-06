@@ -13,6 +13,9 @@ calculated by trusted server-side code instead of browser-submitted totals.
 The linked acceptance harness also checks that payment creation reuses the
 stored draft idempotency keys, so Stripe Checkout and Terminal cannot drift
 away from the server-owned order or POS sale draft.
+Convex payment snapshots now also refuse to start or process Stripe Checkout
+and Terminal payments if stored catalog-priced lines are missing or spoofing
+the code-owned catalog provenance.
 
 Real card charging is still intentionally blocked. That is good for now. The
 site needs the real Convex project, Vercel environment variable, Stripe test
@@ -71,6 +74,8 @@ flowchart LR
 - Catalog-priced checkout and POS lines carry flat provenance metadata:
   `catalogVersion`, `catalogSource`, `catalogAuthority`, and
   `catalogContentHash`. Custom POS lines keep only the staff-entered reason.
+- Stripe Checkout, Terminal PaymentIntent creation, and Terminal reader
+  processing now re-check the stored line provenance before contacting Stripe.
 - Admin and POS staff pages render high-contrast white text on dark surfaces.
 - Bun canary is the package manager and frozen install makes no lockfile
   changes.
@@ -149,6 +154,7 @@ safe behavior.
 | `bun run test:smoke` | Passed on `https://web-powem7zir-junyen-enterprises.vercel.app` and `https://skydeckla.com` after PR #103 |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge; now checks exact catalog line provenance metadata and canonical line amounts |
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated; now includes exact catalog provenance and line amounts in payment no-write probes |
+| Convex payment snapshot provenance gate | Current branch adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
 | `bun run dashboard:readiness` | Added as the combined safe dashboard summary; fails until Vercel and Convex/Stripe dashboard gates are shaped for linked Preview preflight |
@@ -184,5 +190,7 @@ smoke checks before recording fresh exact-deployment evidence.
 8. Run linked Convex/Stripe write acceptance after the preflight passes; the
    harness now checks persisted checkout/POS line provenance before optional
    Stripe Checkout or Terminal legs.
-9. Keep the Stripe public response allowlists and `clientSecret` regression
+9. Keep Convex payment snapshot provenance gates in place so stored draft
+   replays cannot drop or spoof catalog identity before Stripe handoff.
+10. Keep the Stripe public response allowlists and `clientSecret` regression
    tests in place for any future payment route changes.

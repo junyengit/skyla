@@ -3,6 +3,7 @@ import { addons, cafeItems, catalogLineMetadata, ticketPackages } from "@skyla/p
 
 import {
   assertSameDraftFingerprint,
+  assertStoredPaymentLineProvenance,
   buildCheckoutDraftWrite,
   buildPosSaleDraftWrite,
   checkoutDraftFingerprint,
@@ -110,6 +111,31 @@ describe("Convex order draft persistence helpers", () => {
     });
   });
 
+  it("accepts payment snapshots only when catalog-priced checkout lines keep provenance", () => {
+    const write = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, children: 1, idempotencyKey: "checkout_000007" },
+      { orderRef: "SKY2607-ABC123", now }
+    );
+
+    expect(() => assertStoredPaymentLineProvenance(write.lines, "Checkout")).not.toThrow();
+
+    expect(() =>
+      assertStoredPaymentLineProvenance([{ ...write.lines[0], metadata: undefined }], "Checkout")
+    ).toThrow("Checkout line 1 is missing catalog provenance metadata");
+
+    expect(() =>
+      assertStoredPaymentLineProvenance(
+        [
+          {
+            ...write.lines[0],
+            metadata: { ...catalogLineMetadata(ticketPackages.general), catalogContentHash: "fnv1a32:00000000:92" }
+          }
+        ],
+        "Checkout"
+      )
+    ).toThrow("Checkout line 1 has mismatched catalog provenance: catalogContentHash");
+  });
+
   it("validates checkout dates, times, emails, and bounded quantities", () => {
     expect(() =>
       buildCheckoutDraftWrite(
@@ -194,6 +220,33 @@ describe("Convex order draft persistence helpers", () => {
       })
     );
     expect(write.lines[1].metadata).toEqual({ reason: "Manager approved" });
+  });
+
+  it("accepts POS custom payment lines without catalog provenance and rejects catalog spoofing", () => {
+    const write = buildPosSaleDraftWrite(
+      {
+        lines: [
+          { kind: "cafe", itemKey: "b1", quantity: 1 },
+          { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
+        ],
+        idempotencyKey: "possale_000005"
+      },
+      { saleRef: "SALE260704-ABC123", now, staffUserId: "staff_123", actorRole: "pos" }
+    );
+
+    expect(() => assertStoredPaymentLineProvenance(write.lines, "POS Terminal")).not.toThrow();
+
+    expect(() =>
+      assertStoredPaymentLineProvenance(
+        [
+          {
+            ...write.lines[1],
+            metadata: { ...catalogLineMetadata(cafeItems.b1), reason: "Guest requested locker" }
+          }
+        ],
+        "POS Terminal"
+      )
+    ).toThrow("POS Terminal line 1 is custom but includes catalog provenance metadata");
   });
 
   it("rejects viewer pricing and POS idempotency conflicts", () => {

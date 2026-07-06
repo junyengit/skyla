@@ -15,6 +15,7 @@ import {
   stripeTerminalSaleStatusAfterUnpaidOutcome
 } from "./lib/stripeWebhook";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
+import { assertStoredPaymentLineProvenance } from "./lib/orderDraftPersistence";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -41,6 +42,7 @@ export const getCheckoutPaymentSnapshot = internalQuery({
       .query("orderLineItems")
       .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
       .collect();
+    assertStoredPaymentLineProvenance(lines, "Checkout");
 
     return {
       orderRef: order.orderRef,
@@ -154,6 +156,7 @@ export const getPosTerminalPaymentSnapshot = internalQuery({
       .query("posSaleLines")
       .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
       .collect();
+    assertStoredPaymentLineProvenance(lines, "POS Terminal");
     const authorizedReader = authorizeTerminalReaderSelection(
       { readerId: sale.readerId, terminalLocationId: sale.terminalLocationId },
       process.env.SKYLA_TERMINAL_READER_REGISTRY
@@ -288,6 +291,11 @@ export const getStripeTerminalReaderProcessSnapshot = internalQuery({
     if (!sale.readerId) {
       throw new Error("POS sale does not have a stored Terminal reader");
     }
+    const lines = await ctx.db
+      .query("posSaleLines")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .collect();
+    assertStoredPaymentLineProvenance(lines, "POS Terminal reader process");
     const authorizedReader = authorizeTerminalReaderSelection(
       { readerId: sale.readerId, terminalLocationId: sale.terminalLocationId },
       process.env.SKYLA_TERMINAL_READER_REGISTRY
