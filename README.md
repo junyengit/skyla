@@ -193,7 +193,11 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
   verified and the dashboard deployments are disabled or redeployed from the
   fail-closed repo copies. `bun run security:supabase-retired` now guards the
   repo copies so Stripe/Kaskade/Supabase helper calls cannot quietly return to
-  those retired functions.
+  those retired functions. After dashboard changes, use
+  `bun run test:supabase-retired:live` with
+  `SKYLA_SUPABASE_RETIREMENT_BASE_URL` and
+  `SKYLA_SUPABASE_RETIREMENT_LIVE=1` to prove deployed legacy endpoints are
+  disabled or redeployed from the retired stubs.
 
 Useful operator references:
 

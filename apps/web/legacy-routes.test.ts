@@ -207,8 +207,12 @@ describe("legacy route bridge", () => {
     for (const retiredStaffAsset of ["admin.css", "admin.js", "pos.css", "pos.js", "shared-data.js"]) {
       expect(existsSync(join(publicDir, retiredStaffAsset)), retiredStaffAsset).toBe(false);
     }
-    expect(legacyTerminalFunction).toContain('"setup-reader"');
     expect(legacyTerminalFunction).toContain("Legacy Stripe Terminal bridge is permanently disabled");
+    expect(legacyTerminalFunction).toContain("410");
+    expect(legacyTerminalFunction).not.toContain("payload.action");
+    expect(legacyTerminalFunction).not.toContain("DISABLED_BRIDGE_ACTIONS");
+    expect(legacyTerminalFunction).not.toContain("Unknown action");
+    expect(legacyTerminalFunction).not.toContain('"setup-reader"');
     expect(legacyTerminalFunction).not.toContain("SKYLA_TERMINAL_SETUP_TOKEN");
     expect(legacyTerminalFunction).not.toContain("/terminal/readers");
   });

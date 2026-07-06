@@ -56,3 +56,8 @@ Run `bun run security:supabase-retired` with the normal security checks after
 touching `supabase/functions/**`. The guard keeps the repo copies of the old
 Stripe/Kaskade functions retired instead of letting a provider call or Supabase
 helper slip back in.
+
+After Supabase dashboard changes, run `bun run test:supabase-retired:live`
+with `SKYLA_SUPABASE_RETIREMENT_BASE_URL` and
+`SKYLA_SUPABASE_RETIREMENT_LIVE=1` to verify deployed legacy functions are
+disabled or redeployed from the retired stubs.

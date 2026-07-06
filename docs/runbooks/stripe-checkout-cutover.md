@@ -238,6 +238,11 @@ Expected after Convex is wired:
       `410` dead ends without Supabase helper or provider API calls.
 - [ ] Confirm any already deployed legacy Supabase functions are redeployed from
       fail-closed code or disabled in the dashboard.
+- [ ] Run `bun run test:supabase-retired:live` with
+      `SKYLA_SUPABASE_RETIREMENT_BASE_URL=https://<project-ref>.supabase.co/functions/v1`
+      and `SKYLA_SUPABASE_RETIREMENT_LIVE=1` after dashboard changes; accept
+      only retired `410` results with expected markers, or disabled `404` with
+      `SKYLA_SUPABASE_RETIREMENT_ALLOW_DISABLED=1` after confirming names.
 - [x] POS Terminal create-intent accepts `saleRef` only before live
       card-present use.
 - [ ] Native `/pos` can collect/process the Convex-created PaymentIntent on a

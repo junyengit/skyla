@@ -827,6 +827,14 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`.
 - [x] Started branch `codex/post-pr90-production-evidence` to record PR #90
       production evidence without changing app behavior.
+- [x] Started branch `codex/live-supabase-retirement-smoke` to make the
+      remaining Supabase dashboard decommissioning step externally verifiable.
+- [x] Made the repo copy of legacy Supabase `stripe-terminal` return `410` for
+      every non-OPTIONS request, including harmless unknown probe actions.
+- [x] Added `bun run test:supabase-retired:live`, a no-card live smoke that
+      checks `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
+      `kaskade-payment`, and `kaskade-webhook` against a supplied Supabase
+      functions base URL and accepts only disabled `404` or retired `410`.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

@@ -29,6 +29,7 @@
     "test:smoke": "node scripts/smoke/route-smoke.mjs",
     "test:payments": "node scripts/smoke/payment-api-smoke.mjs",
     "test:production-readiness": "node scripts/smoke/production-readiness-smoke.mjs",
+    "test:supabase-retired:live": "node scripts/smoke/supabase-retirement-smoke.mjs",
     "test:acceptance:linked": "node scripts/smoke/linked-acceptance-smoke.mjs",
     "test:acceptance:preflight": "SKYLA_ACCEPTANCE_PREFLIGHT=1 node scripts/smoke/linked-acceptance-smoke.mjs",
     "convex:test:unit": "vitest run convex",

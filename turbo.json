@@ -1,5 +1,10 @@
 {
   "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": [
+    "scripts/security/**",
+    "scripts/smoke/**",
+    "supabase/functions/**"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "lint", "typecheck"],

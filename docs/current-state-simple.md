@@ -100,6 +100,13 @@ safe behavior.
 - [ ] Verify Stripe webhooks reconcile checkout and Terminal final states.
 - [ ] Disable or redeploy old Supabase Stripe/Kaskade functions so any live
       legacy endpoints return the repo's fail-closed behavior.
+- [ ] Run `bun run test:supabase-retired:live` with
+      `SKYLA_SUPABASE_RETIREMENT_BASE_URL=https://<project-ref>.supabase.co/functions/v1`
+      and `SKYLA_SUPABASE_RETIREMENT_LIVE=1` after Supabase dashboard changes.
+      Passing means every old function returns retired `410` with the expected
+      marker. Disabled `404` only passes with
+      `SKYLA_SUPABASE_RETIREMENT_ALLOW_DISABLED=1` after confirming the project
+      and function names; `401`/`403` is inconclusive.
 - [ ] Only after all preview checks pass, repeat acceptance on production.
 
 ## Latest Evidence
@@ -123,6 +130,7 @@ safe behavior.
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run check` | Passed on PR #90 |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
+| `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
 | Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; local production screenshots for PR #88 verified active and disabled staff controls stay white-on-dark |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
