@@ -120,11 +120,11 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest production evidence refresh | PR #93, merged to `main` on July 6, 2026 |
-| Latest production deployment | `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi`, status `READY` |
-| Latest production URL | `https://web-6lx1ttp9e-junyen-enterprises.vercel.app` |
-| Latest production commit | `24bcc740100f9080afce50d216852af70f098236` |
-| Latest app-code production verification | PR #92, merged to `main` on July 6, 2026 |
+| Latest production evidence refresh | PR #94, merged to `main` on July 6, 2026 |
+| Latest production deployment | `dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf`, status `READY` |
+| Latest production URL | `https://web-iwfcnvi0b-junyen-enterprises.vercel.app` |
+| Latest production commit | `a5027bdaeb311c1eed938560b0a77590ed9439b4` |
+| Latest app-code production verification | PR #94, merged to `main` on July 6, 2026 |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
@@ -143,7 +143,7 @@ safe behavior.
 | Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; `apps/web/staff-contrast.test.ts` now guards that admin/POS text stays white on dark staff surfaces |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
-| Vercel runtime evidence | After PR #92 smoke probes, Vercel reported no grouped runtime errors and no error/fatal logs for `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
+| Vercel runtime evidence | After PR #94 smoke probes, Vercel reported no grouped runtime errors and no error/fatal logs for `dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
 
 Vercel creates a new production URL after every merge. Treat the app-code
 deployment above as the latest checked behavior, then query Vercel and rerun

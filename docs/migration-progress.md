@@ -918,13 +918,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `2026-06-24.dahlia` version should be adopted only in a controlled
       Workbench/webhook endpoint upgrade with linked acceptance evidence.
 - [x] Updated current-state docs and dashboard checklists: latest Vercel
-      production evidence is PR #93 / `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi`,
+      production evidence is PR #94 / `dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf`,
       Terminal acceptance is a temporary latch instead of a default env step,
       and Supabase retirement now has a dashboard procedure.
 - [x] Verified Vercel hosting health: production deployment
-      `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi` is READY, aliased to
+      `dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf` is READY, aliased to
       `skydeckla.com` and `www.skydeckla.com`, with no grouped runtime errors
-      and no error/fatal logs in the checked 24-hour window.
+      and no error/fatal logs in the checked post-merge window.
 - [x] Confirmed Vercel project envs are still absent with
       `vercel env ls --scope junyen-enterprises`; payment execution remains
       intentionally fail-closed until dashboard setup is complete.
@@ -936,6 +936,30 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `cgWindowNotFound` for the running Helium app. Current contrast evidence
       comes from `apps/web/staff-contrast.test.ts` plus production-readiness
       smoke, not a Helium screenshot.
+
+### 2026-07-06 PR #94 Production Evidence
+
+- [x] Merged dashboard-readiness PR #94 into `main` as merge commit
+      `a5027bdaeb311c1eed938560b0a77590ed9439b4`.
+- [x] Confirmed Vercel production deployment from PR #94 is READY:
+      `https://web-iwfcnvi0b-junyen-enterprises.vercel.app`
+      (`dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf`), with `skydeckla.com` and
+      `www.skydeckla.com` aliased to the same deployment.
+- [x] Ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`; the
+      23-route matrix passed.
+- [x] Ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments`;
+      checkout returned canonical `8505` cents, POS returned canonical `9700`
+      cents, and Stripe execution routes failed closed without real
+      Convex/Stripe dashboard wiring or POS Terminal acceptance.
+- [x] Ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:production-readiness`;
+      both `skydeckla.com` and `www.skydeckla.com` passed route/noindex,
+      no-write payment, member, experience, admin, POS, and compatibility
+      checks.
+- [x] Queried Vercel runtime evidence after the smoke probes: no grouped
+      runtime errors and no error/fatal logs for
+      `dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf`. Status-code grouping showed expected
+      successful `200` responses plus expected `401` staff-auth and `503`
+      Convex-unconfigured gates.
 
 ## Decisions
 
