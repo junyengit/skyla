@@ -1,11 +1,8 @@
 // ============================================================
-// Supabase Edge Function: kaskade-payment   (crypto, experimental)
-// Holds the Kaskade SECRET key (never exposed to the browser).
-// Creates a payment and returns { payment: { id, payAddress, payAmount, ... } }.
-//
-// DEPLOY (dashboard): Edge Functions → Create function → name it
-//   "kaskade-payment" → paste this code → Deploy.
-// SECRET: Edge Functions → Secrets → add  KASKADE_SECRET_KEY = ks_live_...
+// Supabase Edge Function: kaskade-payment   (legacy retired stub)
+// This repo copy is intentionally fail-closed. Do not deploy a browser-
+// authoritative Kaskade payment creator from this project; future crypto
+// payments must be rebuilt through stored server-side refs and Convex actions.
 // ============================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 

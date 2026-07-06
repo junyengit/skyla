@@ -50,7 +50,9 @@ real event intake still depends on the dashboard setup below.
 4. Keep Stripe in test mode first.
 5. Create the Stripe webhook endpoint after Convex gives you the site URL.
 6. Use Stripe test cards and a test Terminal reader only.
-7. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until the test reader passes.
+7. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
+   webhook setup, and reader registry checks pass; then enable it only for the
+   controlled test-reader attempt.
 8. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
 9. Seed the first staff admin, then remove the bootstrap token.
 10. Confirm `/api/pos/readers` returns readers only with a valid staff token.
@@ -194,8 +196,8 @@ flowchart TD
   members["Native /members + member API"]
   experiences["Native /experiences + inquiry API"]
   pos["Native /pos POS draft"]
-  legacy["Legacy admin/POS fallback pages"]
-  supabase["Legacy Supabase functions"]
+  handoff["Saved-link .html handoff pages"]
+  supabase["Legacy Supabase function stubs"]
   convex["Convex order/payment code"]
   stripe["Stripe dashboard"]
 
@@ -203,7 +205,7 @@ flowchart TD
   next --> members
   next --> experiences
   next --> pos
-  next --> legacy --> supabase
+  next --> handoff --> next
   checkout -. "needs env" .-> convex
   members -. "needs env" .-> convex
   experiences -. "needs env" .-> convex
@@ -317,7 +319,7 @@ flowchart TD
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
 - Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.3`,
-  TypeScript `6.0.3`, Vitest `4.1.9`, and Convex `1.42.1` are current for
+  TypeScript `6.0.3`, Vitest `4.1.10`, and Convex `1.42.1` are current for
   this stack.
 - `eslint@10.6.0` is intentionally held because the latest available
   `eslint-plugin-react@7.37.5` crashes under ESLint 10 through Next's lint
@@ -405,10 +407,15 @@ flowchart TD
 - [ ] Set `STRIPE_WEBHOOK_SECRET` after creating the Stripe endpoint.
 - [ ] Set `SKYLA_TERMINAL_READER_REGISTRY` with the Stripe test-reader IDs and
       locations that staff are allowed to use.
-- [ ] Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until Stripe test-reader
-      acceptance passes, then set it to `enabled` in the matching
-      Vercel/Convex runtime scopes.
+- [ ] Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
+      signed webhook setup, and reader registry checks pass. Then set it to
+      `enabled` only in the matching Preview/Convex runtime for the controlled
+      Stripe test-reader acceptance attempt.
 - [ ] Run `bun run convex:env:check`.
+- [ ] Before payment acceptance, run
+      `SKYLA_CONVEX_ENV_REQUIRE=cloud,stripe-checkout,stripe-webhook bun run convex:env:check`.
+- [ ] Before Terminal reader acceptance, run
+      `SKYLA_CONVEX_ENV_REQUIRE=cloud,stripe-webhook,terminal-reader bun run convex:env:check`.
 - [ ] Run `bun run convex:codegen`.
 - [ ] Temporarily set `SKYLA_STAFF_BOOTSTRAP_TOKEN`, run
       `staffBootstrap.upsertStaffUser` for the initial admin, then remove the
@@ -435,6 +442,20 @@ flowchart TD
       `200` for an exact idempotent retry, and `409` for a conflicting retry.
 - [ ] Verify the created member appears in native `/admin` with name, email,
       phone, source, tier, bio, pending status, and timestamps.
+- [ ] Run the no-write linked acceptance preflight against the Vercel Preview
+      URL after staff is seeded:
+
+  ```bash
+  ACCEPTANCE_BASE_URL="$VERCEL_PREVIEW_BRANCH_ALIAS" \
+  SKYLA_ACCEPTANCE_MODE=linked-test \
+  SKYLA_ACCEPTANCE_STRIPE_MODE=test \
+  SKYLA_ACCEPTANCE_NO_REAL_CARDS=1 \
+  SKYLA_STAFF_TEST_TOKEN="$STAFF_TEST_TOKEN" \
+  bun run test:acceptance:preflight
+  ```
+
+  This checks staff auth, remote readiness, reader gating, and client-secret
+  redaction without creating Convex records.
 - [ ] Run linked acceptance against the Vercel Preview URL after staff is seeded:
 
   ```bash
@@ -491,9 +512,11 @@ flowchart TD
 - [x] Add signed Stripe Terminal PaymentIntent webhook reconciliation from the
       stored `saleRef`, stored Terminal PaymentIntent ID, amount, currency, and
       webhook event ID.
-- [ ] Wire native `/pos` to collect/process that Convex-created PaymentIntent
-      on a real Stripe test reader, then set `SKYLA_POS_TERMINAL_ACCEPTANCE`
-      to `enabled`.
+- [ ] After the no-write preflight, signed Stripe webhook setup, and reader
+      registry checks pass in test mode, temporarily set
+      `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` in the matching Preview/Convex
+      runtime and wire native `/pos` to collect/process the Convex-created
+      PaymentIntent on a real Stripe test reader.
 - [ ] Only with a Stripe test reader ready, run the linked harness with
       `SKYLA_ACCEPTANCE_TERMINAL_READER=1` after the base linked acceptance
       checks pass. The harness refuses this unless the remote readiness snapshot

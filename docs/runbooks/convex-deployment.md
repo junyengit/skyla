@@ -212,6 +212,20 @@ secret values:
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
 ```
 
+By default this exits nonzero until cloud persistence is ready. To make it fail
+on later gates too, set `SKYLA_CONVEX_ENV_REQUIRE` to a comma-separated list:
+
+```bash
+SKYLA_CONVEX_ENV_REQUIRE=cloud,stripe-checkout,stripe-webhook \
+PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
+
+SKYLA_CONVEX_ENV_REQUIRE=cloud,stripe-webhook,terminal-reader \
+PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
+```
+
+Allowed gates are `cloud`, `stripe-checkout`, `stripe-webhook`,
+`terminal-reader`, and `staff-bootstrap`.
+
 Expected cloud-ready result:
 
 ```json
@@ -256,7 +270,21 @@ Expected response markers:
 - totals are canonical: subtotal `8100`, fee `405`, total `8505`
 - the fake `totalCents: 1` is ignored
 
-The repeatable version of the linked Preview check is:
+Before writing test records, run the no-write linked preflight. It verifies the
+Preview URL, staff bearer token, remote readiness snapshot, `/api/pos/readers`
+staff gate, and client-secret redaction without creating checkout, member,
+inquiry, POS, or Stripe records:
+
+```bash
+ACCEPTANCE_BASE_URL="$VERCEL_PREVIEW_BRANCH_ALIAS" \
+SKYLA_ACCEPTANCE_MODE=linked-test \
+SKYLA_ACCEPTANCE_STRIPE_MODE=test \
+SKYLA_ACCEPTANCE_NO_REAL_CARDS=1 \
+SKYLA_STAFF_TEST_TOKEN="$STAFF_TEST_TOKEN" \
+bun run test:acceptance:preflight
+```
+
+Then run the repeatable linked Preview write check:
 
 ```bash
 ACCEPTANCE_BASE_URL="$VERCEL_PREVIEW_BRANCH_ALIAS" \
@@ -267,7 +295,7 @@ SKYLA_STAFF_TEST_TOKEN="$STAFF_TEST_TOKEN" \
 bun run test:acceptance:linked
 ```
 
-What it proves:
+What the write check proves:
 
 - checkout drafts persist into Convex and ignore fake browser totals
 - member applications and experience inquiries write through the new server APIs
@@ -290,8 +318,9 @@ What it intentionally does not do by default:
 - it refuses direct Vercel deployment URLs by default; use the
   `web-git-<branch>-junyen-enterprises.vercel.app` Preview branch alias
 
-This script writes test records into the linked Convex project. Run it against a
-Vercel Preview URL first, with Stripe test mode and seeded test staff.
+The preflight script does not write. The linked script writes test records into
+the linked Convex project. Run both against a Vercel Preview URL first, with
+Stripe test mode and seeded test staff.
 
 ## Before Stripe Cutover
 
@@ -315,6 +344,7 @@ these are true:
   token and reports `stripe.mode: "test"`
 - At least one active `admin` staff row exists, created through
   `staffBootstrap.upsertStaffUser` or an equivalent audited process
+- `bun run test:acceptance:preflight` passes against the Vercel Preview URL
 - `bun run test:acceptance:linked` passes against the Vercel Preview URL
 - Preview `/api/admin/bookings/status` returns `401` without a bearer token
 - Preview `/api/admin/bookings/status` returns `400` for arbitrary statuses

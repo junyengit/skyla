@@ -755,6 +755,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `bun run convex:schema:typecheck`, `bun run convex:functions:typecheck`,
       web typecheck, and anonymous
       `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable`.
+- [x] Started branch `codex/acceptance-dry-run-harness` after PR #85 to add a
+      no-write linked acceptance preflight before the dashboard-linked write
+      harness creates test records.
+- [x] Added `SKYLA_ACCEPTANCE_PREFLIGHT=1` / `bun run
+      test:acceptance:preflight`, required-gate support for
+      `bun run convex:env:check`, and stricter Terminal readiness that requires
+      signed Stripe webhook readiness before reader processing is considered
+      ready.
+- [x] Verified the preflight with a local stub server: authenticated readiness
+      and POS reader probes passed, and the harness made zero write requests.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable

@@ -21,37 +21,38 @@ scripts/            Smoke, security, setup, and migration helpers
 ```
 
 Static compatibility pages and active image assets live under
-`apps/web/public`. They keep current public routes working while the App Router,
-Convex, checkout, admin, and POS rebuilds happen route-by-route.
+`apps/web/public`. The remaining `.html` files are handoff pages for saved links;
+they do not call legacy Supabase payment or staff scripts.
 
 ```mermaid
 flowchart LR
   domain["skydeckla.com"]
   vercel["Vercel project: web"]
   web["apps/web Next.js"]
-  bridge["apps/web/public compatibility pages"]
-  legacyBackend["Legacy Supabase functions"]
-  future["Convex + server-authoritative payments"]
+  bridge["apps/web/public handoff pages"]
+  convex["Convex + server-authoritative payments"]
+  supabase["Legacy Supabase function stubs"]
 
   domain --> vercel --> web
   web --> bridge
-  bridge --> legacyBackend
-  web -. next migration slices .-> future
+  bridge --> web
+  web -. "dashboard-gated" .-> convex
+  supabase -. "fail closed until dashboard decommission" .-> convex
 ```
 
 ## Current Hosting State
 
-As of July 5, 2026:
+As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest verified docs-state deployment evidence:
-  `https://web-1n1r4myow-junyen-enterprises.vercel.app` from merge commit
-  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76,
-  deployment `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`).
+  `https://web-kps43da9f-junyen-enterprises.vercel.app` from merge commit
+  `488d271a8918751e786856dc71e77fdab8d97402` (PR #85,
+  deployment `dpl_CmB2vnzPH9tQuq5oSeCCPW3TnWJt`).
 - Latest verified app-code deployment before docs-only follow-ups:
-  `https://web-l6id8jdjf-junyen-enterprises.vercel.app` from merge commit
-  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75,
-  deployment `dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`).
+  `https://web-ifbsn97wt-junyen-enterprises.vercel.app` from merge commit
+  `c52239079288e45e7fb5c8758a312753bdb420d4` (PR #84,
+  deployment `dpl_4MFjVoPD8ewFLtC9DRHSTawMpoZF`).
 - Docs-only merges create newer Vercel production URLs with the same app
   behavior. Use Vercel project `junyen-enterprises/web` or `vercel ls web
   --scope junyen-enterprises` for the newest deployment URL before recording
@@ -70,13 +71,13 @@ As of July 5, 2026:
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
   production was verified, so the old `github.io` surface is no longer an
   active host.
-- Vercel environment variables checked on July 5, 2026: none are configured
+- Vercel environment variables checked on July 6, 2026: none are configured
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
-  `junyen-enterprises/web` found no project environment variables on July 5,
+  `junyen-enterprises/web` found no project environment variables on July 6,
   2026.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the

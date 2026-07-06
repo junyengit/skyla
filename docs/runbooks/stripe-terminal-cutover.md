@@ -66,8 +66,9 @@ route because Vercel is not wired to a real Convex deployment yet.
   matches `SKYLA_STRIPE_MODE`.
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` with entries like
   `tmr_frontdesk@tml_lobby`.
-- `SKYLA_POS_TERMINAL_ACCEPTANCE` remains unset until the test reader path
-  passes, then is set to `enabled` for the accepted runtime.
+- `SKYLA_POS_TERMINAL_ACCEPTANCE` remains unset until no-write preflight,
+  webhook setup, and reader registry checks pass. Then set it to `enabled` only
+  in the controlled test runtime for the Stripe test-reader acceptance attempt.
 - Staff auth provider is configured for Convex.
 - At least one active `staffUsers` row exists with role `admin` or `pos`.
 - Stripe test-mode reader is registered and available.
@@ -202,9 +203,10 @@ Expected after Convex and Stripe webhook envs are wired:
 - [ ] Failed reader handoff retries use a fresh server-reserved process attempt
       idempotency key.
 - [ ] Duplicate in-flight reader handoffs are rejected by the reservation lock.
+- [ ] No-write preflight, signed webhook setup, and reader registry checks pass.
+- [ ] `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` is set only for the controlled
+      test-reader runtime after those no-write gates pass.
 - [ ] Stripe test reader can process the stored intent.
-- [ ] `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` is set only after the test reader
-      path passes.
 - [ ] Successful reader handoff leaves the sale pending until Stripe webhook
       confirmation.
 - [ ] Signed Stripe PaymentIntent webhook records/updates the stored sale,
