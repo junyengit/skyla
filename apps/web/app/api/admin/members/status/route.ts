@@ -2,6 +2,7 @@ import { fetchMutation } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 import {
   adminFailureStatus,
+  adminJson,
   authToken,
   convexUnconfiguredResponse,
   convexUrl,
@@ -75,9 +76,9 @@ export async function POST(request: Request) {
       { url: deploymentUrl, token }
     );
 
-    return Response.json({ member: result });
+    return adminJson({ member: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not update member status";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }

@@ -696,6 +696,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       re-tested ESLint `10.6.0`. ESLint 10 still fails through
       `eslint-plugin-react@7.37.5`, so web lint remains pinned to
       `eslint@9.39.4`.
+- [x] Added a follow-up staff API cache hardening slice after production probes
+      showed default cache headers on the new admin catalog route. Shared staff
+      JSON responses now set `Cache-Control: no-store` and
+      `Vary: Authorization`, with regression coverage.
 - [x] Added `@skyla/payments` catalog list/provenance helpers and routed public
       ticket display, checkout, cafe, admin, and POS option lists through those
       helpers so displayed prices stay aligned with payment-authoritative price

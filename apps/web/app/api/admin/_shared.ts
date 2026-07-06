@@ -75,8 +75,24 @@ export function adminFailureStatus(message: string) {
   return 502;
 }
 
+export function adminJson(body: unknown, init: ResponseInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("cache-control", "no-store");
+
+  const vary = headers.get("vary");
+  const hasAuthorizationVary = vary
+    ?.split(",")
+    .map((item) => item.trim().toLowerCase())
+    .includes("authorization");
+  if (!hasAuthorizationVary) {
+    headers.set("vary", vary ? `${vary}, Authorization` : "Authorization");
+  }
+
+  return Response.json(body, { ...init, headers });
+}
+
 export function staffAuthRequiredResponse(label: string) {
-  return Response.json(
+  return adminJson(
     {
       error: `Staff authentication is required for ${label}`,
       code: "staff_auth_required"
@@ -86,7 +102,7 @@ export function staffAuthRequiredResponse(label: string) {
 }
 
 export function convexUnconfiguredResponse(label: string) {
-  return Response.json(
+  return adminJson(
     {
       error: `Convex is not configured for ${label}`,
       code: "convex_unconfigured"

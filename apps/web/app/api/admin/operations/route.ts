@@ -2,6 +2,7 @@ import { fetchQuery } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 import {
   adminFailureStatus,
+  adminJson,
   authToken,
   convexUnconfiguredResponse,
   convexUrl,
@@ -144,9 +145,9 @@ export async function GET(request: Request) {
       { url: deploymentUrl, token }
     );
 
-    return Response.json(snapshot);
+    return adminJson(snapshot);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load Admin Operations";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }

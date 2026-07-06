@@ -1,7 +1,7 @@
 import { fetchQuery } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 
-import { adminFailureStatus, authToken, convexUnconfiguredResponse, convexUrl, staffAuthRequiredResponse } from "../_shared";
+import { adminFailureStatus, adminJson, authToken, convexUnconfiguredResponse, convexUrl, staffAuthRequiredResponse } from "../_shared";
 
 type AcceptanceReadiness = {
   staff: {
@@ -42,9 +42,9 @@ export async function GET(request: Request) {
     }
 
     const readiness = await fetchQuery(getAcceptanceReadinessQuery, {}, { url: deploymentUrl, token });
-    return Response.json(readiness);
+    return adminJson(readiness);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load Acceptance Readiness";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }

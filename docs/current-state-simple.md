@@ -115,7 +115,7 @@ safe behavior.
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run check` | Passed |
 | Helium visual QA | Production `/admin` and `/pos` render white-on-black staff screens |
-| Admin export API | `401` without auth and `503 convex_unconfigured` with fake auth, both `no-store` and `Vary: Authorization` |
+| Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | Focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 
 Vercel will create newer production URLs for docs-only commits. Treat the
