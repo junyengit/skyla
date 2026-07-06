@@ -149,6 +149,28 @@ type ConfigSnapshot = {
   editableKeys: Array<"announcement" | "hours">;
 };
 
+type CatalogSnapshot = {
+  activeVersion: {
+    version: string;
+    status: "active" | "inactive";
+    itemCount: number;
+    activeItemCount: number;
+    contentHash: string;
+    editableInAdmin: boolean;
+    activatedAt?: number;
+  } | null;
+  versions: Array<{
+    version: string;
+    status: "active" | "inactive";
+    itemCount: number;
+    activeItemCount: number;
+    contentHash: string;
+    editableInAdmin: boolean;
+    activatedAt?: number;
+  }>;
+  currentProducts: CatalogItem[];
+};
+
 type BookingLookupResult = {
   staff: {
     emailLower: string;
@@ -271,6 +293,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [staffToken, setStaffToken] = useState("");
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [configSnapshot, setConfigSnapshot] = useState<ConfigSnapshot | null>(null);
+  const [convexCatalogSnapshot, setConvexCatalogSnapshot] = useState<CatalogSnapshot | null>(null);
   const [bookingLookup, setBookingLookup] = useState<BookingLookupResult | null>(null);
   const [bookingLookupQuery, setBookingLookupQuery] = useState("");
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementConfig>(defaultAnnouncement);
@@ -290,6 +313,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       setMessage("Staff token required.");
       setSnapshot(null);
       setConfigSnapshot(null);
+      setConvexCatalogSnapshot(null);
       return;
     }
 
@@ -300,12 +324,14 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       const headers = {
         Authorization: `Bearer ${token}`
       };
-      const [operationsResponse, configResponse] = await Promise.all([
+      const [operationsResponse, configResponse, catalogResponse] = await Promise.all([
         fetch("/api/admin/operations?limit=12", { headers }),
-        fetch("/api/admin/config", { headers })
+        fetch("/api/admin/config", { headers }),
+        fetch("/api/admin/catalog", { headers })
       ]);
       const operationsData = (await operationsResponse.json()) as OperationsSnapshot | { error?: string; code?: string };
       const configData = (await configResponse.json()) as ConfigSnapshot | { error?: string; code?: string };
+      const catalogData = (await catalogResponse.json()) as CatalogSnapshot | { error?: string; code?: string };
       if (!operationsResponse.ok) {
         throw new Error(
           "error" in operationsData ? operationsData.error ?? "Could not load admin operations" : "Could not load admin operations"
@@ -314,13 +340,18 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!configResponse.ok) {
         throw new Error("error" in configData ? configData.error ?? "Could not load admin config" : "Could not load admin config");
       }
+      if (!catalogResponse.ok) {
+        throw new Error("error" in catalogData ? catalogData.error ?? "Could not load admin catalog" : "Could not load admin catalog");
+      }
       setSnapshot(operationsData as OperationsSnapshot);
       setConfigSnapshot(configData as ConfigSnapshot);
+      setConvexCatalogSnapshot(catalogData as CatalogSnapshot);
       setAnnouncementDraft((configData as ConfigSnapshot).config.announcement);
       setHoursDraft((configData as ConfigSnapshot).config.hours);
     } catch (error) {
       setSnapshot(null);
       setConfigSnapshot(null);
+      setConvexCatalogSnapshot(null);
       setMessage(error instanceof Error ? error.message : "Could not load admin operations");
     } finally {
       setIsLoading(false);
@@ -830,6 +861,14 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                   <strong>Catalog</strong>
                   <span>
                     {catalogState.authority} / {catalogState.editableInAdmin ? "editable" : "read-only"} / {catalogState.version}
+                  </span>
+                </div>
+                <div className="adminOpsConfigTitle">
+                  <strong>Convex</strong>
+                  <span>
+                    {convexCatalogSnapshot?.activeVersion
+                      ? `${convexCatalogSnapshot.activeVersion.version} / ${convexCatalogSnapshot.activeVersion.itemCount} items`
+                      : "not seeded"}
                   </span>
                 </div>
                 <div className="adminOpsCatalog" aria-label="Canonical catalog">

@@ -169,10 +169,10 @@ real event intake still depends on the dashboard setup below.
   fetched one-hour log window. The visible entries were expected public `200`,
   staff-gated `401`, and Convex-unconfigured `503` smoke probes.
 - Bun checked locally: `1.4.0-canary.1+d37f52067`
-- Dependency audit checked on 2026-07-05: `bun audit --audit-level=low` reports
+- Dependency audit checked on 2026-07-06: `bun audit --audit-level=low` reports
   no vulnerabilities after the `postcss@8.5.16` override.
-- Dependency freshness checked on 2026-07-05: `bun outdated --recursive` only
-  listed ESLint `10.6.0`.
+- Dependency freshness checked on 2026-07-06: `vitest` is patched to `4.1.10`;
+  `bun outdated --recursive` only lists ESLint `10.6.0`.
 - Known deferred dependency: ESLint `10.6.0`; it currently breaks through
   `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
   compatible.
@@ -565,39 +565,44 @@ domains plus an optional `VERCEL_PRODUCTION_URL`.
 Current dependency note:
 
 - `bun audit --audit-level=low` reports no vulnerabilities.
+- `vitest` is patched to `4.1.10`.
 - `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
-  `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-05; lint fails
+  `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-06; lint fails
   because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
   the current Next lint stack. Keep ESLint on `9.39.4` until the upstream lint
   plugin stack supports ESLint 10.
 - The public homepage, checkout, admin, POS, and cafe display prices now route
   through `@skyla/payments` catalog helpers. Admin still shows this as a
-  code-owned read-only catalog until Convex catalog versioning, audit history,
-  and rollback rules are implemented.
+  code-owned read-only catalog. Convex now has catalog versioning, immutable
+  product snapshots, and an audited activation/rollback path, but the runtime
+  checkout/POS catalog remains code-owned until linked Convex acceptance passes.
 
 ## Next Work Order
 
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
 2. Seed initial staff with `staffBootstrap.upsertStaffUser`, verify native
    `/admin`, then remove `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
-3. Verify native `/members` applications persist through
+3. Seed the code-owned catalog with `POST /api/admin/catalog` and verify
+   `GET /api/admin/catalog` reports an active version before any future price
+   edit work.
+4. Verify native `/members` applications persist through
    `/api/members/applications` in preview and production after Convex is linked.
-4. Verify preview checkout draft persistence returns `persisted: true`.
-5. Create Stripe test webhook endpoint and set Convex Stripe env vars.
-6. Set Convex/Vercel env vars so the App Router checkout can persist orders
+5. Verify preview checkout draft persistence returns `persisted: true`.
+6. Create Stripe test webhook endpoint and set Convex Stripe env vars.
+7. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-7. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
+8. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-8. Accept Stripe Terminal final webhook reconciliation in test mode with a real
+9. Accept Stripe Terminal final webhook reconciliation in test mode with a real
    test reader and matching Convex sale.
-9. Allow staff to use native `/pos` for card-present payment only after
+10. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-10. Finish native Admin beyond lookup/status/config/voucher/export actions:
+11. Finish native Admin beyond lookup/status/config/voucher/export actions:
    refunds, catalog/pricing edits, and any destructive action with typed
    validators, audit logs, and rollback steps.
-11. Rebuild POS as the protected live App Router/Convex register.
-12. Migrate remaining Supabase data and disable legacy Supabase functions only
+12. Rebuild POS as the protected live App Router/Convex register.
+13. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff

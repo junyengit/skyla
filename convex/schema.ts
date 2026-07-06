@@ -23,6 +23,7 @@ const paymentStatus = v.union(
 const staffRole = v.union(v.literal("admin"), v.literal("pos"), v.literal("viewer"));
 const productKind = v.union(v.literal("ticket"), v.literal("addon"), v.literal("cafe"));
 const lineKind = v.union(v.literal("ticket"), v.literal("addon"), v.literal("cafe"), v.literal("custom"));
+const catalogVersionStatus = v.union(v.literal("active"), v.literal("inactive"));
 
 const stringRecord = v.record(v.string(), v.union(v.string(), v.number(), v.boolean()));
 
@@ -35,10 +36,52 @@ export default defineSchema({
     active: v.boolean(),
     category: v.optional(v.string()),
     metadata: v.optional(stringRecord),
+    catalogVersion: v.optional(v.string()),
+    contentHash: v.optional(v.string()),
+    source: v.optional(v.string()),
+    authority: v.optional(v.string()),
+    updatedBy: v.optional(v.id("staffUsers")),
     updatedAt: v.number()
   })
     .index("by_key", ["key"])
     .index("by_kind_active", ["kind", "active"]),
+
+  catalogVersions: defineTable({
+    version: v.string(),
+    source: v.string(),
+    authority: v.string(),
+    status: catalogVersionStatus,
+    itemCount: v.number(),
+    activeItemCount: v.number(),
+    contentHash: v.string(),
+    editableInAdmin: v.boolean(),
+    createdAt: v.number(),
+    activatedAt: v.optional(v.number()),
+    deactivatedAt: v.optional(v.number()),
+    createdBy: v.optional(v.id("staffUsers")),
+    activatedBy: v.optional(v.id("staffUsers")),
+    deactivatedBy: v.optional(v.id("staffUsers")),
+    notes: v.optional(v.string())
+  })
+    .index("by_version", ["version"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status_createdAt", ["status", "createdAt"]),
+
+  productSnapshots: defineTable({
+    version: v.string(),
+    key: v.string(),
+    kind: productKind,
+    name: v.string(),
+    priceCents: v.number(),
+    active: v.boolean(),
+    category: v.optional(v.string()),
+    metadata: v.optional(stringRecord),
+    contentHash: v.string(),
+    createdAt: v.number()
+  })
+    .index("by_version", ["version"])
+    .index("by_version_key", ["version", "key"])
+    .index("by_key_createdAt", ["key", "createdAt"]),
 
   orders: defineTable({
     orderRef: v.string(),
