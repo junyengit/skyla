@@ -973,6 +973,33 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       states so the command can be verified without hitting the real Vercel
       dashboard.
 
+### 2026-07-06 PR #96 Production Evidence
+
+- [x] Merged Vercel-env-readiness PR #96 into `main` as merge commit
+      `65bb2a6e38eed1474cf809586ef427b57af9b196`.
+- [x] Confirmed Vercel production deployment from PR #96 is READY:
+      `https://web-4jgzocjsd-junyen-enterprises.vercel.app`
+      (`dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`), with `skydeckla.com` and
+      `www.skydeckla.com` aliased to the same deployment.
+- [x] Ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`; the
+      23-route matrix passed.
+- [x] Ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments`;
+      checkout returned canonical `8505` cents, POS returned canonical `9700`
+      cents, and Stripe execution routes failed closed without real
+      Convex/Stripe dashboard wiring or POS Terminal acceptance.
+- [x] Ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:production-readiness`;
+      both `skydeckla.com` and `www.skydeckla.com` passed route/noindex,
+      no-write payment, member, experience, admin, POS, and compatibility
+      checks.
+- [x] Queried Vercel env state with the new checker. The real
+      `junyen-enterprises/web` project still has `envCount: 0`, so
+      `readyForConvexUrl` is false while `safeSecretPlacement` is true.
+- [x] Queried Vercel runtime evidence after the smoke probes: no grouped
+      runtime errors and no error/fatal logs for
+      `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`. Status-code grouping showed expected
+      successful `200` responses plus expected `401` staff-auth and `503`
+      Convex-unconfigured gates.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.

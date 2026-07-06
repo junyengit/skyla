@@ -45,18 +45,18 @@ flowchart LR
 As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest verified app-code production deployment evidence:
-  `https://web-4keycalzp-junyen-enterprises.vercel.app` from merge commit
-  `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3` (PR #92,
-  deployment `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`, status `READY`).
-- PR #92 added an opt-in live Supabase retirement smoke, made the retired
-  Supabase Terminal stub return `410` for every non-OPTIONS request, added
-  Turbo global dependency inputs for root smoke/security/Supabase files, and
-  added a regression test that keeps admin/POS staff text white on dark
-  surfaces.
-- Future docs-only merges may create newer production URLs with the same app
-  behavior. Use Vercel project `junyen-enterprises/web` or `vercel ls web
-  --scope junyen-enterprises` before recording fresh operational evidence.
+- Latest verified production deployment evidence:
+  `https://web-4jgzocjsd-junyen-enterprises.vercel.app` from merge commit
+  `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96,
+  deployment `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`, status `READY`).
+- PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
+  the remaining Convex/Stripe env setup. It reports only env names/scopes,
+  fails until `NEXT_PUBLIC_CONVEX_URL` is in Preview/Production, and fails if
+  Stripe/staff/Terminal secrets are accidentally placed in Vercel.
+- Future docs-only or tooling merges may create newer production URLs with the
+  same app behavior. Use Vercel project `junyen-enterprises/web` or
+  `vercel ls web --scope junyen-enterprises` before recording fresh
+  operational evidence.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.

@@ -70,16 +70,15 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest app-code production verification checked on 2026-07-06:
-  `https://web-4keycalzp-junyen-enterprises.vercel.app`
-- Latest app-code production deployment ID checked on 2026-07-06:
-  `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`
-- Latest app-code production merge commit checked on 2026-07-06:
-  `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3` (PR #92).
-- PR #92 added an opt-in live Supabase retirement smoke, made the retired
-  Supabase Terminal stub return `410` for every non-OPTIONS request, added
-  Turbo global dependency inputs for root smoke/security/Supabase files, and
-  added an admin/POS white-text contrast regression test.
+- Latest production verification checked on 2026-07-06:
+  `https://web-4jgzocjsd-junyen-enterprises.vercel.app`
+- Latest production deployment ID checked on 2026-07-06:
+  `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`
+- Latest production merge commit checked on 2026-07-06:
+  `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96).
+- PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
+  checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
+  Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
 - Query Vercel for the newest deployment URL after each future merge before
   recording fresh operational evidence. Future docs-only merges may create
   newer URLs with the same app behavior.
@@ -89,7 +88,9 @@ real event intake still depends on the dashboard setup below.
 - Vercel/Convex env behavior checked on 2026-07-06: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
   still behaves as Convex-unconfigured, so checkout/POS/member/experience
-  server writes and payment execution are safely blocked.
+  server writes and payment execution are safely blocked. `bun run
+  vercel:env:check` also failed as expected with `envCount: 0`,
+  `readyForConvexUrl: false`, and `safeSecretPlacement: true`.
 - DNS TXT records checked by subagent on 2026-07-02: authoritative Vercel DNS
   did not return the older Apple/Brevo TXT values documented in the domain
   runbook. Restore them in Vercel DNS if those services are still needed, or
@@ -138,7 +139,7 @@ real event intake still depends on the dashboard setup below.
   They must stay HTTP-410 retired surfaces and must not initialize Supabase
   helpers or call Stripe/Kaskade APIs.
 - Native admin export API checked on 2026-07-05 and carried forward after the
-  PR #92 smoke pass:
+  PR #96 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
@@ -154,10 +155,10 @@ real event intake still depends on the dashboard setup below.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-06 after PR #92 and the
+- Vercel production runtime errors checked on 2026-07-06 after PR #96 and the
   latest smoke probes: no grouped runtime errors in the selected 30-minute
   window and no error/fatal logs for deployment
-  `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`. Non-200 responses were expected:
+  `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`. Non-200 responses were expected:
   `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
   gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
@@ -204,7 +205,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
-  after PR #92 reached production.
+  after PR #96 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
