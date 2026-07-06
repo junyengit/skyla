@@ -1120,7 +1120,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 
 - [x] Merged post-PR #105 production-evidence docs PR #106 into `main` as merge
       commit `daa7605cc2cf586b94e51c069c427cc0d5f67601`.
-- [x] Confirmed the current Vercel production alias is READY:
+- [x] Confirmed the PR #106 Vercel production alias was READY:
       `https://web-5nzoujeod-junyen-enterprises.vercel.app`
       (`dpl_59RHYSuQhkBar871iwErMPrZMsRM`), aliased to `skydeckla.com` and
       `www.skydeckla.com`.
@@ -1134,10 +1134,29 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       admins are enforced; force pushes and branch deletion are disabled;
       conversation resolution is required; Dependabot vulnerability alerts and
       automated security fixes are enabled.
+
+### 2026-07-06 PR #107 Production Evidence
+
+- [x] Merged Terminal reader readiness and governance PR #107 into `main` as
+      merge commit `704bcbe03c2c5c49e0443443d99cfca70d95f550`.
 - [x] Tightened Terminal PaymentIntent readiness after a payment/API audit:
       Convex now rejects Terminal PaymentIntent snapshots before Stripe when
       the stored POS sale has no trusted reader, instead of letting reader
       processing fail later.
+- [x] Confirmed Vercel production deployment from PR #107 is READY:
+      `https://web-kafot1r2n-junyen-enterprises.vercel.app`
+      (`dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`; the
+      23-route matrix passed.
+- [x] Re-ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:payments`; checkout returned canonical `8505` cents, POS returned
+      canonical `9700` cents, exact catalog provenance checks passed, and Stripe
+      execution still failed closed before Convex/Stripe dashboard wiring.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:production-readiness`; apex and `www` passed after PR #107.
+- [x] Queried Vercel error logs for `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`; no
+      error logs were found in the checked 20-minute window.
 
 ## Decisions
 

@@ -49,9 +49,7 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #105 merge commit `3648ee4`.
-- The current production alias also points at PR #106 docs-only deployment
-  `dpl_59RHYSuQhkBar871iwErMPrZMsRM`.
+- Vercel production deployment is ready for PR #107 merge commit `704bcbe`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and compatibility handoff routes smoke-test successfully.
@@ -144,12 +142,11 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Current production alias | `https://web-5nzoujeod-junyen-enterprises.vercel.app`, deployment `dpl_59RHYSuQhkBar871iwErMPrZMsRM`, merge commit `daa7605cc2cf586b94e51c069c427cc0d5f67601` |
-| Most recent full production evidence recorded here | PR #105, merged to `main` on July 6, 2026 |
-| Evidence deployment | `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`, status `READY` |
-| Evidence URL | `https://web-d3k2cd65i-junyen-enterprises.vercel.app` |
-| Evidence commit | `3648ee4e4c5b99d4e31639650a620f7fb729ff80` |
-| App/payment behavior verification | PR #105 post-merge smoke checks, rerun on July 6, 2026 |
+| Latest full production evidence recorded here | PR #107, merged to `main` on July 6, 2026 |
+| Evidence deployment | `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`, status `READY` |
+| Evidence URL | `https://web-kafot1r2n-junyen-enterprises.vercel.app` |
+| Evidence commit | `704bcbe03c2c5c49e0443443d99cfca70d95f550` |
+| App/payment behavior verification | PR #107 post-merge smoke checks, rerun on July 6, 2026 |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | GitHub governance | Rechecked July 6, 2026: `main` requires strict `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel` checks; admins are enforced; force pushes, branch deletion, and unresolved conversations are blocked; Dependabot vulnerability alerts and automated security fixes are enabled |
 | Bun | `1.4.0-canary.1+d37f52067` |
@@ -157,7 +154,7 @@ safe behavior.
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=low` | No vulnerabilities found |
 | Dependency sweep | `bun outdated --recursive` reports only the deferred `eslint@10.6.0` major; keep ESLint on `9.39.4` until the current Next/react lint plugin stack supports ESLint 10. `bun audit --audit-level=low` found no vulnerabilities. |
-| `bun run test:smoke` | Passed on `https://web-d3k2cd65i-junyen-enterprises.vercel.app` and `https://skydeckla.com` after PR #105 |
+| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #107 |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge; now checks exact catalog line provenance metadata and canonical line amounts |
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated; now includes exact catalog provenance and line amounts in payment no-write probes |
 | Convex payment snapshot provenance gate | PR #105 adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
@@ -165,7 +162,7 @@ safe behavior.
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
 | `bun run dashboard:readiness` | Added as the combined safe dashboard summary; fails until Vercel and Convex/Stripe dashboard gates are shaped for linked Preview preflight |
-| `bun run check` | Passed locally on July 6, 2026 for the payment snapshot provenance branch |
+| `bun run check` | Passed locally on July 6, 2026 for the Terminal reader readiness branch |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
@@ -174,7 +171,7 @@ safe behavior.
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
-| Vercel runtime evidence | After PR #105 smoke probes, Vercel reported no error logs for `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
+| Vercel runtime evidence | After PR #107 smoke probes, Vercel reported no error logs for `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
 
 Vercel creates a new production URL after every merge, including docs-only
 merges. Treat the app/payment behavior above as the most recent full smoke
