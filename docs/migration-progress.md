@@ -1101,6 +1101,20 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Re-ran `bun run check`, `bun run security`, live payment smoke, and
       production-readiness smoke against `https://skydeckla.com`; all passed,
       with production still fail-closed before dashboard wiring.
+- [x] Merged payment snapshot provenance gate PR #105 into `main` as merge
+      commit `3648ee4e4c5b99d4e31639650a620f7fb729ff80`.
+- [x] Confirmed Vercel production deployment from PR #105 is READY:
+      `https://web-d3k2cd65i-junyen-enterprises.vercel.app`
+      (`dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran route and payment smokes on the raw Vercel production URL and
+      `https://skydeckla.com`; all passed with checkout total `8505` cents,
+      POS total `9700` cents, exact catalog provenance checks, and Stripe
+      execution still fail-closed before Convex/Stripe dashboard wiring.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:production-readiness`; apex and `www` passed after PR #105.
+- [x] Queried Vercel error logs for `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`; no
+      error logs were found in the checked 30-minute window.
 
 ## Decisions
 
