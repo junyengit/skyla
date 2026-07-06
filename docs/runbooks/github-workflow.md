@@ -51,3 +51,8 @@ Treat changes to these paths as production-affecting:
 Do not merge legacy Supabase/payment changes unless they are reviewed as
 production-impacting. Supabase remains a gated legacy backend surface until the
 Convex/payment replacement is built and verified.
+
+Run `bun run security:supabase-retired` with the normal security checks after
+touching `supabase/functions/**`. The guard keeps the repo copies of the old
+Stripe/Kaskade functions retired instead of letting a provider call or Supabase
+helper slip back in.

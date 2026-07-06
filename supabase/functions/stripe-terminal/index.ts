@@ -7,7 +7,6 @@
 // Convex staff-authenticated workflows.
 // ============================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { withSupabase } from "jsr:@supabase/server@^1";
 
 const DISABLED_BRIDGE_ACTIONS = new Set([
   "connection-token",
@@ -50,8 +49,8 @@ async function handle(req: Request) {
 }
 
 export default {
-  fetch: (req: Request, ctx: unknown) => {
+  fetch: (req: Request) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-    return withSupabase({ auth: ["publishable", "secret"] }, handle)(req, ctx);
+    return handle(req);
   },
 };

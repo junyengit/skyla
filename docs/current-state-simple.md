@@ -122,6 +122,7 @@ safe behavior.
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run check` | Passed on PR #88 |
+| `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
 | Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; local production screenshots for PR #88 verified active and disabled staff controls stay white-on-dark |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |

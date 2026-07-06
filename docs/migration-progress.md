@@ -801,6 +801,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `dpl_Bn8CdKbpvmDpaXhuMNYPxTpTjH5Y`.
 - [x] Started branch `codex/post-pr88-production-evidence` to record PR #88
       production evidence without changing app behavior.
+- [x] Started branch `codex/legacy-supabase-retirement-guard` to keep the
+      transition Supabase payment/webhook stubs fail-closed in repo code while
+      dashboard decommissioning remains a separate external step.
+- [x] Removed the Supabase server helper wrapper from the retired legacy
+      Stripe Terminal function so it returns the retired response before any
+      Supabase helper can initialize.
+- [x] Added `bun run security:supabase-retired` plus script tests. The guard
+      checks all five legacy Supabase Stripe/Kaskade payment and webhook
+      function stubs for HTTP-410 retired behavior and blocks Supabase helper,
+      Stripe API, or Kaskade API calls from returning.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
