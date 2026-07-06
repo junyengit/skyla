@@ -8,14 +8,6 @@
 // ============================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const DISABLED_BRIDGE_ACTIONS = new Set([
-  "connection-token",
-  "list-locations",
-  "list-readers",
-  "create-intent",
-  "setup-reader",
-]);
-
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -30,22 +22,13 @@ function json(body: unknown, status = 200) {
 }
 
 async function handle(req: Request) {
-  try {
-    const payload = await req.json();
-    if (DISABLED_BRIDGE_ACTIONS.has(payload.action)) {
-      return json(
-        {
-          error: "Legacy Stripe Terminal bridge is permanently disabled. Use the Next.js/Convex POS saleRef payment flow."
-        },
-        410
-      );
-    }
-
-    return json({ error: "Unknown action" }, 400);
-  } catch (e) {
-    console.error("Legacy Stripe Terminal function failed", e);
-    return json({ error: "Legacy Stripe Terminal request failed" }, 400);
-  }
+  await req.text().catch(() => "");
+  return json(
+    {
+      error: "Legacy Stripe Terminal bridge is permanently disabled. Use the Next.js/Convex POS saleRef payment flow."
+    },
+    410
+  );
 }
 
 export default {

@@ -73,7 +73,9 @@ route because Vercel is not wired to a real Convex deployment yet.
 - At least one active `staffUsers` row exists with role `admin` or `pos`.
 - Stripe test-mode reader is registered and available.
 - Legacy Supabase Terminal bridge is disabled or redeployed from fail-closed
-  repo code.
+  repo code. Verify dashboard state with `bun run test:supabase-retired:live`
+  after setting `SKYLA_SUPABASE_RETIREMENT_BASE_URL` and
+  `SKYLA_SUPABASE_RETIREMENT_LIVE=1`.
 - Stripe test-mode webhook endpoint points at the Convex site URL
   `https://<convex-site-url>/stripe-webhook`.
 - The endpoint subscribes to `payment_intent.succeeded`,
@@ -219,6 +221,8 @@ Expected after Convex and Stripe webhook envs are wired:
       native `/pos`.
 - [ ] Supabase Terminal bridge is disabled in the deployed Supabase project
       after acceptance.
+- [ ] `bun run test:supabase-retired:live` reports disabled `404` or retired
+      `410` for `stripe-terminal`; `401`/`403` is inconclusive.
 
 ## Rollback
 

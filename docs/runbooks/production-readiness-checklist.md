@@ -332,7 +332,8 @@ flowchart TD
   redeployed from the permanently fail-closed repo code in the Supabase
   dashboard. Check `stripe-checkout`, `stripe-terminal`, `stripe-webhook`,
   `kaskade-payment`, and `kaskade-webhook`; `stripe-checkout` should not create
-  payments or verify old Checkout sessions.
+  payments or verify old Checkout sessions. After dashboard changes, run
+  `bun run test:supabase-retired:live` against the Supabase functions base URL.
 - Legacy `/pos.html` reader connection and charge UI should stay disabled while
   the native `/pos` staff-authenticated Terminal flow is accepted.
 - Native `/pos` is not safe for live card-present payment yet because reader
@@ -522,6 +523,23 @@ flowchart TD
 - [ ] In Supabase Edge Functions, confirm whether `kaskade-payment` and
       `kaskade-webhook` are deployed. They should be disabled or redeployed from
       the repo copies that return `410`.
+- [ ] Run the live retirement smoke after dashboard changes:
+
+  ```bash
+  PATH="$HOME/.bun/bin:$PATH" \
+  SKYLA_SUPABASE_RETIREMENT_BASE_URL=https://<project-ref>.supabase.co/functions/v1 \
+  SKYLA_SUPABASE_RETIREMENT_LIVE=1 \
+  SKYLA_SUPABASE_RETIREMENT_ANON_KEY=<anon-key-if-functions-require-jwt> \
+  bun run test:supabase-retired:live
+  ```
+
+  Passing means every probed legacy function returned retired `410` with the
+  expected repo marker. Disabled `404` only passes with
+  `SKYLA_SUPABASE_RETIREMENT_ALLOW_DISABLED=1` after confirming the project and
+  function names in Supabase. `401`/`403` is inconclusive, because an active
+  function may still process requests when called with credentials. The Terminal
+  probe uses `action: "__skyla_retirement_probe__"` so it does not ask the old
+  bridge to create a PaymentIntent, reader setup, or connection token.
 - [ ] Record the deployed status, last deployment time, and rollback decision
       for each legacy function before deleting anything.
 
@@ -559,6 +577,7 @@ PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=<latest-production-url> bun r
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 PATH="$HOME/.bun/bin:$PATH" PRODUCTION_READINESS_BASE_URLS=<latest-production-url>,https://skydeckla.com,https://www.skydeckla.com bun run test:production-readiness
+PATH="$HOME/.bun/bin:$PATH" SKYLA_SUPABASE_RETIREMENT_BASE_URL=https://<project-ref>.supabase.co/functions/v1 SKYLA_SUPABASE_RETIREMENT_LIVE=1 bun run test:supabase-retired:live
 PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/member-applications-route.test.ts convex/memberApplications.test.ts
 ```
 
