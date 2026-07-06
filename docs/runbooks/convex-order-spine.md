@@ -84,6 +84,10 @@ Checkout action, Stripe webhook route, Terminal `saleRef` actions, and Terminal
 PaymentIntent webhook reconciliation follow this rule; Kaskade is still a future
 slice.
 
+Catalog-priced line items also carry catalog provenance metadata. This is audit
+context only: provider actions and reconciliation still trust stored line
+amounts and totals, not browser payloads and not live re-pricing from metadata.
+
 ## Agent Data
 
 Current canonical package prices:
@@ -128,7 +132,13 @@ Expected response shape:
         "name": "General Admission",
         "quantity": 2,
         "unitAmountCents": 2900,
-        "lineTotalCents": 5800
+        "lineTotalCents": 5800,
+        "metadata": {
+          "catalogVersion": "skyla-payments-catalog-2026-07-05",
+          "catalogSource": "@skyla/payments",
+          "catalogAuthority": "code-owned",
+          "catalogContentHash": "fnv1a32:1f58cd3b:92"
+        }
       },
       {
         "kind": "ticket",
@@ -136,7 +146,14 @@ Expected response shape:
         "name": "General Admission Child",
         "quantity": 1,
         "unitAmountCents": 1500,
-        "lineTotalCents": 1500
+        "lineTotalCents": 1500,
+        "metadata": {
+          "catalogVersion": "skyla-payments-catalog-2026-07-05",
+          "catalogSource": "@skyla/payments",
+          "catalogAuthority": "code-owned",
+          "catalogContentHash": "fnv1a32:1f58cd3b:92",
+          "childDiscountRate": 0.5
+        }
       },
       {
         "kind": "addon",
@@ -144,7 +161,13 @@ Expected response shape:
         "name": "Ceremonial Matcha Latte",
         "quantity": 1,
         "unitAmountCents": 800,
-        "lineTotalCents": 800
+        "lineTotalCents": 800,
+        "metadata": {
+          "catalogVersion": "skyla-payments-catalog-2026-07-05",
+          "catalogSource": "@skyla/payments",
+          "catalogAuthority": "code-owned",
+          "catalogContentHash": "fnv1a32:ef7db060:95"
+        }
       }
     ]
   }
@@ -195,7 +218,13 @@ Expected response shape:
         "name": "Deck + Drink",
         "quantity": 2,
         "unitAmountCents": 3700,
-        "lineTotalCents": 7400
+        "lineTotalCents": 7400,
+        "metadata": {
+          "catalogVersion": "skyla-payments-catalog-2026-07-05",
+          "catalogSource": "@skyla/payments",
+          "catalogAuthority": "code-owned",
+          "catalogContentHash": "fnv1a32:ee2426f7:85"
+        }
       },
       {
         "kind": "cafe",
@@ -203,7 +232,13 @@ Expected response shape:
         "name": "Butter Croissant",
         "quantity": 3,
         "unitAmountCents": 600,
-        "lineTotalCents": 1800
+        "lineTotalCents": 1800,
+        "metadata": {
+          "catalogVersion": "skyla-payments-catalog-2026-07-05",
+          "catalogSource": "@skyla/payments",
+          "catalogAuthority": "code-owned",
+          "catalogContentHash": "fnv1a32:b86957e2:102"
+        }
       },
       {
         "kind": "custom",

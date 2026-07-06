@@ -69,6 +69,15 @@ export const catalogProvenance = {
   editableInAdmin: false
 } as const;
 
+export type CatalogPricedItem = TicketPackage | Addon | CafeItem;
+
+export type CatalogLineMetadata = {
+  catalogVersion: string;
+  catalogSource: string;
+  catalogAuthority: string;
+  catalogContentHash: string;
+};
+
 export const bookingFeeRate = 0.05;
 export const childDiscountRate = 0.5;
 
@@ -174,4 +183,77 @@ export function listCafeItems(options?: CatalogListOptions) {
 
 export function listCatalogItems(options?: CatalogListOptions) {
   return [...listTicketPackages(options), ...listAddons(options), ...listCafeItems(options)];
+}
+
+export function catalogItemContentHash(item: CatalogPricedItem) {
+  return stableContentHash(catalogSnapshotItem(item));
+}
+
+export function catalogLineMetadata(item: CatalogPricedItem): CatalogLineMetadata {
+  return {
+    catalogVersion,
+    catalogSource: catalogProvenance.source,
+    catalogAuthority: catalogProvenance.authority,
+    catalogContentHash: catalogItemContentHash(item)
+  };
+}
+
+function catalogSnapshotItem(item: CatalogPricedItem) {
+  const base = {
+    key: item.key,
+    kind: item.kind,
+    name: item.name,
+    priceCents: item.priceCents,
+    active: item.active
+  };
+
+  if (item.kind === "cafe") {
+    return {
+      ...base,
+      category: item.category
+    };
+  }
+
+  if (item.kind === "ticket") {
+    return compactObject({
+      ...base,
+      metadata: compactObject({
+        entryIncluded: item.entryIncluded,
+        minAdults: item.minAdults,
+        roomFeeCents: item.roomFeeCents
+      })
+    });
+  }
+
+  return base;
+}
+
+function stableContentHash(value: unknown) {
+  const payload = stableStringify(value);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < payload.length; index += 1) {
+    hash ^= payload.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `fnv1a32:${hash.toString(16).padStart(8, "0")}:${payload.length}`;
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function compactObject<T extends Record<string, unknown>>(value: T) {
+  const compact = Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+  return Object.keys(compact).length ? compact : undefined;
 }

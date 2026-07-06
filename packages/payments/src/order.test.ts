@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { catalogLineMetadata, ticketPackages } from "./catalog";
 import { createCheckoutOrderDraft, createPosSaleDraft } from "./order";
 import {
   checkoutOrderLineRecords,
@@ -30,9 +31,27 @@ describe("createCheckoutOrderDraft", () => {
       customerEmail: "guest@example.com"
     });
     expect(draft.lines).toEqual([
-      expect.objectContaining({ kind: "ticket", productKey: "general", quantity: 2, unitAmountCents: 2900 }),
-      expect.objectContaining({ kind: "ticket", productKey: "general", quantity: 1, unitAmountCents: 1500 }),
-      expect.objectContaining({ kind: "addon", productKey: "matcha", quantity: 2, unitAmountCents: 800 })
+      expect.objectContaining({
+        kind: "ticket",
+        productKey: "general",
+        quantity: 2,
+        unitAmountCents: 2900,
+        metadata: catalogLineMetadata(ticketPackages.general)
+      }),
+      expect.objectContaining({
+        kind: "ticket",
+        productKey: "general",
+        quantity: 1,
+        unitAmountCents: 1500,
+        metadata: { ...catalogLineMetadata(ticketPackages.general), childDiscountRate: 0.5 }
+      }),
+      expect.objectContaining({
+        kind: "addon",
+        productKey: "matcha",
+        quantity: 2,
+        unitAmountCents: 800,
+        metadata: expect.objectContaining({ catalogVersion: "skyla-payments-catalog-2026-07-05" })
+      })
     ]);
   });
 
@@ -149,7 +168,14 @@ describe("stored order records", () => {
       updatedAt: now
     });
     expect(lines).toHaveLength(3);
-    expect(lines[0]).toEqual(expect.objectContaining({ orderRef, kind: "ticket", lineTotalCents: 5800 }));
+    expect(lines[0]).toEqual(
+      expect.objectContaining({
+        orderRef,
+        kind: "ticket",
+        lineTotalCents: 5800,
+        metadata: catalogLineMetadata(ticketPackages.general)
+      })
+    );
   });
 
   it("maps POS drafts into staff-attributed sale and line records", () => {
@@ -190,12 +216,17 @@ describe("stored order records", () => {
       updatedAt: now
     });
     expect(lines).toEqual([
-      expect.objectContaining({ saleRef, kind: "ticket", lineTotalCents: 3700 }),
+      expect.objectContaining({
+        saleRef,
+        kind: "ticket",
+        lineTotalCents: 3700,
+        metadata: expect.objectContaining({ catalogAuthority: "code-owned" })
+      }),
       expect.objectContaining({ saleRef, kind: "custom", lineTotalCents: 500, metadata: { reason: "Guest requested locker" } })
     ]);
   });
 
-  it("omits absent optional fields instead of storing undefined", () => {
+  it("omits absent optional order fields while preserving catalog line provenance", () => {
     const draft = createCheckoutOrderDraft({ packageKey: "general", adults: 1 });
     const record = checkoutOrderRecord(draft, {
       orderRef: orderRefFromId("abc123", Date.UTC(2026, 6, 4)),
@@ -207,6 +238,6 @@ describe("stored order records", () => {
     expect(Object.hasOwn(record, "visitDate")).toBe(false);
     expect(Object.hasOwn(record, "entryTime")).toBe(false);
     expect(Object.hasOwn(record, "source")).toBe(false);
-    expect(Object.hasOwn(line, "metadata")).toBe(false);
+    expect(line.metadata).toEqual(catalogLineMetadata(ticketPackages.general));
   });
 });

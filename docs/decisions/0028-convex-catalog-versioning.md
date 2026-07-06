@@ -26,6 +26,12 @@ Catalog versioning is the safer middle step. It gives the team a Convex-backed
 record of exactly which code-owned prices were seeded, when they were activated,
 and how to roll back to a previous known version.
 
+Stored checkout and POS line items now also carry the matching code-owned
+catalog provenance: version, source, authority, and item content hash. This
+lets a future linked Convex acceptance compare order lines to immutable
+`productSnapshots` before runtime pricing is switched from code-owned helpers
+to Convex catalog data.
+
 ## Flow
 
 ```mermaid
@@ -62,6 +68,9 @@ flowchart TD
 - Admin role required in Convex for seed and activation mutations
 - Browser-submitted `products` or `prices` payloads are rejected before Convex
   is called
+- Catalog-priced checkout/POS lines store `catalogVersion`, `catalogSource`,
+  `catalogAuthority`, and `catalogContentHash` metadata. Custom POS lines do
+  not claim catalog provenance.
 
 Seed payload:
 

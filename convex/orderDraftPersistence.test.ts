@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { addons, cafeItems, catalogLineMetadata, ticketPackages } from "@skyla/payments";
 
 import {
   assertSameDraftFingerprint,
@@ -11,6 +12,12 @@ import {
 } from "./lib/orderDraftPersistence";
 
 const now = Date.UTC(2026, 6, 4, 12);
+const catalogMetadata = {
+  catalogVersion: "skyla-payments-catalog-2026-07-05",
+  catalogSource: "@skyla/payments",
+  catalogAuthority: "code-owned",
+  catalogContentHash: expect.stringMatching(/^fnv1a32:/)
+};
 
 describe("Convex order draft persistence helpers", () => {
   it("builds canonical checkout order docs and ignores browser totals", () => {
@@ -38,6 +45,14 @@ describe("Convex order draft persistence helpers", () => {
     });
     expect(write.lines).toHaveLength(3);
     expect(write.lines[0]).toEqual(expect.objectContaining({ orderRef: "SKY2607-ABC123", lineTotalCents: 5800 }));
+    expect(write.lines.map((line) => line.metadata)).toEqual([
+      catalogLineMetadata(ticketPackages.general),
+      {
+        ...catalogLineMetadata(ticketPackages.general),
+        childDiscountRate: 0.5
+      },
+      catalogLineMetadata(addons.matcha)
+    ]);
   });
 
   it("normalizes equivalent checkout carts to the same fingerprint", () => {
@@ -90,7 +105,8 @@ describe("Convex order draft persistence helpers", () => {
       name: "General Admission",
       quantity: 1,
       unitAmountCents: 2900,
-      lineTotalCents: 2900
+      lineTotalCents: 2900,
+      metadata: catalogMetadata
     });
   });
 
@@ -147,9 +163,37 @@ describe("Convex order draft persistence helpers", () => {
       terminalLocationId: "tml_location_123"
     });
     expect(write.lines).toEqual([
-      expect.objectContaining({ saleRef: "SALE260704-ABC123", lineTotalCents: 3700 }),
+      expect.objectContaining({
+        saleRef: "SALE260704-ABC123",
+        lineTotalCents: 3700,
+        metadata: catalogLineMetadata(ticketPackages.drink)
+      }),
       expect.objectContaining({ saleRef: "SALE260704-ABC123", lineTotalCents: 500 })
     ]);
+    expect(write.lines[1].metadata).toEqual({ reason: "Guest requested locker" });
+    expect(write.lines[1].metadata).not.toHaveProperty("catalogAuthority");
+  });
+
+  it("persists cafe catalog provenance without adding it to custom POS lines", () => {
+    const write = buildPosSaleDraftWrite(
+      {
+        lines: [
+          { kind: "cafe", itemKey: "b1", quantity: 2 },
+          { kind: "custom", name: "Comped cover adjustment", amountCents: 500, reason: "Manager approved" }
+        ],
+        idempotencyKey: "possale_000004"
+      },
+      { saleRef: "SALE260704-DEF456", now, staffUserId: "staff_123", actorRole: "admin" }
+    );
+
+    expect(write.lines[0]).toEqual(
+      expect.objectContaining({
+        kind: "cafe",
+        productKey: "b1",
+        metadata: catalogLineMetadata(cafeItems.b1)
+      })
+    );
+    expect(write.lines[1].metadata).toEqual({ reason: "Manager approved" });
   });
 
   it("rejects viewer pricing and POS idempotency conflicts", () => {

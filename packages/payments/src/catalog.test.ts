@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   addons,
   cafeItems,
+  catalogItemContentHash,
+  catalogLineMetadata,
   catalogProvenance,
   listAddons,
   listCafeItems,
@@ -40,5 +42,16 @@ describe("catalog helpers", () => {
       ...Object.values(addons).map((item) => `addon:${item.key}`),
       ...Object.values(cafeItems).map((item) => `cafe:${item.key}`)
     ]);
+  });
+
+  it("creates stable line provenance for catalog-priced items", () => {
+    expect(catalogItemContentHash(ticketPackages.general)).toBe("fnv1a32:1f58cd3b:92");
+    expect(catalogLineMetadata(ticketPackages.general)).toEqual({
+      catalogVersion: "skyla-payments-catalog-2026-07-05",
+      catalogSource: "@skyla/payments",
+      catalogAuthority: "code-owned",
+      catalogContentHash: "fnv1a32:1f58cd3b:92"
+    });
+    expect(catalogLineMetadata(cafeItems.b1).catalogContentHash).toMatch(/^fnv1a32:/);
   });
 });

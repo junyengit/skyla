@@ -23,6 +23,7 @@ type DraftLine = {
   quantity: number;
   unitAmountCents: number;
   lineTotalCents: number;
+  metadata?: Record<string, string | number | boolean>;
 };
 
 type DraftResponse = {

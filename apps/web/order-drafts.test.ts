@@ -1,5 +1,6 @@
 import { fetchMutation } from "convex/nextjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { addons, catalogLineMetadata, ticketPackages } from "@skyla/payments";
 
 import { POST } from "./app/api/order-drafts/checkout/route";
 
@@ -30,7 +31,9 @@ describe("/api/order-drafts/checkout", () => {
         adults: 2,
         children: 1,
         addons: { matcha: 1 },
-        totalCents: 1
+        totalCents: 1,
+        metadata: { catalogVersion: "browser-spoof" },
+        catalogVersion: "browser-spoof"
       })
     );
 
@@ -41,7 +44,27 @@ describe("/api/order-drafts/checkout", () => {
       draft: {
         subtotalCents: 8100,
         feeCents: 405,
-        totalCents: 8505
+        totalCents: 8505,
+        lines: [
+          {
+            kind: "ticket",
+            productKey: "general",
+            metadata: catalogLineMetadata(ticketPackages.general)
+          },
+          {
+            kind: "ticket",
+            productKey: "general",
+            metadata: {
+              ...catalogLineMetadata(ticketPackages.general),
+              childDiscountRate: 0.5
+            }
+          },
+          {
+            kind: "addon",
+            productKey: "matcha",
+            metadata: catalogLineMetadata(addons.matcha)
+          }
+        ]
       }
     });
     expect(fetchMutationMock).not.toHaveBeenCalled();

@@ -1025,6 +1025,29 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `productSnapshots` keep the history.
 - [x] Added focused tests for the admin catalog UI contract and catalog content
       hashing/stale-key detection.
+- [x] Merged admin catalog readiness PR #100 into `main` as merge commit
+      `840ceec1fd7ca93e952221fa01c43288ebcfbfbd`.
+- [x] Confirmed Vercel production deployment from PR #100 is READY:
+      `https://web-lk4atrfwh-junyen-enterprises.vercel.app`
+      (`dpl_7vV4SCyfrvrukWRtLWuNj2WKudW9`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran route, payment, and production-readiness smokes against
+      `https://skydeckla.com`; all passed, payment probes returned checkout
+      total `8505` cents and POS total `9700` cents, and Stripe execution stayed
+      fail-closed while Convex/Stripe dashboard envs are absent.
+- [x] Queried Vercel error logs for `dpl_7vV4SCyfrvrukWRtLWuNj2WKudW9`; no
+      error logs were found in the checked 30-minute window.
+
+### 2026-07-06 Catalog Line Provenance
+
+- [x] Added `@skyla/payments` catalog line provenance helpers that stamp
+      catalog-priced checkout and POS lines with catalog version, source,
+      authority, and deterministic product content hash metadata.
+- [x] Kept runtime pricing authority on `@skyla/payments`; custom POS charges
+      keep only the staff-entered reason and do not claim catalog provenance.
+- [x] Added route, payment-helper, Convex persistence, and Convex catalog parity
+      tests so browser-supplied metadata is ignored and line hashes match the
+      code-owned catalog snapshots.
 
 ## Decisions
 

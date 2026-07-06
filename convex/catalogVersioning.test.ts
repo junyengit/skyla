@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { catalogItemContentHash, ticketPackages } from "@skyla/payments";
 
 import {
   catalogSnapshotRows,
@@ -140,6 +141,13 @@ describe("catalog versioning helpers", () => {
       expect.objectContaining({ version: normalized.version, key: "m1", contentHash: expect.stringMatching(/^fnv1a32:/) })
     ]);
     expect(reconstructed.contentHash).toBe(normalized.contentHash);
+  });
+
+  it("keeps line provenance hashes aligned with immutable Convex snapshots", () => {
+    const normalized = codeOwnedCatalogSeed("hash parity check");
+    const rows = catalogSnapshotRows(normalized, 1783292200000);
+
+    expect(rows.find((row) => row.key === "general")?.contentHash).toBe(catalogItemContentHash(ticketPackages.general));
   });
 
   it("keeps audit metadata compact for seed and activation events", () => {
