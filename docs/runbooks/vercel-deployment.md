@@ -25,16 +25,16 @@ root.
 
 As of July 6, 2026:
 
-- Latest verified app-code production deployment from `main` was READY at
-  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app`.
-- Latest verified app-code production deployment ID:
-  `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`.
-- Latest verified app-code production merge commit:
-  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90).
-- PR #90 added an automated retired-Supabase payment/webhook guard and removed
-  the Supabase helper wrapper from the retired legacy Terminal stub.
-- Future docs-only merges may create newer Vercel production URLs with the same
-  app behavior. Query Vercel before recording fresh operational evidence.
+- Latest verified production deployment from `main` was READY at
+  `https://web-6lx1ttp9e-junyen-enterprises.vercel.app`.
+- Latest verified production deployment ID:
+  `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi`.
+- Latest verified production merge commit:
+  `24bcc740100f9080afce50d216852af70f098236` (PR #93).
+- The latest app-code verification came from PR #92 and is summarized in
+  [../current-state-simple.md](../current-state-simple.md). PR #93 refreshed
+  production evidence without changing runtime behavior.
+- Query Vercel before recording fresh operational evidence.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -42,9 +42,9 @@ As of July 6, 2026:
 - Production payment routes currently fail closed with `convex_unconfigured`
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
-- The latest checked app-code deployment metadata reports target
-  `production`, commit `f4ea5dd4cd6143a355324959d8e07f5418c21ae0`, framework
-  `nextjs`, Node `24.x`, and the Bun canary install path from repo config.
+- The latest checked deployment metadata reports target `production`, commit
+  `24bcc740100f9080afce50d216852af70f098236`, framework `nextjs`, Node
+  `24.x`, and the Bun canary install path from repo config.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
 

@@ -4,6 +4,7 @@ import {
   assertStripeTerminalReaderProcessResult,
   buildStripeTerminalPaymentIntentRequest,
   buildStripeTerminalReaderProcessRequest,
+  stripeApiVersion,
   stripeTerminalIntentIdempotencyKey,
   stripeTerminalReaderPaymentStatus,
   stripeTerminalProcessIdempotencyKey
@@ -45,6 +46,8 @@ describe("Stripe Terminal helpers", () => {
     const request = buildStripeTerminalPaymentIntentRequest(snapshot);
 
     expect(request.endpoint).toBe("/payment_intents");
+    expect(request.apiVersion).toBe(stripeApiVersion);
+    expect(stripeApiVersion).toBe("2026-02-25.clover");
     expect(request.idempotencyKey).toBe("skyla:terminal-intent:POS2607-ABC123");
     expect(request.body.get("amount")).toBe("8550");
     expect(request.body.get("currency")).toBe("usd");

@@ -881,6 +881,16 @@ export const recordStripeCheckoutWebhook = internalMutation({
       });
       return { status: "failed", duplicate: false, orderRef: args.orderRef };
     }
+    if (args.outcome !== "paid" && order.status === "paid") {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: args.orderRef,
+        raw: { ...(args.raw ?? {}), reason: "order_already_paid" }
+      });
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
+    }
     if (order.status !== "payment_pending" && order.status !== "paid") {
       await insertWebhookEvent(ctx, {
         providerEventId: args.providerEventId,

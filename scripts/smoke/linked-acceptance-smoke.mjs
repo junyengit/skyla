@@ -69,6 +69,8 @@ if (failures.length > 0) {
 const runId = randomUUID().replaceAll("-", "").slice(0, 18);
 const customerEmail = `acceptance+${runId}@example.com`;
 const headers = { authorization: `Bearer ${staffToken}` };
+const checkoutDraftIdempotencyKey = `acc_checkout_${runId}`;
+const posDraftIdempotencyKey = `acc_pos_${runId}`;
 
 const readinessUnauthenticated = await getJson("/api/admin/acceptance-readiness");
 expectStatus("acceptance readiness unauthenticated", readinessUnauthenticated, 401);
@@ -122,7 +124,7 @@ const checkoutDraft = await postJson("/api/order-drafts/checkout", {
   children: 1,
   addons: { matcha: 1 },
   customerEmail,
-  idempotencyKey: `acc_checkout_${runId}`,
+  idempotencyKey: checkoutDraftIdempotencyKey,
   totalCents: 1,
   amountCents: 1
 });
@@ -189,7 +191,7 @@ if (firstReader?.readerId) {
       lines: [{ kind: "ticket", packageKey: "general", quantity: 2, unitAmountCents: 1 }],
       customerEmail,
       readerId: firstReader.readerId,
-      idempotencyKey: `acc_pos_${runId}`,
+      idempotencyKey: posDraftIdempotencyKey,
       totalCents: 1,
       terminalLocationId: "tml_browser_supplied"
     },
@@ -208,7 +210,7 @@ if (firstReader?.readerId) {
   );
   expectNoClientSecret("POS draft", posDraft);
 
-  await maybeRunTerminalReaderAcceptance(posDraft.json?.saleRef, runId, headers);
+  await maybeRunTerminalReaderAcceptance(posDraft.json?.saleRef, posDraftIdempotencyKey, headers);
 }
 
 if (failures.length > 0) {
@@ -221,7 +223,7 @@ if (runStripeCheckout) {
     "/api/payments/stripe-checkout",
     {
       orderRef: checkoutDraft.json?.orderRef,
-      idempotencyKey: `acc_stripe_checkout_${runId}`,
+      idempotencyKey: checkoutDraftIdempotencyKey,
       amountCents: 1
     },
     { origin: baseUrl.origin }
@@ -261,7 +263,7 @@ for (const note of notes) {
   console.log(`- ${note}`);
 }
 
-async function maybeRunTerminalReaderAcceptance(saleRef, id, authHeaders) {
+async function maybeRunTerminalReaderAcceptance(saleRef, idempotencyKey, authHeaders) {
   if (!runTerminalReader) {
     notes.push(
       "Terminal reader processing skipped; set SKYLA_ACCEPTANCE_TERMINAL_READER=1 only with a Stripe test reader ready."
@@ -273,7 +275,7 @@ async function maybeRunTerminalReaderAcceptance(saleRef, id, authHeaders) {
     "/api/payments/stripe-terminal",
     {
       saleRef,
-      idempotencyKey: `acc_terminal_create_${id}`,
+      idempotencyKey,
       amountCents: 1,
       readerId: "tmr_browser_supplied"
     },
@@ -289,7 +291,7 @@ async function maybeRunTerminalReaderAcceptance(saleRef, id, authHeaders) {
     "/api/payments/stripe-terminal/process",
     {
       saleRef,
-      idempotencyKey: `acc_terminal_process_${id}`,
+      idempotencyKey,
       readerId: "tmr_browser_supplied"
     },
     authHeaders

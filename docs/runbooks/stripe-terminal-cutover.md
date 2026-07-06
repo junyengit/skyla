@@ -108,9 +108,11 @@ curl -i -X POST "$PREVIEW_URL/api/payments/stripe-terminal" \
 
 Expected:
 
-- `503` with `code: "convex_unconfigured"` if Convex is not wired, or
-- `401` with `code: "staff_auth_required"` if Convex is wired but no staff
-  bearer token is sent.
+- `401` with `code: "staff_auth_required"` when no staff bearer token is sent.
+- With a staff bearer token and no Convex URL, `503` with
+  `code: "convex_unconfigured"`.
+- With Convex configured but Terminal acceptance still latched off, `503` with
+  `code: "pos_terminal_acceptance_required"`.
 
 ### Ignore Browser Amounts
 

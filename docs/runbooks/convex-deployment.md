@@ -12,8 +12,11 @@ setup and agents verifying the result afterward.
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel team ID: `team_3kWPO8fPD6E7x39voGoNNeog`
 - Local Vercel link path: `apps/web/.vercel/project.json` (ignored)
-- Vercel env status checked on 2026-07-02: no environment variables exist for
-  `junyen-enterprises/web`.
+- Vercel/Convex env readiness is tracked in
+  [../current-state-simple.md](../current-state-simple.md) and
+  [production-readiness-checklist.md](production-readiness-checklist.md).
+  Payment execution remains intentionally gated until those dashboard checks
+  are complete.
 - Local Convex status: anonymous-only local deployment in root `.env.local`.
 - Cloud Convex status: not linked yet.
 
@@ -118,14 +121,36 @@ PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_SECRET_KEY "$STRIPE_SECRE
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_PAYMENT_RETURN_ORIGINS "https://skydeckla.com,https://www.skydeckla.com"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_TERMINAL_READER_REGISTRY "tmr_frontdesk@tml_lobby"
-# Set only after Stripe test-reader acceptance passes.
-PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_POS_TERMINAL_ACCEPTANCE "enabled"
 ```
 
 Use Stripe test-mode values for Preview/Development. Do not paste secret values
 into PRs, logs, or docs.
 
-6. Seed staff users before testing native `/admin`, `/pos`, or `/pos-next` against the
+6. Enable the Terminal acceptance latch only during a controlled test-reader
+   acceptance window.
+
+Do this only after all of these are true:
+
+- `bun run convex:env:check` passes the `cloud`, `stripe-checkout`,
+  `stripe-webhook`, `terminal-reader`, and `staff-bootstrap` gates that apply
+  to the target environment.
+- Stripe is in test mode for the target environment.
+- `SKYLA_TERMINAL_READER_REGISTRY` contains only the Stripe test reader(s) and
+  test location(s) being used.
+- The staff test token is seeded and scoped to a known admin or POS user.
+
+```bash
+PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_POS_TERMINAL_ACCEPTANCE "enabled"
+```
+
+After the acceptance run, remove the latch unless the production launch owner
+has explicitly approved keeping it on:
+
+```bash
+PATH="$HOME/.bun/bin:$PATH" bunx convex env remove SKYLA_POS_TERMINAL_ACCEPTANCE
+```
+
+7. Seed staff users before testing native `/admin`, `/pos`, or `/pos-next` against the
    real deployment. Prefer the typed bootstrap mutation instead of manual table
    edits.
 
@@ -166,7 +191,7 @@ For the native admin action slice:
 - Cancel/refund/payment reconciliation, hard delete, clear-all, reset-all,
   and config/catalog edits remain out of scope.
 
-7. Seed the code-owned payment catalog after the admin staff token works.
+8. Seed the code-owned payment catalog after the admin staff token works.
 
 The catalog seed does not let the browser submit prices. It copies the
 code-owned `@skyla/payments` catalog into Convex `products`, records immutable
@@ -196,7 +221,7 @@ curl -sS -X POST "$VERCEL_PREVIEW_URL/api/admin/catalog" \
 Keep checkout and POS runtime pricing on `@skyla/payments` until linked Convex
 acceptance has proven the seeded catalog and payment flows in Preview.
 
-8. Pull local web envs if you want the Next route to use Convex locally:
+9. Pull local web envs if you want the Next route to use Convex locally:
 
 ```bash
 cd apps/web

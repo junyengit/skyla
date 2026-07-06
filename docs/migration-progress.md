@@ -905,6 +905,38 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       No safe dependency patch was needed; ESLint 10 remains deferred until the
       Next lint plugin stack has compatible peer ranges.
 
+### 2026-07-06 Dashboard Readiness Audit
+
+- [x] Fixed linked acceptance so optional Stripe Checkout and Terminal reader
+      tests reuse the original stored checkout/POS draft idempotency keys.
+      This keeps payment creation tied to the server-owned draft contract.
+- [x] Hardened Checkout webhook reconciliation so a late failed/canceled event
+      after an order is already paid records a failed webhook audit event but
+      does not insert a contradictory failed/canceled payment event.
+- [x] Kept the Stripe API version intentionally pinned to
+      `2026-02-25.clover` and documented that Stripe's current
+      `2026-06-24.dahlia` version should be adopted only in a controlled
+      Workbench/webhook endpoint upgrade with linked acceptance evidence.
+- [x] Updated current-state docs and dashboard checklists: latest Vercel
+      production evidence is PR #93 / `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi`,
+      Terminal acceptance is a temporary latch instead of a default env step,
+      and Supabase retirement now has a dashboard procedure.
+- [x] Verified Vercel hosting health: production deployment
+      `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi` is READY, aliased to
+      `skydeckla.com` and `www.skydeckla.com`, with no grouped runtime errors
+      and no error/fatal logs in the checked 24-hour window.
+- [x] Confirmed Vercel project envs are still absent with
+      `vercel env ls --scope junyen-enterprises`; payment execution remains
+      intentionally fail-closed until dashboard setup is complete.
+- [x] Re-ran `bun run check`, `bun run security`, `bun audit --audit-level=low`,
+      `bun outdated`, `bun update --latest --dry-run`, `bun run test:smoke`,
+      `bun run test:payments`, and `bun run test:production-readiness`.
+      No dependency upgrade was needed and live production smokes still passed.
+- [ ] Helium visual QA is still blocked by Computer Use returning
+      `cgWindowNotFound` for the running Helium app. Current contrast evidence
+      comes from `apps/web/staff-contrast.test.ts` plus production-readiness
+      smoke, not a Helium screenshot.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.

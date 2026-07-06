@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { stripeTerminalIntentIdempotencyKey } from "./lib/stripeTerminal";
-import { recordStripeTerminalWebhook } from "./paymentInternals";
+import { recordStripeCheckoutWebhook, recordStripeTerminalWebhook } from "./paymentInternals";
 
-type TableName = "posSales" | "paymentEvents" | "webhookEvents" | "auditEvents";
+type TableName = "orders" | "posSales" | "paymentEvents" | "webhookEvents" | "auditEvents";
 type MockDoc = Record<string, unknown> & { _id: string; _creationTime: number };
 type MockState = Record<TableName, MockDoc[]>;
 type MockCtx = {
@@ -37,9 +37,135 @@ type TerminalWebhookResult = {
   duplicate: boolean;
   saleRef?: string;
 };
+type CheckoutWebhookArgs = {
+  providerEventId: string;
+  eventType: string;
+  outcome: "paid" | "failed" | "canceled" | "ignored";
+  providerPaymentId?: string;
+  orderRef?: string;
+  amountCents?: number;
+  currency?: "usd";
+  raw?: Record<string, unknown>;
+};
+type CheckoutWebhookResult = {
+  status: "processed" | "ignored" | "failed";
+  duplicate: boolean;
+  orderRef?: string;
+};
 
+const orderRef = "ORD260704-ABC123";
 const saleRef = "SALE260704-ABC123";
 const providerPaymentId = "pi_terminal_123";
+const checkoutProviderPaymentId = "cs_test_123";
+
+describe("Stripe Checkout webhook internals", () => {
+  it("marks a stored checkout order paid when the signed webhook matches the stored payment session", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    const result = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_paid",
+      eventType: "checkout.session.completed",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd",
+      raw: { payment_status: "paid" }
+    });
+
+    expect(result).toEqual({ status: "processed", duplicate: false, orderRef });
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.paymentEvents.some((event) => event.status === "paid" && event.rawEventId === "evt_checkout_paid")).toBe(true);
+    expect(state.webhookEvents[0]).toMatchObject({
+      provider: "stripe",
+      providerEventId: "evt_checkout_paid",
+      status: "processed",
+      orderRef
+    });
+  });
+
+  it("returns duplicate for a replayed Checkout webhook event id", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    const firstResult = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_paid_replay",
+      eventType: "checkout.session.completed",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd",
+      raw: { payment_status: "paid" }
+    });
+    const replayResult = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_paid_replay",
+      eventType: "checkout.session.completed",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd",
+      raw: { payment_status: "paid" }
+    });
+
+    expect(firstResult).toEqual({ status: "processed", duplicate: false, orderRef });
+    expect(replayResult).toEqual({ status: "processed", duplicate: true, orderRef });
+    expect(state.webhookEvents).toHaveLength(1);
+  });
+
+  it("fails Checkout webhooks whose Stripe amount does not match the stored order", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    const result = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_amount_mismatch",
+      eventType: "checkout.session.completed",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 1,
+      currency: "usd",
+      raw: { payment_status: "paid" }
+    });
+
+    expect(result).toEqual({ status: "failed", duplicate: false, orderRef });
+    expect(state.orders[0].status).toBe("payment_pending");
+    expect(state.paymentEvents).toHaveLength(1);
+    expect(state.webhookEvents[0]).toMatchObject({
+      provider: "stripe",
+      providerEventId: "evt_checkout_amount_mismatch",
+      status: "failed",
+      orderRef
+    });
+    expect(state.webhookEvents[0].raw).toMatchObject({ reason: "amount_or_currency_mismatch" });
+  });
+
+  it("does not record a contradictory failed payment event after a Checkout order is paid", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+
+    const result = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_late_canceled",
+      eventType: "checkout.session.expired",
+      outcome: "canceled",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd",
+      raw: { payment_status: "unpaid" }
+    });
+
+    expect(result).toEqual({ status: "failed", duplicate: false, orderRef });
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.paymentEvents).toHaveLength(2);
+    expect(state.paymentEvents.some((event) => event.status === "canceled" && event.rawEventId === "evt_checkout_late_canceled")).toBe(false);
+    expect(state.webhookEvents[0]).toMatchObject({
+      provider: "stripe",
+      providerEventId: "evt_checkout_late_canceled",
+      status: "failed",
+      orderRef
+    });
+    expect(state.webhookEvents[0].raw).toMatchObject({ reason: "order_already_paid" });
+  });
+});
 
 describe("Stripe Terminal webhook internals", () => {
   it("marks a stored POS sale paid when the signed webhook matches the stored ledger", async () => {
@@ -126,11 +252,68 @@ async function runTerminalWebhook(ctx: MockCtx, args: TerminalWebhookArgs): Prom
   return mutation._handler(ctx, args);
 }
 
+async function runCheckoutWebhook(ctx: MockCtx, args: CheckoutWebhookArgs): Promise<CheckoutWebhookResult> {
+  const mutation = recordStripeCheckoutWebhook as unknown as {
+    _handler: (ctx: MockCtx, args: CheckoutWebhookArgs) => Promise<CheckoutWebhookResult>;
+  };
+  return mutation._handler(ctx, args);
+}
+
+function createCheckoutWebhookCtx(
+  options: { orderStatus?: string; includePaidEvent?: boolean } = {}
+): { ctx: MockCtx; state: MockState } {
+  const state = createEmptyState();
+  state.orders.push({
+    _id: "orders_1",
+    _creationTime: 1,
+    orderRef,
+    channel: "online",
+    status: options.orderStatus ?? "payment_pending",
+    currency: "usd",
+    subtotalCents: 6000,
+    feeCents: 90,
+    totalCents: 6090,
+    expectedProvider: "stripe",
+    idempotencyKey: "acc_checkout_test",
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.paymentEvents.push({
+    _id: "paymentEvents_1",
+    _creationTime: 1,
+    orderRef,
+    provider: "stripe",
+    providerPaymentId: checkoutProviderPaymentId,
+    idempotencyKey: "skyla:checkout-session:ORD260704-ABC123",
+    status: "created",
+    currency: "usd",
+    amountCents: 6090,
+    createdAt: 1
+  });
+  if (options.includePaidEvent) {
+    state.paymentEvents.push({
+      _id: "paymentEvents_2",
+      _creationTime: 1,
+      orderRef,
+      provider: "stripe",
+      providerPaymentId: checkoutProviderPaymentId,
+      idempotencyKey: "skyla:checkout-session:ORD260704-ABC123",
+      status: "paid",
+      currency: "usd",
+      amountCents: 6090,
+      rawEventId: "evt_checkout_paid_original",
+      createdAt: 1
+    });
+  }
+
+  return createMockCtx(state);
+}
+
 function createTerminalWebhookCtx(
   options: { saleStatus?: string; terminalStatus?: string } = {}
 ): { ctx: MockCtx; state: MockState } {
-  const state: MockState = {
-    posSales: [
+  const state = createEmptyState();
+  state.posSales.push(
       {
         _id: "posSales_1",
         _creationTime: 1,
@@ -143,8 +326,8 @@ function createTerminalWebhookCtx(
         createdAt: 1,
         updatedAt: 1
       }
-    ],
-    paymentEvents: [
+  );
+  state.paymentEvents.push(
       {
         _id: "paymentEvents_1",
         _creationTime: 1,
@@ -157,10 +340,22 @@ function createTerminalWebhookCtx(
         amountCents: 4200,
         createdAt: 1
       }
-    ],
+  );
+
+  return createMockCtx(state);
+}
+
+function createEmptyState(): MockState {
+  return {
+    orders: [],
+    posSales: [],
+    paymentEvents: [],
     webhookEvents: [],
     auditEvents: []
   };
+}
+
+function createMockCtx(state: MockState): { ctx: MockCtx; state: MockState } {
   let nextId = 2;
 
   const ctx: MockCtx = {

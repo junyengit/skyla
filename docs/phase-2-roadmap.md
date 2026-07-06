@@ -338,14 +338,14 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified app-code production commit:
-  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90)
-- Latest verified app-code production deployment evidence:
-  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app`
-- Latest verified app-code production deployment ID:
-  `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`
-- Future docs-only merges may create newer Vercel production URLs with the same
-  app behavior; query Vercel before recording fresh operational evidence.
+- Latest verified production commit:
+  `24bcc740100f9080afce50d216852af70f098236` (PR #93)
+- Latest verified production deployment evidence:
+  `https://web-6lx1ttp9e-junyen-enterprises.vercel.app`
+- Latest verified production deployment ID:
+  `dpl_3mb6mLtqWaYFNGJAvbvfYxfXbFsi`
+- Latest app-code verification: PR #92. PR #93 refreshed docs/evidence only.
+  Query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -410,7 +410,10 @@ Current order-spine state:
   canonical totals without Convex envs, and persists through Convex when
   `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
 - Local Convex validation: anonymous local deployment at `http://127.0.0.1:3210` when `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` is run
-- Vercel env status checked on 2026-07-02: no environment variables configured for `junyen-enterprises/web`
+- Vercel/Convex env readiness is tracked in
+  `docs/current-state-simple.md` and
+  `docs/runbooks/production-readiness-checklist.md`; payment execution remains
+  gated until the dashboard checks pass.
 - Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, Stripe dashboard webhook endpoint, live payment acceptance
 - Stripe Checkout/webhook status: local code exists and is server-authoritative
   by stored `orderRef`, async failure events leave the order terminal instead
