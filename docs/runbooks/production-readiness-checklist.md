@@ -91,6 +91,9 @@ real event intake still depends on the dashboard setup below.
   server writes and payment execution are safely blocked. `bun run
   vercel:env:check` also failed as expected with `envCount: 0`,
   `readyForConvexUrl: false`, and `safeSecretPlacement: true`.
+  `bun run dashboard:readiness` is the combined follow-up check to run after
+  Vercel and Convex dashboard edits; it reports the next dashboard actions and
+  remains non-zero until linked Preview no-write preflight is shaped.
 - DNS TXT records checked by subagent on 2026-07-02: authoritative Vercel DNS
   did not return the older Apple/Brevo TXT values documented in the domain
   runbook. Restore them in Vercel DNS if those services are still needed, or
@@ -372,6 +375,9 @@ flowchart TD
 - [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check` after adding
       Vercel envs. It should report `readyForConvexUrl: true` and
       `safeSecretPlacement: true`.
+- [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run dashboard:readiness` after
+      Vercel and Convex dashboard edits. It should report
+      `status: "linked_preflight_ready"` before `bun run test:acceptance:preflight`.
 - [ ] Confirm only public browser config is in Vercel. Stripe secrets,
       webhook secrets, staff bootstrap token, and Terminal reader registry
       belong in Convex, not `NEXT_PUBLIC_*`.

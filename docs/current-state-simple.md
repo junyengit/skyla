@@ -84,6 +84,10 @@ safe behavior.
 - [ ] Run `bun run vercel:env:check` after Vercel env setup. It should pass
       only when `NEXT_PUBLIC_CONVEX_URL` is present in Preview/Production and
       Stripe/staff/Terminal secrets are absent from Vercel.
+- [ ] Run `bun run dashboard:readiness` to get one safe JSON summary of the
+      Vercel and Convex dashboard state plus the next dashboard actions. It
+      should pass before linked Preview acceptance; it still says real cards
+      are not allowed for migration verification.
 - [ ] Add Convex deployment details locally only when needed for linked codegen.
 - [ ] Set Convex `SKYLA_STRIPE_MODE=test`.
 - [ ] Set Convex `STRIPE_SECRET_KEY` with a test key first.
@@ -139,6 +143,7 @@ safe behavior.
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
+| `bun run dashboard:readiness` | Added as the combined safe dashboard summary; fails until Vercel and Convex/Stripe dashboard gates are shaped for linked Preview preflight |
 | `bun run check` | Passed before PR #96 merge |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |

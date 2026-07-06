@@ -75,7 +75,10 @@ As of July 6, 2026:
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished. After adding Vercel envs, run
   `bun run vercel:env:check` to verify `NEXT_PUBLIC_CONVEX_URL` is present in
-  Preview/Production and payment/staff secrets were not placed in Vercel.
+  Preview/Production and payment/staff secrets were not placed in Vercel. After
+  Vercel and Convex dashboard edits, run `bun run dashboard:readiness` for one
+  safe JSON summary of the remaining dashboard actions before linked Preview
+  acceptance.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
@@ -143,6 +146,13 @@ SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
 SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke
 PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments
 PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
+```
+
+For dashboard setup progress, run this separately. It is expected to fail until
+the Vercel and Convex dashboard gates are ready for linked Preview acceptance:
+
+```bash
+bun run dashboard:readiness
 ```
 
 ## Current Bridge Notes
