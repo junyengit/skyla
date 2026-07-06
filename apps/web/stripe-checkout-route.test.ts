@@ -98,7 +98,9 @@ describe("/api/payments/stripe-checkout", () => {
       checkoutSessionId: "cs_test_123",
       url: "https://checkout.stripe.com/c/pay/cs_test_123",
       amountCents: 8505,
-      currency: "usd"
+      currency: "usd",
+      clientSecret: "cs_test_secret_should_not_return",
+      client_secret: "cs_test_secret_should_not_return"
     });
 
     const response = await POST(
@@ -113,10 +115,14 @@ describe("/api/payments/stripe-checkout", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json();
+    expect(body).toMatchObject({
       url: "https://checkout.stripe.com/c/pay/cs_test_123",
       amountCents: 8505
     });
+    expect(JSON.stringify(body)).not.toContain("clientSecret");
+    expect(JSON.stringify(body)).not.toContain("client_secret");
+    expect(JSON.stringify(body)).not.toContain("should_not_return");
     expect(fetchActionMock).toHaveBeenCalledWith(
       expect.anything(),
       {

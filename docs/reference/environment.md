@@ -9,9 +9,10 @@ safe for browser code, secret means dashboard/server only.
 - Vercel owns the web app environment.
 - Convex owns database functions and payment actions.
 - Stripe keys stay server-side except the publishable key.
-- The live site can keep running without Convex envs, but payments should not
-  move to the new Convex Stripe action until Convex and Stripe envs are both
-  configured.
+- The live site can keep running without Convex envs, but writes and payments
+  intentionally fail closed until Convex and Stripe envs are both configured.
+- Supabase variables are legacy-only during this cutover. Do not add them back
+  for new Next.js App Router flows.
 
 ## Matrix
 
@@ -31,8 +32,8 @@ safe for browser code, secret means dashboard/server only.
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | yes | Vercel | Production/Preview/Development | Browser-safe Stripe.js publishable key. | Needed only when frontend is wired to Stripe.js or embedded Checkout. |
 | `KASKADE_API_KEY` | no | Convex | Production/Preview/Development | Future Kaskade payment action secret. | Not ready; legacy bridge still exists. |
 | `SKYLA_TERMINAL_SETUP_TOKEN` | no | retired legacy only | none | Former one-time manager token for the Supabase Terminal reader setup bridge. | Do not set for new work. The repo copy of the legacy Terminal function now returns `410` for `setup-reader`; future reader setup should be rebuilt as a native staff/Convex workflow. |
-| `SUPABASE_URL` | mixed | Vercel/Supabase legacy | Transition only | Keeps compatibility pages talking to legacy Supabase. | Keep only until Convex replacements are accepted. |
-| `SUPABASE_ANON_KEY` | yes-ish | Vercel/Supabase legacy | Transition only | Legacy browser reads/writes through existing bridge. | Do not add service-role powers to browser paths. |
+| `SUPABASE_URL` | mixed | Vercel/Supabase legacy | Transition only | Legacy deployed dashboard/data migration only. App Router public, admin, checkout, and POS flows should not depend on it. | Do not reintroduce for new Next routes; remove after Convex replacements are accepted. |
+| `SUPABASE_ANON_KEY` | yes-ish | Vercel/Supabase legacy | Transition only | Legacy deployed dashboard/data migration only. | Do not add to new browser paths and never pair it with service-role powers. |
 | `SUPABASE_SERVICE_ROLE_KEY` | no | server only | Transition only | Legacy server migration/admin tasks. | Never expose to `NEXT_PUBLIC_*`; avoid Preview production access. |
 | `NEXT_PUBLIC_GOOGLE_ADS_TAG_ID` | yes | Vercel | Production/Preview | Google Ads tag for native conversion pages and remaining compatibility pages. | Optional; blank keeps tracking inert. |
 | `NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_CONVERSION` | yes | Vercel | Production/Preview | Purchase conversion label. | Optional until paid ads are active. |

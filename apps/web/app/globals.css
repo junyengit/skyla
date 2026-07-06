@@ -1940,6 +1940,10 @@ h3 {
   color: #fff;
 }
 
+.posNextPage button:disabled {
+  color: #fff;
+}
+
 .posNextPage .brand,
 .posNextPage h1,
 .posNextPage h2,
@@ -1960,7 +1964,9 @@ h3 {
 }
 
 .posNextPage .primaryAction {
-  color: #15120a;
+  border: 1px solid rgba(216, 182, 83, 0.48);
+  background: rgba(216, 182, 83, 0.18);
+  color: #fff;
 }
 
 .posNextHeader {
@@ -2053,9 +2059,9 @@ h3 {
 }
 
 .posNextToolbar button.isActive {
-  background: var(--gold);
+  background: rgba(216, 182, 83, 0.18);
   border-color: var(--gold);
-  color: #15120a;
+  color: #fff;
 }
 
 .posNextGrid {
@@ -2270,7 +2276,7 @@ h3 {
 
 .posNextTerminalPicker .secondaryAction:disabled {
   cursor: not-allowed;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .posNextTerminalNote {
@@ -2341,7 +2347,7 @@ h3 {
 
 .posNextActions .primaryAction:disabled,
 .posNextActions .secondaryAction:disabled {
-  opacity: 0.72;
+  opacity: 1;
   cursor: not-allowed;
 }
 
@@ -2447,6 +2453,10 @@ h3 {
   font: inherit;
 }
 
+.adminOpsPage button:disabled {
+  color: #fff;
+}
+
 .adminOpsPage .brand,
 .adminOpsPage h1,
 .adminOpsPage h2,
@@ -2472,7 +2482,9 @@ h3 {
 }
 
 .adminOpsPage .primaryAction {
-  color: #15120a;
+  border: 1px solid rgba(216, 182, 83, 0.48);
+  background: rgba(216, 182, 83, 0.18);
+  color: #fff;
 }
 
 .adminOpsHeader {
@@ -2601,7 +2613,7 @@ h3 {
 }
 
 .adminOpsAccess .primaryAction:disabled {
-  opacity: 0.72;
+  opacity: 1;
   cursor: default;
 }
 
@@ -2674,7 +2686,7 @@ h3 {
 
 .adminOpsExportGrid button:disabled {
   cursor: default;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .adminOpsMain {
@@ -2783,7 +2795,7 @@ h3 {
 
 .adminOpsLookupForm .secondaryAction:disabled {
   cursor: default;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .adminOpsLookupResults {
@@ -3001,7 +3013,7 @@ h3 {
 
 .adminOpsConfigCard .secondaryAction:disabled {
   cursor: default;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .adminOpsHoursGrid {
@@ -3080,7 +3092,7 @@ h3 {
 .adminOpsTabs button.isActive {
   border-color: var(--gold);
   background: rgba(216, 182, 83, 0.18);
-  color: var(--gold-strong);
+  color: #fff;
 }
 
 .adminOpsTable {
@@ -3152,7 +3164,7 @@ h3 {
 
 .adminOpsRowActions button:disabled {
   cursor: default;
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .adminOpsRowActions button.isDanger {

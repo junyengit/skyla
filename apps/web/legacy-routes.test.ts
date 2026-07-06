@@ -260,7 +260,9 @@ describe("legacy route bridge", () => {
     expect(globalsCss).toContain(".posNextPage p,");
     expect(globalsCss).toContain("color: #fff");
     expect(globalsCss).toContain(".posNextActions .primaryAction:disabled");
-    expect(globalsCss).toContain("opacity: 0.72");
+    expect(globalsCss).toContain(".posNextPage button:disabled");
+    expect(globalsCss).toContain(".adminOpsPage button:disabled");
+    expect(globalsCss).toContain("opacity: 1");
     expect(adminHtml).toContain("The old admin file has been retired");
     expect(posHtml).toContain("The old POS file has been retired");
     expect(paymentsAction).toMatch(

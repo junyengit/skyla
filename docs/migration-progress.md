@@ -768,6 +768,22 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Started branch `codex/acceptance-harness-tests` after PR #86 to add
       durable script-level tests for the no-write preflight and required
       Convex env gates.
+- [x] Merged acceptance harness tests PR #87 into `main` as merge commit
+      `c6f9301f48d7a9a25700381b9931846c5b9d22f8`; GitHub CI, CodeQL, and
+      Vercel preview checks passed.
+- [x] Confirmed Vercel production deployment from PR #87 is READY:
+      `https://web-ll86xe2or-junyen-enterprises.vercel.app`
+      (`dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`), with `skydeckla.com` and
+      `www.skydeckla.com` attached to the project.
+- [x] Re-ran post-PR-87 route and payment smokes on `https://skydeckla.com`.
+      Both passed; payment execution still fails closed without Convex/Stripe
+      dashboard wiring and no real Stripe charge was attempted.
+- [x] Checked Vercel runtime evidence after PR #87: no grouped runtime errors
+      in the selected 30-minute window and no error/fatal logs for deployment
+      `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`.
+- [x] Started branch `codex/post-pr87-readiness-refresh` to refresh stale
+      readiness docs, keep staff UI text white-on-dark, and harden public
+      Stripe response allowlists against accidental `clientSecret` leakage.
 - [ ] Link the real Convex deployment and replace anonymous local Convex validation with project-linked codegen in a follow-up PR.
 
 ## Deferred Until Foundation Is Stable
