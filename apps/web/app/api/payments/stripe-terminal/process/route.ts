@@ -53,6 +53,20 @@ function requiredString(value: unknown, label: string) {
   return value.trim();
 }
 
+function toPublicTerminalProcessResult(result: StripeTerminalProcessActionResult) {
+  return {
+    saleRef: result.saleRef,
+    provider: result.provider,
+    paymentIntentId: result.paymentIntentId,
+    readerId: result.readerId,
+    amountCents: result.amountCents,
+    currency: result.currency,
+    status: result.status,
+    readerStatus: result.readerStatus,
+    readerActionStatus: result.readerActionStatus
+  };
+}
+
 function paymentFailureStatus(message: string) {
   const normalized = message.toLowerCase();
   if (message.includes("is required")) {
@@ -129,7 +143,7 @@ export async function POST(request: Request) {
       { url: deploymentUrl, token }
     );
 
-    return Response.json(result);
+    return Response.json(toPublicTerminalProcessResult(result));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not process Stripe Terminal payment";
     return Response.json({ error: message }, { status: paymentFailureStatus(message) });

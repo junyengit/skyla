@@ -70,29 +70,20 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest post-PR-81 app verification checked on 2026-07-05:
-  `https://web-2e5u36ye7-junyen-enterprises.vercel.app`
-- Latest post-PR-81 deployment ID checked on 2026-07-05:
-  `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`
-- Latest post-PR-81 merge commit checked on 2026-07-05:
-  `7d93c3600d23f5df2ca449d2ef441066c735fab4` (PR #81)
-- Latest docs-state deployment evidence checked on 2026-07-05:
-  `https://web-1n1r4myow-junyen-enterprises.vercel.app`
-- Latest docs-state deployment ID checked on 2026-07-05:
-  `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`
-- Latest docs-state merge commit checked on 2026-07-05:
-  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76)
-- Latest app-code deployment before docs-only follow-ups:
-  `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
-  (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from merge commit
-  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75).
-- Later docs-only merges create newer Vercel production URLs with the same app
-  behavior. Query Vercel for the newest deployment URL before recording fresh
-  operational evidence.
-- Custom domains checked on 2026-07-05:
+- Latest production verification checked on 2026-07-06:
+  `https://web-ll86xe2or-junyen-enterprises.vercel.app`
+- Latest production deployment ID checked on 2026-07-06:
+  `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`
+- Latest production merge commit checked on 2026-07-06:
+  `c6f9301f48d7a9a25700381b9931846c5b9d22f8` (PR #87).
+- PR #87 was a readiness/test slice: it added durable tests for the no-write
+  linked acceptance preflight and Convex env required-gate behavior.
+- Query Vercel for the newest deployment URL after each future merge before
+  recording fresh operational evidence.
+- Custom domains checked on 2026-07-06:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel/Convex env behavior checked on 2026-07-05: `vercel env ls` for
+- Vercel/Convex env behavior checked on 2026-07-06: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
   still behaves as Convex-unconfigured, so checkout/POS/member/experience
   server writes and payment execution are safely blocked.
@@ -117,8 +108,8 @@ real event intake still depends on the dashboard setup below.
   was verified. The old `https://junyengit.github.io/skyla/` surface should
   stay off unless Vercel rollback is unavailable and a deliberate Pages rollback
   is planned.
-- Live API behavior checked on 2026-07-05 across the checked Vercel production
-  deployment, apex domain, and `www` with `bun run test:payments`:
+- Live API behavior checked on 2026-07-06 across `https://skydeckla.com` with
+  `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
   - Spoofed POS total/reader/location returned canonical server total `9700`
@@ -134,58 +125,41 @@ real event intake still depends on the dashboard setup below.
   - `/api/pos/readers` returned `401 staff_auth_required` before exposing any
     Terminal reader records.
   - No response exposed a Stripe `clientSecret`.
-- Native admin export API checked on 2026-07-05 for post-PR-81 production
-  deployment `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn`, `https://skydeckla.com`,
-  and `https://www.skydeckla.com`:
+- Payment code audit on 2026-07-06 found no raw card PAN/CVC collection or
+  storage, no public `clientSecret` exposure, and server-owned amount authority
+  for Checkout and Terminal payment creation. Route tests now include explicit
+  `clientSecret`/`client_secret` regression fixtures for public payment
+  responses.
+- Native admin export API checked on 2026-07-05 and carried forward after the
+  PR #87 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
     while the real Convex deployment URL is not configured.
   - Both responses included `Cache-Control: no-store` and `Vary:
     Authorization`.
-- Member application API checked on 2026-07-05 across the apex domain, `www`,
-  and the checked Vercel deployment URL with an empty no-write payload:
-  `/api/members/applications` returned `503` with `convex_unconfigured`, so it
-  is safely blocked until Convex is linked.
-- Experience inquiry API checked on 2026-07-05 across the apex domain, `www`,
-  and the checked Vercel deployment URL with an empty no-write payload:
-  `/api/experiences/inquiries` returned `503` with `convex_unconfigured`, so it
-  is safely blocked until Convex is linked.
+- Member application and experience inquiry APIs checked on 2026-07-06 across
+  the apex and `www` custom domains with `bun run test:production-readiness`:
+  both no-write probes remained safely Convex-gated and did not create data.
 - Linked acceptance harness: `bun run test:acceptance:linked` exists for the
   first Convex/Vercel/Stripe test-mode Preview after dashboard wiring. It is
   intentionally opt-in, uses the Vercel Preview branch alias by default, refuses
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-05 after smoke probes:
-  no error/fatal logs for deployment `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL` in
-  the fetched one-hour log window. The visible entries were expected info-level
-  route checks plus intentional staff-gated `401` and `503 convex_unconfigured`
-  probes.
-- Vercel production runtime errors checked again on 2026-07-05 after the admin
-  export deployment: no grouped runtime errors and no error/fatal logs for
-  deployment `dpl_Cz1PXEHLPNNUwUTpK8KK4iznqNQR` in the fetched one-hour log
-  window.
-- Vercel production runtime logs checked again on 2026-07-05 after PR #81:
-  no error/fatal rows for deployment `dpl_4PTqPnqrwyJjm8hFX3T1FZN2UfQn` in the
-  fetched one-hour log window. The visible entries were expected public `200`,
-  staff-gated `401`, and Convex-unconfigured `503` smoke probes.
-- Vercel production runtime logs checked again on 2026-07-06 after PR #84:
-  no grouped runtime errors and no error/fatal rows for deployment
-  `dpl_4MFjVoPD8ewFLtC9DRHSTawMpoZF` in the fetched 30-minute log window. The
-  visible entries were expected public `200`, staff-gated `401`, and
-  Convex-unconfigured `503` smoke probes.
+- Vercel production runtime errors checked on 2026-07-06 after PR #87 and the
+  latest smoke probes: no grouped runtime errors in the selected 30-minute
+  window and no error/fatal logs for deployment
+  `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
   `/api/pos/readers` now return `Cache-Control: no-store` and
   `Vary: Authorization` for staff-gated and fail-closed responses.
 - Bun checked locally: `1.4.0-canary.1+d37f52067`
-- Dependency audit checked on 2026-07-06: `bun audit --audit-level=low` reports
-  no vulnerabilities after the `postcss@8.5.16` override.
-- Dependency freshness checked on 2026-07-06: `vitest` is patched to `4.1.10`;
-  `bun outdated --recursive` only lists ESLint `10.6.0`.
-- Known deferred dependency: ESLint `10.6.0`; it currently breaks through
-  `eslint-plugin-react`, so keep ESLint on `9.39.4` until the plugin stack is
-  compatible.
+- Dependency audit checked on 2026-07-06: `bun audit --audit-level=high`
+  reports no vulnerabilities after the `postcss@8.5.16` override.
+- Dependency freshness checked on 2026-07-06: `bun outdated` produced no
+  upgrade table in this worktree; Dependabot covers Bun and GitHub Actions
+  weekly.
 
 ```mermaid
 flowchart TD
@@ -218,12 +192,13 @@ flowchart TD
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
-- The 23-route smoke test passed on 2026-07-05 for
-  `https://web-1n1r4myow-junyen-enterprises.vercel.app`,
-  `https://skydeckla.com`, and `https://www.skydeckla.com`.
+- The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
+  after PR #87 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
-- GitHub CodeQL open-alert list is empty.
+- GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
+  the open-alert count because the local token may not have Code Scanning API
+  access.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
   `noindex, nofollow` in the current code path.
@@ -261,8 +236,8 @@ flowchart TD
   routes, and production readiness checks fail if retired staff assets are
   served again.
 - Helium visual QA on 2026-07-05 confirmed live `/admin` and `/pos-next` render
-  readable white text on black staff surfaces. The same contrast is pinned by
-  CSS and regression tests.
+  readable white text on black staff surfaces. This follow-up also keeps
+  primary and active staff controls white-on-dark in CSS.
 - Native `/pos` and compatibility `/pos-next` review a server-calculated POS
   total without using browser totals.
 - Native `/pos` loads authorized Stripe Terminal readers through

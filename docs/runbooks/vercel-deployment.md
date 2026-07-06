@@ -23,21 +23,18 @@ root.
 
 ## Current Production State
 
-As of July 5, 2026:
+As of July 6, 2026:
 
-- Latest verified docs-state deployment evidence from `main` was READY at
-  `https://web-1n1r4myow-junyen-enterprises.vercel.app`.
-- Latest verified docs-state deployment ID:
-  `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`.
-- Latest verified docs-state merge commit:
-  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76).
-- Latest verified app-code deployment before docs-only follow-ups:
-  `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
-  (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from
-  `a644ad1483f7b03b3fd54481d7d07441265e5d31` (PR #75).
-- Later docs-only merges create newer Vercel production URLs with the same app
-  behavior. Query Vercel for the newest deployment URL before recording fresh
-  operational evidence.
+- Latest verified production deployment from `main` was READY at
+  `https://web-ll86xe2or-junyen-enterprises.vercel.app`.
+- Latest verified production deployment ID:
+  `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`.
+- Latest verified production merge commit:
+  `c6f9301f48d7a9a25700381b9931846c5b9d22f8` (PR #87).
+- PR #87 was a readiness/test slice. It added durable script tests for the
+  no-write linked acceptance preflight and Convex env required-gate behavior.
+- Future merges create newer Vercel production URLs. Query Vercel before
+  recording fresh operational evidence.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
 - Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
@@ -45,9 +42,9 @@ As of July 5, 2026:
 - Production payment routes currently fail closed with `convex_unconfigured`
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
-- The latest checked production deployment metadata reports Bun serverless
-  runtime usage, Turbopack bundling, target `production`, and commit
-  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec`.
+- The latest checked production deployment metadata reports target
+  `production`, commit `c6f9301f48d7a9a25700381b9931846c5b9d22f8`, framework
+  `nextjs`, Node `24.x`, and the Bun canary install path from repo config.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
 

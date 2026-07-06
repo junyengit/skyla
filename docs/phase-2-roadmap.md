@@ -1,6 +1,6 @@
 # Skyla Phase 2 Roadmap
 
-Last updated: 2026-07-02
+Last updated: 2026-07-06
 
 ## Plain-English Goal
 
@@ -28,8 +28,9 @@ flowchart LR
   experiences["Native /experiences inquiry page + API"]
   members["Native /members application page + API"]
   posDraft["Native /pos draft"]
-  supabase["Supabase auth, tables, edge functions"]
-  payments["Stripe / Kaskade / EmailJS / Brevo"]
+  convex["Convex code paths (dashboard link pending)"]
+  stripe["Stripe actions/webhook (dashboard gated)"]
+  supabase["Legacy Supabase functions to disable"]
 
   visitor --> domain
   domain --> vercel
@@ -39,8 +40,9 @@ flowchart LR
   next --> experiences
   next --> members
   next --> posDraft
-  bridge --> supabase
-  bridge --> payments
+  next -. "NEXT_PUBLIC_CONVEX_URL pending" .-> convex
+  convex -. "envs + webhook pending" .-> stripe
+  supabase -. "must be fail-closed or disabled" .-> stripe
 ```
 
 Why this is okay short term:
@@ -51,8 +53,7 @@ Why this is okay short term:
 
 Why this is not the final state:
 
-- Checkout and paid booking creation are still too browser-controlled.
-- Admin and POS rely heavily on client-side behavior.
+- Live writes and payment acceptance are still blocked on dashboard wiring.
 - Supabase-era functions and data access are still outside the target architecture.
 - Public content compatibility files in `apps/web/public` are now handoff-only
   where typed App Router routes own the content. Staff compatibility files are
@@ -337,17 +338,14 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified docs-state commit:
-  `5a7e46a3e5dc28b72ff2681b896084ba91e045ec` (PR #76)
-- Latest verified docs-state deployment evidence:
-  `https://web-1n1r4myow-junyen-enterprises.vercel.app`
-- Latest verified docs-state deployment ID:
-  `dpl_Eb9L2qE3GQC4UK5qtHDxBV77zEvL`
-- Latest verified app-code deployment before docs-only follow-ups:
-  `https://web-l6id8jdjf-junyen-enterprises.vercel.app`
-  (`dpl_FAgDgqK2exPEecMvcPdcR2PnoWaT`) from PR #75.
-- Later docs-only merges create newer Vercel production URLs with the same app
-  behavior; query Vercel before recording fresh operational evidence.
+- Latest verified production commit:
+  `c6f9301f48d7a9a25700381b9931846c5b9d22f8` (PR #87)
+- Latest verified production deployment evidence:
+  `https://web-ll86xe2or-junyen-enterprises.vercel.app`
+- Latest verified production deployment ID:
+  `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`
+- Future merges create newer Vercel production URLs; query Vercel before
+  recording fresh operational evidence.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -378,6 +376,10 @@ Current verified Vercel data:
   `SKYLA_STRIPE_MODE`, Terminal no longer returns public `clientSecret`, the
   legacy Supabase Stripe webhook repo copy is fail-closed, and live admin/POS
   surfaces were rechecked in Helium after production deploy.
+- Post-PR87 readiness refresh state: public Stripe Checkout and Terminal routes
+  return allowlisted response shapes, even if a lower layer accidentally
+  includes `clientSecret` or `client_secret`; active admin/POS controls use
+  white text on dark staff surfaces.
 - Domains attached and Vercel-verified: `skydeckla.com`, `www.skydeckla.com`
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and

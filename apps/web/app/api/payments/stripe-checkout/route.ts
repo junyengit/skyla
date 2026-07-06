@@ -58,6 +58,17 @@ function isServerConfigurationError(message: string) {
   );
 }
 
+function toPublicCheckoutResult(result: StripeCheckoutActionResult) {
+  return {
+    orderRef: result.orderRef,
+    provider: result.provider,
+    checkoutSessionId: result.checkoutSessionId,
+    url: result.url,
+    amountCents: result.amountCents,
+    currency: result.currency
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const deploymentUrl = convexUrl();
@@ -87,7 +98,7 @@ export async function POST(request: Request) {
       { url: deploymentUrl }
     );
 
-    return Response.json(result);
+    return Response.json(toPublicCheckoutResult(result));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not start Stripe Checkout";
     const status = message.includes("is required") || message.includes("origin is not allowed")

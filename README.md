@@ -45,18 +45,15 @@ flowchart LR
 As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest verified docs-state deployment evidence:
-  `https://web-kps43da9f-junyen-enterprises.vercel.app` from merge commit
-  `488d271a8918751e786856dc71e77fdab8d97402` (PR #85,
-  deployment `dpl_CmB2vnzPH9tQuq5oSeCCPW3TnWJt`).
-- Latest verified app-code deployment before docs-only follow-ups:
-  `https://web-ifbsn97wt-junyen-enterprises.vercel.app` from merge commit
-  `c52239079288e45e7fb5c8758a312753bdb420d4` (PR #84,
-  deployment `dpl_4MFjVoPD8ewFLtC9DRHSTawMpoZF`).
-- Docs-only merges create newer Vercel production URLs with the same app
-  behavior. Use Vercel project `junyen-enterprises/web` or `vercel ls web
-  --scope junyen-enterprises` for the newest deployment URL before recording
-  fresh operational evidence.
+- Latest verified production deployment evidence:
+  `https://web-ll86xe2or-junyen-enterprises.vercel.app` from merge commit
+  `c6f9301f48d7a9a25700381b9931846c5b9d22f8` (PR #87,
+  deployment `dpl_HPqZptoZ36XiU6vTBL6XHAGgdnMv`, status `READY`).
+- PR #87 was a test/readiness slice. It added durable script-level coverage for
+  the no-write linked acceptance preflight and Convex env gate checks.
+- Use Vercel project `junyen-enterprises/web` or `vercel ls web --scope
+  junyen-enterprises` for the newest deployment URL before recording fresh
+  operational evidence after future merges.
 - Vercel custom domains `skydeckla.com` and `www.skydeckla.com` are attached and Vercel reports both domains as configured correctly.
 - Nameservers now resolve to Vercel DNS: `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
@@ -79,6 +76,9 @@ As of July 6, 2026:
   Stripe dashboard setup is finished. `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables on July 6,
   2026.
+- Payment API audit on July 6, 2026 found no raw card collection or storage,
+  no public `clientSecret` response exposure, and server-owned checkout/POS
+  amount authority. Live payment acceptance is still dashboard-gated.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
   older `/pos-next` draft review URL through App Router. Staff compatibility
@@ -98,7 +98,8 @@ As of July 6, 2026:
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+d37f52067`.
+`1.4.0-canary.1+d37f52067`. Bun's documented canary upgrade command is
+`bun upgrade --canary`; installs should still use `bun install --frozen-lockfile`.
 
 ```bash
 bun upgrade --canary
@@ -167,10 +168,11 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 - `convex/payments.ts` adds the next Stripe Checkout action. It creates Stripe
   sessions from stored `orderRef` records only. `convex/http.ts` adds the
   Stripe webhook route. `/api/payments/stripe-checkout` and the App Router
-  `/checkout` page are wired for this path, but live card payment still needs
-  real Convex envs, Stripe envs, and Stripe dashboard endpoint setup. Convex
-  also requires `SKYLA_STRIPE_MODE` so test keys/webhooks and live
-  keys/webhooks cannot be mixed silently.
+  `/checkout` page are wired for this path. Public payment responses are
+  allowlisted so accidental Stripe `clientSecret` fields are not returned to
+  the browser. Live card payment still needs real Convex envs, Stripe envs, and
+  Stripe dashboard endpoint setup. Convex also requires `SKYLA_STRIPE_MODE` so
+  test keys/webhooks and live keys/webhooks cannot be mixed silently.
 - `/api/order-drafts/pos` and native `/pos` add a POS draft review path. The
   older `/pos-next` URL still renders the same native shell during rollout.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser

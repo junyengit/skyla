@@ -107,7 +107,9 @@ describe("/api/payments/stripe-terminal", () => {
       paymentIntentId: "pi_test_123",
       amountCents: 2900,
       currency: "usd",
-      status: "requires_payment_method"
+      status: "requires_payment_method",
+      clientSecret: "pi_test_secret_should_not_return",
+      client_secret: "pi_test_secret_should_not_return"
     });
 
     const response = await CREATE_POST(
@@ -131,6 +133,8 @@ describe("/api/payments/stripe-terminal", () => {
       amountCents: 2900
     });
     expect(body).not.toHaveProperty("clientSecret");
+    expect(JSON.stringify(body)).not.toContain("client_secret");
+    expect(JSON.stringify(body)).not.toContain("should_not_return");
     expect(fetchActionMock).toHaveBeenCalledWith(
       expect.anything(),
       {
@@ -229,7 +233,9 @@ describe("/api/payments/stripe-terminal/process", () => {
       currency: "usd",
       status: "processing",
       readerStatus: "online",
-      readerActionStatus: "in_progress"
+      readerActionStatus: "in_progress",
+      clientSecret: "pi_test_secret_should_not_return",
+      client_secret: "pi_test_secret_should_not_return"
     });
 
     const response = await PROCESS_POST(
@@ -246,12 +252,16 @@ describe("/api/payments/stripe-terminal/process", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json();
+    expect(body).toMatchObject({
       paymentIntentId: "pi_test_123",
       readerId: "tmr_stored_123",
       amountCents: 2900,
       status: "processing"
     });
+    expect(JSON.stringify(body)).not.toContain("clientSecret");
+    expect(JSON.stringify(body)).not.toContain("client_secret");
+    expect(JSON.stringify(body)).not.toContain("should_not_return");
     expect(fetchActionMock).toHaveBeenCalledWith(
       expect.anything(),
       {
