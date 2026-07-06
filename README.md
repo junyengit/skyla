@@ -45,10 +45,12 @@ flowchart LR
 As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Most recent full production verification recorded here:
-  `https://web-4jgzocjsd-junyen-enterprises.vercel.app` from merge commit
-  `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96,
-  deployment `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`, status `READY`).
+- Current production alias checked on July 6, 2026:
+  `https://web-5nzoujeod-junyen-enterprises.vercel.app` from merge commit
+  `daa7605cc2cf586b94e51c069c427cc0d5f67601` (PR #106,
+  deployment `dpl_59RHYSuQhkBar871iwErMPrZMsRM`, status `READY`).
+- Most recent full app/payment production verification recorded here is PR #105
+  deployment `dpl_HmrWjRmM3jt5kEpt5oqwQrUzjyAX`. PR #106 was docs-only.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
   the remaining Convex/Stripe env setup. It reports only env names/scopes,
   fails until `NEXT_PUBLIC_CONVEX_URL` is in Preview/Production, and fails if
@@ -62,12 +64,15 @@ As of July 6, 2026:
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
-  pushes, branch deletion, and unresolved conversations are blocked.
+  pushes, branch deletion, and unresolved conversations are blocked. This was
+  rechecked through the GitHub API on July 6, 2026.
 - CodeQL PR checks are passing. The Code Scanning open-alert API returned
   `404` for the local `gh` token during the latest check, so use the GitHub
   Security tab to confirm the current open-alert count.
 - GitHub repo homepage points to `https://skydeckla.com`; Dependabot
-  vulnerability alerts and automated security fixes are enabled.
+  vulnerability alerts and automated security fixes are enabled. The GitHub API
+  returned `204` for vulnerability alerts and `{ "enabled": true,
+  "paused": false }` for automated security fixes on July 6, 2026.
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
   production was verified, so the old `github.io` surface is no longer an
   active host.

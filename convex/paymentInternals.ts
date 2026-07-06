@@ -151,6 +151,9 @@ export const getPosTerminalPaymentSnapshot = internalQuery({
     if (staffUser.role !== "admin" && sale.staffUserId && sale.staffUserId !== staffUser._id) {
       throw new Error("POS sale belongs to a different staff user");
     }
+    if (!sale.readerId) {
+      throw new Error("POS sale does not have a stored Terminal reader");
+    }
 
     const lines = await ctx.db
       .query("posSaleLines")

@@ -21,7 +21,7 @@
 - Keep secret scanning and push protection enabled.
 - Keep Dependabot vulnerability alerts and automated security fixes enabled.
 
-Current GitHub branch-protection check, verified on July 2, 2026:
+Current GitHub branch-protection and security check, verified on July 6, 2026:
 
 - `main` is protected.
 - Required checks: `ci-build`, `Analyze JavaScript and TypeScript`, and
@@ -29,7 +29,10 @@ Current GitHub branch-protection check, verified on July 2, 2026:
 - Admins are included in enforcement.
 - Force pushes and branch deletion are disabled.
 - Conversations must be resolved before merge.
-- Dependabot vulnerability alerts and automated security fixes are enabled.
+- Dependabot vulnerability alerts are enabled (`GET /vulnerability-alerts`
+  returned `204`).
+- Dependabot automated security fixes are enabled and not paused (`GET
+  /automated-security-fixes` returned `{"enabled":true,"paused":false}`).
 - GitHub Pages is disabled; Vercel is the active deployment surface.
 
 ## Current Legacy Behavior

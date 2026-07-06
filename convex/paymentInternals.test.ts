@@ -4,6 +4,7 @@ import { catalogLineMetadata, cafeItems, ticketPackages } from "@skyla/payments"
 import { stripeTerminalIntentIdempotencyKey } from "./lib/stripeTerminal";
 import {
   getCheckoutPaymentSnapshot,
+  getPosTerminalPaymentSnapshot,
   getStripeTerminalReaderProcessSnapshot,
   recordStripeCheckoutWebhook,
   recordStripeTerminalWebhook
@@ -132,6 +133,17 @@ describe("payment snapshot provenance gates", () => {
     } finally {
       process.env.SKYLA_TERMINAL_READER_REGISTRY = previousRegistry;
     }
+  });
+
+  it("rejects Terminal PaymentIntent snapshots before Stripe when no reader is stored", async () => {
+    const { ctx } = createTerminalPaymentSnapshotCtx({ readerId: undefined });
+
+    await expect(
+      runTerminalPaymentSnapshot(ctx, {
+        saleRef,
+        idempotencyKey: "possale_000001"
+      })
+    ).rejects.toThrow("POS sale does not have a stored Terminal reader");
   });
 });
 
@@ -346,6 +358,16 @@ async function runCheckoutPaymentSnapshot(
   return query._handler(ctx, args);
 }
 
+async function runTerminalPaymentSnapshot(
+  ctx: MockCtx,
+  args: { saleRef: string; idempotencyKey: string }
+) {
+  const query = getPosTerminalPaymentSnapshot as unknown as {
+    _handler: (ctx: MockCtx, args: { saleRef: string; idempotencyKey: string }) => Promise<unknown>;
+  };
+  return query._handler(ctx, args);
+}
+
 async function runTerminalReaderProcessSnapshot(
   ctx: MockCtx,
   args: { saleRef: string; idempotencyKey: string }
@@ -392,6 +414,52 @@ function createCheckoutSnapshotCtx(
   if (!("lineMetadata" in options)) {
     state.orderLineItems[0].metadata = catalogLineMetadata(ticketPackages.general);
   }
+
+  return createMockCtx(state);
+}
+
+function createTerminalPaymentSnapshotCtx(
+  options: { readerId?: string; terminalLocationId?: string } = {}
+): { ctx: MockCtx; state: MockState } {
+  const state = createEmptyState();
+  state.staffUsers.push({
+    _id: "staffUsers_1",
+    _creationTime: 1,
+    subject: "staff_subject",
+    emailLower: "pos@example.com",
+    role: "pos",
+    active: true,
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.posSales.push({
+    _id: "posSales_1",
+    _creationTime: 1,
+    saleRef,
+    status: "draft",
+    currency: "usd",
+    subtotalCents: 600,
+    feeCents: 0,
+    totalCents: 600,
+    staffUserId: "staffUsers_1",
+    readerId: options.readerId,
+    terminalLocationId: options.terminalLocationId,
+    idempotencyKey: "possale_000001",
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.posSaleLines.push({
+    _id: "posSaleLines_1",
+    _creationTime: 1,
+    saleRef,
+    kind: "cafe",
+    productKey: "b1",
+    name: "Butter Croissant",
+    quantity: 1,
+    unitAmountCents: 600,
+    lineTotalCents: 600,
+    metadata: catalogLineMetadata(cafeItems.b1)
+  });
 
   return createMockCtx(state);
 }
