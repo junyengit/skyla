@@ -46,7 +46,7 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #101 merge commit `0c8f3b3`.
+- Vercel production deployment is ready for PR #103 merge commit `2758335`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and compatibility handoff routes smoke-test successfully.
@@ -135,18 +135,18 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Most recent full production evidence recorded here | PR #101, merged to `main` on July 6, 2026 |
-| Evidence deployment | `dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`, status `READY` |
-| Evidence URL | `https://web-ho5ezap7w-junyen-enterprises.vercel.app` |
-| Evidence commit | `0c8f3b3045014e888e9ee70c097aece94fcc6eb7` |
-| App/payment behavior verification | PR #101 post-merge smoke checks, rerun on July 6, 2026 |
+| Most recent full production evidence recorded here | PR #103, merged to `main` on July 6, 2026 |
+| Evidence deployment | `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`, status `READY` |
+| Evidence URL | `https://web-powem7zir-junyen-enterprises.vercel.app` |
+| Evidence commit | `2758335f507d64b0bdaaf7c7350d0626ae78c0b8` |
+| App/payment behavior verification | PR #103 post-merge smoke checks, rerun on July 6, 2026 |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=low` | No vulnerabilities found |
 | Dependency sweep | `bun outdated` produced no upgrade table; direct registry checks found Next, React, Motion, Convex, Turbo, TypeScript, Vitest, and PostCSS current. ESLint 10 remains intentionally deferred because the current Next lint plugin stack still peers against ESLint 9 in key packages. `bun update --latest --dry-run` made no manifest or lockfile change. |
-| `bun run test:smoke` | Passed on `https://web-ho5ezap7w-junyen-enterprises.vercel.app` and `https://skydeckla.com` after PR #101 |
+| `bun run test:smoke` | Passed on `https://web-powem7zir-junyen-enterprises.vercel.app` and `https://skydeckla.com` after PR #103 |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge; now checks exact catalog line provenance metadata and canonical line amounts |
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated; now includes exact catalog provenance and line amounts in payment no-write probes |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
@@ -161,7 +161,7 @@ safe behavior.
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
-| Vercel runtime evidence | After PR #101 smoke probes, Vercel reported no error logs for `dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
+| Vercel runtime evidence | After PR #103 smoke probes, Vercel reported no error logs for `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
 
 Vercel creates a new production URL after every merge, including docs-only
 merges. Treat the app/payment behavior above as the most recent full smoke

@@ -77,11 +77,11 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Most recent full production verification recorded here on 2026-07-06:
-  `https://web-ho5ezap7w-junyen-enterprises.vercel.app`
+  `https://web-powem7zir-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-06:
-  `dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`
+  `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`
 - Evidence merge commit checked on 2026-07-06:
-  `0c8f3b3045014e888e9ee70c097aece94fcc6eb7` (PR #101).
+  `2758335f507d64b0bdaaf7c7350d0626ae78c0b8` (PR #103).
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
   Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
@@ -161,7 +161,7 @@ stored line amounts remain the payment authority.
   They must stay HTTP-410 retired surfaces and must not initialize Supabase
   helpers or call Stripe/Kaskade APIs.
 - Native admin export API checked on 2026-07-05 and carried forward after the
-  PR #101 smoke pass:
+  PR #103 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
@@ -177,9 +177,9 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-06 after PR #101 and the
+- Vercel production runtime errors checked on 2026-07-06 after PR #103 and the
   latest smoke probes: `vercel logs --level error --since 30m` returned no
-  logs for deployment `dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`. Non-200 responses were expected:
+  logs for deployment `dpl_71pvfCSSG6WMYRVFcivpVi4jQ9SF`. Non-200 responses were expected:
   `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
   gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
@@ -226,7 +226,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
-  after PR #101 reached production.
+  after PR #103 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
