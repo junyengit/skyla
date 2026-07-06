@@ -45,7 +45,7 @@ flowchart LR
 As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest verified production deployment evidence:
+- Most recent full production verification recorded here:
   `https://web-4jgzocjsd-junyen-enterprises.vercel.app` from merge commit
   `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96,
   deployment `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`, status `READY`).
@@ -86,7 +86,7 @@ As of July 6, 2026:
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
 - Vercel production runtime checks show no grouped runtime errors and no
-  error/fatal logs for the latest checked production deployment. The observed
+  error/fatal logs for the recorded evidence deployment. The observed
   non-200 responses were expected staff-auth `401` and Convex-unconfigured
   `503` gates from the smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest

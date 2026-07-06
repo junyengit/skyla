@@ -70,18 +70,18 @@ real event intake still depends on the dashboard setup below.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest production verification checked on 2026-07-06:
+- Most recent full production verification recorded here on 2026-07-06:
   `https://web-4jgzocjsd-junyen-enterprises.vercel.app`
-- Latest production deployment ID checked on 2026-07-06:
+- Evidence deployment ID checked on 2026-07-06:
   `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`
-- Latest production merge commit checked on 2026-07-06:
+- Evidence merge commit checked on 2026-07-06:
   `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96).
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
   Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
-- Query Vercel for the newest deployment URL after each future merge before
-  recording fresh operational evidence. Future docs-only merges may create
-  newer URLs with the same app behavior.
+- Query Vercel for the newest deployment URL before recording fresh operational
+  evidence. Future docs-only merges may create newer URLs with the same app
+  behavior.
 - Custom domains checked on 2026-07-06:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
