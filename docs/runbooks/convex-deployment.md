@@ -189,14 +189,17 @@ For the native admin action slice:
   booking references or exact guest emails; only `admin` and `pos` can mutate
   booking check-in state and voucher redemption through separate actions.
 - Cancel/refund/payment reconciliation, hard delete, clear-all, reset-all,
-  and config/catalog edits remain out of scope.
+  staff price editing, and browser-submitted catalog edits remain out of scope.
+  Code-owned catalog seed/activation is allowed as an admin-only audited
+  operation.
 
 8. Seed the code-owned payment catalog after the admin staff token works.
 
 The catalog seed does not let the browser submit prices. It copies the
 code-owned `@skyla/payments` catalog into Convex `products`, records immutable
-`productSnapshots`, marks one `catalogVersions` row active, and writes an audit
-event. Use a seeded admin bearer token:
+`productSnapshots`, marks one `catalogVersions` row active, deletes omitted
+product keys from the current `products` mirror, and writes an audit event. Use
+native `/admin` or a seeded admin bearer token:
 
 ```bash
 curl -sS -X POST "$VERCEL_PREVIEW_URL/api/admin/catalog" \
@@ -220,6 +223,10 @@ curl -sS -X POST "$VERCEL_PREVIEW_URL/api/admin/catalog" \
 
 Keep checkout and POS runtime pricing on `@skyla/payments` until linked Convex
 acceptance has proven the seeded catalog and payment flows in Preview.
+
+After seeding, verify `GET /api/admin/catalog` reports the active version, then
+rerun checkout/POS spoof-total probes and payment fail-closed probes before any
+runtime catalog authority change.
 
 9. Pull local web envs if you want the Next route to use Convex locally:
 

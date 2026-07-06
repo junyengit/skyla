@@ -5,7 +5,8 @@ import {
   catalogVersionAuditMetadata,
   codeOwnedCatalogSeed,
   normalizeCatalogSeed,
-  snapshotSeedFromRows
+  snapshotSeedFromRows,
+  staleCatalogProductKeys
 } from "./lib/catalogVersioning";
 
 const seed = {
@@ -45,6 +46,23 @@ describe("catalog versioning helpers", () => {
     expect(first.activeItemCount).toBeGreaterThan(10);
     expect(first.contentHash).toBe(second.contentHash);
     expect(first.note).toBe("initial seed");
+  });
+
+  it("changes content identity when catalog content changes but not when notes change", () => {
+    const original = normalizeCatalogSeed({ ...seed, note: "operator one" });
+    const sameContent = normalizeCatalogSeed({ ...seed, note: "operator two" });
+    const changedPrice = normalizeCatalogSeed({
+      ...seed,
+      items: seed.items.map((item) => (item.key === "general" ? { ...item, priceCents: item.priceCents + 100 } : item))
+    });
+    const changedActive = normalizeCatalogSeed({
+      ...seed,
+      items: seed.items.map((item) => (item.key === "m1" ? { ...item, active: false } : item))
+    });
+
+    expect(sameContent.contentHash).toBe(original.contentHash);
+    expect(changedPrice.contentHash).not.toBe(original.contentHash);
+    expect(changedActive.contentHash).not.toBe(original.contentHash);
   });
 
   it("rejects duplicate global product keys before seeding", () => {
@@ -137,5 +155,9 @@ describe("catalog versioning helpers", () => {
       action: "seed",
       note: "first load"
     });
+  });
+
+  it("identifies stale current products omitted from a newly activated seed", () => {
+    expect(staleCatalogProductKeys(["m1", "old-room", "general", "old-room"], seed.items)).toEqual(["old-room"]);
   });
 });

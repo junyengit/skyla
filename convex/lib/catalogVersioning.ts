@@ -108,6 +108,11 @@ export function catalogSnapshotRows(seed: NormalizedCatalogSeed, createdAt: numb
   }));
 }
 
+export function staleCatalogProductKeys(currentKeys: string[], seedItems: Array<Pick<CatalogSeedItem, "key">>) {
+  const seeded = new Set(seedItems.map((item) => item.key));
+  return [...new Set(currentKeys.filter((key) => !seeded.has(key)))].sort();
+}
+
 export function catalogVersionAuditMetadata(
   seed: Pick<NormalizedCatalogSeed, "version" | "source" | "authority" | "itemCount" | "activeItemCount" | "contentHash">,
   action: "seed" | "activate",
