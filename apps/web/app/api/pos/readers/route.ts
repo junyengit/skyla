@@ -3,6 +3,7 @@ import { makeFunctionReference } from "convex/server";
 
 import {
   adminFailureStatus,
+  adminJson,
   authToken,
   convexUnconfiguredResponse,
   convexUrl,
@@ -41,9 +42,9 @@ export async function GET(request: Request) {
 
     const result = await fetchQuery(listTerminalReadersQuery, {}, { url: deploymentUrl, token });
 
-    return Response.json(result);
+    return adminJson(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load POS Terminal readers";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }

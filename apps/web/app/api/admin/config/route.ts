@@ -2,6 +2,7 @@ import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 import {
   adminFailureStatus,
+  adminJson,
   authToken,
   convexUnconfiguredResponse,
   convexUrl,
@@ -172,10 +173,10 @@ export async function GET(request: Request) {
     }
 
     const snapshot = await fetchQuery(getConfigSnapshotQuery, {}, { url: deploymentUrl, token });
-    return Response.json(snapshot);
+    return adminJson(snapshot);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load Admin Config";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }
 
@@ -203,9 +204,9 @@ export async function POST(request: Request) {
       { url: deploymentUrl, token }
     );
 
-    return Response.json({ config: result });
+    return adminJson({ config: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not update Admin Config";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }

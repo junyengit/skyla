@@ -3,6 +3,7 @@ import { makeFunctionReference } from "convex/server";
 
 import {
   adminFailureStatus,
+  adminJson,
   authToken,
   convexUnconfiguredResponse,
   convexUrl,
@@ -144,10 +145,10 @@ export async function GET(request: Request) {
       withoutUndefined({ version }),
       { url: deploymentUrl, token }
     );
-    return Response.json(snapshot);
+    return adminJson(snapshot);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load Admin Catalog";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }
 
@@ -176,9 +177,9 @@ export async function POST(request: Request) {
             { url: deploymentUrl, token }
           );
 
-    return Response.json({ catalog: result });
+    return adminJson({ catalog: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not update Admin Catalog";
-    return Response.json({ error: message }, { status: adminFailureStatus(message) });
+    return adminJson({ error: message }, { status: adminFailureStatus(message) });
   }
 }

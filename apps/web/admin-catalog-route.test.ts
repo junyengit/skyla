@@ -14,6 +14,11 @@ const route = await import("./app/api/admin/catalog/route");
 const fetchQueryMock = vi.mocked(fetchQuery);
 const fetchMutationMock = vi.mocked(fetchMutation);
 
+function expectStaffApiHeaders(response: Response) {
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("vary")?.toLowerCase().split(",").map((item) => item.trim())).toContain("authorization");
+}
+
 function request(body?: unknown, init?: RequestInit, url = "https://skydeckla.test/api/admin/catalog") {
   return new Request(url, {
     method: body === undefined ? "GET" : "POST",
@@ -37,6 +42,7 @@ describe("/api/admin/catalog", () => {
     const response = await route.GET(request());
 
     expect(response.status).toBe(401);
+    expectStaffApiHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "staff_auth_required"
     });
@@ -47,6 +53,7 @@ describe("/api/admin/catalog", () => {
     const response = await route.GET(request(undefined, { headers: { authorization: "Bearer staff.jwt.token" } }));
 
     expect(response.status).toBe(503);
+    expectStaffApiHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "convex_unconfigured"
     });
@@ -72,6 +79,7 @@ describe("/api/admin/catalog", () => {
     );
 
     expect(response.status).toBe(200);
+    expectStaffApiHeaders(response);
     expect(fetchQueryMock).toHaveBeenCalledWith(
       "catalog:getCatalogSnapshot",
       { version: "skyla-payments-catalog-2026-07-05" },
@@ -93,6 +101,7 @@ describe("/api/admin/catalog", () => {
     );
 
     expect(response.status).toBe(400);
+    expectStaffApiHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       error: "catalog prices are code-owned and cannot be submitted by the browser"
     });
@@ -122,6 +131,7 @@ describe("/api/admin/catalog", () => {
     );
 
     expect(response.status).toBe(200);
+    expectStaffApiHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       catalog: {
         version: "skyla-payments-catalog-2026-07-05",
@@ -158,6 +168,7 @@ describe("/api/admin/catalog", () => {
     );
 
     expect(response.status).toBe(200);
+    expectStaffApiHeaders(response);
     expect(fetchMutationMock).toHaveBeenCalledWith(
       "catalog:activateCatalogVersion",
       {
