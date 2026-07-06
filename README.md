@@ -46,12 +46,14 @@ As of July 6, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest verified app-code production deployment evidence:
-  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app` from merge commit
-  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90,
-  deployment `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`, status `READY`).
-- PR #90 added an automated guard for the retired Supabase payment/webhook
-  functions and removed the Supabase helper wrapper from the retired legacy
-  Terminal stub.
+  `https://web-4keycalzp-junyen-enterprises.vercel.app` from merge commit
+  `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3` (PR #92,
+  deployment `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`, status `READY`).
+- PR #92 added an opt-in live Supabase retirement smoke, made the retired
+  Supabase Terminal stub return `410` for every non-OPTIONS request, added
+  Turbo global dependency inputs for root smoke/security/Supabase files, and
+  added a regression test that keeps admin/POS staff text white on dark
+  surfaces.
 - Future docs-only merges may create newer production URLs with the same app
   behavior. Use Vercel project `junyen-enterprises/web` or `vercel ls web
   --scope junyen-enterprises` before recording fresh operational evidence.
@@ -77,9 +79,14 @@ As of July 6, 2026:
   Stripe dashboard setup is finished. `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables on July 6,
   2026.
-- Payment API audit on July 6, 2026 found no raw card collection or storage,
-  no public `clientSecret` response exposure, and server-owned checkout/POS
-  amount authority. Live payment acceptance is still dashboard-gated.
+- Payment API audit and smoke checks on July 6, 2026 found no raw card
+  collection or storage, no public `clientSecret` response exposure, and
+  server-owned checkout/POS amount authority. Live payment acceptance is still
+  dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
+- Vercel production runtime checks after PR #92 showed no grouped runtime
+  errors and no error/fatal logs for the new production deployment. The
+  observed non-200 responses were expected staff-auth `401` and
+  Convex-unconfigured `503` gates from the smoke probes.
 - The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
   older `/pos-next` draft review URL through App Router. Staff compatibility

@@ -71,13 +71,15 @@ real event intake still depends on the dashboard setup below.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest app-code production verification checked on 2026-07-06:
-  `https://web-dpvhq5x3y-junyen-enterprises.vercel.app`
+  `https://web-4keycalzp-junyen-enterprises.vercel.app`
 - Latest app-code production deployment ID checked on 2026-07-06:
-  `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`
+  `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`
 - Latest app-code production merge commit checked on 2026-07-06:
-  `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` (PR #90).
-- PR #90 added an automated retired-Supabase payment/webhook guard and removed
-  the Supabase helper wrapper from the retired legacy Terminal stub.
+  `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3` (PR #92).
+- PR #92 added an opt-in live Supabase retirement smoke, made the retired
+  Supabase Terminal stub return `410` for every non-OPTIONS request, added
+  Turbo global dependency inputs for root smoke/security/Supabase files, and
+  added an admin/POS white-text contrast regression test.
 - Query Vercel for the newest deployment URL after each future merge before
   recording fresh operational evidence. Future docs-only merges may create
   newer URLs with the same app behavior.
@@ -136,7 +138,7 @@ real event intake still depends on the dashboard setup below.
   They must stay HTTP-410 retired surfaces and must not initialize Supabase
   helpers or call Stripe/Kaskade APIs.
 - Native admin export API checked on 2026-07-05 and carried forward after the
-  PR #90 smoke pass:
+  PR #92 smoke pass:
   - `/api/admin/export?kind=bookings` returned `401 staff_auth_required`
     without a bearer token.
   - The same route returned `503 convex_unconfigured` with a fake bearer token
@@ -152,19 +154,23 @@ real event intake still depends on the dashboard setup below.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-06 after PR #90 and the
+- Vercel production runtime errors checked on 2026-07-06 after PR #92 and the
   latest smoke probes: no grouped runtime errors in the selected 30-minute
   window and no error/fatal logs for deployment
-  `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`.
+  `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`. Non-200 responses were expected:
+  `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
+  gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
   `/api/pos/readers` now return `Cache-Control: no-store` and
   `Vary: Authorization` for staff-gated and fail-closed responses.
 - Bun checked locally: `1.4.0-canary.1+d37f52067`
-- Dependency audit checked on 2026-07-06: `bun audit --audit-level=high`
+- Dependency audit checked on 2026-07-06: `bun audit --audit-level=low`
   reports no vulnerabilities after the `postcss@8.5.16` override.
 - Dependency freshness checked on 2026-07-06: `bun outdated` produced no
-  upgrade table in this worktree; Dependabot covers Bun and GitHub Actions
-  weekly.
+  upgrade table in this worktree, direct registry checks found the core runtime
+  stack current, and `bun update --latest --dry-run` made no manifest or
+  lockfile change. ESLint 10 remains intentionally deferred because the current
+  Next lint plugin stack still peers against ESLint 9 in key packages.
 
 ```mermaid
 flowchart TD
@@ -198,7 +204,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
-  after PR #90 reached production.
+  after PR #92 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
