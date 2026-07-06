@@ -24,7 +24,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "bun run test:unit",
-    "test:unit": "turbo test:unit && bun run convex:test:unit",
+    "test:unit": "turbo test:unit && bun run convex:test:unit && bun run test:scripts",
+    "test:scripts": "vitest run scripts",
     "test:smoke": "node scripts/smoke/route-smoke.mjs",
     "test:payments": "node scripts/smoke/payment-api-smoke.mjs",
     "test:production-readiness": "node scripts/smoke/production-readiness-smoke.mjs",
@@ -38,7 +39,7 @@
     "security": "bun run security:artifacts && bun run security:audit",
     "security:artifacts": "node scripts/security/check-tracked-artifacts.mjs",
     "security:audit": "bun audit --audit-level=high",
-    "check": "turbo lint typecheck test:unit build && bun run convex:test:unit && bun run convex:schema:typecheck && bun run convex:functions:typecheck && bun run security:artifacts",
+    "check": "turbo lint typecheck test:unit build && bun run convex:test:unit && bun run test:scripts && bun run convex:schema:typecheck && bun run convex:functions:typecheck && bun run security:artifacts",
     "web:dev": "bun run --cwd apps/web dev",
     "web:build": "bun run --cwd apps/web build",
     "web:start": "bun run --cwd apps/web start"
