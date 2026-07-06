@@ -1048,6 +1048,20 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added route, payment-helper, Convex persistence, and Convex catalog parity
       tests so browser-supplied metadata is ignored and line hashes match the
       code-owned catalog snapshots.
+- [x] Merged catalog line provenance PR #101 into `main` as merge commit
+      `0c8f3b3045014e888e9ee70c097aece94fcc6eb7`.
+- [x] Confirmed Vercel production deployment from PR #101 is READY:
+      `https://web-ho5ezap7w-junyen-enterprises.vercel.app`
+      (`dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran post-merge route and payment smokes on the raw Vercel production
+      URL and `https://skydeckla.com`; all passed with checkout total `8505`
+      cents, POS total `9700` cents, and Stripe execution still fail-closed
+      before Convex/Stripe dashboard wiring.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:production-readiness`; apex and `www` passed.
+- [x] Queried Vercel error logs for `dpl_9FL97JyfdrxfTesT3CnNmbvR4wNy`; no
+      error logs were found in the checked 30-minute window.
 
 ## Decisions
 
