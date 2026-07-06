@@ -41,7 +41,7 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #90 merge commit `f4ea5dd`.
+- Vercel production deployment is ready for PR #92 merge commit `0f46dc4`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and compatibility handoff routes smoke-test successfully.
@@ -114,27 +114,28 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest app-code production verification | PR #90, merged to `main` on July 6, 2026 |
-| Verified app-code production deployment | `dpl_7wm65ZC3MmUxaCExYdQJ2AHc5wnj`, status `READY` |
-| Verified app-code production URL | `https://web-dpvhq5x3y-junyen-enterprises.vercel.app` |
-| Verified app-code production commit | `f4ea5dd4cd6143a355324959d8e07f5418c21ae0` |
+| Latest app-code production verification | PR #92, merged to `main` on July 6, 2026 |
+| Verified app-code production deployment | `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`, status `READY` |
+| Verified app-code production URL | `https://web-4keycalzp-junyen-enterprises.vercel.app` |
+| Verified app-code production commit | `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3` |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
-| `bun audit --audit-level=high` | No vulnerabilities found |
-| Dependency sweep | `bun outdated` produced no upgrade table; Dependabot covers Bun and GitHub Actions weekly |
-| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #90 |
+| `bun audit --audit-level=low` | No vulnerabilities found |
+| Dependency sweep | `bun outdated` produced no upgrade table; direct registry checks found Next, React, Motion, Convex, Turbo, TypeScript, Vitest, and PostCSS current. ESLint 10 remains intentionally deferred because the current Next lint plugin stack still peers against ESLint 9 in key packages. `bun update --latest --dry-run` made no manifest or lockfile change. |
+| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #92 |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge |
 | `bun run test:production-readiness` | Passed on `https://skydeckla.com` and `https://www.skydeckla.com`; production remains dashboard-gated |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
-| `bun run check` | Passed on PR #90 |
+| `bun run check` | Passed before PR #92 merge |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
-| `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied |
+| `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
-| Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; local production screenshots for PR #88 verified active and disabled staff controls stay white-on-dark |
+| Staff visual QA | Production `/admin` and `/pos` render white-on-black staff screens; `apps/web/staff-contrast.test.ts` now guards that admin/POS text stays white on dark staff surfaces |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
+| Vercel runtime evidence | After PR #92 smoke probes, Vercel reported no grouped runtime errors and no error/fatal logs for `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
 
 Vercel creates a new production URL after every merge. Treat the app-code
 deployment above as the latest checked behavior, then query Vercel and rerun

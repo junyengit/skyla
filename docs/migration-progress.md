@@ -876,6 +876,35 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Confirm GitHub Pages dashboard/source state after code-side root static cleanup.
 - [ ] Disable old Supabase functions/storage after migration.
 
+### 2026-07-06 PR #92 Production Evidence
+
+- [x] Merged live Supabase retirement smoke PR #92 into `main` as merge commit
+      `0f46dc4089afc59c92aa2b5d9da28b239c7d92d3`.
+- [x] Confirmed Vercel production deployment from PR #92 is READY:
+      `https://web-4keycalzp-junyen-enterprises.vercel.app`
+      (`dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2`), with `skydeckla.com` and
+      `www.skydeckla.com` still serving through the Vercel project.
+- [x] Ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`; the
+      23-route matrix passed.
+- [x] Ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments`;
+      checkout returned canonical `8505` cents, POS returned canonical `9700`
+      cents, and Stripe execution routes failed closed without real
+      Convex/Stripe dashboard wiring or POS Terminal acceptance.
+- [x] Ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:production-readiness`;
+      both `skydeckla.com` and `www.skydeckla.com` passed route/noindex,
+      no-write payment, member, experience, admin, POS, and compatibility
+      checks.
+- [x] Queried Vercel runtime evidence after the smoke probes: no grouped
+      runtime errors and no error/fatal logs for
+      `dpl_5Dj4vhM6cVYJ14HVeAXqecaNKwb2` in the checked 30-minute window.
+      Observed `401` and `503` production responses matched expected staff-auth
+      and Convex-unconfigured gates.
+- [x] Ran dependency/security checks after PR #92: `bun run check`, `bun run
+      security`, `bun audit --audit-level=low`, `bun outdated`, direct registry
+      checks for core runtime packages, and `bun update --latest --dry-run`.
+      No safe dependency patch was needed; ESLint 10 remains deferred until the
+      Next lint plugin stack has compatible peer ranges.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
