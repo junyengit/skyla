@@ -123,11 +123,11 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest production evidence refresh | PR #96, merged to `main` on July 6, 2026 |
-| Latest production deployment | `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`, status `READY` |
-| Latest production URL | `https://web-4jgzocjsd-junyen-enterprises.vercel.app` |
-| Latest production commit | `65bb2a6e38eed1474cf809586ef427b57af9b196` |
-| Latest app/payment behavior verification | PR #96 post-merge smoke checks, merged to `main` on July 6, 2026 |
+| Most recent full production evidence recorded here | PR #96, merged to `main` on July 6, 2026 |
+| Evidence deployment | `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`, status `READY` |
+| Evidence URL | `https://web-4jgzocjsd-junyen-enterprises.vercel.app` |
+| Evidence commit | `65bb2a6e38eed1474cf809586ef427b57af9b196` |
+| App/payment behavior verification | PR #96 post-merge smoke checks, merged to `main` on July 6, 2026 |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | Bun | `1.4.0-canary.1+d37f52067` |
 | `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+d37f52067` |
@@ -149,9 +149,10 @@ safe behavior.
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Vercel runtime evidence | After PR #96 smoke probes, Vercel reported no grouped runtime errors and no error/fatal logs for `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
 
-Vercel creates a new production URL after every merge. Treat the app-code
-behavior above as the latest checked behavior, then query Vercel and rerun
-the route/payment smoke checks before recording fresh operational evidence.
+Vercel creates a new production URL after every merge, including docs-only
+merges. Treat the app/payment behavior above as the most recent full smoke
+evidence recorded in this document, then query Vercel and rerun route/payment
+smoke checks before recording fresh exact-deployment evidence.
 
 ## Next Code Work
 
