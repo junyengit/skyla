@@ -1,5 +1,13 @@
 import { fetchAction } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
+import {
+  invalidPaymentRequest,
+  paymentForbidden,
+  paymentJson,
+  paymentProviderUnavailable,
+  paymentServiceUnavailable,
+  paymentStateConflict
+} from "../../_shared";
 
 type StripeTerminalProcessRequest = {
   saleRef?: unknown;
@@ -72,7 +80,10 @@ function paymentFailureStatus(message: string) {
   if (message.includes("is required")) {
     return 400;
   }
-  if (normalized.includes("auth") || normalized.includes("staff role")) {
+  if (normalized.includes("staff role") || normalized.includes("different staff user")) {
+    return 403;
+  }
+  if (normalized.includes("auth")) {
     return 401;
   }
   if (
@@ -87,46 +98,68 @@ function paymentFailureStatus(message: string) {
   ) {
     return 503;
   }
-  if (normalized.includes("different staff user")) {
-    return 403;
-  }
   if (normalized.includes("not found") || normalized.includes("cannot") || normalized.includes("not have")) {
     return 409;
   }
   return 502;
 }
 
+function publicPaymentFailureBody(status: number, message: string) {
+  if (status === 400) {
+    return invalidPaymentRequest(message);
+  }
+  if (status === 401) {
+    return {
+      error: "Staff authentication is required for Stripe Terminal reader processing",
+      code: "staff_auth_required"
+    };
+  }
+  if (status === 403) {
+    return paymentForbidden("Stripe Terminal reader processing");
+  }
+  if (status === 409) {
+    return paymentStateConflict("Stripe Terminal reader processing");
+  }
+  if (status === 503) {
+    return paymentServiceUnavailable("Stripe Terminal reader processing");
+  }
+  return paymentProviderUnavailable("Stripe Terminal reader processing");
+}
+
 export async function POST(request: Request) {
   try {
     const token = authToken(request);
     if (!token) {
-      return Response.json(
+      return paymentJson(
         {
           error: "Staff authentication is required for Stripe Terminal reader processing",
           code: "staff_auth_required"
         },
-        { status: 401 }
+        { status: 401 },
+        { varyAuthorization: true }
       );
     }
 
     const deploymentUrl = convexUrl();
     if (!deploymentUrl) {
-      return Response.json(
+      return paymentJson(
         {
           error: "Convex is not configured for Stripe Terminal reader processing",
           code: "convex_unconfigured"
         },
-        { status: 503 }
+        { status: 503 },
+        { varyAuthorization: true }
       );
     }
 
     if (!terminalAcceptanceEnabled()) {
-      return Response.json(
+      return paymentJson(
         {
           error: "POS Terminal acceptance is not enabled",
           code: "pos_terminal_acceptance_required"
         },
-        { status: 503 }
+        { status: 503 },
+        { varyAuthorization: true }
       );
     }
 
@@ -143,9 +176,10 @@ export async function POST(request: Request) {
       { url: deploymentUrl, token }
     );
 
-    return Response.json(toPublicTerminalProcessResult(result));
+    return paymentJson(toPublicTerminalProcessResult(result), {}, { varyAuthorization: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not process Stripe Terminal payment";
-    return Response.json({ error: message }, { status: paymentFailureStatus(message) });
+    const status = paymentFailureStatus(message);
+    return paymentJson(publicPaymentFailureBody(status, message), { status }, { varyAuthorization: true });
   }
 }

@@ -53,6 +53,7 @@ describe("check-dashboard-readiness", () => {
     const output = parseStdout(result);
     expect(output.status).toBe("dashboard_setup_required");
     expect(output.safeToUseRealCards).toBe(false);
+    expect(output.realCardPolicy).toContain("explicit live cutover approval");
     expect(output.readyForNoWritePreflight).toBe(false);
     expect(output.gates).toMatchObject({
       vercelProjectShape: true,
@@ -101,6 +102,8 @@ describe("check-dashboard-readiness", () => {
     expect(result.stdout).not.toContain(stripeWebhookSecretValue);
     const output = parseStdout(result);
     expect(output.status).toBe("linked_preflight_ready");
+    expect(output.safeToUseRealCards).toBe(false);
+    expect(output.realCardPolicy).toContain("explicit live cutover approval");
     expect(output.readyForNoWritePreflight).toBe(true);
     expect(output.readyForTerminalAcceptance).toBe(true);
     expect(output.nextActions.map((action) => action.id)).toEqual([

@@ -46,9 +46,9 @@ As of July 7, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest full app/payment production verification recorded here:
-  `https://web-hqavd3ofq-junyen-enterprises.vercel.app` from merge commit
-  `0ac3c6f96a4ba19c46bee7c2682c2cc9970d7272` (PR #111,
-  deployment `dpl_3wuM3SNqjnN44PR3VuPQYFZBuoBf`, status `READY`).
+  `https://web-3oity7xei-junyen-enterprises.vercel.app` from merge commit
+  `8150de2becc3b24c8a20da6c828a1873061a3ff6` (PR #112,
+  deployment `dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`, status `READY`).
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
@@ -94,6 +94,11 @@ As of July 7, 2026:
   collection or storage, no public `clientSecret` response exposure, and
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
+- Payment execution responses are non-cacheable. Stripe Checkout responses use
+  `Cache-Control: no-store`; staff-gated Stripe Terminal responses also use
+  `Vary: Authorization`.
+- Payment route failures use stable public error codes/messages so raw
+  Stripe/Convex/provider details and env names are not returned to browsers.
 - Vercel production runtime checks found no `error` or `fatal` logs in the
   checked 30-minute window for the recorded evidence deployment. The observed
   non-200 responses were expected staff-auth `401` and Convex-unconfigured

@@ -38,7 +38,8 @@ const nextActions = buildNextActions({
 const output = {
   status,
   safeToUseRealCards: false,
-  realCardPolicy: "Do not use real cards during migration verification. Use Stripe test cards/readers only after linked Preview acceptance passes.",
+  realCardPolicy:
+    "Do not use real cards during migration verification. Use Stripe test cards/readers until Preview acceptance, production acceptance, live webhook setup, rollback planning, and explicit live cutover approval are complete.",
   readyForNoWritePreflight,
   readyForTerminalAcceptance,
   gates,

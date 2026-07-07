@@ -81,11 +81,11 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest full app/payment production verification recorded here on 2026-07-07:
-  `https://web-hqavd3ofq-junyen-enterprises.vercel.app`
+  `https://web-3oity7xei-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-07:
-  `dpl_3wuM3SNqjnN44PR3VuPQYFZBuoBf`
+  `dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`
 - Evidence merge commit checked on 2026-07-07:
-  `0ac3c6f96a4ba19c46bee7c2682c2cc9970d7272` (PR #111).
+  `8150de2becc3b24c8a20da6c828a1873061a3ff6` (PR #112).
 - `bun run vercel:project:check` passed on 2026-07-07. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
@@ -149,6 +149,10 @@ stored line amounts remain the payment authority.
   - `/api/pos/readers` returned `401 staff_auth_required` before exposing any
     Terminal reader records.
   - No response exposed a Stripe `clientSecret`.
+  - Current code includes live smoke coverage for `Cache-Control: no-store` on
+    payment responses and `Vary: Authorization` on staff-gated Terminal
+    payment responses; verify those headers on preview and production after
+    merge.
   - Checkout/POS catalog-priced lines returned exact code-owned catalog
     provenance metadata with canonical line amounts, and custom POS lines did
     not claim catalog provenance.
@@ -188,7 +192,7 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-07 after PR #111 and the
+- Vercel production runtime logs checked on 2026-07-07 after PR #112 and the
   latest smoke probes: the Vercel runtime log query returned no `error` or
   `fatal` logs in the checked 30-minute production window. Non-200 responses
   were expected: `401` for staff-auth gates and `503` for Convex-unconfigured
@@ -236,7 +240,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-07 for `https://skydeckla.com`
-  after PR #111 reached production.
+  after PR #112 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
@@ -313,6 +317,9 @@ flowchart TD
   `convex_unconfigured` until Convex is connected. Terminal payment routes
   require staff bearer auth first, then fail closed with `convex_unconfigured`
   until Convex is connected.
+- Public payment API responses set `Cache-Control: no-store`; staff-gated
+  Stripe Terminal start/process responses also set `Vary: Authorization` so
+  staff-specific payment state is never reused across bearer tokens.
 - `bun run test:payments` now checks the payment API fail-closed behavior on
   any supplied base URL without using a real card or writing Convex data.
 - `bun run test:production-readiness` now bundles route, noindex, payment
@@ -343,9 +350,9 @@ flowchart TD
   App Router checkout path, instead of `checkout.html`.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
-- Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.4`,
-  TypeScript `6.0.3`, Vitest `4.1.10`, and Convex `1.42.1` are current for
-  this stack.
+- As of the July 7, 2026 dependency sweep, Next.js `16.2.10`, React `19.2.7`,
+  Motion `12.42.2`, Turbo `2.10.4`, TypeScript `6.0.3`, Vitest `4.1.10`, and
+  Convex `1.42.1` are current for this stack.
 - `eslint@10.6.0` is intentionally held because the latest available
   `eslint-plugin-react@7.37.5` crashes under ESLint 10 through Next's lint
   config.
@@ -531,7 +538,9 @@ flowchart TD
   - `payment_intent.canceled`
 - [ ] Copy the endpoint signing secret into Convex as
   `STRIPE_WEBHOOK_SECRET`.
-- [ ] Use Stripe test cards only until preview checkout passes.
+- [ ] Use Stripe test cards only until Preview acceptance, production
+      acceptance, live-mode webhook setup, rollback planning, and explicit live
+      cutover approval are complete.
 - [ ] After Convex persistence and staff checks pass, run the linked harness with
       `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT=1` to create a Stripe test-mode Checkout
       Session from the stored `orderRef`. The harness refuses this unless the
@@ -643,8 +652,8 @@ deployment surface for this repo.
 PATH="$HOME/.bun/bin:$PATH" bun install --frozen-lockfile
 PATH="$HOME/.bun/bin:$PATH" bun run check
 PATH="$HOME/.bun/bin:$PATH" bun run security:audit
-PATH="$HOME/.bun/bin:$PATH" bun audit --audit-level=low
 PATH="$HOME/.bun/bin:$PATH" bun outdated --recursive
+PATH="$HOME/.bun/bin:$PATH" bunx vitest run apps/web/staff-contrast.test.ts
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=<latest-production-url> bun run test:smoke
 PATH="$HOME/.bun/bin:$PATH" SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke
@@ -672,7 +681,8 @@ domains plus an optional `VERCEL_PRODUCTION_URL`.
 
 Current dependency note:
 
-- `bun audit --audit-level=low` reports no vulnerabilities.
+- `bun run security:audit` runs `bun audit --audit-level=high` and reports no
+  high-severity vulnerabilities.
 - `vitest` is patched to `4.1.10`.
 - `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
   `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-06; lint fails
@@ -729,13 +739,16 @@ What has been done:
   keys/webhooks cannot be mixed silently.
 - There is now a repeatable payment smoke command to check that fail-closed
   behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
+- Payment and staff payment API responses are marked `no-store`; staff-gated
+  Terminal routes also vary by `Authorization`.
 - There is also a one-command production-readiness smoke that bundles route,
   payment no-write, member no-write, experience inquiry no-write, and staff
   compatibility handoff checks.
 - `/members` is now a Next.js page. Its form does not save locally; it only
   succeeds after the server accepts the application.
 - Admin, native POS, `/pos-next`, and staff compatibility handoffs use
-  high-contrast dark staff screens.
+  high-contrast dark staff screens; the staff contrast test keeps admin/POS
+  text, controls, and POS headings white on black.
 - `/admin` is being moved into Next.js. It now has staff-gated operations,
   booking/member status buttons, announcement/hours config, and voucher
   redemption code. It also has admin-only CSV exports for bookings, members,

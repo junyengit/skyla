@@ -50,15 +50,19 @@ async function withServer(handler, run) {
   }
 }
 
-function json(response, body, status = 200) {
-  response.writeHead(status, { "content-type": "application/json" });
+function json(response, body, status = 200, headers = {}) {
+  response.writeHead(status, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(body));
+}
+
+function noStoreHeaders({ staff = false } = {}) {
+  return staff ? { "cache-control": "no-store", vary: "Authorization" } : { "cache-control": "no-store" };
 }
 
 function handler({ omitProvenance = false, wrongHash = false } = {}) {
   return (request, response) => {
     if (request.method === "GET" && request.url === "/api/pos/readers") {
-      json(response, { code: "staff_auth_required" }, 401);
+      json(response, { code: "staff_auth_required" }, 401, noStoreHeaders({ staff: true }));
       return;
     }
 
@@ -149,17 +153,22 @@ function handler({ omitProvenance = false, wrongHash = false } = {}) {
 
     if (request.method === "POST" && request.url === "/api/payments/stripe-terminal") {
       const authorized = request.headers.authorization === "Bearer smoke.fake.staff.token";
-      json(response, { code: authorized ? "convex_unconfigured" : "staff_auth_required" }, authorized ? 503 : 401);
+      json(
+        response,
+        { code: authorized ? "convex_unconfigured" : "staff_auth_required" },
+        authorized ? 503 : 401,
+        noStoreHeaders({ staff: true })
+      );
       return;
     }
 
     if (request.method === "POST" && request.url === "/api/payments/stripe-terminal/process") {
-      json(response, { code: "convex_unconfigured" }, 503);
+      json(response, { code: "convex_unconfigured" }, 503, noStoreHeaders({ staff: true }));
       return;
     }
 
     if (request.method === "POST" && request.url === "/api/payments/stripe-checkout") {
-      json(response, { code: "convex_unconfigured" }, 503);
+      json(response, { code: "convex_unconfigured" }, 503, noStoreHeaders());
       return;
     }
 
@@ -201,6 +210,7 @@ describe("payment API smoke", () => {
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("Checkout/POS catalog-priced lines include code-owned catalog provenance metadata");
+      expect(result.stdout).toContain("Payment and staff-gated POS responses are marked no-store");
       expect(requests.find((request) => request.url === "/api/order-drafts/checkout")?.body).toMatchObject({
         totalCents: 1,
         catalogVersion: "browser-spoof"

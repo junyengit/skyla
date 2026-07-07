@@ -10,8 +10,13 @@ vi.mock("convex/nextjs", () => ({
 
 const fetchActionMock = vi.mocked(fetchAction);
 
-function request(body: unknown, init?: RequestInit) {
-  return new Request("https://skydeckla.com/api/payments/stripe-terminal", {
+function expectStaffPaymentHeaders(response: Response) {
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("vary")).toBe("Authorization");
+}
+
+function request(body: unknown, init?: RequestInit, path = "/api/payments/stripe-terminal") {
+  return new Request(`https://skydeckla.com${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -38,6 +43,7 @@ describe("/api/payments/stripe-terminal", () => {
     );
 
     expect(response.status).toBe(401);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "staff_auth_required"
     });
@@ -56,6 +62,7 @@ describe("/api/payments/stripe-terminal", () => {
     );
 
     expect(response.status).toBe(503);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "convex_unconfigured"
     });
@@ -71,8 +78,10 @@ describe("/api/payments/stripe-terminal", () => {
     );
 
     expect(response.status).toBe(400);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
-      error: "idempotencyKey is required"
+      error: "idempotencyKey is required",
+      code: "invalid_payment_request"
     });
     expect(fetchActionMock).not.toHaveBeenCalled();
   });
@@ -93,9 +102,39 @@ describe("/api/payments/stripe-terminal", () => {
     );
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: "STRIPE_SECRET_KEY does not match SKYLA_STRIPE_MODE"
+    expectStaffPaymentHeaders(response);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      error: "Stripe Terminal is not available right now",
+      code: "payment_service_unavailable"
     });
+    expect(JSON.stringify(body)).not.toContain("STRIPE_SECRET_KEY");
+    expect(JSON.stringify(body)).not.toContain("SKYLA_STRIPE_MODE");
+  });
+
+  it("maps authenticated staff role failures to forbidden without exposing raw internals", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
+    fetchActionMock.mockRejectedValueOnce(new Error("Staff role must be one of: admin, pos"));
+
+    const response = await CREATE_POST(
+      request(
+        {
+          saleRef: "SALE260704-ABC123",
+          idempotencyKey: "pos_20260704_abc123"
+        },
+        { headers: { authorization: "Bearer viewer.jwt.token" } }
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expectStaffPaymentHeaders(response);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      error: "Stripe Terminal is not allowed for this staff user",
+      code: "staff_forbidden"
+    });
+    expect(JSON.stringify(body)).not.toContain("admin, pos");
   });
 
   it("starts Stripe Terminal through the Convex action with staff auth and no browser amount or client secret", async () => {
@@ -127,6 +166,7 @@ describe("/api/payments/stripe-terminal", () => {
     );
 
     expect(response.status).toBe(200);
+    expectStaffPaymentHeaders(response);
     const body = await response.json();
     expect(body).toMatchObject({
       paymentIntentId: "pi_test_123",
@@ -159,6 +199,7 @@ describe("/api/payments/stripe-terminal", () => {
     );
 
     expect(response.status).toBe(503);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "pos_terminal_acceptance_required"
     });
@@ -172,10 +213,11 @@ describe("/api/payments/stripe-terminal/process", () => {
       request({
         saleRef: "SALE260704-ABC123",
         idempotencyKey: "pos_20260704_abc123"
-      })
+      }, undefined, "/api/payments/stripe-terminal/process")
     );
 
     expect(response.status).toBe(401);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "staff_auth_required"
     });
@@ -189,11 +231,13 @@ describe("/api/payments/stripe-terminal/process", () => {
           saleRef: "SALE260704-ABC123",
           idempotencyKey: "pos_20260704_abc123"
         },
-        { headers: { authorization: "Bearer staff.jwt.token" } }
+        { headers: { authorization: "Bearer staff.jwt.token" } },
+        "/api/payments/stripe-terminal/process"
       )
     );
 
     expect(response.status).toBe(503);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "convex_unconfigured"
     });
@@ -211,14 +255,45 @@ describe("/api/payments/stripe-terminal/process", () => {
           saleRef: "SALE260704-ABC123",
           idempotencyKey: "pos_20260704_abc123"
         },
-        { headers: { authorization: "Bearer staff.jwt.token" } }
+        { headers: { authorization: "Bearer staff.jwt.token" } },
+        "/api/payments/stripe-terminal/process"
       )
     );
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: "Trusted Terminal reader registry is not configured"
+    expectStaffPaymentHeaders(response);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      error: "Stripe Terminal reader processing is not available right now",
+      code: "payment_service_unavailable"
     });
+    expect(JSON.stringify(body)).not.toContain("Trusted Terminal reader registry");
+  });
+
+  it("maps process staff role failures to forbidden without exposing raw internals", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
+    fetchActionMock.mockRejectedValueOnce(new Error("Staff role must be one of: admin, pos"));
+
+    const response = await PROCESS_POST(
+      request(
+        {
+          saleRef: "SALE260704-ABC123",
+          idempotencyKey: "pos_20260704_abc123"
+        },
+        { headers: { authorization: "Bearer viewer.jwt.token" } },
+        "/api/payments/stripe-terminal/process"
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expectStaffPaymentHeaders(response);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      error: "Stripe Terminal reader processing is not allowed for this staff user",
+      code: "staff_forbidden"
+    });
+    expect(JSON.stringify(body)).not.toContain("admin, pos");
   });
 
   it("processes the stored Terminal PaymentIntent without browser reader or amount authority", async () => {
@@ -247,11 +322,13 @@ describe("/api/payments/stripe-terminal/process", () => {
           currency: "eur",
           readerId: "tmr_browser_supplied"
         },
-        { headers: { authorization: "Bearer staff.jwt.token" } }
+        { headers: { authorization: "Bearer staff.jwt.token" } },
+        "/api/payments/stripe-terminal/process"
       )
     );
 
     expect(response.status).toBe(200);
+    expectStaffPaymentHeaders(response);
     const body = await response.json();
     expect(body).toMatchObject({
       paymentIntentId: "pi_test_123",
@@ -281,11 +358,13 @@ describe("/api/payments/stripe-terminal/process", () => {
           saleRef: "SALE260704-ABC123",
           idempotencyKey: "pos_20260704_abc123"
         },
-        { headers: { authorization: "Bearer staff.jwt.token" } }
+        { headers: { authorization: "Bearer staff.jwt.token" } },
+        "/api/payments/stripe-terminal/process"
       )
     );
 
     expect(response.status).toBe(503);
+    expectStaffPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "pos_terminal_acceptance_required"
     });

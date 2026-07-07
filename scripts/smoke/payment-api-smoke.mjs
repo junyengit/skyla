@@ -37,6 +37,7 @@ async function postJson(path, body, headers = {}) {
   return {
     path,
     status: response.status,
+    headers: response.headers,
     json,
     text
   };
@@ -59,6 +60,7 @@ async function getJson(path, headers = {}) {
   return {
     path,
     status: response.status,
+    headers: response.headers,
     json,
     text
   };
@@ -91,6 +93,29 @@ function expectFailClosed(label, result, expectedStatus, expectedCode) {
   expect(label, result.status === expectedStatus, `expected HTTP ${expectedStatus}, got ${result.status}`);
   expect(label, result.json?.code === expectedCode, `expected code ${expectedCode}, got ${result.json?.code ?? "none"}`);
   expectNoClientSecret(label, result);
+}
+
+function expectFailClosedCode(label, result, expectedStatus, expectedCodes) {
+  expect(label, result.status === expectedStatus, `expected HTTP ${expectedStatus}, got ${result.status}`);
+  expect(
+    label,
+    expectedCodes.includes(result.json?.code),
+    `expected code ${expectedCodes.join(" or ")}, got ${result.json?.code ?? "none"}`
+  );
+  expectNoClientSecret(label, result);
+}
+
+function expectNoStore(label, result) {
+  expect(label, result.headers.get("cache-control") === "no-store", "expected Cache-Control: no-store");
+}
+
+function expectAuthorizationVary(label, result) {
+  const vary = result.headers.get("vary") ?? "";
+  const hasAuthorization = vary
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .includes("authorization");
+  expect(label, hasAuthorization, "expected Vary: Authorization");
 }
 
 const checkoutDraft = await postJson("/api/order-drafts/checkout", {
@@ -160,6 +185,8 @@ for (const issue of paymentDraftProvenanceIssues({ checkoutDraft: checkoutDraft.
 
 const posReadersUnauthed = await getJson("/api/pos/readers");
 expectFailClosed("POS reader registry unauthenticated", posReadersUnauthed, 401, "staff_auth_required");
+expectNoStore("POS reader registry unauthenticated", posReadersUnauthed);
+expectAuthorizationVary("POS reader registry unauthenticated", posReadersUnauthed);
 
 const checkoutPayment = await postJson("/api/payments/stripe-checkout", {
   orderRef: "SKY2607-SMOKE1",
@@ -167,7 +194,11 @@ const checkoutPayment = await postJson("/api/payments/stripe-checkout", {
   amountCents: 1
 });
 
-expectFailClosed("Stripe Checkout execution", checkoutPayment, 503, "convex_unconfigured");
+expectFailClosedCode("Stripe Checkout execution", checkoutPayment, 503, [
+  "convex_unconfigured",
+  "payment_service_unavailable"
+]);
+expectNoStore("Stripe Checkout execution", checkoutPayment);
 
 const terminalUnauthed = await postJson("/api/payments/stripe-terminal", {
   saleRef: "SALE260704-SMOKE1",
@@ -177,6 +208,8 @@ const terminalUnauthed = await postJson("/api/payments/stripe-terminal", {
 });
 
 expectFailClosed("Stripe Terminal unauthenticated", terminalUnauthed, 401, "staff_auth_required");
+expectNoStore("Stripe Terminal unauthenticated", terminalUnauthed);
+expectAuthorizationVary("Stripe Terminal unauthenticated", terminalUnauthed);
 
 const terminalAuthed = await postJson(
   "/api/payments/stripe-terminal",
@@ -197,10 +230,14 @@ expect(
 );
 expect(
   "Stripe Terminal fake auth",
-  ["convex_unconfigured", "pos_terminal_acceptance_required"].includes(terminalAuthed.json?.code),
-  `expected convex_unconfigured or pos_terminal_acceptance_required, got ${terminalAuthed.json?.code ?? "none"}`
+  ["convex_unconfigured", "pos_terminal_acceptance_required", "payment_service_unavailable"].includes(
+    terminalAuthed.json?.code
+  ),
+  `expected convex_unconfigured, pos_terminal_acceptance_required, or payment_service_unavailable, got ${terminalAuthed.json?.code ?? "none"}`
 );
 expectNoClientSecret("Stripe Terminal fake auth", terminalAuthed);
+expectNoStore("Stripe Terminal fake auth", terminalAuthed);
+expectAuthorizationVary("Stripe Terminal fake auth", terminalAuthed);
 
 const terminalProcess = await postJson(
   "/api/payments/stripe-terminal/process",
@@ -221,10 +258,14 @@ expect(
 );
 expect(
   "Stripe Terminal process fake auth",
-  ["convex_unconfigured", "pos_terminal_acceptance_required"].includes(terminalProcess.json?.code),
-  `expected convex_unconfigured or pos_terminal_acceptance_required, got ${terminalProcess.json?.code ?? "none"}`
+  ["convex_unconfigured", "pos_terminal_acceptance_required", "payment_service_unavailable"].includes(
+    terminalProcess.json?.code
+  ),
+  `expected convex_unconfigured, pos_terminal_acceptance_required, or payment_service_unavailable, got ${terminalProcess.json?.code ?? "none"}`
 );
 expectNoClientSecret("Stripe Terminal process fake auth", terminalProcess);
+expectNoStore("Stripe Terminal process fake auth", terminalProcess);
+expectAuthorizationVary("Stripe Terminal process fake auth", terminalProcess);
 
 if (failures.length > 0) {
   console.error(`Payment API smoke failed for ${baseUrl.origin}:`);
@@ -239,3 +280,4 @@ console.log(`- Checkout total: ${checkoutDraft.json.draft.totalCents} cents`);
 console.log(`- POS total: ${posDraft.json.draft.totalCents} cents`);
 console.log("- Checkout/POS catalog-priced lines include code-owned catalog provenance metadata.");
 console.log("- Stripe execution routes fail closed without real Convex/Stripe dashboard wiring and POS Terminal acceptance.");
+console.log("- Payment and staff-gated POS responses are marked no-store, with Authorization variance on staff routes.");
