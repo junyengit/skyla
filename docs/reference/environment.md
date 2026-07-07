@@ -107,10 +107,18 @@ persistence fail closed. Duplicate `readerId` entries also fail closed.
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bun run convex:env:check
+PATH="$HOME/.bun/bin:$PATH" bun run vercel:project:check
 PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check
 PATH="$HOME/.bun/bin:$PATH" bun run dashboard:readiness
 PATH="$HOME/.bun/bin:$PATH" bun --revision
 ```
+
+`vercel:project:check` verifies the non-secret Vercel project shape: project
+ID/name, root directory `apps/web`, Next.js framework, Node `24.x`, optional
+local `.vercel` link, and the committed `apps/web/vercel.json` Bun canary
+install/build commands. Vercel's dashboard project settings may still display
+default install/build command text; the committed `vercel.json` overrides those
+values for deployments and is the source of truth for Skyla's Bun canary path.
 
 `vercel:env:check` reads `vercel env ls --format json` from the linked
 `apps/web` project and reports only names/scopes. It fails until
@@ -119,12 +127,13 @@ Stripe, staff, or Terminal secrets are accidentally placed in the Vercel
 project instead of Convex. Do not print secret values in logs, PRs, or docs.
 Check presence, scope, and shape only.
 
-`dashboard:readiness` combines the safe Vercel and Convex env checks into one
-JSON report. It exits non-zero until the linked Preview no-write preflight has
-the minimum dashboard shape: Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and
-Production, Vercel has no misplaced payment/staff secrets, Convex is cloud
-linked, Stripe Checkout envs are present, and Stripe webhook envs are present.
-The report includes ordered `nextActions` for the dashboards and always keeps
+`dashboard:readiness` combines the safe Vercel project, Vercel env, and Convex
+env checks into one JSON report. It exits non-zero until the linked Preview
+no-write preflight has the minimum dashboard shape: Vercel project shape is
+aligned, Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and Production, Vercel
+has no misplaced payment/staff secrets, Convex is cloud linked, Stripe Checkout
+envs are present, and Stripe webhook envs are present. The report includes
+ordered `nextActions` for the dashboards and always keeps
 `safeToUseRealCards: false` during migration verification.
 
 ## Staff Bootstrap Token

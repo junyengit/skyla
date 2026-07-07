@@ -9,12 +9,20 @@ const scriptPath = resolve(repoRoot, "scripts/setup/check-dashboard-readiness.mj
 const stripeSecretKeyName = ["STRIPE", "SECRET_KEY"].join("_");
 const stripeSecretKeyValue = ["sk", "test", "thisShouldNeverAppearInOutput"].join("_");
 const stripeWebhookSecretValue = ["whsec", "thisShouldNeverAppearInOutput"].join("_");
+const goodVercelProject = {
+  id: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
+  name: "web",
+  rootDirectory: "apps/web",
+  framework: "nextjs",
+  nodeVersion: "24.x"
+};
 
 function runCheck(extraEnv = {}) {
   return spawnSync(process.execPath, [scriptPath], {
     cwd: repoRoot,
     env: {
       ...process.env,
+      SKYLA_VERCEL_PROJECT_JSON: JSON.stringify(goodVercelProject),
       ...extraEnv
     },
     encoding: "utf8"
@@ -47,6 +55,7 @@ describe("check-dashboard-readiness", () => {
     expect(output.safeToUseRealCards).toBe(false);
     expect(output.readyForNoWritePreflight).toBe(false);
     expect(output.gates).toMatchObject({
+      vercelProjectShape: true,
       vercelConvexUrl: false,
       safeVercelSecretPlacement: true,
       convexCloudPersistence: false,
@@ -98,6 +107,28 @@ describe("check-dashboard-readiness", () => {
       "run-linked-acceptance",
       "run-linked-write-acceptance"
     ]);
+  });
+
+  it("places Vercel project-shape drift before env setup actions", () => {
+    const result = runCheck({
+      SKYLA_VERCEL_PROJECT_JSON: JSON.stringify({
+        ...goodVercelProject,
+        rootDirectory: ".",
+        nodeVersion: "26.x"
+      }),
+      SKYLA_VERCEL_ENV_JSON: JSON.stringify({ envs: [] }),
+      CONVEX_DEPLOYMENT: "",
+      NEXT_PUBLIC_CONVEX_URL: "",
+      CONVEX_URL: ""
+    });
+
+    expect(result.status).toBe(1);
+    const output = parseStdout(result);
+    expect(output.gates.vercelProjectShape).toBe(false);
+    expect(output.nextActions[0]).toMatchObject({
+      id: "fix-vercel-project-shape",
+      evidence: expect.arrayContaining(["dashboardRootDirectory", "dashboardNodeVersion"])
+    });
   });
 
   it("prioritizes removing misplaced Vercel secrets before adding more dashboard envs", () => {

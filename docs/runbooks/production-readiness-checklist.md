@@ -52,25 +52,28 @@ stored line amounts remain the payment authority.
 ## Plain-English Next Checklist
 
 1. Link the real Skyla Convex project.
-2. Add `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview and Production.
-3. Add Stripe secrets in Convex, not Vercel browser env vars.
-4. Keep Stripe in test mode first.
-5. Create the Stripe webhook endpoint after Convex gives you the site URL.
-6. Use Stripe test cards and a test Terminal reader only.
-7. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
+2. Run `bun run vercel:project:check` and keep the Vercel project rooted at
+   `apps/web` with Next.js, Node `24.x`, and the repo-owned Bun canary
+   commands in `apps/web/vercel.json`.
+3. Add `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview and Production.
+4. Add Stripe secrets in Convex, not Vercel browser env vars.
+5. Keep Stripe in test mode first.
+6. Create the Stripe webhook endpoint after Convex gives you the site URL.
+7. Use Stripe test cards and a test Terminal reader only.
+8. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
    webhook setup, and reader registry checks pass; then enable it only for the
    controlled test-reader attempt.
-8. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
-9. Seed the first staff admin, then remove the bootstrap token.
-10. Confirm `/api/pos/readers` returns readers only with a valid staff token.
-11. Run the linked acceptance harness against a Vercel Preview URL.
-12. Confirm member and event forms save into Convex in Preview.
-13. Confirm checkout and POS stay server-priced with test payments.
-14. Disable or redeploy old Supabase payment functions from the fail-closed
+9. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
+10. Seed the first staff admin, then remove the bootstrap token.
+11. Confirm `/api/pos/readers` returns readers only with a valid staff token.
+12. Run the linked acceptance harness against a Vercel Preview URL.
+13. Confirm member and event forms save into Convex in Preview.
+14. Confirm checkout and POS stay server-priced with test payments.
+15. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-15. Finish the native admin/POS rebuild and test-reader acceptance before
+16. Finish the native admin/POS rebuild and test-reader acceptance before
     removing the remaining compatibility handoffs.
-16. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+17. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
@@ -78,11 +81,16 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest full app/payment production verification recorded here on 2026-07-07:
-  `https://web-r9k93t62a-junyen-enterprises.vercel.app`
+  `https://web-5o94djb5w-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-07:
-  `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`
+  `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`
 - Evidence merge commit checked on 2026-07-07:
-  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c` (PR #109).
+  `168f773791267d8796e22126dbf19443d201716b` (PR #110).
+- `bun run vercel:project:check` passed on 2026-07-07. It verifies project
+  `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
+  root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
+  present, and `apps/web/vercel.json` as the Bun canary install/build source
+  of truth.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
   Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
@@ -92,7 +100,7 @@ stored line amounts remain the payment authority.
 - Custom domains checked on 2026-07-06:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel/Convex env behavior checked on 2026-07-06: `vercel env ls` for
+- Vercel/Convex env behavior checked on 2026-07-07: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
   still behaves as Convex-unconfigured, so checkout/POS/member/experience
   server writes and payment execution are safely blocked. `bun run
@@ -124,7 +132,7 @@ stored line amounts remain the payment authority.
   was verified. The old `https://junyengit.github.io/skyla/` surface should
   stay off unless Vercel rollback is unavailable and a deliberate Pages rollback
   is planned.
-- Live API behavior checked on 2026-07-06 across `https://skydeckla.com` with
+- Live API behavior checked on 2026-07-07 across `https://skydeckla.com` with
   `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run test:payments`:
   - Spoofed checkout total `1` cent returned canonical server total `8505`
     cents for the probe payload.
@@ -180,9 +188,9 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-07 after PR #109 and the
+- Vercel production runtime logs checked on 2026-07-07 after PR #110 and the
   latest smoke probes: `vercel logs` returned no logs for deployment
-  `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`. Non-200 responses were expected:
+  `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`. Non-200 responses were expected:
   `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
   gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
@@ -228,7 +236,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-07 for `https://skydeckla.com`
-  after PR #109 reached production.
+  after PR #110 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
@@ -395,6 +403,9 @@ flowchart TD
   `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`.
 - [ ] Confirm build command is
   `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`.
+- [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:project:check` before
+      dashboard edits and after deployment-setting changes. It should report
+      `readyForProjectShape: true`.
 - [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Preview and Production after Convex is
       linked.
 - [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check` after adding
