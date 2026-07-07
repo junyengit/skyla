@@ -17,7 +17,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   - Next.js `16.2.10`
   - React `19.2.7`
   - Motion `12.42.2`
-  - Turbo `2.10.3`
+  - Turbo `2.10.4`
   - TypeScript `6.0.3`
 - [x] Added `.gitignore` protection for generated/private artifacts.
 - [x] Added root Turborepo workspace files.
@@ -1158,6 +1158,38 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Queried Vercel error logs for `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`; no
       error logs were found in the checked 20-minute window.
 
+### 2026-07-07 PR #109 Turbo/Bun Production Evidence
+
+- [x] Merged Dependabot Turbo PR #109 into `main` as merge commit
+      `c328c0b46972a1db4a72c69af6cfd8f45ae1087c`.
+- [x] Upgraded local Bun canary to `1.4.0-canary.1+1de77f961`, ran
+      `bun install --frozen-lockfile`, and confirmed no repo changes.
+- [x] Ran `bun run check` with Turbo `2.10.4`; all lint, typecheck, tests,
+      build, Convex typechecks, and artifact/Supabase-retirement guards passed.
+      The old `Unsupported bun lockfile version: 2` warning did not appear.
+- [x] Ran `bun run security`; tracked-artifact, Supabase-retirement, and
+      `bun audit --audit-level=high` checks passed with no vulnerabilities.
+- [x] Ran `bun outdated --recursive`; only the deferred `eslint@10.6.0` major
+      remains.
+- [x] Confirmed Vercel production deployment from `main` is READY:
+      `https://web-r9k93t62a-junyen-enterprises.vercel.app`
+      (`dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`;
+      23 routes passed on the apex domain.
+- [x] Re-ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:payments`; checkout and POS totals remained server-owned, exact
+      catalog provenance checks passed, no real Stripe charge was attempted,
+      and Stripe execution routes stayed fail-closed before real
+      Convex/Stripe dashboard wiring.
+- [x] Re-ran `PRODUCTION_READINESS_BASE_URLS=https://skydeckla.com,https://www.skydeckla.com
+      VERCEL_PRODUCTION_URL=https://web-r9k93t62a-junyen-enterprises.vercel.app
+      bun run test:production-readiness`; apex, `www`, and the production
+      deployment URL passed.
+- [x] Queried Vercel logs for deployment
+      `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`; no logs were found after the smoke
+      probes.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
@@ -1203,7 +1235,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
-- Bun canary currently produces `bun.lock` lockfile version 2, which Turbo `2.10.3` warns it cannot fully parse for lockfile analysis. The task graph still passes, but reviewers should keep this risk visible.
+- Retired July 7, 2026: the Bun/Turbo lockfile warning no longer appears after
+  Turbo `2.10.4` and the current text `bun.lock`. Keep future Bun canary
+  lockfile-format changes visible in focused dependency PRs.
 - Google Ads conversion tracking is still a transition bridge, but checkout,
   members, and experience lead routes are now native App Router pages. Replace
   the public helper with a typed analytics integration once dashboard wiring and

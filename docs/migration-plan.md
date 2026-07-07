@@ -1,6 +1,6 @@
 # Skyla Modernization Plan
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Objective
 
@@ -9,7 +9,7 @@ Move Skyla from a flat GitHub Pages static site with Supabase-era operational co
 - Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
-- Turborepo `2.10.3`
+- Turborepo `2.10.4`
 - TypeScript `6.0.3`
 
 The migration is intentionally in-place and staged. Production rollback is now

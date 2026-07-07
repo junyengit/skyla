@@ -23,15 +23,15 @@ root.
 
 ## Current Production State
 
-As of July 6, 2026:
+As of July 7, 2026:
 
 - Most recent full production verification recorded here was READY at
-  `https://web-4jgzocjsd-junyen-enterprises.vercel.app`.
+  `https://web-r9k93t62a-junyen-enterprises.vercel.app`.
 - Evidence deployment ID:
-  `dpl_A9RsQBhPHNxPWKj3e3QPm4G325TS`.
+  `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`.
 - Evidence merge commit:
-  `65bb2a6e38eed1474cf809586ef427b57af9b196` (PR #96).
-- The recorded dashboard-readiness verification came from PR #96 and
+  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c` (PR #109).
+- The recorded production smoke/payment verification came from PR #109 and
   is summarized in [../current-state-simple.md](../current-state-simple.md).
 - Query Vercel for the exact latest deployment before recording fresh
   operational evidence; docs-only merges create new production URLs.
@@ -43,7 +43,7 @@ As of July 6, 2026:
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
 - The evidence deployment metadata reports target `production`, commit
-  `65bb2a6e38eed1474cf809586ef427b57af9b196`, framework `nextjs`, Node
+  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c`, framework `nextjs`, Node
   `24.x`, and the Bun canary install path from repo config.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.

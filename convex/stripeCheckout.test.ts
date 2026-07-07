@@ -28,14 +28,14 @@ const snapshot = {
     {
       name: "General Admission Child",
       quantity: 1,
-      unitAmountCents: 1450,
-      lineTotalCents: 1450
+      unitAmountCents: 1500,
+      lineTotalCents: 1500
     },
     {
-      name: "Matcha Set",
+      name: "Ceremonial Matcha Latte",
       quantity: 1,
-      unitAmountCents: 850,
-      lineTotalCents: 850
+      unitAmountCents: 800,
+      lineTotalCents: 800
     }
   ]
 };

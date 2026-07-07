@@ -42,13 +42,13 @@ flowchart LR
 
 ## Current Hosting State
 
-As of July 6, 2026:
+As of July 7, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest full app/payment production verification recorded here:
-  `https://web-kafot1r2n-junyen-enterprises.vercel.app` from merge commit
-  `704bcbe03c2c5c49e0443443d99cfca70d95f550` (PR #107,
-  deployment `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`, status `READY`).
+  `https://web-r9k93t62a-junyen-enterprises.vercel.app` from merge commit
+  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c` (PR #109,
+  deployment `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`, status `READY`).
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
   the remaining Convex/Stripe env setup. It reports only env names/scopes,
   fails until `NEXT_PUBLIC_CONVEX_URL` is in Preview/Production, and fails if
@@ -116,7 +116,7 @@ As of July 6, 2026:
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+d37f52067`. Bun's documented canary upgrade command is
+`1.4.0-canary.1+1de77f961`. Bun's documented canary upgrade command is
 `bun upgrade --canary`; installs should still use `bun install --frozen-lockfile`.
 
 ```bash

@@ -77,12 +77,12 @@ stored line amounts remain the payment authority.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest full app/payment production verification recorded here on 2026-07-06:
-  `https://web-kafot1r2n-junyen-enterprises.vercel.app`
-- Evidence deployment ID checked on 2026-07-06:
-  `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`
-- Evidence merge commit checked on 2026-07-06:
-  `704bcbe03c2c5c49e0443443d99cfca70d95f550` (PR #107).
+- Latest full app/payment production verification recorded here on 2026-07-07:
+  `https://web-r9k93t62a-junyen-enterprises.vercel.app`
+- Evidence deployment ID checked on 2026-07-07:
+  `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`
+- Evidence merge commit checked on 2026-07-07:
+  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c` (PR #109).
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
   Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
@@ -180,22 +180,21 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime errors checked on 2026-07-06 after PR #107 and the
-  latest smoke probes: `vercel logs --level error --since 30m` returned no
-  logs for deployment `dpl_3Z4G1ePhontznWGYcfWGXfCCJCc9`. Non-200 responses were expected:
+- Vercel production runtime logs checked on 2026-07-07 after PR #109 and the
+  latest smoke probes: `vercel logs` returned no logs for deployment
+  `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`. Non-200 responses were expected:
   `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
   gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
   `/api/pos/readers` now return `Cache-Control: no-store` and
   `Vary: Authorization` for staff-gated and fail-closed responses.
-- Bun checked locally: `1.4.0-canary.1+d37f52067`
-- Dependency audit checked on 2026-07-06: `bun audit --audit-level=low`
+- Bun checked locally: `1.4.0-canary.1+1de77f961`
+- Dependency audit checked on 2026-07-07: `bun audit --audit-level=high`
   reports no vulnerabilities after the `postcss@8.5.16` override.
-- Dependency freshness checked on 2026-07-06: `bun outdated` produced no
-  upgrade table in this worktree, direct registry checks found the core runtime
-  stack current, and `bun update --latest --dry-run` made no manifest or
-  lockfile change. ESLint 10 remains intentionally deferred because the current
-  Next lint plugin stack still peers against ESLint 9 in key packages.
+- Dependency freshness checked on 2026-07-07: `bun outdated --recursive`
+  reported only the intentionally deferred `eslint@10.6.0` major. ESLint 10
+  remains intentionally deferred because the current Next lint plugin stack
+  still peers against ESLint 9 in key packages.
 
 ```mermaid
 flowchart TD
@@ -228,8 +227,8 @@ flowchart TD
 - Hosting is on Vercel.
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
-- The 23-route smoke test passed on 2026-07-06 for `https://skydeckla.com`
-  after PR #107 reached production.
+- The 23-route smoke test passed on 2026-07-07 for `https://skydeckla.com`
+  after PR #109 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
@@ -336,7 +335,7 @@ flowchart TD
   App Router checkout path, instead of `checkout.html`.
 - No raw card number/CVC collection was found in the app code.
 - No committed Stripe secret key was found.
-- Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.3`,
+- Next.js `16.2.10`, React `19.2.7`, Motion `12.42.2`, Turbo `2.10.4`,
   TypeScript `6.0.3`, Vitest `4.1.10`, and Convex `1.42.1` are current for
   this stack.
 - `eslint@10.6.0` is intentionally held because the latest available
