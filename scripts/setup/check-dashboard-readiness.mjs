@@ -5,9 +5,11 @@ import { resolve } from "node:path";
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 const convex = runJsonScript("scripts/setup/check-convex-env.mjs");
+const vercelProject = runJsonScript("scripts/setup/check-vercel-project.mjs");
 const vercel = runJsonScript("scripts/setup/check-vercel-env.mjs");
 
 const gates = {
+  vercelProjectShape: Boolean(vercelProject.data?.readyForProjectShape),
   vercelConvexUrl: Boolean(vercel.data?.readyForConvexUrl),
   safeVercelSecretPlacement: Boolean(vercel.data?.safeSecretPlacement),
   convexCloudPersistence: Boolean(convex.data?.readyForCloudPersistence),
@@ -18,6 +20,7 @@ const gates = {
 };
 
 const readyForNoWritePreflight =
+  gates.vercelProjectShape &&
   gates.vercelConvexUrl &&
   gates.safeVercelSecretPlacement &&
   gates.convexCloudPersistence &&
@@ -25,7 +28,12 @@ const readyForNoWritePreflight =
   gates.stripeWebhook;
 const readyForTerminalAcceptance = readyForNoWritePreflight && gates.terminalReaderHandoff;
 const status = readyForNoWritePreflight ? "linked_preflight_ready" : "dashboard_setup_required";
-const nextActions = buildNextActions({ gates, convex: convex.data, vercel: vercel.data });
+const nextActions = buildNextActions({
+  gates,
+  convex: convex.data,
+  vercel: vercel.data,
+  vercelProject: vercelProject.data
+});
 
 const output = {
   status,
@@ -37,9 +45,11 @@ const output = {
   nextActions,
   checks: {
     convex: summarizeCheck(convex),
+    vercelProject: summarizeCheck(vercelProject),
     vercel: summarizeCheck(vercel)
   },
   commands: [
+    "bun run vercel:project:check",
     "bun run vercel:env:check",
     "bun run convex:env:check",
     "bun run test:acceptance:preflight",
@@ -49,7 +59,7 @@ const output = {
 
 console.log(JSON.stringify(output, null, 2));
 
-if (!readyForNoWritePreflight || convex.exitCode !== 0 || vercel.exitCode !== 0) {
+if (!readyForNoWritePreflight || convex.exitCode !== 0 || vercelProject.exitCode !== 0 || vercel.exitCode !== 0) {
   console.error("Dashboard readiness is not complete. See JSON output for nextActions.");
   process.exitCode = 1;
 }
@@ -96,8 +106,19 @@ function summarizeCheck(result) {
   };
 }
 
-function buildNextActions({ gates, convex, vercel }) {
+function buildNextActions({ gates, convex, vercel, vercelProject }) {
   const actions = [];
+
+  if (!gates.vercelProjectShape) {
+    actions.push({
+      id: "fix-vercel-project-shape",
+      owner: "vercel-dashboard-and-repo",
+      priority: 1,
+      action: "Keep Vercel linked to Junyen Enterprises/web with root apps/web, Next.js, Node 24.x, and keep apps/web/vercel.json as the Bun canary build authority.",
+      command: "bun run vercel:project:check",
+      evidence: failedCheckNames(vercelProject)
+    });
+  }
 
   if (!gates.safeVercelSecretPlacement) {
     const forbidden = (vercel?.forbidden ?? [])
@@ -199,6 +220,10 @@ function buildNextActions({ gates, convex, vercel }) {
 function missingConvexChecks(convex, names) {
   const checks = convex?.checks ?? [];
   return names.filter((name) => !checks.find((check) => check.name === name)?.ok);
+}
+
+function failedCheckNames(result) {
+  return (result?.checks ?? []).filter((check) => !check.ok).map((check) => check.name);
 }
 
 function stripSensitiveText(value) {

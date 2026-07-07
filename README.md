@@ -46,9 +46,13 @@ As of July 7, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest full app/payment production verification recorded here:
-  `https://web-r9k93t62a-junyen-enterprises.vercel.app` from merge commit
-  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c` (PR #109,
-  deployment `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`, status `READY`).
+  `https://web-5o94djb5w-junyen-enterprises.vercel.app` from merge commit
+  `168f773791267d8796e22126dbf19443d201716b` (PR #110,
+  deployment `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`, status `READY`).
+- `bun run vercel:project:check` confirms the linked Vercel dashboard project
+  is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
+  `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
+  install/build commands even when the dashboard settings page shows defaults.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
   the remaining Convex/Stripe env setup. It reports only env names/scopes,
   fails until `NEXT_PUBLIC_CONVEX_URL` is in Preview/Production, and fails if
@@ -74,20 +78,19 @@ As of July 7, 2026:
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
   production was verified, so the old `github.io` surface is no longer an
   active host.
-- Vercel environment variables checked on July 6, 2026: none are configured
+- Vercel environment variables checked on July 7, 2026: none are configured
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished. After adding Vercel envs, run
-  `bun run vercel:env:check` to verify `NEXT_PUBLIC_CONVEX_URL` is present in
-  Preview/Production and payment/staff secrets were not placed in Vercel. After
-  Vercel and Convex dashboard edits, run `bun run dashboard:readiness` for one
-  safe JSON summary of the remaining dashboard actions before linked Preview
-  acceptance.
+  `bun run vercel:project:check` and `bun run vercel:env:check` to verify the
+  Vercel project shape and `NEXT_PUBLIC_CONVEX_URL` scope. After Vercel and
+  Convex dashboard edits, run `bun run dashboard:readiness` for one safe JSON
+  summary of the remaining dashboard actions before linked Preview acceptance.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
-  `junyen-enterprises/web` found no project environment variables on July 6,
+  `junyen-enterprises/web` found no project environment variables on July 7,
   2026.
-- Payment API audit and smoke checks on July 6, 2026 found no raw card
+- Payment API audit and smoke checks on July 7, 2026 found no raw card
   collection or storage, no public `clientSecret` response exposure, and
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
@@ -155,6 +158,7 @@ For dashboard setup progress, run this separately. It is expected to fail until
 the Vercel and Convex dashboard gates are ready for linked Preview acceptance:
 
 ```bash
+bun run vercel:project:check
 bun run dashboard:readiness
 ```
 

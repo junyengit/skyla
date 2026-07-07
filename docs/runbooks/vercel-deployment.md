@@ -21,17 +21,24 @@ omit `cd ../..`. The install script upgrades Bun to canary during the build
 step, prints the exact revision, and runs a frozen install from the repository
 root.
 
+Vercel's dashboard project settings may show default install/build command
+labels. For Skyla, the committed `apps/web/vercel.json` is the build authority:
+it overrides the framework, install command, build command, and Bun runtime for
+deployments. Run `bun run vercel:project:check` before dashboard work to verify
+both the dashboard root/Node/framework shape and the repo-owned Bun canary
+commands.
+
 ## Current Production State
 
 As of July 7, 2026:
 
 - Most recent full production verification recorded here was READY at
-  `https://web-r9k93t62a-junyen-enterprises.vercel.app`.
+  `https://web-5o94djb5w-junyen-enterprises.vercel.app`.
 - Evidence deployment ID:
-  `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`.
+  `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`.
 - Evidence merge commit:
-  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c` (PR #109).
-- The recorded production smoke/payment verification came from PR #109 and
+  `168f773791267d8796e22126dbf19443d201716b` (PR #110).
+- The recorded production smoke/payment verification came from PR #110 and
   is summarized in [../current-state-simple.md](../current-state-simple.md).
 - Query Vercel for the exact latest deployment before recording fresh
   operational evidence; docs-only merges create new production URLs.
@@ -43,7 +50,7 @@ As of July 7, 2026:
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
 - The evidence deployment metadata reports target `production`, commit
-  `c328c0b46972a1db4a72c69af6cfd8f45ae1087c`, framework `nextjs`, Node
+  `168f773791267d8796e22126dbf19443d201716b`, framework `nextjs`, Node
   `24.x`, and the Bun canary install path from repo config.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
@@ -108,6 +115,7 @@ After adding Vercel env vars, run the safe presence/scope checker from the repo
 root:
 
 ```bash
+PATH="$HOME/.bun/bin:$PATH" bun run vercel:project:check
 PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check
 ```
 

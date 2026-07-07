@@ -1190,6 +1190,28 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `dpl_6cUtqRMRAu4AegFnGK7BmjvS3X59`; no logs were found after the smoke
       probes.
 
+### 2026-07-07 PR #110 And Vercel Project-Shape Readiness
+
+- [x] Merged current-state docs PR #110 into `main` as merge commit
+      `168f773791267d8796e22126dbf19443d201716b`.
+- [x] Confirmed the latest Vercel production deployment is READY:
+      `https://web-5o94djb5w-junyen-enterprises.vercel.app`
+      (`dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Added `bun run vercel:project:check`, a non-secret drift checker for the
+      Vercel project shape. It verifies the project ID/name, root `apps/web`,
+      Next.js framework, Node `24.x`, optional local `.vercel` link, and the
+      committed `apps/web/vercel.json` Bun canary install/build commands.
+- [x] Updated `bun run dashboard:readiness` so it includes
+      `vercelProjectShape: true` before linked Preview acceptance can be
+      considered ready.
+- [x] Documented the dashboard/build-command nuance: Vercel project settings
+      may display default command labels, while `apps/web/vercel.json`
+      remains the deployment build authority for Bun canary.
+- [ ] Vercel envs still need `NEXT_PUBLIC_CONVEX_URL`, and Convex still needs
+      cloud, Stripe, staff, webhook, and Terminal reader env setup before real
+      card or reader acceptance.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
