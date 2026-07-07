@@ -81,11 +81,11 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest full app/payment production verification recorded here on 2026-07-07:
-  `https://web-5o94djb5w-junyen-enterprises.vercel.app`
+  `https://web-hqavd3ofq-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-07:
-  `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`
+  `dpl_3wuM3SNqjnN44PR3VuPQYFZBuoBf`
 - Evidence merge commit checked on 2026-07-07:
-  `168f773791267d8796e22126dbf19443d201716b` (PR #110).
+  `0ac3c6f96a4ba19c46bee7c2682c2cc9970d7272` (PR #111).
 - `bun run vercel:project:check` passed on 2026-07-07. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
@@ -188,11 +188,11 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-07 after PR #110 and the
-  latest smoke probes: `vercel logs` returned no logs for deployment
-  `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`. Non-200 responses were expected:
-  `401` for staff-auth gates and `503` for Convex-unconfigured write/payment
-  gates.
+- Vercel production runtime logs checked on 2026-07-07 after PR #111 and the
+  latest smoke probes: the Vercel runtime log query returned no `error` or
+  `fatal` logs in the checked 30-minute production window. Non-200 responses
+  were expected: `401` for staff-auth gates and `503` for Convex-unconfigured
+  write/payment gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
   `/api/pos/readers` now return `Cache-Control: no-store` and
   `Vary: Authorization` for staff-gated and fail-closed responses.
@@ -236,7 +236,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-07 for `https://skydeckla.com`
-  after PR #110 reached production.
+  after PR #111 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
