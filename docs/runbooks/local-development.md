@@ -3,7 +3,7 @@
 ## New Vercel App
 
 Use Node `24.x` and Bun canary. The last verified local Bun revision is
-`1.4.0-canary.1+d37f52067`.
+`1.4.0-canary.1+1de77f961`.
 
 ```bash
 bun upgrade --canary
@@ -36,10 +36,10 @@ bun run security
 bun run check
 ```
 
-Turbo currently warns that Bun canary `bun.lock` version 2 is not fully parsed
-for lockfile analysis. The tasks still run and pass. Treat that warning as a
-known canary integration risk until Turbo adds lockfile v2 support or Bun
-stabilizes the format.
+Turbo `2.10.4` currently runs the task graph against the text `bun.lock`
+without the old unsupported lockfile-version warning. If a future Bun canary
+changes the lockfile format, regenerate the lockfile in a focused PR and rerun
+`bun run check`.
 
 ## Do Not Commit
 

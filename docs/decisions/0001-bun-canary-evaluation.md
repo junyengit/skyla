@@ -33,7 +33,7 @@ Turborepo should use text lockfile analysis, so the repo should commit `bun.lock
 
 ## Implementation Notes
 
-- Last verified local Bun revision: `1.4.0-canary.1+d37f52067`.
+- Last verified local Bun revision: `1.4.0-canary.1+1de77f961`.
 - Root `package.json` records `packageManager: bun@1.4.0-canary.1` and
   workspace globs for `apps/*` and `packages/*`.
 - CI uses `oven-sh/setup-bun@v2` with `bun-version: canary`.
@@ -46,9 +46,10 @@ Turborepo should use text lockfile analysis, so the repo should commit `bun.lock
 - Vercel `bunVersion` accepts `1.x`, so it is used for runtime compatibility,
   while the build canary is enforced by the install script.
 - `bun audit --audit-level=high` replaces `pnpm audit --audit-level=high`.
-- Turbo `2.10.3` currently warns that Bun canary lockfile version 2 is not fully
-  parsed for lockfile analysis. Tasks still run and pass. This is an accepted
-  canary risk until Turbo supports that lockfile format or Bun stabilizes it.
+- Turbo `2.10.4` and the current text `bun.lock` no longer emit the previous
+  unsupported lockfile-version warning in `bun run check`. Treat future Bun
+  canary lockfile-format changes as a focused dependency PR, not a drive-by
+  migration.
 
 ## Consequences
 

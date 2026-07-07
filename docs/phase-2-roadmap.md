@@ -1,6 +1,6 @@
 # Skyla Phase 2 Roadmap
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Plain-English Goal
 
@@ -194,7 +194,8 @@ Initial actions:
 - Replace `pnpm-lock.yaml` only after Bun install/build/test passes locally and in CI.
 - Configure Vercel with Bun-compatible install/build commands and `bunVersion` where supported.
 - Keep Node `24.x` documented while Next/Vercel function runtime behavior is validated.
-- Track Turbo's warning about Bun canary lockfile version 2 until that integration is resolved.
+- Track Bun canary lockfile behavior in focused dependency PRs; the old Turbo
+  warning was retired by Turbo `2.10.4` and the current text `bun.lock`.
 
 Definition of done:
 
@@ -437,10 +438,10 @@ Current package baseline:
 - Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
-- Turborepo `2.10.3`
+- Turborepo `2.10.4`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
-- Last verified Bun revision: `1.4.0-canary.1+d37f52067`
+- Last verified Bun revision: `1.4.0-canary.1+1de77f961`
 
 Useful verification commands:
 
