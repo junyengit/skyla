@@ -1212,6 +1212,34 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       cloud, Stripe, staff, webhook, and Terminal reader env setup before real
       card or reader acceptance.
 
+### 2026-07-07 PR #111 Production Evidence
+
+- [x] Merged Vercel project-shape readiness PR #111 into `main` as merge
+      commit `0ac3c6f96a4ba19c46bee7c2682c2cc9970d7272`.
+- [x] Confirmed Vercel production deployment from PR #111 is READY:
+      `https://web-hqavd3ofq-junyen-enterprises.vercel.app`
+      (`dpl_3wuM3SNqjnN44PR3VuPQYFZBuoBf`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`;
+      23 routes passed on the apex domain.
+- [x] Re-ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:payments`; checkout and POS totals remained server-owned, exact
+      catalog provenance checks passed, no real Stripe charge was attempted,
+      and Stripe execution routes stayed fail-closed before real
+      Convex/Stripe dashboard wiring.
+- [x] Re-ran `PRODUCTION_READINESS_BASE_URLS=https://skydeckla.com,https://www.skydeckla.com
+      VERCEL_PRODUCTION_URL=https://web-hqavd3ofq-junyen-enterprises.vercel.app
+      bun run test:production-readiness`; apex, `www`, and the production
+      deployment URL passed.
+- [x] Re-ran `bun run vercel:project:check`; Vercel project shape remains
+      aligned with `junyen-enterprises/web`, root `apps/web`, Next.js, Node
+      `24.x`, and the repo-owned Bun canary commands.
+- [x] Re-ran `bun run dashboard:readiness`; it now reports
+      `vercelProjectShape: true` and still fails closed because Vercel envs
+      and Convex/Stripe/staff/Terminal dashboard envs are absent.
+- [x] Queried Vercel runtime logs after the smoke probes; no `error` or
+      `fatal` logs were found in the checked 30-minute production window.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.

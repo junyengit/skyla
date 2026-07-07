@@ -46,9 +46,9 @@ As of July 7, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest full app/payment production verification recorded here:
-  `https://web-5o94djb5w-junyen-enterprises.vercel.app` from merge commit
-  `168f773791267d8796e22126dbf19443d201716b` (PR #110,
-  deployment `dpl_E4sGPBq4gn8Mdhwt1ApJFWfau7Ko`, status `READY`).
+  `https://web-hqavd3ofq-junyen-enterprises.vercel.app` from merge commit
+  `0ac3c6f96a4ba19c46bee7c2682c2cc9970d7272` (PR #111,
+  deployment `dpl_3wuM3SNqjnN44PR3VuPQYFZBuoBf`, status `READY`).
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
@@ -94,8 +94,8 @@ As of July 7, 2026:
   collection or storage, no public `clientSecret` response exposure, and
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
-- Vercel production runtime checks show no grouped runtime errors and no
-  error/fatal logs for the recorded evidence deployment. The observed
+- Vercel production runtime checks found no `error` or `fatal` logs in the
+  checked 30-minute window for the recorded evidence deployment. The observed
   non-200 responses were expected staff-auth `401` and Convex-unconfigured
   `503` gates from the smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
