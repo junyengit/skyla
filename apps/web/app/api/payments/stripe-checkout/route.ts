@@ -1,5 +1,6 @@
 import { fetchAction } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
+import { invalidPaymentRequest, paymentJson, paymentProviderUnavailable, paymentServiceUnavailable } from "../_shared";
 
 type StripeCheckoutRequest = {
   orderRef?: unknown;
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
   try {
     const deploymentUrl = convexUrl();
     if (!deploymentUrl) {
-      return Response.json(
+      return paymentJson(
         {
           error: "Convex is not configured for Stripe Checkout",
           code: "convex_unconfigured"
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
       { url: deploymentUrl }
     );
 
-    return Response.json(toPublicCheckoutResult(result));
+    return paymentJson(toPublicCheckoutResult(result));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not start Stripe Checkout";
     const status = message.includes("is required") || message.includes("origin is not allowed")
@@ -106,7 +107,12 @@ export async function POST(request: Request) {
       : isServerConfigurationError(message)
         ? 503
         : 502;
+    const body = status === 400
+      ? invalidPaymentRequest(message.includes("origin is not allowed") ? "Stripe Checkout return origin is not allowed" : message)
+      : status === 503
+        ? paymentServiceUnavailable("Stripe Checkout")
+        : paymentProviderUnavailable("Stripe Checkout");
 
-    return Response.json({ error: message }, { status });
+    return paymentJson(body, { status });
   }
 }

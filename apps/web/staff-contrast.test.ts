@@ -21,5 +21,6 @@ describe("staff page contrast", () => {
     expect(globalsCss).toContain(".posNextPage input,\n.posNextPage textarea,\n.posNextPage select,\n.posNextPage button");
     expect(globalsCss).toContain(".adminOpsPage .brand,\n.adminOpsPage h1");
     expect(globalsCss).toContain(".posNextPage .brand,\n.posNextPage h1");
+    expect(globalsCss).toContain(".posNextPage h3,\n.posNextPage h4");
   });
 });

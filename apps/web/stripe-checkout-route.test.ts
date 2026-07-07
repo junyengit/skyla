@@ -9,6 +9,11 @@ vi.mock("convex/nextjs", () => ({
 
 const fetchActionMock = vi.mocked(fetchAction);
 
+function expectPaymentHeaders(response: Response) {
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("vary")).toBeNull();
+}
+
 function request(body: unknown, init?: RequestInit) {
   return new Request("https://skydeckla.com/api/payments/stripe-checkout", {
     method: "POST",
@@ -36,6 +41,7 @@ describe("/api/payments/stripe-checkout", () => {
     );
 
     expect(response.status).toBe(503);
+    expectPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       code: "convex_unconfigured"
     });
@@ -48,8 +54,10 @@ describe("/api/payments/stripe-checkout", () => {
     const response = await POST(request({ orderRef: "SKY2607-ABC123" }));
 
     expect(response.status).toBe(400);
+    expectPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
-      error: "idempotencyKey is required"
+      error: "idempotencyKey is required",
+      code: "invalid_payment_request"
     });
     expect(fetchActionMock).not.toHaveBeenCalled();
   });
@@ -66,9 +74,13 @@ describe("/api/payments/stripe-checkout", () => {
     );
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: "SKYLA_STRIPE_MODE is not configured"
+    expectPaymentHeaders(response);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      error: "Stripe Checkout is not available right now",
+      code: "payment_service_unavailable"
     });
+    expect(JSON.stringify(body)).not.toContain("SKYLA_STRIPE_MODE");
   });
 
   it("treats missing Stripe return-origin allowlist as server configuration", async () => {
@@ -85,9 +97,13 @@ describe("/api/payments/stripe-checkout", () => {
     );
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: "SKYLA_PAYMENT_RETURN_ORIGINS must list at least one allowed Stripe return origin"
+    expectPaymentHeaders(response);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      error: "Stripe Checkout is not available right now",
+      code: "payment_service_unavailable"
     });
+    expect(JSON.stringify(body)).not.toContain("SKYLA_PAYMENT_RETURN_ORIGINS");
   });
 
   it("starts Stripe Checkout through the Convex action with generated return URLs", async () => {
@@ -115,6 +131,7 @@ describe("/api/payments/stripe-checkout", () => {
     );
 
     expect(response.status).toBe(200);
+    expectPaymentHeaders(response);
     const body = await response.json();
     expect(body).toMatchObject({
       url: "https://checkout.stripe.com/c/pay/cs_test_123",

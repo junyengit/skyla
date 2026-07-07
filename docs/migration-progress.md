@@ -1240,6 +1240,48 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Queried Vercel runtime logs after the smoke probes; no `error` or
       `fatal` logs were found in the checked 30-minute production window.
 
+### 2026-07-07 PR #112 Production Evidence
+
+- [x] Merged PR #112 into `main` as merge commit
+      `8150de2becc3b24c8a20da6c828a1873061a3ff6`.
+- [x] Confirmed Vercel production deployment from PR #112 is READY:
+      `https://web-3oity7xei-junyen-enterprises.vercel.app`
+      (`dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`), aliased to `skydeckla.com` and
+      `www.skydeckla.com`.
+- [x] Re-ran `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`;
+      23 routes passed on the apex domain.
+- [x] Re-ran `PAYMENT_SMOKE_BASE_URL=https://skydeckla.com bun run
+      test:payments`; checkout and POS totals remained server-owned, exact
+      catalog provenance checks passed, no real Stripe charge was attempted,
+      and Stripe execution routes stayed fail-closed before real
+      Convex/Stripe dashboard wiring.
+- [x] Re-ran `PRODUCTION_READINESS_BASE_URLS=https://skydeckla.com,https://www.skydeckla.com
+      VERCEL_PRODUCTION_URL=https://web-3oity7xei-junyen-enterprises.vercel.app
+      bun run test:production-readiness`; apex, `www`, and the production
+      deployment URL passed.
+- [x] Re-ran `bun run vercel:project:check`; Vercel project shape remains
+      aligned with `junyen-enterprises/web`, root `apps/web`, Next.js, Node
+      `24.x`, and the repo-owned Bun canary commands.
+- [x] Re-ran `bun run dashboard:readiness`; it reports
+      `vercelProjectShape: true` and still fails closed because Vercel envs
+      and Convex/Stripe/staff/Terminal dashboard envs are absent.
+- [x] Queried Vercel runtime logs after the smoke probes; no `error` or
+      `fatal` logs were found in the checked 30-minute production window.
+
+### 2026-07-07 Payment Header And Contrast Follow-Up
+
+- [x] Added `Cache-Control: no-store` to public payment API responses.
+- [x] Added `Vary: Authorization` to staff-gated Stripe Terminal start/process
+      responses.
+- [x] Sanitized payment-route catch responses so raw Stripe/Convex/provider
+      messages and env names are not returned to browsers.
+- [x] Mapped authenticated-but-not-allowed staff role failures to `403` with a
+      stable public `staff_forbidden` code.
+- [x] Extended `bun run test:payments` to check the no-store/Vary payment
+      headers and the generic fail-closed payment error code.
+- [x] Extended POS contrast coverage so POS headings stay white on black staff
+      surfaces.
+
 ## Decisions
 
 - Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
