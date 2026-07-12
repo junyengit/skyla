@@ -23,6 +23,9 @@ and inserts exactly one confirmed guest booking in the same Convex mutation.
 It derives fulfillment only from the stored email, date, time, and ticket lines;
 webhook replay reuses the existing booking. Linked test-mode acceptance remains
 a release gate before card acceptance.
+The browser return now uses the high-entropy Stripe Session ID to derive its
+stored order and polls a minimal non-cacheable POST status endpoint. A query
+string alone can no longer produce a confirmed message.
 
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and

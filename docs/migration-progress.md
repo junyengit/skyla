@@ -1312,6 +1312,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       same-event and different-event replay coverage.
 - [x] Checkout now stores `HH:mm` entry times instead of sending display labels
       such as `2:00 PM`, and requires a valid guest email before order review.
+- [x] Added a minimal non-cacheable Checkout return-status API keyed by the
+      Stripe Checkout Session ID and backed by its server-created payment event; the
+      return UI now polls Convex and confirms only when paid ledger, paid order,
+      and booking agree.
 - [ ] Prove booking fulfillment against the linked Convex project and a signed
       Stripe test webhook before any card acceptance.
 - [ ] No Skyla Convex cloud project is visible to the currently authenticated
