@@ -353,14 +353,13 @@ Current verified Vercel data:
 - Vercel project root: `apps/web`
 - Production branch: `main`
 - Latest verified production commit:
-  `61ec73f83188f117e444a9da2d971ae709a27ee1` (PR #116)
+  `e5973048ea3f5ce3c577eb979232cd520a577407` (PR #117)
 - Latest verified production deployment evidence:
-  `https://web-8hw004wy3-junyen-enterprises.vercel.app`
+  `https://web-kyy17u2k9-junyen-enterprises.vercel.app`
 - Latest verified production deployment ID:
-  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`
-- Latest deployment identity: PR #116. This does not claim that the legacy data
-  migration has been applied. Query Vercel and rerun the relevant smokes before
-  recording fresh behavior evidence.
+  `dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm`
+- Latest deployment identity and behavior evidence: PR #117. Apex, `www`, and
+  immutable readiness smokes passed; no cloud legacy data migration has run.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
