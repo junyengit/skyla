@@ -163,6 +163,7 @@ export default defineSchema({
     saleRef: v.optional(v.string()),
     provider: paymentProvider,
     providerPaymentId: v.string(),
+    providerPaymentIntentId: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
     status: paymentStatus,
     currency,
@@ -175,8 +176,37 @@ export default defineSchema({
     .index("by_saleRef", ["saleRef"])
     .index("by_createdAt", ["createdAt"])
     .index("by_provider_providerPaymentId", ["provider", "providerPaymentId"])
+    .index("by_providerPaymentIntentId", ["providerPaymentIntentId"])
     .index("by_provider_idempotencyKey", ["provider", "idempotencyKey"])
     .index("by_provider_status_createdAt", ["provider", "status", "createdAt"]),
+
+  refunds: defineTable({
+    providerRefundId: v.string(),
+    providerPaymentIntentId: v.string(),
+    paymentProvider: v.union(v.literal("stripe"), v.literal("terminal")),
+    orderRef: v.optional(v.string()),
+    saleRef: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("requires_action"),
+      v.literal("succeeded"),
+      v.literal("failed"),
+      v.literal("canceled")
+    ),
+    amountCents: v.number(),
+    currency,
+    reason: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    providerEventCreatedAt: v.number(),
+    rawEventId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  })
+    .index("by_providerRefundId", ["providerRefundId"])
+    .index("by_providerPaymentIntentId", ["providerPaymentIntentId"])
+    .index("by_orderRef_updatedAt", ["orderRef", "updatedAt"])
+    .index("by_saleRef_updatedAt", ["saleRef", "updatedAt"])
+    .index("by_updatedAt", ["updatedAt"]),
 
   webhookEvents: defineTable({
     provider: paymentProvider,

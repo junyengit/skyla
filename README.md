@@ -220,6 +220,12 @@ bun run dashboard:readiness
   stored Terminal payment event. Live Terminal payment remains gated until
   Vercel/Convex envs, staff auth, Stripe dashboard endpoint setup, and
   test-reader acceptance are complete.
+- Signed Stripe refund events now reconcile read-only against the paid Checkout
+  or Terminal PaymentIntent and its still-paid order/POS sale. Native Admin can
+  display the normalized result, but it cannot initiate refunds and refund
+  events do not automatically cancel bookings or sales. Enable the Dashboard
+  refund subscriptions only after deployment, historical PaymentIntent-linkage
+  review, and linked test-mode acceptance described in ADR 0033.
 - Legacy browser-authoritative Kaskade/crypto checkout is retired from the
   public compatibility checkout and in the repo copy of the Supabase functions.
 - Public CTAs point to `/checkout`, the App Router checkout path;

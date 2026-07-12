@@ -153,6 +153,46 @@ function publicPaymentEvent(event: {
   };
 }
 
+function maskedProviderIdentifier(value: string) {
+  const text = value.trim();
+  if (text.length <= 8) return `${text.slice(0, 2)}...`;
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+}
+
+function publicRefund(refund: {
+  providerRefundId: string;
+  providerPaymentIntentId: string;
+  paymentProvider: "stripe" | "terminal";
+  orderRef?: string;
+  saleRef?: string;
+  status: "pending" | "requires_action" | "succeeded" | "failed" | "canceled";
+  amountCents: number;
+  currency: "usd";
+  reason?: string;
+  failureReason?: string;
+  providerEventCreatedAt: number;
+  rawEventId: string;
+  createdAt: number;
+  updatedAt: number;
+}) {
+  return {
+    providerRefundIdMasked: maskedProviderIdentifier(refund.providerRefundId),
+    providerPaymentIntentIdMasked: maskedProviderIdentifier(refund.providerPaymentIntentId),
+    paymentProvider: refund.paymentProvider,
+    orderRef: refund.orderRef,
+    saleRef: refund.saleRef,
+    status: refund.status,
+    amountCents: refund.amountCents,
+    currency: refund.currency,
+    reason: refund.reason,
+    failureReason: refund.failureReason,
+    providerEventCreatedAt: refund.providerEventCreatedAt,
+    rawEventIdMasked: maskedProviderIdentifier(refund.rawEventId),
+    createdAt: refund.createdAt,
+    updatedAt: refund.updatedAt
+  };
+}
+
 function publicBooking(booking: {
   bookingRef: string;
   orderRef?: string;
@@ -398,6 +438,7 @@ export const getOperationsSnapshot = query({
       recentOrders,
       recentPosSales,
       recentPaymentEvents,
+      recentRefunds,
       recentBookings,
       recentMembers,
       draftOrders,
@@ -411,6 +452,7 @@ export const getOperationsSnapshot = query({
         ctx.db.query("orders").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db.query("posSales").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db.query("paymentEvents").withIndex("by_createdAt").order("desc").take(limit),
+        ctx.db.query("refunds").withIndex("by_updatedAt").order("desc").take(limit),
         ctx.db.query("bookings").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db.query("members").withIndex("by_createdAt").order("desc").take(limit),
         ctx.db
@@ -472,6 +514,7 @@ export const getOperationsSnapshot = query({
         orders: recentOrders.map(publicOrder),
         posSales: recentPosSales.map(publicPosSale),
         paymentEvents: recentPaymentEvents.map(publicPaymentEvent),
+        refunds: recentRefunds.map(publicRefund),
         bookings: publicRecentBookings,
         members: recentMembers.map(publicMember)
       }

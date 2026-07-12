@@ -7,6 +7,7 @@ import {
   getPosTerminalPaymentSnapshot,
   getStripeTerminalReaderProcessSnapshot,
   recordStripeCheckoutWebhook,
+  recordStripeRefundWebhook,
   recordStripeTerminalWebhook
 } from "./paymentInternals";
 
@@ -16,6 +17,7 @@ type TableName =
   | "posSales"
   | "posSaleLines"
   | "paymentEvents"
+  | "refunds"
   | "webhookEvents"
   | "bookings"
   | "auditEvents"
@@ -61,9 +63,24 @@ type CheckoutWebhookArgs = {
   eventType: string;
   outcome: "paid" | "failed" | "canceled" | "ignored";
   providerPaymentId?: string;
+  providerPaymentIntentId?: string;
   orderRef?: string;
   amountCents?: number;
   currency?: "usd";
+  raw?: Record<string, unknown>;
+};
+type RefundWebhookArgs = {
+  providerEventId: string;
+  eventType: string;
+  outcome: "refund" | "ignored";
+  providerRefundId?: string;
+  providerPaymentIntentId?: string;
+  refundStatus?: "pending" | "requires_action" | "succeeded" | "failed" | "canceled";
+  amountCents?: number;
+  currency?: "usd";
+  reason?: string;
+  failureReason?: string;
+  providerEventCreatedAt?: number;
   raw?: Record<string, unknown>;
 };
 type CheckoutWebhookResult = {
@@ -77,6 +94,7 @@ const saleRef = "SALE260704-ABC123";
 const checkoutVisitDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const providerPaymentId = "pi_terminal_123";
 const checkoutProviderPaymentId = "cs_test_123";
+const checkoutPaymentIntentId = "pi_checkout_123";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -322,6 +340,199 @@ describe("Stripe Checkout webhook internals", () => {
   });
 });
 
+describe("Stripe refund webhook internals", () => {
+  it("records a partial Checkout refund without changing fulfillment state", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    const result = await runRefundWebhook(ctx, refundArgs());
+
+    expect(result).toMatchObject({ status: "processed", duplicate: false, orderRef });
+    expect(state.refunds).toHaveLength(1);
+    expect(state.refunds[0]).toMatchObject({
+      providerRefundId: "re_checkout_1",
+      providerPaymentIntentId: checkoutPaymentIntentId,
+      paymentProvider: "stripe",
+      orderRef,
+      status: "succeeded",
+      amountCents: 2000
+    });
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.webhookEvents[0]).toMatchObject({ providerEventId: "evt_refund_1", status: "processed", orderRef });
+    expect(state.auditEvents[0]).toMatchObject({ action: "payment.refund.reconciled", entityRef: orderRef });
+  });
+
+  it("is replay-safe and updates the same refund from pending to succeeded", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    const pending = refundArgs({ refundStatus: "pending", providerEventId: "evt_refund_pending" });
+    const first = await runRefundWebhook(ctx, pending);
+    const replay = await runRefundWebhook(ctx, pending);
+    const succeeded = await runRefundWebhook(
+      ctx,
+      refundArgs({ providerEventId: "evt_refund_succeeded", providerEventCreatedAt: 3000 })
+    );
+
+    expect(first).toMatchObject({ status: "processed", duplicate: false });
+    expect(replay).toMatchObject({ status: "processed", duplicate: true });
+    expect(succeeded).toMatchObject({ status: "processed", duplicate: false, stale: false });
+    expect(state.refunds).toHaveLength(1);
+    expect(state.refunds[0].status).toBe("succeeded");
+    expect(state.webhookEvents).toHaveLength(2);
+  });
+
+  it("rejects cumulative successful refunds above the original paid amount", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 5000 }));
+    const second = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_2",
+        providerRefundId: "re_checkout_2",
+        providerEventCreatedAt: 3000,
+        amountCents: 2000
+      })
+    );
+
+    expect(second).toMatchObject({ status: "failed", duplicate: false, orderRef });
+    expect(state.refunds).toHaveLength(1);
+    expect(state.webhookEvents[1].raw).toMatchObject({ reason: "cumulative_refund_exceeds_payment" });
+  });
+
+  it("ignores an older refund update without regressing the stored status", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    await runRefundWebhook(ctx, refundArgs({ providerEventCreatedAt: 5000 }));
+    const stale = await runRefundWebhook(
+      ctx,
+      refundArgs({ providerEventId: "evt_refund_stale", refundStatus: "pending", providerEventCreatedAt: 4000 })
+    );
+
+    expect(stale).toMatchObject({ status: "processed", stale: true });
+    expect(state.refunds[0].status).toBe("succeeded");
+    expect(state.auditEvents).toHaveLength(1);
+  });
+
+  it("allows a succeeded refund to fail when Stripe later returns the funds", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    await runRefundWebhook(ctx, refundArgs());
+    const failed = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_failed_late",
+        refundStatus: "failed",
+        failureReason: "declined",
+        providerEventCreatedAt: 6000
+      })
+    );
+
+    expect(failed).toMatchObject({ status: "processed", stale: false });
+    expect(state.refunds[0]).toMatchObject({ status: "failed", failureReason: "declined" });
+    expect(state.auditEvents).toHaveLength(2);
+  });
+
+  it("allows a succeeded refund to require corrected banking details", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    await runRefundWebhook(ctx, refundArgs());
+    const requiresAction = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_requires_action_late",
+        refundStatus: "requires_action",
+        providerEventCreatedAt: 6000
+      })
+    );
+
+    expect(requiresAction).toMatchObject({ status: "processed", stale: false });
+    expect(state.refunds[0].status).toBe("requires_action");
+    expect(state.auditEvents).toHaveLength(2);
+  });
+
+  it("does not switch a failed refund state even when a newer event disagrees", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    await runRefundWebhook(ctx, refundArgs({ refundStatus: "failed", failureReason: "declined" }));
+    const conflicting = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_succeeded_late",
+        refundStatus: "succeeded",
+        failureReason: undefined,
+        providerEventCreatedAt: 6000
+      })
+    );
+
+    expect(conflicting).toMatchObject({ status: "processed", stale: true });
+    expect(state.refunds[0].status).toBe("failed");
+    expect(state.auditEvents).toHaveLength(1);
+  });
+
+  it("does not regress succeeded to pending even when timestamps tie", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    await runRefundWebhook(ctx, refundArgs());
+    const pending = await runRefundWebhook(
+      ctx,
+      refundArgs({ providerEventId: "evt_refund_pending_late", refundStatus: "pending" })
+    );
+
+    expect(pending).toMatchObject({ status: "processed", stale: true });
+    expect(state.refunds[0].status).toBe("succeeded");
+    expect(state.auditEvents).toHaveLength(1);
+  });
+
+  it("fails correlation when the associated order is no longer paid", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "payment_pending", includePaidEvent: true });
+    const result = await runRefundWebhook(ctx, refundArgs());
+
+    expect(result).toMatchObject({ status: "failed", orderRef });
+    expect(state.refunds).toHaveLength(0);
+    expect(state.webhookEvents[0].raw).toMatchObject({ reason: "paid_order_not_refundable" });
+  });
+
+  it("rejects non-integer refund money before ledger correlation", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    const result = await runRefundWebhook(ctx, refundArgs({ amountCents: 10.5 }));
+
+    expect(result).toMatchObject({ status: "failed", duplicate: false });
+    expect(state.refunds).toHaveLength(0);
+    expect(state.webhookEvents[0].raw).toMatchObject({ reason: "missing_refund_fields" });
+  });
+
+  it("keeps a refund retryable until its paid PaymentIntent ledger exists", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: false });
+    const result = await runRefundWebhook(ctx, refundArgs({ providerEventCreatedAt: Date.now() }));
+
+    expect(result).toMatchObject({
+      status: "retryable",
+      duplicate: false,
+      reason: "paid_payment_intent_not_found"
+    });
+    expect(state.refunds).toHaveLength(0);
+    expect(state.webhookEvents).toHaveLength(0);
+  });
+
+  it("durably fails an unknown PaymentIntent after the bounded retry window", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: false });
+    const result = await runRefundWebhook(
+      ctx,
+      refundArgs({ providerEventCreatedAt: Date.now() - 72 * 60 * 60 * 1000 - 1 })
+    );
+
+    expect(result).toMatchObject({ status: "failed", duplicate: false });
+    expect(state.refunds).toHaveLength(0);
+    expect(state.webhookEvents[0].raw).toMatchObject({
+      reason: "paid_payment_intent_not_found_after_retry_window"
+    });
+  });
+
+  it("correlates Terminal refunds to the paid POS sale", async () => {
+    const { ctx, state } = createTerminalWebhookCtx({ saleStatus: "paid", terminalStatus: "paid" });
+    const result = await runRefundWebhook(
+      ctx,
+      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 1000 })
+    );
+
+    expect(result).toMatchObject({ status: "processed", saleRef });
+    expect(state.refunds[0]).toMatchObject({ paymentProvider: "terminal", saleRef, amountCents: 1000 });
+    expect(state.posSales[0].status).toBe("paid");
+  });
+});
+
 describe("Stripe Terminal webhook internals", () => {
   it("marks a stored POS sale paid when the signed webhook matches the stored ledger", async () => {
     const { ctx, state } = createTerminalWebhookCtx();
@@ -411,7 +622,35 @@ async function runCheckoutWebhook(ctx: MockCtx, args: CheckoutWebhookArgs): Prom
   const mutation = recordStripeCheckoutWebhook as unknown as {
     _handler: (ctx: MockCtx, args: CheckoutWebhookArgs) => Promise<CheckoutWebhookResult>;
   };
+  return mutation._handler(ctx, {
+    ...args,
+    providerPaymentIntentId:
+      args.providerPaymentIntentId ?? (args.outcome === "paid" ? checkoutPaymentIntentId : undefined)
+  });
+}
+
+async function runRefundWebhook(ctx: MockCtx, args: RefundWebhookArgs) {
+  const mutation = recordStripeRefundWebhook as unknown as {
+    _handler: (ctx: MockCtx, args: RefundWebhookArgs) => Promise<Record<string, unknown>>;
+  };
   return mutation._handler(ctx, args);
+}
+
+function refundArgs(overrides: Partial<RefundWebhookArgs> = {}): RefundWebhookArgs {
+  return {
+    providerEventId: "evt_refund_1",
+    eventType: "refund.updated",
+    outcome: "refund",
+    providerRefundId: "re_checkout_1",
+    providerPaymentIntentId: checkoutPaymentIntentId,
+    refundStatus: "succeeded",
+    amountCents: 2000,
+    currency: "usd",
+    reason: "requested_by_customer",
+    providerEventCreatedAt: 2000,
+    raw: { refund: { status: "succeeded" } },
+    ...overrides
+  };
 }
 
 async function runCheckoutPaymentSnapshot(
@@ -650,6 +889,7 @@ function createCheckoutWebhookCtx(
       orderRef,
       provider: "stripe",
       providerPaymentId: checkoutProviderPaymentId,
+      providerPaymentIntentId: checkoutPaymentIntentId,
       idempotencyKey: "skyla:checkout-session:ORD260704-ABC123",
       status: "paid",
       currency: "usd",
@@ -687,6 +927,7 @@ function createTerminalWebhookCtx(
         saleRef,
         provider: "terminal",
         providerPaymentId,
+        providerPaymentIntentId: providerPaymentId,
         idempotencyKey: stripeTerminalIntentIdempotencyKey(saleRef),
         status: options.terminalStatus ?? "processing",
         currency: "usd",
@@ -705,6 +946,7 @@ function createEmptyState(): MockState {
     posSales: [],
     posSaleLines: [],
     paymentEvents: [],
+    refunds: [],
     webhookEvents: [],
     bookings: [],
     auditEvents: [],

@@ -560,6 +560,16 @@ flowchart TD
   - `payment_intent.succeeded`
   - `payment_intent.payment_failed`
   - `payment_intent.canceled`
+  - `refund.created`
+  - `refund.updated`
+  - `refund.failed`
+- [ ] Add the three refund subscriptions only after the refund-reconciliation
+      code is deployed to this Convex target. In Workbench, verify the endpoint
+      API version supports these event types.
+- [ ] Before enabling refund subscriptions, query the linked Convex deployment
+      for older paid `paymentEvents` and verify each one has
+      `providerPaymentIntentId`. Backfill only from verified Stripe records;
+      never infer a PaymentIntent ID from an order or sale reference.
 - [ ] Copy the endpoint signing secret into Convex as
   `STRIPE_WEBHOOK_SECRET`.
 - [ ] Use Stripe test cards only until Preview acceptance, production
@@ -572,6 +582,15 @@ flowchart TD
       not enter a real card.
 - [ ] Verify webhook delivery, duplicate replay behavior, amount mismatch
       rejection, and order/POS sale status transitions before live traffic.
+- [ ] Verify a refund delivered before its paid payment ledger receives a
+      retryable response, then reconciles on redelivery after the paid event.
+      Verify an unrelated PaymentIntent stops retrying and records a durable
+      failure after the 72-hour correlation window.
+- [ ] Create partial, full, failed, duplicate, and out-of-order refunds in
+      Stripe test mode. Verify native Admin shows allowlisted refund details,
+      failed/canceled states never regress, a later Stripe failure can replace a
+      succeeded state, cumulative successful refunds cannot exceed the payment,
+      and no booking/order/POS state changes automatically.
 - [ ] Create a separate live-mode endpoint only after test mode passes.
 - [ ] Do not use a real credit card during verification. Use Stripe test mode
       cards and Stripe dashboard test webhooks until preview acceptance passes.
@@ -761,9 +780,9 @@ Current dependency note:
 11. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-12. Finish native Admin beyond lookup/status/config/voucher/export actions:
-   refunds, catalog/pricing edits, and any destructive action with typed
-   validators, audit logs, and rollback steps.
+12. Accept the read-only refund ledger in linked Stripe test mode, including
+    historical PaymentIntent-linkage review. Keep refund initiation and booking
+    cancellation out of Admin until a separate typed workflow and runbook exist.
 13. Rebuild POS as the protected live App Router/Convex register.
 14. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.

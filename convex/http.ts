@@ -8,6 +8,8 @@ import {
 } from "./lib/stripeMode";
 import {
   stripeCheckoutOutcomeFromEvent,
+  stripeRefundOutcomeFromEvent,
+  stripeRefundWebhookDisposition,
   stripeTerminalPaymentIntentOutcomeFromEvent,
   stripeWebhookObjectType,
   verifyStripeWebhookSignature,
@@ -76,6 +78,40 @@ http.route({
       });
     }
 
+    if (stripeWebhookObjectType(event) === "refund") {
+      const outcome = stripeRefundOutcomeFromEvent(event);
+      const result = await ctx.runMutation(
+        internal.paymentInternals.recordStripeRefundWebhook,
+        withoutUndefined({
+          providerEventId: outcome.providerEventId,
+          eventType: outcome.eventType,
+          outcome: outcome.outcome,
+          providerRefundId: "providerRefundId" in outcome ? outcome.providerRefundId : undefined,
+          providerPaymentIntentId:
+            "providerPaymentIntentId" in outcome ? outcome.providerPaymentIntentId : undefined,
+          refundStatus: "status" in outcome ? outcome.status : undefined,
+          amountCents: "amountCents" in outcome ? outcome.amountCents : undefined,
+          currency: "currency" in outcome ? outcome.currency : undefined,
+          reason: "reason" in outcome ? outcome.reason : undefined,
+          failureReason: "failureReason" in outcome ? outcome.failureReason : undefined,
+          providerEventCreatedAt:
+            "providerEventCreatedAt" in outcome ? outcome.providerEventCreatedAt : undefined,
+          raw: outcome.raw
+        })
+      );
+      const disposition = stripeRefundWebhookDisposition(result.status);
+      return json(
+        {
+          ok: disposition.ok,
+          status: result.status,
+          duplicate: result.duplicate,
+          orderRef: result.orderRef,
+          saleRef: result.saleRef
+        },
+        { status: disposition.httpStatus }
+      );
+    }
+
     const outcome = stripeCheckoutOutcomeFromEvent(event);
     const result = await ctx.runMutation(
       internal.paymentInternals.recordStripeCheckoutWebhook,
@@ -84,6 +120,8 @@ http.route({
         eventType: outcome.eventType,
         outcome: outcome.outcome,
         providerPaymentId: "providerPaymentId" in outcome ? outcome.providerPaymentId : undefined,
+        providerPaymentIntentId:
+          "providerPaymentIntentId" in outcome ? outcome.providerPaymentIntentId : undefined,
         orderRef: outcome.orderRef,
         amountCents: "amountCents" in outcome ? outcome.amountCents : undefined,
         currency: "currency" in outcome ? outcome.currency : undefined,

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   stripeCheckoutOrderStatusAfterUnpaidOutcome,
   stripeCheckoutOutcomeFromEvent,
+  stripeRefundOutcomeFromEvent,
+  stripeRefundWebhookDisposition,
   stripeTerminalPaymentIntentOutcomeFromEvent,
   stripeTerminalSaleStatusAfterUnpaidOutcome,
   stripeWebhookObjectType,
@@ -62,6 +64,12 @@ const paidTerminalEvent: StripeWebhookEvent = {
 };
 
 describe("Stripe webhook helpers", () => {
+  it("returns a retryable HTTP status only while refund correlation is pending", () => {
+    expect(stripeRefundWebhookDisposition("retryable")).toEqual({ ok: false, httpStatus: 503 });
+    expect(stripeRefundWebhookDisposition("failed")).toEqual({ ok: false, httpStatus: 200 });
+    expect(stripeRefundWebhookDisposition("processed")).toEqual({ ok: true, httpStatus: 200 });
+  });
+
   it("verifies Stripe signatures over the exact raw body", async () => {
     const rawBody = JSON.stringify(paidCheckoutEvent);
     const secret = "whsec_test_secret";
@@ -109,10 +117,108 @@ describe("Stripe webhook helpers", () => {
       providerEventId: "evt_checkout_paid_123",
       eventType: "checkout.session.completed",
       providerPaymentId: "cs_test_123",
+      providerPaymentIntentId: "pi_test_123",
       orderRef: "SKY2607-ABC123",
       amountCents: 8505,
       currency: "usd"
     });
+  });
+
+  it("extracts a sanitized Stripe refund outcome", () => {
+    const event: StripeWebhookEvent = {
+      id: "evt_refund_123",
+      type: "refund.updated",
+      created: nowSeconds,
+      livemode: false,
+      data: {
+        object: {
+          id: "re_123",
+          object: "refund",
+          payment_intent: "pi_test_123",
+          amount: 2500,
+          currency: "usd",
+          status: "succeeded",
+          reason: "requested_by_customer",
+          created: nowSeconds - 30,
+          metadata: { private_note: "do not retain" }
+        }
+      }
+    };
+    expect(stripeWebhookObjectType(event)).toBe("refund");
+    const outcome = stripeRefundOutcomeFromEvent(event);
+    expect(outcome).toMatchObject({
+      outcome: "refund",
+      providerEventId: "evt_refund_123",
+      providerRefundId: "re_123",
+      providerPaymentIntentId: "pi_test_123",
+      status: "succeeded",
+      amountCents: 2500,
+      currency: "usd",
+      providerEventCreatedAt: nowSeconds * 1000
+    });
+    expect(JSON.stringify(outcome.raw)).not.toContain("private_note");
+  });
+
+  it("ignores malformed refunds and failed events with contradictory status", () => {
+    expect(
+      stripeRefundOutcomeFromEvent({
+        id: "evt_refund_missing_pi",
+        type: "refund.created",
+        created: nowSeconds,
+        data: { object: { id: "re_missing", object: "refund", amount: 100, currency: "usd", status: "pending" } }
+      })
+    ).toMatchObject({ outcome: "ignored", providerEventId: "evt_refund_missing_pi" });
+    expect(
+      stripeRefundOutcomeFromEvent({
+        id: "evt_refund_failed_mismatch",
+        type: "refund.failed",
+        created: nowSeconds,
+        data: {
+          object: {
+            id: "re_failed",
+            object: "refund",
+            payment_intent: "pi_test_123",
+            amount: 100,
+            currency: "usd",
+            status: "succeeded"
+          }
+        }
+      })
+    ).toMatchObject({ outcome: "ignored", providerEventId: "evt_refund_failed_mismatch" });
+    expect(
+      stripeRefundOutcomeFromEvent({
+        id: "evt_refund_fractional_amount",
+        type: "refund.updated",
+        created: nowSeconds,
+        data: {
+          object: {
+            id: "re_fractional",
+            object: "refund",
+            payment_intent: "pi_test_123",
+            amount: 10.5,
+            currency: "usd",
+            status: "pending"
+          }
+        }
+      })
+    ).toMatchObject({ outcome: "ignored", providerEventId: "evt_refund_fractional_amount" });
+    expect(
+      stripeRefundOutcomeFromEvent({
+        id: "evt_refund_invalid_timestamp",
+        type: "refund.updated",
+        created: -1,
+        data: {
+          object: {
+            id: "re_invalid_timestamp",
+            object: "refund",
+            payment_intent: "pi_test_123",
+            amount: 100,
+            currency: "usd",
+            status: "pending"
+          }
+        }
+      })
+    ).toMatchObject({ outcome: "ignored", providerEventId: "evt_refund_invalid_timestamp" });
   });
 
   it("extracts a paid Terminal PaymentIntent outcome from stored-sale metadata", () => {

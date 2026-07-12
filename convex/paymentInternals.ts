@@ -17,7 +17,8 @@ import {
 } from "./lib/stripeTerminal";
 import {
   stripeCheckoutOrderStatusAfterUnpaidOutcome,
-  stripeTerminalSaleStatusAfterUnpaidOutcome
+  stripeTerminalSaleStatusAfterUnpaidOutcome,
+  type StripeRefundStatus
 } from "./lib/stripeWebhook";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
 import { assertStoredPaymentLineProvenance } from "./lib/orderDraftPersistence";
@@ -25,6 +26,8 @@ import { assertStoredPaymentLineProvenance } from "./lib/orderDraftPersistence";
 declare const process: { env: Record<string, string | undefined> };
 
 const terminalProcessReservationTtlMs = 2 * 60 * 1000;
+const finalRefundStatuses = new Set<StripeRefundStatus>(["failed", "canceled"]);
+const refundCorrelationRetryWindowMs = 72 * 60 * 60 * 1000;
 
 export const getCheckoutPaymentSnapshot = internalQuery({
   args: {
@@ -240,6 +243,7 @@ export const recordStripeTerminalPaymentIntent = internalMutation({
       saleRef: args.saleRef,
       provider: "terminal",
       providerPaymentId: args.providerPaymentId,
+      providerPaymentIntentId: args.providerPaymentId,
       idempotencyKey: args.idempotencyKey,
       status: "requires_payment",
       currency: args.currency,
@@ -685,6 +689,7 @@ export const recordStripeTerminalWebhook = internalMutation({
           saleRef: args.saleRef,
           provider: "terminal",
           providerPaymentId: args.providerPaymentId,
+          providerPaymentIntentId: args.providerPaymentId,
           idempotencyKey: terminalEvent.idempotencyKey,
           status: "paid",
           currency,
@@ -739,6 +744,7 @@ export const recordStripeTerminalWebhook = internalMutation({
       saleRef: args.saleRef,
       provider: "terminal",
       providerPaymentId: args.providerPaymentId,
+      providerPaymentIntentId: args.providerPaymentId,
       idempotencyKey: terminalEvent.idempotencyKey,
       status: providerStatus,
       currency,
@@ -788,12 +794,334 @@ export const recordStripeTerminalWebhook = internalMutation({
   }
 });
 
+export const recordStripeRefundWebhook = internalMutation({
+  args: {
+    providerEventId: v.string(),
+    eventType: v.string(),
+    outcome: v.union(v.literal("refund"), v.literal("ignored")),
+    providerRefundId: v.optional(v.string()),
+    providerPaymentIntentId: v.optional(v.string()),
+    refundStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("requires_action"),
+        v.literal("succeeded"),
+        v.literal("failed"),
+        v.literal("canceled")
+      )
+    ),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.literal("usd")),
+    reason: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    providerEventCreatedAt: v.optional(v.number()),
+    raw: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    const existingWebhook = await ctx.db
+      .query("webhookEvents")
+      .withIndex("by_provider_providerEventId", (q) =>
+        q.eq("provider", "stripe").eq("providerEventId", args.providerEventId)
+      )
+      .first();
+    if (existingWebhook) {
+      return {
+        status: existingWebhook.status,
+        duplicate: true,
+        orderRef: existingWebhook.orderRef,
+        saleRef: existingWebhook.saleRef
+      };
+    }
+
+    if (args.outcome === "ignored") {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "ignored",
+        raw: args.raw
+      });
+      return { status: "ignored", duplicate: false };
+    }
+
+    if (
+      !args.providerRefundId ||
+      !args.providerPaymentIntentId ||
+      !args.refundStatus ||
+      args.amountCents === undefined ||
+      !Number.isSafeInteger(args.amountCents) ||
+      args.amountCents <= 0 ||
+      !args.currency ||
+      args.providerEventCreatedAt === undefined ||
+      !Number.isSafeInteger(args.providerEventCreatedAt) ||
+      args.providerEventCreatedAt < 0
+    ) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        raw: { ...(args.raw ?? {}), reason: "missing_refund_fields" }
+      });
+      return { status: "failed", duplicate: false };
+    }
+
+    const paymentEvents = await ctx.db
+      .query("paymentEvents")
+      .withIndex("by_providerPaymentIntentId", (q) =>
+        q.eq("providerPaymentIntentId", args.providerPaymentIntentId as string)
+      )
+      .collect();
+    const paidEvents = paymentEvents.filter(
+      (event) => event.status === "paid" && (event.provider === "stripe" || event.provider === "terminal")
+    );
+    const businessRefs = new Set(paidEvents.map((event) => event.orderRef ?? event.saleRef).filter(Boolean));
+    const paymentProviders = new Set(paidEvents.map((event) => event.provider));
+    const paidEvent = paidEvents[0];
+    if (
+      !paidEvent ||
+      businessRefs.size !== 1 ||
+      paymentProviders.size !== 1 ||
+      paidEvents.some((event) => Boolean(event.orderRef) === Boolean(event.saleRef))
+    ) {
+      if (!paidEvent) {
+        if (Date.now() - args.providerEventCreatedAt <= refundCorrelationRetryWindowMs) {
+          return {
+            status: "retryable",
+            duplicate: false,
+            reason: "paid_payment_intent_not_found"
+          };
+        }
+        await insertWebhookEvent(ctx, {
+          providerEventId: args.providerEventId,
+          eventType: args.eventType,
+          status: "failed",
+          raw: { ...(args.raw ?? {}), reason: "paid_payment_intent_not_found_after_retry_window" }
+        });
+        return { status: "failed", duplicate: false };
+      }
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        raw: { ...(args.raw ?? {}), reason: "paid_payment_intent_not_found" }
+      });
+      return { status: "failed", duplicate: false };
+    }
+    if (paidEvents.some((event) => event.amountCents !== paidEvent.amountCents || event.currency !== paidEvent.currency)) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "paid_payment_ledger_conflict" }
+      });
+      return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
+    }
+    if (paidEvent.orderRef) {
+      const order = await ctx.db
+        .query("orders")
+        .withIndex("by_orderRef", (q) => q.eq("orderRef", paidEvent.orderRef as string))
+        .unique();
+      if (
+        !order ||
+        order.status !== "paid" ||
+        order.expectedProvider !== "stripe" ||
+        order.totalCents !== paidEvent.amountCents ||
+        order.currency !== paidEvent.currency
+      ) {
+        await insertWebhookEvent(ctx, {
+          providerEventId: args.providerEventId,
+          eventType: args.eventType,
+          status: "failed",
+          orderRef: paidEvent.orderRef,
+          raw: { ...(args.raw ?? {}), reason: "paid_order_not_refundable" }
+        });
+        return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef };
+      }
+    } else {
+      const sale = await ctx.db
+        .query("posSales")
+        .withIndex("by_saleRef", (q) => q.eq("saleRef", paidEvent.saleRef as string))
+        .unique();
+      if (
+        !sale ||
+        sale.status !== "paid" ||
+        sale.totalCents !== paidEvent.amountCents ||
+        sale.currency !== paidEvent.currency
+      ) {
+        await insertWebhookEvent(ctx, {
+          providerEventId: args.providerEventId,
+          eventType: args.eventType,
+          status: "failed",
+          saleRef: paidEvent.saleRef,
+          raw: { ...(args.raw ?? {}), reason: "paid_pos_sale_not_refundable" }
+        });
+        return { status: "failed", duplicate: false, saleRef: paidEvent.saleRef };
+      }
+    }
+    if (args.currency !== paidEvent.currency || args.amountCents > paidEvent.amountCents) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "refund_amount_or_currency_mismatch" }
+      });
+      return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
+    }
+
+    const existingRefund = await ctx.db
+      .query("refunds")
+      .withIndex("by_providerRefundId", (q) => q.eq("providerRefundId", args.providerRefundId as string))
+      .unique();
+    if (
+      existingRefund &&
+      (existingRefund.providerPaymentIntentId !== args.providerPaymentIntentId ||
+        existingRefund.paymentProvider !== paidEvent.provider ||
+        existingRefund.orderRef !== paidEvent.orderRef ||
+        existingRefund.saleRef !== paidEvent.saleRef ||
+        existingRefund.amountCents !== args.amountCents ||
+        existingRefund.currency !== args.currency)
+    ) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "refund_identity_conflict" }
+      });
+      return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
+    }
+
+    if (existingRefund && existingRefund.providerEventCreatedAt > args.providerEventCreatedAt) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "processed",
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "stale_refund_event_ignored" }
+      });
+      return {
+        status: "processed",
+        duplicate: false,
+        stale: true,
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef
+      };
+    }
+    if (existingRefund && !refundStatusTransitionAllowed(existingRefund.status, args.refundStatus)) {
+      const reason =
+        existingRefund.status === args.refundStatus
+          ? "refund_state_unchanged"
+          : finalRefundStatuses.has(existingRefund.status)
+            ? "final_refund_state_change_ignored"
+            : "unsupported_refund_state_transition_ignored";
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "processed",
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef,
+        raw: { ...(args.raw ?? {}), reason }
+      });
+      return {
+        status: "processed",
+        duplicate: false,
+        stale: true,
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef
+      };
+    }
+
+    const refunds = await ctx.db
+      .query("refunds")
+      .withIndex("by_providerPaymentIntentId", (q) =>
+        q.eq("providerPaymentIntentId", args.providerPaymentIntentId as string)
+      )
+      .collect();
+    const succeededRefundedCents = refunds.reduce((sum, refund) => {
+      if (existingRefund && refund._id === existingRefund._id) return sum;
+      return refund.status === "succeeded" ? sum + refund.amountCents : sum;
+    }, args.refundStatus === "succeeded" ? args.amountCents : 0);
+    if (succeededRefundedCents > paidEvent.amountCents) {
+      await insertWebhookEvent(ctx, {
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        orderRef: paidEvent.orderRef,
+        saleRef: paidEvent.saleRef,
+        raw: { ...(args.raw ?? {}), reason: "cumulative_refund_exceeds_payment" }
+      });
+      return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
+    }
+
+    const now = Date.now();
+    const refundDocument = withoutUndefined({
+      providerRefundId: args.providerRefundId,
+      providerPaymentIntentId: args.providerPaymentIntentId,
+      paymentProvider: paidEvent.provider as "stripe" | "terminal",
+      orderRef: paidEvent.orderRef,
+      saleRef: paidEvent.saleRef,
+      status: args.refundStatus as StripeRefundStatus,
+      amountCents: args.amountCents,
+      currency: args.currency,
+      reason: args.reason,
+      failureReason: args.failureReason,
+      providerEventCreatedAt: args.providerEventCreatedAt,
+      rawEventId: args.providerEventId,
+      updatedAt: now
+    });
+    if (existingRefund) await ctx.db.patch(existingRefund._id, refundDocument);
+    else await ctx.db.insert("refunds", { ...refundDocument, createdAt: now });
+
+    await ctx.db.insert("auditEvents", {
+      action: "payment.refund.reconciled",
+      entityType: paidEvent.orderRef ? "order" : "posSale",
+      entityRef: paidEvent.orderRef ?? paidEvent.saleRef!,
+      metadata: {
+        providerRefundId: args.providerRefundId,
+        providerPaymentIntentId: args.providerPaymentIntentId,
+        amountCents: args.amountCents,
+        status: args.refundStatus,
+        cumulativeSucceededRefundedCents: succeededRefundedCents
+      },
+      createdAt: now
+    });
+    await insertWebhookEvent(ctx, {
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
+      status: "processed",
+      orderRef: paidEvent.orderRef,
+      saleRef: paidEvent.saleRef,
+      raw: args.raw
+    });
+    return {
+      status: "processed",
+      duplicate: false,
+      stale: false,
+      orderRef: paidEvent.orderRef,
+      saleRef: paidEvent.saleRef
+    };
+  }
+});
+
+function refundStatusTransitionAllowed(from: StripeRefundStatus, to: StripeRefundStatus) {
+  if (from === to) return false;
+  if (from === "failed" || from === "canceled") return false;
+  if (from === "succeeded") return to === "requires_action" || to === "failed";
+  return true;
+}
+
 export const recordStripeCheckoutWebhook = internalMutation({
   args: {
     providerEventId: v.string(),
     eventType: v.string(),
     outcome: v.union(v.literal("paid"), v.literal("failed"), v.literal("canceled"), v.literal("ignored")),
     providerPaymentId: v.optional(v.string()),
+    providerPaymentIntentId: v.optional(v.string()),
     orderRef: v.optional(v.string()),
     amountCents: v.optional(v.number()),
     currency: v.optional(v.literal("usd")),
@@ -920,6 +1248,16 @@ export const recordStripeCheckoutWebhook = internalMutation({
     }
 
     if (args.outcome === "paid") {
+      if (!args.providerPaymentIntentId) {
+        await insertWebhookEvent(ctx, {
+          providerEventId: args.providerEventId,
+          eventType: args.eventType,
+          status: "failed",
+          orderRef: args.orderRef,
+          raw: { ...(args.raw ?? {}), reason: "missing_checkout_payment_intent" }
+        });
+        return { status: "failed", duplicate: false, orderRef: args.orderRef };
+      }
       const now = Date.now();
       const lines = await ctx.db
         .query("orderLineItems")
@@ -951,6 +1289,7 @@ export const recordStripeCheckoutWebhook = internalMutation({
           orderRef: args.orderRef,
           provider: "stripe",
           providerPaymentId: args.providerPaymentId,
+          providerPaymentIntentId: args.providerPaymentIntentId,
           idempotencyKey: creationEvent.idempotencyKey,
           status: "paid",
           currency,
