@@ -1,4 +1,8 @@
 import { spawnSync } from "node:child_process";
+import {
+  htmlCompatibilityRedirects,
+  staffHtmlCompatibilityRedirects
+} from "../../apps/web/site-routes.mjs";
 import { paymentDraftProvenanceIssues } from "./payment-provenance.mjs";
 
 const defaultBaseUrls = ["https://skydeckla.com", "https://www.skydeckla.com"];
@@ -9,22 +13,7 @@ const baseUrls = uniqueUrls([
 ]);
 const mode = process.env.SKYLA_ACCEPTANCE_MODE ?? "no-write";
 
-const staffHandoffs = [
-  {
-    path: "/admin.html",
-    target: "/admin",
-    label: "admin compatibility handoff"
-  },
-  {
-    path: "/pos.html",
-    target: "/pos",
-    label: "POS compatibility handoff"
-  }
-];
-
 const retiredStaffAssets = ["/admin.css", "/admin.js", "/pos.css", "/pos.js", "/shared-data.js"];
-
-const publicHandoffs = ["/about", "/cafe", "/experiences", "/members", "/privacy", "/terms"];
 const retiredPublicAssets = [
   "/about.css",
   "/cafe.css",
@@ -47,8 +36,8 @@ for (const baseUrl of baseUrls) {
   const origin = new URL(baseUrl).origin;
   runSmokeScript(origin, "route matrix", "scripts/smoke/route-smoke.mjs", { SMOKE_BASE_URL: origin });
   await checkPaymentNoWrite(origin);
-  await checkStaffCompatibilityHandoffs(origin);
-  await checkPublicCompatibilityHandoffs(origin);
+  await checkCompatibilityRedirects(origin);
+  await checkRetiredCompatibilityAssets(origin);
   await checkNativeAdminSurface(origin);
   await checkNativePosSurface(origin);
   await checkCheckoutPageNoLegacyWrites(origin);
@@ -71,13 +60,12 @@ console.log(`- Checked bases: ${baseUrls.map((url) => new URL(url).origin).join(
 console.log("- Route matrix and noindex headers passed.");
 console.log("- Payment no-write probes kept server-owned totals, catalog provenance, and stopped before Stripe execution.");
 console.log("- Acceptance readiness API stays staff-gated before exposing linked-mode state.");
-console.log("- Checkout compatibility page hands off to native /checkout without legacy payment scripts or assets.");
-console.log("- Public .html compatibility pages hand off to native App Router pages without legacy page CSS/JS.");
+console.log("- Saved .html URLs redirect through the shared App Router route registry.");
 console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
 console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
 console.log("- Member application no-write probe did not create data.");
 console.log("- Experience inquiry no-write probe did not create data.");
-console.log("- Staff .html compatibility pages hand off to native routes without legacy staff scripts.");
+console.log("- Retired public and staff compatibility assets are not served.");
 console.log("- Native admin exposes the staff-gated booking lookup panel.");
 console.log("- Native /pos renders the server-priced POS shell without legacy POS scripts.");
 for (const note of notes) {
@@ -96,93 +84,45 @@ function runSmokeScript(origin, label, script, extraEnv) {
   }
 }
 
-async function checkStaffCompatibilityHandoffs(origin) {
-  for (const handoff of staffHandoffs) {
-    const response = await fetch(new URL(handoff.path, origin), { redirect: "manual" });
-    const html = await response.text();
+async function checkCompatibilityRedirects(origin) {
+  for (const { source, destination } of htmlCompatibilityRedirects) {
+    const url = new URL(source, origin);
+    url.searchParams.set("skyla_compat", "1");
+    const response = await fetch(url, { redirect: "manual" });
 
-    if (response.status !== 200) {
-      failures.push(`${origin}${handoff.path}: expected HTTP 200, got ${response.status}`);
+    if (response.status !== 308) {
+      failures.push(`${origin}${source}: expected permanent 308 redirect, got ${response.status}`);
       continue;
     }
 
-    for (const expected of [
-      `url=${handoff.target}`,
-      `href="${handoff.target}"`,
-      "window.location.search",
-      "window.location.hash",
-      "window.location.replace"
-    ]) {
-      if (!html.includes(expected)) {
-        failures.push(`${origin}${handoff.path}: ${handoff.label} missing ${expected}`);
-      }
+    const location = response.headers.get("location");
+    if (!location) {
+      failures.push(`${origin}${source}: redirect did not include Location`);
+      continue;
     }
 
-    for (const legacyMarker of [
-      "shared-data.js",
-      "admin.js",
-      "pos.js",
-      "admin.css",
-      "pos.css",
-      "SkylaData",
-      "LEGACY_ADMIN_MUTATIONS_ENABLED",
-      "LEGACY_TERMINAL_PAYMENTS_ENABLED",
-      "clientSecret",
-      "create-intent",
-      "setup-reader",
-      "js.stripe.com/terminal"
-    ]) {
-      if (html.includes(legacyMarker)) {
-        failures.push(`${origin}${handoff.path}: exposed retired staff marker ${legacyMarker}`);
-      }
+    const target = new URL(location, origin);
+    if (target.pathname !== destination) {
+      failures.push(`${origin}${source}: expected redirect to ${destination}, got ${target.pathname}`);
     }
-  }
-
-  for (const assetPath of retiredStaffAssets) {
-    const response = await fetch(new URL(assetPath, origin), { redirect: "manual" });
-
-    if (response.status === 200) {
-      failures.push(`${origin}${assetPath}: retired staff asset is still served`);
+    if (target.searchParams.get("skyla_compat") !== "1") {
+      failures.push(`${origin}${source}: redirect did not preserve the query string`);
+    }
+    if (
+      staffHtmlCompatibilityRedirects.some((redirect) => redirect.source === source) &&
+      response.headers.get("x-robots-tag") !== "noindex, nofollow"
+    ) {
+      failures.push(`${origin}${source}: staff compatibility redirect is missing X-Robots-Tag noindex, nofollow`);
     }
   }
 }
 
-async function checkPublicCompatibilityHandoffs(origin) {
-  for (const route of publicHandoffs) {
-    const path = `${route}.html`;
-    const response = await fetch(new URL(path, origin), { redirect: "manual" });
-    const html = await response.text();
-
-    if (response.status !== 200) {
-      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
-      continue;
-    }
-
-    for (const expected of [`url=${route}`, `href="${route}"`, "window.location.search", "window.location.hash"]) {
-      if (!html.includes(expected)) {
-        failures.push(`${origin}${path}: did not preserve handoff marker ${expected}`);
-      }
-    }
-
-    for (const legacyMarker of [
-      "shared-data.js",
-      "SkylaData",
-      "connect.facebook.net",
-      'rel="stylesheet"',
-      "styles.css",
-      "script.js"
-    ]) {
-      if (html.includes(legacyMarker)) {
-        failures.push(`${origin}${path}: exposed retired public compatibility marker ${legacyMarker}`);
-      }
-    }
-  }
-
-  for (const assetPath of retiredPublicAssets) {
+async function checkRetiredCompatibilityAssets(origin) {
+  for (const assetPath of [...retiredStaffAssets, ...retiredPublicAssets]) {
     const response = await fetch(new URL(assetPath, origin), { redirect: "manual" });
 
     if (response.status === 200) {
-      failures.push(`${origin}${assetPath}: retired public compatibility asset is still served`);
+      failures.push(`${origin}${assetPath}: retired compatibility asset is still served`);
     }
   }
 }

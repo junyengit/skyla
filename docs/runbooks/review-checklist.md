@@ -39,8 +39,8 @@ Use this after each major phase.
   reconciliation
 - Convex Terminal create-intent and reader-process actions both require
   `SKYLA_POS_TERMINAL_ACCEPTANCE`, not just route-level checks
-- `/admin.html` and `/pos.html` are noindex handoffs to native `/admin` and
-  `/pos`; they must not load the retired staff JS/CSS/shared data facade
+- `/admin.html` and `/pos.html` are noindex permanent redirects to native
+  `/admin` and `/pos`; static handoff documents must not return
 - Legacy Supabase `stripe-terminal` returns `410` for `setup-reader` as well as
   charge/reader bridge actions
 - Native admin voucher redemption stores redeem/undo as
@@ -59,18 +59,15 @@ Use this after each major phase.
 - Admin/POS are not indexed
 - `/pos` is an App Router route and is not indexed
 - `/pos-next` is not indexed
-- `/checkout.html` remains a handoff to `/checkout` and does not load
-  `shared-data.js`, `checkout.js`, or legacy browser payment code
+- `/checkout.html` permanently redirects to `/checkout`; no static checkout
+  compatibility document, `shared-data.js`, or `checkout.js` is shipped
 - Motion respects reduced motion
 - `/about`, `/cafe`, `/checkout`, `/experiences`, `/members`, `/privacy`,
-  `/terms`, `/admin`, `/pos`, and `/pos-next` are App Router routes with
-  `.html` compatibility files where needed. `/admin.html` and `/pos.html` are
-  handoff-only compatibility files; extensionless `/admin` and `/pos` should
-  not be rewritten to them.
-- Public `.html` compatibility files for `/about`, `/cafe`, `/experiences`,
-  `/members`, `/privacy`, and `/terms` are handoff-only and do not load
-  `styles.css`, route-specific public page CSS, `script.js`, `shared-data.js`,
-  `SkylaData`, or third-party tracking snippets.
+  `/terms`, `/admin`, `/pos`, and `/pos-next` are App Router routes. Saved
+  `.html` URLs are defined only in `apps/web/site-routes.mjs` and redirect to
+  those native routes.
+- `apps/web/public` contains no `.html`, `robots.txt`, or `sitemap.xml`
+  duplicates; metadata routes and the redirect registry own those surfaces.
 - `/members` and `/members.html` do not expose `shared-data.js` or
   `SkylaData.addMember`
 - `/experiences` and `/experiences.html` do not expose `shared-data.js` or
@@ -105,7 +102,7 @@ Use this after each major phase.
 - Preview checkout draft POST returns `persisted: true` before payment cutover
 - Stripe Checkout action takes `orderRef` and draft `idempotencyKey`
 - Stripe Checkout action does not accept `amountCents`, `currency`, or line items from the browser
-- `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
+- `/checkout.html` redirects to `/checkout` and does not load `checkout.js`,
   `checkout.css`, `shared-data.js`, `SkylaData`, or Kaskade browser payment
   markers
 - `apps/web/public/checkout.js` and `apps/web/public/checkout.css` are absent
@@ -148,5 +145,7 @@ Use this after each major phase.
 
 - Unit tests protect shared pricing/contact constants and the temporary legacy-route bridge while the app is rebuilt.
 - The artifact guard stops local exports, logs, PDFs, env files, and obvious secrets from reaching GitHub or Vercel.
-- The smoke script is intentionally simple: it checks every transition route still returns `200`, and it verifies admin/POS compatibility pages carry `X-Robots-Tag: noindex, nofollow`.
+- The route smoke follows redirects and checks every transition URL resolves to
+  `200`; the production-readiness smoke separately verifies redirect status,
+  destination, query preservation, and admin/POS noindex headers.
 - `bun run security:audit` currently fails only on high or critical advisories across production and dev tooling.

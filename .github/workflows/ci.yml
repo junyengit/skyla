@@ -47,8 +47,5 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Tracked artifact guard
-        run: bun run security:artifacts
-
-      - name: Dependency audit
-        run: bun run security:audit
+      - name: Security gates
+        run: bun run security

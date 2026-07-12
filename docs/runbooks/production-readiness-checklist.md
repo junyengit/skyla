@@ -18,20 +18,25 @@ Terminal reader saved on it. The primary `/checkout` page now uses the Next.js
 App Router and fails closed until the real Convex deployment, Vercel env vars,
 and Stripe dashboard webhook endpoint are ready.
 
+The signed paid Checkout webhook currently reconciles the order and payment
+ledger but does not yet insert the guest booking. This is a release blocker for
+card acceptance even after dashboard wiring: a successful charge must create
+exactly one confirmed booking from the stored order, including on webhook
+replay.
+
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and
-`/pos.html` is now a compatibility handoff to `/pos`; it no longer loads the
-old POS browser app, Stripe Terminal SDK, or shared data facade. The native POS
+`/pos.html` permanently redirects to `/pos`; there is no old POS compatibility
+document, Stripe Terminal SDK, or shared data facade. The native POS
 screen now loads authorized Terminal readers from a staff-gated Convex route
 instead of asking staff to type Stripe reader/location IDs. Reader collection is
 still locked until staff auth, Convex envs, Stripe webhooks, and Stripe
 Terminal test-reader acceptance are complete. Native `/admin` now has a
 staff-token operations snapshot plus audited booking/member status actions.
-`/admin.html` is now a compatibility handoff to `/admin`; it no longer loads
-the old admin browser app or shared data facade. The old
-static checkout URL is still reachable at `/checkout.html`, but it is now only
-a compatibility handoff to `/checkout`; the old browser checkout script and
-stylesheet are no longer shipped.
+`/admin.html` permanently redirects to `/admin`; there is no old admin browser
+app or shared data facade. The old static checkout URL remains reachable at
+`/checkout.html` as a permanent redirect to `/checkout`; the old browser
+checkout script and stylesheet are not shipped.
 
 The native `/members` page now uses the server member application API instead
 of the legacy localStorage/Supabase write path. It correctly refuses to accept
@@ -69,24 +74,26 @@ stored line amounts remain the payment authority.
 12. Run the linked acceptance harness against a Vercel Preview URL.
 13. Confirm member and event forms save into Convex in Preview.
 14. Confirm checkout and POS stay server-priced with test payments.
-15. Disable or redeploy old Supabase payment functions from the fail-closed
+15. Implement and test idempotent paid-order booking fulfillment before any
+    card acceptance.
+16. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-16. Finish the native admin/POS rebuild and test-reader acceptance before
-    removing the remaining compatibility handoffs.
-17. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+17. Finish native admin/POS work and
+    test-reader acceptance before enabling card acceptance.
+18. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest full app/payment production verification recorded here on 2026-07-07:
-  `https://web-3oity7xei-junyen-enterprises.vercel.app`
-- Evidence deployment ID checked on 2026-07-07:
-  `dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`
-- Evidence merge commit checked on 2026-07-07:
-  `8150de2becc3b24c8a20da6c828a1873061a3ff6` (PR #112).
-- `bun run vercel:project:check` passed on 2026-07-07. It verifies project
+- Latest full app/payment production verification recorded here on 2026-07-12:
+  `https://web-5whdulzh0-junyen-enterprises.vercel.app`
+- Evidence deployment ID checked on 2026-07-12:
+  `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`
+- Evidence merge commit checked on 2026-07-12:
+  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113).
+- `bun run vercel:project:check` passed on 2026-07-12. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
   present, and `apps/web/vercel.json` as the Bun canary install/build source
@@ -100,7 +107,7 @@ stored line amounts remain the payment authority.
 - Custom domains checked on 2026-07-06:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel/Convex env behavior checked on 2026-07-07: `vercel env ls` for
+- Vercel/Convex env behavior checked on 2026-07-12: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
   still behaves as Convex-unconfigured, so checkout/POS/member/experience
   server writes and payment execution are safely blocked. `bun run
@@ -192,7 +199,7 @@ stored line amounts remain the payment authority.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-07 after PR #112 and the
+- Vercel production runtime logs checked on 2026-07-12 after PR #113 and the
   latest smoke probes: the Vercel runtime log query returned no `error` or
   `fatal` logs in the checked 30-minute production window. Non-200 responses
   were expected: `401` for staff-auth gates and `503` for Convex-unconfigured
@@ -200,13 +207,14 @@ stored line amounts remain the payment authority.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
   `/api/pos/readers` now return `Cache-Control: no-store` and
   `Vary: Authorization` for staff-gated and fail-closed responses.
-- Bun checked locally: `1.4.0-canary.1+1de77f961`
+- Bun checked locally on 2026-07-12: `1.4.0-canary.1+2e2230a81`
 - Dependency audit checked on 2026-07-07: `bun audit --audit-level=high`
   reports no vulnerabilities after the `postcss@8.5.16` override.
-- Dependency freshness checked on 2026-07-07: `bun outdated --recursive`
-  reported only the intentionally deferred `eslint@10.6.0` major. ESLint 10
-  remains intentionally deferred because the current Next lint plugin stack
-  still peers against ESLint 9 in key packages.
+- Dependency freshness checked on 2026-07-12: `@types/node` moved to `26.1.1`.
+  TypeScript `7.0.2` passes direct typechecks but is rejected by Next.js
+  `16.2.10` during `next build`, so TypeScript stays on `6.0.3`. ESLint
+  `10.7.0` remains deferred because the current React/Next lint plugin stack is
+  incompatible.
 
 ```mermaid
 flowchart TD
@@ -217,7 +225,7 @@ flowchart TD
   members["Native /members + member API"]
   experiences["Native /experiences + inquiry API"]
   pos["Native /pos POS draft"]
-  handoff["Saved-link .html handoff pages"]
+  redirects["Saved-link .html redirects"]
   supabase["Legacy Supabase function stubs"]
   convex["Convex order/payment code"]
   stripe["Stripe dashboard"]
@@ -226,7 +234,7 @@ flowchart TD
   next --> members
   next --> experiences
   next --> pos
-  next --> handoff --> next
+  next --> redirects --> next
   checkout -. "needs env" .-> convex
   members -. "needs env" .-> convex
   experiences -. "needs env" .-> convex
@@ -240,7 +248,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the 23-route smoke test.
 - The 23-route smoke test passed on 2026-07-07 for `https://skydeckla.com`
-  after PR #112 reached production.
+  after PR #113 reached production.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
 - GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
@@ -261,7 +269,7 @@ flowchart TD
   `/api/admin/config`; it can also seed or activate the code-owned catalog
   through the audited admin catalog route. Pricing/menu edits, refunds,
   deletes, and resets remain intentionally unavailable.
-- Legacy `/admin.html` is now retired to a native handoff. The old
+- Legacy `/admin.html` now redirects to the native route. The old
   `admin.js`, `admin.css`, and `shared-data.js` staff browser assets are absent
   from `apps/web/public`, so missing workflows must move into native Convex
   routes instead of reviving browser Supabase writes.
@@ -279,10 +287,9 @@ flowchart TD
 - Native `/experiences` posts to that API with an idempotency key and no longer
   writes event inquiries through `SkylaData.addInquiry`, browser localStorage,
   or the legacy Supabase mirror.
-- Admin and POS dark-theme text is high contrast. Staff compatibility pages
-  `/admin.html` and `/pos.html` are self-contained handoffs to the native
-  routes, and production readiness checks fail if retired staff assets are
-  served again.
+- Admin and POS dark-theme text is high contrast. `/admin.html` and `/pos.html`
+  permanently redirect to native routes, and production readiness checks fail
+  if retired staff assets are served again.
 - Helium visual QA on 2026-07-06 confirmed live `/admin`, `/pos`, and
   `/pos-next` render readable white text on black staff surfaces. This
   follow-up also keeps primary, active, and disabled staff controls
@@ -297,7 +304,7 @@ flowchart TD
   values into the sale screen.
 - `/api/order-drafts/pos` ignores browser-sent `terminalLocationId`. Convex
   derives any stored Terminal location from `SKYLA_TERMINAL_READER_REGISTRY`.
-- Legacy `/pos.html` is now retired to a native handoff. The repo copy of the
+- Legacy `/pos.html` now redirects to native `/pos`. The repo copy of the
   old Supabase Terminal function returns `410` for `setup-reader` as well as
   the old charge/reader bridge actions.
 - `/api/payments/stripe-terminal` accepts only `saleRef` and `idempotencyKey`,
@@ -324,7 +331,7 @@ flowchart TD
   any supplied base URL without using a real card or writing Convex data.
 - `bun run test:production-readiness` now bundles route, noindex, payment
   no-write, member no-write, experience inquiry no-write, and staff
-  compatibility handoff checks for the custom domains.
+  compatibility redirect checks for the custom domains.
 - `/api/admin/bookings/status` and `/api/admin/members/status` require staff
   bearer auth first, fail closed when Convex is unconfigured, reject arbitrary
   statuses before calling Convex, and do not expose Stripe `clientSecret`.
@@ -337,15 +344,14 @@ flowchart TD
   permanently for every non-OPTIONS request; it cannot create payments or
   verify old Stripe Checkout sessions. Legacy Terminal payment creation and
   Stripe webhook handling also return `410` permanently.
-- The checkout compatibility handoff no longer ships Kaskade/crypto or the old
+- The checkout compatibility redirect no longer ships Kaskade/crypto or the old
   browser checkout script, and the repo copy of legacy Supabase Kaskade
   payment/webhook functions now returns `410` permanently.
 - `/checkout.html` now points to `/checkout` and no longer serves legacy Stripe
   card creation code from browser totals.
-- Public `.html` compatibility pages for `/about`, `/cafe`, `/experiences`,
-  `/members`, `/privacy`, and `/terms` now point to the native App Router
-  pages and no longer serve old page CSS, shared navigation JS, or third-party
-  tracking snippets.
+- Public `.html` URLs for `/about`, `/cafe`, `/experiences`, `/members`,
+  `/privacy`, and `/terms` now redirect to native App Router pages; no static
+  compatibility HTML, old page CSS, or shared navigation JS is served.
 - Public static compatibility-page ticket links now point to `/checkout`, the
   App Router checkout path, instead of `checkout.html`.
 - No raw card number/CVC collection was found in the app code.
@@ -430,8 +436,8 @@ flowchart TD
       after every preview and production deploy.
 - [ ] Confirm `/admin` and `/admin.html` remain `X-Robots-Tag: noindex,
       nofollow` after every preview and production deploy.
-- [ ] Confirm `/admin.html` and `/pos.html` are handoff-only pages that preserve
-      query/hash, point to `/admin` and `/pos`, and do not serve the retired
+- [ ] Confirm `/admin.html` and `/pos.html` return permanent redirects, preserve
+      query strings, point to `/admin` and `/pos`, and do not serve retired
       `admin.js`, `pos.js`, or `shared-data.js` assets.
 - [ ] In Vercel DNS, confirm required TXT records still exist for Apple/Brevo or
       other external services. The 2026-07-02 live check did not see the older
@@ -743,20 +749,20 @@ What has been done:
   Terminal routes also vary by `Authorization`.
 - There is also a one-command production-readiness smoke that bundles route,
   payment no-write, member no-write, experience inquiry no-write, and staff
-  compatibility handoff checks.
+  compatibility redirect checks.
 - `/members` is now a Next.js page. Its form does not save locally; it only
   succeeds after the server accepts the application.
-- Admin, native POS, `/pos-next`, and staff compatibility handoffs use
-  high-contrast dark staff screens; the staff contrast test keeps admin/POS
-  text, controls, and POS headings white on black.
+- Admin, native POS, and `/pos-next` use high-contrast dark staff screens; the
+  staff contrast test keeps admin/POS text, controls, and POS headings white on
+  black. Saved staff `.html` URLs redirect to those screens.
 - `/admin` is being moved into Next.js. It now has staff-gated operations,
   booking/member status buttons, announcement/hours config, and voucher
   redemption code. It also has admin-only CSV exports for bookings, members,
   inquiries, orders, POS sales, and payments. Those exports use fixed columns,
   no-store responses, formula-safe cells, and masked payment/Terminal IDs.
-  `/admin.html` now hands off to the native route.
-- `/pos` is now the native server-priced POS screen. `/pos.html` now hands off
-  to the native route while Stripe Terminal test-reader acceptance is completed.
+  `/admin.html` now redirects to the native route.
+- `/pos` is now the native server-priced POS screen. `/pos.html` redirects to
+  the native route while Stripe Terminal test-reader acceptance is completed.
   The old reader setup bridge is retired in repo code too.
 
 What still needs to be done:

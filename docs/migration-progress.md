@@ -1282,13 +1282,45 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Extended POS contrast coverage so POS headings stay white on black staff
       surfaces.
 
+### 2026-07-12 App Router Ownership And Dependency Audit
+
+- [x] Rechecked `origin/main` from a clean worktree; PR #113 is deployed at
+      `https://web-5whdulzh0-junyen-enterprises.vercel.app` with Vercel status
+      `READY`, production aliases attached, and no grouped runtime errors in
+      the checked seven-day window.
+- [x] Rechecked GitHub governance: `main` still requires strict `ci-build`,
+      `Analyze JavaScript and TypeScript`, and `Vercel`; secret scanning and
+      push protection are enabled; GitHub Pages remains disabled.
+- [x] Upgraded local Bun canary to `1.4.0-canary.1+2e2230a81`. CI and Vercel
+      intentionally follow the moving canary channel, so every build must keep
+      printing `bun --revision` and canary changes require full verification.
+- [x] Upgraded `@types/node` from `26.1.0` to `26.1.1`.
+- [x] Tested TypeScript `7.0.2` across every project config. Direct typechecks
+      pass, but Next.js `16.2.10` rejects it during `next build`; production
+      remains on TypeScript `6.0.3` until Next supports the major.
+- [x] Replaced nine static `.html` handoff documents with centralized permanent
+      Next.js redirects in `apps/web/site-routes.mjs`.
+- [x] Moved `robots.txt` and `sitemap.xml` ownership into App Router metadata
+      routes backed by the same route registry.
+- [x] Updated route, readiness, and artifact guards so redirects preserve query
+      strings, staff routes remain noindex, and retired static files cannot
+      return.
+- [x] Changed GitHub CI to run the complete `bun run security` gate, including
+      the retired-Supabase guard that was previously omitted by the workflow.
+- [ ] Paid Stripe Checkout reconciliation still needs to create exactly one
+      confirmed booking from the stored order before any card acceptance.
+- [ ] No Skyla Convex cloud project is visible to the currently authenticated
+      local Convex account; project creation/linking remains a dashboard step.
+
 ## Decisions
 
-- Remove duplicate legacy static files from the repo root after Vercel custom-domain cutover; keep app-owned compatibility files under `apps/web/public`.
+- Keep duplicate legacy static files out of the root and `apps/web/public`;
+  saved-link compatibility belongs in the Next route registry.
 - Keep the tracked artifact guard enforcing that old root static files, root
   `images/`, `CNAME`, and root compatibility scripts/styles do not return.
 - Use `apps/web` as the Vercel project root.
-- Bridge legacy routes from Vercel to static compatibility files during cutover. This is a temporary reliability measure, not the final application architecture.
+- Preserve legacy URLs with centralized Next.js redirects while App Router owns
+  the actual pages.
 - Do not commit or deploy `output/` or `tmp/`.
 - Use previous Vercel deployments as the hosting rollback path; do not treat root GitHub Pages files as the active rollback path after cleanup merges.
 - Treat `bun run check`, `bun run security:audit`, `bun run security:artifacts`, and custom-domain smoke tests as the minimum baseline before merging migration PRs.
@@ -1305,28 +1337,30 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Public experience inquiries should follow the same fail-closed rule as
   payment execution: no "request received" success on the native path unless
   Convex accepted the mutation.
-- `/privacy` and `/terms` should be native App Router pages. Keep
-  `/privacy.html` and `/terms.html` as compatibility files until legacy links
-  and crawlers no longer need them, but keep their copy current and avoid
-  loading shared legacy data scripts on legal-only pages.
+- `/privacy` and `/terms` are native App Router pages. Keep their saved `.html`
+  paths as centralized redirects while legacy links still need them.
 - `/about` and `/cafe` should be native App Router pages. The native cafe page
   renders active menu items from `@skyla/payments` so public prices align with
   checkout/POS server-owned catalog data instead of browser localStorage.
-- Public `.html` compatibility files for native public content should be
-  handoff-only. Do not reintroduce full public page copies, page-level public
-  CSS, or shared navigation scripts once the App Router route owns the content.
+- Saved `.html` compatibility belongs in `apps/web/site-routes.mjs`. Do not
+  reintroduce public compatibility documents, page-level CSS, or shared
+  navigation scripts once App Router owns the content.
 
 ## Risks To Track
 
 - Current local working tree includes unrelated pre-existing content edits. Do not revert them.
 - The first Vercel CLI deployment was built from a dirty local worktree because legacy root files are modified locally. Use a clean Git-triggered deployment as the cutover candidate.
-- Old root static pages have been removed from the active tree; compatibility pages still exist under `apps/web/public`.
+- Old root and public compatibility pages have been removed from the active
+  tree; saved paths are handled by centralized Next.js redirects.
 - GitHub Pages was disabled after Vercel custom-domain verification; use Vercel
   rollback instead of `github.io` hosting.
 - Historical note: the GitHub Pages project URL redirected through the repository `CNAME` before this cleanup branch removed that file, so it was not a clean fallback after DNS cutover without Pages custom-domain changes.
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
+- A paid Checkout order is not yet fulfillment-complete: current webhook code
+  reconciles payment/order ledgers but does not insert a booking. Keep card
+  acceptance disabled until booking creation is atomic and replay-safe.
 - Retired July 7, 2026: the Bun/Turbo lockfile warning no longer appears after
   Turbo `2.10.4` and the current text `bun.lock`. Keep future Bun canary
   lockfile-format changes visible in focused dependency PRs.

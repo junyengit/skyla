@@ -30,15 +30,15 @@ commands.
 
 ## Current Production State
 
-As of July 7, 2026:
+As of July 12, 2026:
 
 - Most recent full production verification recorded here was READY at
-  `https://web-3oity7xei-junyen-enterprises.vercel.app`.
+  `https://web-5whdulzh0-junyen-enterprises.vercel.app`.
 - Evidence deployment ID:
-  `dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`.
+  `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`.
 - Evidence merge commit:
-  `8150de2becc3b24c8a20da6c828a1873061a3ff6` (PR #112).
-- The recorded production smoke/payment verification came from PR #112 and
+  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113).
+- The recorded production smoke/payment verification came from PR #113 and
   is summarized in [../current-state-simple.md](../current-state-simple.md).
 - Query Vercel for the exact latest deployment before recording fresh
   operational evidence; docs-only merges create new production URLs.
@@ -50,7 +50,7 @@ As of July 7, 2026:
   until the real Convex deployment URL is added and Stripe dashboard secrets are
   configured in Convex.
 - The evidence deployment metadata reports target `production`, commit
-  `8150de2becc3b24c8a20da6c828a1873061a3ff6`, framework `nextjs`, Node
+  `3ee576a4ca19476d0ef3020b423f5db8849a1799`, framework `nextjs`, Node
   `24.x`, Bun runtime metadata, and Turbopack bundler metadata from Vercel.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
@@ -63,16 +63,15 @@ As of July 7, 2026:
 - Hosting rollback should use Vercel deployment rollback, not root static or
   GitHub Pages rollback.
 
-## Temporary Legacy Bridge
+## Saved-Link Compatibility
 
-During cutover, `apps/web` includes static compatibility files in
-`apps/web/public` for existing public routes. Extensionless routes should be
-owned by App Router; `/admin.html` and `/pos.html` are now handoff-only
-compatibility files to native `/admin` and `/pos`, not emergency legacy apps.
-Native App Router routes such as `/checkout`, `/experiences`, `/members`,
-`/admin`, and `/pos` should own their extensionless URLs directly.
+App Router owns all public and staff extensionless routes. The old `.html`
+paths are permanent redirects generated from `apps/web/site-routes.mjs`; no
+static compatibility documents are deployed from `apps/web/public`.
 
-Keep the bridge until the equivalent App Router routes are rebuilt with server-authoritative payments, Convex data access, and authenticated admin/POS flows.
+Keep the redirect registry while saved bookmarks, ads, and historical links
+still use those paths. Verify it with the route and production-readiness smokes
+after every routing change.
 
 ## Setup Flow
 

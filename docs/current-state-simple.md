@@ -1,6 +1,6 @@
 # Skyla Current State
 
-Last checked: 2026-07-07.
+Last checked: 2026-07-12.
 
 This is the plain-English handoff for people, plus enough raw detail for future
 agents to keep going safely.
@@ -21,6 +21,11 @@ Real card charging is still intentionally blocked. That is good for now. The
 site needs the real Convex project, Vercel environment variable, Stripe test
 webhook, seeded staff account, and Stripe test-reader setup before checkout or
 POS should run a real payment flow.
+
+One code gate also remains before Checkout acceptance: the signed paid webhook
+reconciles the order and payment ledger, but it does not yet create the guest's
+booking. Do not enable card acceptance until paid-order fulfillment creates one
+idempotent booking linked to the stored order.
 
 Admin and POS staff screens use white text on black staff surfaces. The current
 catalog is code-owned in `@skyla/payments`; Convex now has code paths and
@@ -49,10 +54,12 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #112 merge commit `8150de2`.
+- Vercel production deployment is ready for PR #113 merge commit `3ee576a`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
-  admin, native POS, and compatibility handoff routes smoke-test successfully.
+  admin, native POS, and saved `.html` compatibility routes smoke-test
+  successfully. The compatibility layer is now a centralized Next.js redirect
+  registry rather than duplicate static pages.
 - Checkout and POS no-write probes replace browser-supplied totals with
   server-owned totals.
 - Stripe execution routes fail closed while Convex and Stripe dashboards are not
@@ -162,28 +169,28 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest full production evidence recorded here | PR #112, merged to `main` on July 7, 2026 |
-| Evidence deployment | `dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`, status `READY` |
-| Evidence URL | `https://web-3oity7xei-junyen-enterprises.vercel.app` |
-| Evidence commit | `8150de2becc3b24c8a20da6c828a1873061a3ff6` |
-| App/payment behavior verification | PR #112 post-merge smoke checks, rerun on July 7, 2026 |
+| Latest full production evidence recorded here | PR #113, merged to `main` on July 7, 2026 |
+| Evidence deployment | `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`, status `READY` |
+| Evidence URL | `https://web-5whdulzh0-junyen-enterprises.vercel.app` |
+| Evidence commit | `3ee576a4ca19476d0ef3020b423f5db8849a1799` |
+| App/payment behavior verification | PR #113 post-merge route, payment, readiness, and visual checks |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | GitHub governance | Rechecked July 6, 2026: `main` requires strict `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel` checks; admins are enforced; force pushes, branch deletion, and unresolved conversations are blocked; Dependabot vulnerability alerts and automated security fixes are enabled |
-| Bun | `1.4.0-canary.1+1de77f961` |
-| `bun upgrade --canary` | Vercel install script and GitHub Actions use Bun canary; local revision checked as `1.4.0-canary.1+1de77f961` |
+| Bun | `1.4.0-canary.1+2e2230a81` locally on July 12, 2026 |
+| `bun upgrade --canary` | Vercel install script and GitHub Actions intentionally use the moving Bun canary channel; build logs must record `bun --revision` because the revision can change without a version-string change |
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=high` | No vulnerabilities found |
-| Dependency sweep | `bun outdated --recursive` reports only the deferred `eslint@10.6.0` major; keep ESLint on `9.39.4` until the current Next/react lint plugin stack supports ESLint 10. `bun audit --audit-level=high` found no vulnerabilities. |
-| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #112 |
+| Dependency sweep | July 12: upgraded `@types/node` to `26.1.1`. TypeScript `7.0.2` passes direct typechecks but Next.js `16.2.10` rejects it during `next build`, so TypeScript stays on `6.0.3`. ESLint `10.7.0` remains deferred because the current React/Next lint plugin stack is incompatible. |
+| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #113; the current redirect-cleanup branch adds centralized `.html` redirect assertions |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge; checks exact catalog line provenance metadata and canonical line amounts |
-| `bun run test:production-readiness` | Passed on `https://skydeckla.com`, `https://www.skydeckla.com`, and `https://web-3oity7xei-junyen-enterprises.vercel.app`; production remains dashboard-gated and no-write |
+| `bun run test:production-readiness` | Passed after PR #113 on `https://skydeckla.com`, `https://www.skydeckla.com`, and `https://web-5whdulzh0-junyen-enterprises.vercel.app`; production remains dashboard-gated and no-write |
 | Convex payment snapshot provenance gate | PR #105 adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
 | Terminal reader gate | Added unit coverage proving Terminal PaymentIntent snapshots fail before Stripe when the stored POS sale has no trusted Terminal reader |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:project:check` | Passed against `junyen-enterprises/web`: project ID, root `apps/web`, Next.js, Node `24.x`, local Vercel link, and repo Bun canary install/build config are aligned |
 | `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
 | `bun run dashboard:readiness` | Includes `vercelProjectShape: true`; still fails until Vercel and Convex/Stripe dashboard env gates are shaped for linked Preview preflight |
-| `bun run check` | Passed locally on July 7, 2026 with Turbo `2.10.4`, Bun `1.4.0-canary.1+1de77f961`, and no unsupported Bun lockfile warning |
+| `bun run check` | Passed locally on the current redirect-cleanup branch with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, App Router metadata routes, and the Node type patch |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
@@ -193,7 +200,7 @@ safe behavior.
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
 | Payment response cache guard | Current code sets `Cache-Control: no-store` on public payment routes and `Vary: Authorization` on staff Terminal payment routes; keep verifying this on preview and production smokes |
-| Vercel runtime evidence | After PR #112 smoke probes, Vercel reported no error/fatal logs in the checked 30-minute production window; non-200 production responses were expected `401` staff gates and `503` Convex-unconfigured gates |
+| Vercel runtime evidence | After PR #113 smoke probes, Vercel reported no runtime errors in the checked seven-day window; non-200 production responses remain expected `401` staff gates and `503` Convex-unconfigured gates |
 
 Vercel creates a new production URL after every merge, including docs-only
 merges. Treat the app/payment behavior above as the most recent full smoke
@@ -202,21 +209,25 @@ smoke checks before recording fresh exact-deployment evidence.
 
 ## Next Code Work
 
-1. Keep runtime catalog/pricing code-owned until linked Convex acceptance passes.
-2. After dashboard setup, seed the code-owned catalog into Convex from native
+1. Make paid Checkout reconciliation create exactly one confirmed booking from
+   the stored order, and prove webhook replay cannot duplicate it.
+2. Add an authoritative post-return order/booking status check instead of
+   treating `?stripe=success` as payment confirmation.
+3. Keep runtime catalog/pricing code-owned until linked Convex acceptance passes.
+4. After dashboard setup, seed the code-owned catalog into Convex from native
    `/admin` and verify `/api/admin/catalog` shows an active version.
-3. Confirm seeded `productSnapshots.contentHash` values match stored
+5. Confirm seeded `productSnapshots.contentHash` values match stored
    checkout/POS line `catalogContentHash` values before moving runtime reads to
    Convex catalog data.
-4. Only then design admin catalog/pricing edits on top of versioned drafts.
-5. Finish refunds with Stripe reconciliation and audit events.
-6. Finish destructive admin actions only with typed validators and rollback
+6. Only then design admin catalog/pricing edits on top of versioned drafts.
+7. Finish refunds with Stripe reconciliation and audit events.
+8. Finish destructive admin actions only with typed validators and rollback
    runbooks.
-7. Run no-write linked acceptance preflight after dashboard setup.
-8. Run linked Convex/Stripe write acceptance after the preflight passes; the
+9. Run no-write linked acceptance preflight after dashboard setup.
+10. Run linked Convex/Stripe write acceptance after the preflight passes; the
    harness now checks persisted checkout/POS line provenance before optional
    Stripe Checkout or Terminal legs.
-9. Keep Convex payment snapshot provenance gates in place so stored draft
+11. Keep Convex payment snapshot provenance gates in place so stored draft
    replays cannot drop or spoof catalog identity before Stripe handoff.
-10. Keep the Stripe public response allowlists and `clientSecret` regression
+12. Keep the Stripe public response allowlists and `clientSecret` regression
    tests in place for any future payment route changes.

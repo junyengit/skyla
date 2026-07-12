@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const forbiddenPathPatterns = [
   /^output\//,
@@ -46,6 +46,21 @@ const legacyRootCompatibilityFiles = new Set([
 ]);
 
 const legacyRootPathPatterns = [/^images\//, /^marketing\//];
+
+const retiredPublicCompatibilityFiles = new Set([
+  "apps/web/legacy-routes.mjs",
+  "apps/web/public/about.html",
+  "apps/web/public/admin.html",
+  "apps/web/public/cafe.html",
+  "apps/web/public/checkout.html",
+  "apps/web/public/experiences.html",
+  "apps/web/public/members.html",
+  "apps/web/public/pos.html",
+  "apps/web/public/privacy.html",
+  "apps/web/public/robots.txt",
+  "apps/web/public/sitemap.xml",
+  "apps/web/public/terms.html"
+]);
 
 const nonBunPackageManagerFiles = new Set(["package-lock.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "yarn.lock"]);
 
@@ -121,11 +136,20 @@ const trackedFiles = execFileSync("git", ["ls-files", "--cached", "--others", "-
 const failures = [];
 
 for (const file of trackedFiles) {
+  if (!existsSync(file)) {
+    continue;
+  }
+
   const isAllowedTemplate = allowedPathPatterns.some((pattern) => pattern.test(file));
   const isLegacyRootCompatibilityFile =
     legacyRootCompatibilityFiles.has(file) || legacyRootPathPatterns.some((pattern) => pattern.test(file));
   if (isLegacyRootCompatibilityFile) {
     failures.push(`${file}: legacy compatibility assets belong under apps/web/public, not the repo root`);
+    continue;
+  }
+
+  if (retiredPublicCompatibilityFiles.has(file)) {
+    failures.push(`${file}: App Router now owns this route; keep compatibility in apps/web/site-routes.mjs`);
     continue;
   }
 

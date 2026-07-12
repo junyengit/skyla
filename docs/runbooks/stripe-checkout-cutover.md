@@ -28,7 +28,7 @@ What changed in this slice:
 The primary `/checkout` page now uses the App Router and calls the server draft
 route first. It shows a closed payment state until the real Convex deployment,
 Stripe envs, and Stripe dashboard webhook endpoint exist. The old static
-checkout remains reachable at `/checkout.html` only as a compatibility handoff
+checkout remains reachable at `/checkout.html` only as a permanent redirect
 during the cutover; the old browser checkout script and stylesheet are no
 longer shipped.
 
@@ -120,7 +120,7 @@ Expected:
   payment snapshot must reject missing or mismatched code-owned catalog
   provenance before contacting Stripe.
 - `/checkout` calls the Next/Convex route.
-- `/checkout.html` hands off to `/checkout` and does not load `checkout.js`,
+- `/checkout.html` redirects to `/checkout` and does not load `checkout.js`,
   `shared-data.js`, or Kaskade code.
 - Old Supabase payment creation and Checkout session verification actions
   return `410` permanently in repo code.
