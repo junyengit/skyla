@@ -45,17 +45,17 @@ As of July 12, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest production deployment evidence recorded here:
-  `https://web-mjicopj2r-junyen-enterprises.vercel.app` from merge commit
-  `eabd40aeaf34f51e8c8c7bcb92d8f6aad48d77a8` (PR #119, deployment
-  `dpl_D4wmWoj1x1tUYsy7fnfT2gqJnT6G`, status `READY`). This identifies the current deployment;
+  `https://web-dyh99dnjq-junyen-enterprises.vercel.app` from merge commit
+  `fc7a497358b573563d9f0772d3728c4bc853c562` (PR #121, deployment
+  `dpl_H64P1fywRZnxzyi4qdf12pULncAS`, status `READY`). This identifies the current deployment;
   it does not mean the Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
   install/build commands even when the dashboard settings page shows defaults.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
-  the remaining Convex/Stripe env setup. The current branch extends it with
-  Clerk gates. It reports only env names/scopes and fails until
+  the remaining Convex/Stripe env setup. PR #121 extends it with Clerk gates.
+  It reports only env names/scopes and fails until
   `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
   `CLERK_SECRET_KEY` are in Preview/Production. It still rejects misplaced
   Stripe, staff-bootstrap, and Terminal secrets; the Clerk secret is the
@@ -81,7 +81,7 @@ As of July 12, 2026:
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
   production was verified, so the old `github.io` surface is no longer an
   active host.
-- Vercel environment variables checked on July 7, 2026: none are configured
+- Vercel environment variables checked on July 12, 2026: none are configured
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished. After adding Vercel envs, run
   `bun run vercel:project:check` and `bun run vercel:env:check` to verify the
@@ -92,7 +92,7 @@ As of July 12, 2026:
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
-  `junyen-enterprises/web` found no project environment variables on July 7,
+  `junyen-enterprises/web` found no project environment variables on July 12,
   2026.
 - Payment API audit and smoke checks on July 7, 2026 found no raw card
   collection or storage, no public `clientSecret` response exposure, and
@@ -104,7 +104,7 @@ As of July 12, 2026:
 - Payment route failures use stable public error codes/messages so raw
   Stripe/Convex/provider details and env names are not returned to browsers.
 - Vercel production runtime checks found no `error` or `fatal` logs in the
-  checked 30-minute window for the recorded evidence deployment. The observed
+  checked post-merge window for the recorded PR #121 deployment. The observed
   non-200 responses were expected staff-auth `401` and Convex-unconfigured
   `503` gates from the smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
@@ -172,11 +172,11 @@ bun run dashboard:readiness
 
 ## Current Bridge Notes
 
-- The current branch removes raw pasted staff-token fields from Admin and POS.
+- PR #121 removed raw pasted staff-token fields from Admin and POS in production.
   Route-scoped Clerk v7 handles human sign-in, while `staffFetch` requests a
   short-lived `convex` JWT for each protected API call. Convex `staffUsers` and
   `requireStaffUser` remain role authority; the bearer API contract remains for
-  controlled automation. This is not merged or deployed, and it fails closed
+  controlled automation. The deployed UI remains in its setup-required state
   until Vercel Preview/Production have `NEXT_PUBLIC_CONVEX_URL`,
   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY`, Convex has
   `CLERK_JWT_ISSUER_DOMAIN`, and the first Clerk user ID is bootstrapped as the

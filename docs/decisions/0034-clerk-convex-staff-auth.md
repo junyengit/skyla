@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented on the current branch. It is not merged, deployed, or configured
-in the Clerk, Convex, or Vercel dashboards yet.
+Accepted and shipped in PR #121. The code is deployed, but Clerk, Convex, and
+Vercel dashboard configuration and linked acceptance are still pending.
 
 ## Context
 
@@ -83,6 +83,6 @@ acceptance output.
 - Existing API and acceptance tooling can continue using bearer credentials.
 - Clerk account creation alone cannot create an admin; Convex still enforces
   active staff membership and role.
-- The branch is intentionally not operational until all dashboard gates pass,
+- Staff sign-in is intentionally not operational until all dashboard gates pass,
   the first Clerk identity is bootstrapped into `staffUsers`, and linked Preview
   acceptance verifies both allowed and denied roles.

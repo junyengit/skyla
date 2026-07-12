@@ -54,20 +54,20 @@ admin cannot edit prices yet. Checkout and POS catalog lines also carry
 code-owned catalog provenance metadata so stored drafts can show which catalog
 version, source, authority, and item hash produced each priced line.
 
-On the current branch, the Admin and POS interfaces no longer show a raw pasted
-staff-token field. Route-scoped Clerk v7 signs in human staff, and a shared
-`staffFetch` wrapper obtains a short-lived `convex` JWT only when it makes a
-protected request. Convex `staffUsers` records and `requireStaffUser` remain the
-role authority, and the bearer API contract remains available for controlled
-automation. This branch is not merged or deployed, and Clerk/Convex/Vercel
-dashboard setup is still pending, so the new sign-in path must remain closed.
+In production, the Admin and POS interfaces no longer show a raw pasted
+staff-token field. PR #121 shipped route-scoped Clerk v7 for human staff, and a
+shared `staffFetch` wrapper obtains a short-lived `convex` JWT only when it makes
+a protected request. Convex `staffUsers` records and `requireStaffUser` remain
+the role authority, and the bearer API contract remains available for
+controlled automation. Clerk/Convex/Vercel dashboard setup is still pending, so
+the deployed sign-in path remains in its fail-closed setup-required state.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
   browser["Guest or staff browser"]
-  clerk["Clerk staff sign-in (branch; dashboard pending)"]
+  clerk["Clerk staff sign-in (deployed; dashboard pending)"]
   next["Vercel Next.js app (apps/web)"]
   catalog["Code-owned payment catalog (@skyla/payments)"]
   convex["Convex cloud (not linked yet)"]
@@ -85,9 +85,9 @@ flowchart LR
 
 ## What Works Now
 
-- Current production deployment evidence points to PR #119 merge commit
-  `eabd40aeaf34f51e8c8c7bcb92d8f6aad48d77a8` and READY deployment
-  `dpl_D4wmWoj1x1tUYsy7fnfT2gqJnT6G`.
+- Current production deployment evidence points to PR #121 merge commit
+  `fc7a497358b573563d9f0772d3728c4bc853c562` and READY deployment
+  `dpl_H64P1fywRZnxzyi4qdf12pULncAS`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and saved `.html` compatibility routes smoke-test
@@ -108,9 +108,9 @@ flowchart LR
 - Admin CSV exports, booking lookup, booking/member status actions,
   announcement/hours config, voucher redemption, and POS reader selection are
   native Next/Convex-shaped flows.
-- In the current branch, Admin/POS raw token inputs are removed and the staff
-  pages use route-scoped Clerk through `staffFetch`. This is branch-local code,
-  not production evidence; without the required Clerk and Convex envs it shows
+- In production, Admin/POS raw token inputs are removed and the staff pages use
+  route-scoped Clerk through `staffFetch`. Without the required Clerk and
+  Convex envs it shows
   setup-required and protected calls fail closed.
 - Convex continues to authorize roles through `staffUsers` and
   `requireStaffUser`. A Clerk account is not automatically Skyla staff, and API
@@ -239,11 +239,11 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest production deployment evidence recorded here | PR #119, merged to `main` on July 12, 2026 |
-| Evidence deployment | `dpl_D4wmWoj1x1tUYsy7fnfT2gqJnT6G`, status `READY` |
-| Evidence URL | `https://web-mjicopj2r-junyen-enterprises.vercel.app` |
-| Evidence commit | `eabd40aeaf34f51e8c8c7bcb92d8f6aad48d77a8` |
-| App/payment behavior verification | PR #119 post-merge readiness and payment smokes passed on apex, `www`, and the immutable deployment without a real charge. |
+| Latest production deployment evidence recorded here | PR #121, merged to `main` on July 12, 2026 |
+| Evidence deployment | `dpl_H64P1fywRZnxzyi4qdf12pULncAS`, status `READY` |
+| Evidence URL | `https://web-dyh99dnjq-junyen-enterprises.vercel.app` |
+| Evidence commit | `fc7a497358b573563d9f0772d3728c4bc853c562` |
+| App/payment behavior verification | PR #121 post-merge readiness and payment smokes passed on apex, `www`, and the immutable deployment without a real charge. All three served the same deployment ID. |
 | Legacy data migration | Implementation and local tests exist for bookings, members, and inquiries; no cloud apply has occurred. |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | GitHub governance | Rechecked July 6, 2026: `main` requires strict `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel` checks; admins are enforced; force pushes, branch deletion, and unresolved conversations are blocked; Dependabot vulnerability alerts and automated security fixes are enabled |
@@ -252,24 +252,24 @@ safe behavior.
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=high` | No vulnerabilities found |
 | Dependency sweep | July 12: upgraded `@types/node` to `26.1.1`. TypeScript `7.0.2` passes direct typechecks but Next.js `16.2.10` rejects it during `next build`, so TypeScript stays on `6.0.3`. ESLint `10.7.0` remains deferred because the current React/Next lint plugin stack is incompatible. |
-| `bun run test:smoke` | Passed within the PR #119 production-readiness run on apex, `www`, and the immutable deployment with centralized `.html` redirect assertions |
-| `bun run test:payments` | Passed after PR #119 on apex, `www`, and the immutable deployment; no real Stripe charge; checks exact catalog provenance and canonical amounts |
-| `bun run test:production-readiness` | Passed after PR #119 on `https://skydeckla.com`, `https://www.skydeckla.com`, and `https://web-mjicopj2r-junyen-enterprises.vercel.app`; production remains dashboard-gated and no-write. |
+| `bun run test:smoke` | Passed within the PR #121 production-readiness run on apex, `www`, and the immutable deployment with centralized `.html` redirect assertions |
+| `bun run test:payments` | Passed after PR #121 on apex, `www`, and the immutable deployment; no real Stripe charge; checks exact catalog provenance and canonical amounts |
+| `bun run test:production-readiness` | Passed after PR #121 on `https://skydeckla.com`, `https://www.skydeckla.com`, and `https://web-dyh99dnjq-junyen-enterprises.vercel.app`; production remains dashboard-gated and no-write. |
 | Convex payment snapshot provenance gate | PR #105 adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
 | Terminal reader gate | Added unit coverage proving Terminal PaymentIntent snapshots fail before Stripe when the stored POS sale has no trusted Terminal reader |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:project:check` | Passed against `junyen-enterprises/web`: project ID, root `apps/web`, Next.js, Node `24.x`, local Vercel link, and repo Bun canary install/build config are aligned |
-| `bun run vercel:env:check` | The last production-dashboard evidence failed as expected with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true`. The current branch also requires both Clerk keys and reports a separate `readyForStaffAuth` gate; that branch behavior is not deployed yet. |
-| `bun run dashboard:readiness` | Includes the Vercel project-shape gate; the current branch adds Clerk keys plus the Convex issuer to the linked Preview preflight gates. It must remain non-zero until Clerk, Convex, Vercel, and Stripe dashboard setup is complete. |
-| Clerk staff auth branch | Raw pasted staff-token UI is removed; route-scoped Clerk v7 supplies short-lived `convex` JWTs through `staffFetch`; `staffUsers` and `requireStaffUser` remain role authority; dashboard configuration, Preview acceptance, merge, and deployment are pending. |
-| `bun run check` | Passed on the current Clerk staff-auth branch with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, 25 web test files/125 tests, 20 Convex test files/143 tests, 10 script files/39 tests, both Convex typechecks, the Next production build, artifact guard, and legacy Supabase retirement guard. The branch is not merged or deployed yet. |
+| `bun run vercel:env:check` | Production-dashboard evidence on July 12 failed as expected with `envCount: 0`, `readyForConvexUrl: false`, `readyForStaffAuth: false`, and `safeSecretPlacement: true`. |
+| `bun run dashboard:readiness` | Includes the Vercel project-shape, Clerk-key, and Convex issuer gates. It remains non-zero until Clerk, Convex, Vercel, and Stripe dashboard setup is complete. |
+| Clerk staff auth | PR #121 removed raw pasted staff-token UI and deployed route-scoped Clerk v7; `staffUsers` and `requireStaffUser` remain role authority. Dashboard configuration and linked Preview acceptance are pending. |
+| `bun run check` | Passed for PR #121 with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, 25 web test files/125 tests, 20 Convex test files/143 tests, 10 script files/39 tests, both Convex typechecks, the Next production build, artifact guard, and legacy Supabase retirement guard. |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
 | Refund reconciliation | PR #119 shipped the web/backend bundle that correlates signed Stripe refund events to paid PaymentIntents, handles Stripe's reversible succeeded lifecycle, enforces final failed/canceled and cumulative amount guards, and exposes server-masked read-only Admin rows. The real Convex deployment and linked test-mode acceptance are still pending. |
 | Stripe API version pin | Requests send `Stripe-Version: 2026-02-25.clover`. Stripe currently documents `2026-06-24.dahlia` as the current API version, but this crosses a named major release and should be upgraded only with a Workbench/webhook endpoint version plan and linked acceptance tests. |
 | Staff visual QA | Helium confirmed production `/admin`, `/pos`, and `/pos-next` render white-on-black staff screens on July 6, 2026; `apps/web/staff-contrast.test.ts` still passes. A fresh July 12 Helium pass is pending because the Mac was locked. |
-| Vercel runtime evidence | No runtime error clusters or error/fatal logs were reported for the checked 30-minute window after PR #119. |
+| Vercel runtime evidence | No error or fatal logs were reported for the checked post-merge window after PR #121. |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
