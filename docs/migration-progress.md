@@ -22,6 +22,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added focused refund parser, mutation, projection, API, and UI tests.
 - [ ] Deploy and accept this refund slice in linked Convex/Stripe test mode,
       after verifying older paid ledger rows have PaymentIntent linkage.
+- [x] Merged refund-reconciliation PR #119 as
+      `eabd40aeaf34f51e8c8c7bcb92d8f6aad48d77a8` after CI, CodeQL, Vercel,
+      payment/data review, and security review passed.
+- [x] Verified READY production deployment
+      `https://web-mjicopj2r-junyen-enterprises.vercel.app`
+      (`dpl_D4wmWoj1x1tUYsy7fnfT2gqJnT6G`).
+- [x] Passed no-write production readiness and payment smokes on apex, `www`,
+      and immutable production; no real charge occurred and Vercel reported no
+      runtime error clusters or error/fatal logs in the checked 30-minute window.
 
 - [x] Verified current production is GitHub Pages from `main` root.
 - [x] Verified latest package baseline through npm registry:
