@@ -37,6 +37,7 @@ const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
 const terminalReaderRegistry = env.SKYLA_TERMINAL_READER_REGISTRY ?? "";
 const terminalAcceptance = env.SKYLA_POS_TERMINAL_ACCEPTANCE ?? "";
 const staffBootstrapToken = env.SKYLA_STAFF_BOOTSTRAP_TOKEN ?? "";
+const clerkIssuerDomain = env.CLERK_JWT_ISSUER_DOMAIN ?? "";
 const requiredGateNames = commaList(env.SKYLA_CONVEX_ENV_REQUIRE ?? "");
 const stripeReturnOriginList = commaList(stripeReturnOrigins);
 const terminalReaderRegistryList = commaList(terminalReaderRegistry);
@@ -106,6 +107,12 @@ const checks = [
     note: staffBootstrapToken
       ? "temporary Convex-only token for seeding staffUsers; remove or rotate after staff is seeded"
       : undefined
+  },
+  {
+    name: "CLERK_JWT_ISSUER_DOMAIN",
+    present: Boolean(clerkIssuerDomain),
+    ok: /^https:\/\/(?:[a-z0-9-]+\.clerk\.accounts\.dev|clerk\.[a-z0-9.-]+\.[a-z]{2,})$/.test(clerkIssuerDomain),
+    note: clerkIssuerDomain ? "must exactly match the Clerk Convex integration Frontend API URL" : undefined
   }
 ];
 
@@ -115,7 +122,8 @@ const gates = {
   "stripe-webhook": checks[0].ok && checks[3].ok && checks[6].ok,
   "terminal-reader":
     checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[6].ok && checks[7].ok && checks[8].ok,
-  "staff-bootstrap": checks[0].ok && checks[9].ok
+  "staff-bootstrap": checks[0].ok && checks[9].ok,
+  "staff-auth": checks[0].ok && checks[1].ok && checks[10].ok
 };
 
 const allowedRequiredGates = Object.keys(gates);
@@ -132,6 +140,7 @@ const output = {
   readyForStripeWebhook: gates["stripe-webhook"],
   readyForTerminalReaderHandoff: gates["terminal-reader"],
   readyForStaffBootstrap: gates["staff-bootstrap"],
+  readyForStaffAuth: gates["staff-auth"],
   allowedRequiredGates,
   requiredGates,
   unknownRequiredGateCount,

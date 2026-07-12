@@ -136,11 +136,11 @@ async function checkNativeAdminSurface(origin) {
     return;
   }
 
-  if (!html.includes("Booking Lookup") || !html.includes("Staff Token")) {
+  if (!html.includes("Booking Lookup") || !hasStaffAccessState(html)) {
     failures.push(`${origin}/admin: did not render native staff booking lookup controls`);
   }
 
-  if (html.includes("SkylaData") || html.includes("shared-data.js")) {
+  if (html.includes("SkylaData") || html.includes("shared-data.js") || exposesPastedStaffToken(html)) {
     failures.push(`${origin}/admin: exposed legacy localStorage/Supabase admin path`);
   }
 }
@@ -154,10 +154,14 @@ async function checkNativePosSurface(origin) {
     return;
   }
 
-  for (const expected of ["Server-priced POS", "Current Sale", "Staff Token"]) {
+  for (const expected of ["Server-priced POS", "Current Sale"]) {
     if (!html.includes(expected)) {
       failures.push(`${origin}/pos: did not render native POS control "${expected}"`);
     }
+  }
+
+  if (!hasStaffAccessState(html)) {
+    failures.push(`${origin}/pos: did not render a staff access state`);
   }
 
   for (const legacyMarker of ["shared-data.js", "pos.js", "SkylaData", "LEGACY_TERMINAL_PAYMENTS_ENABLED", "clientSecret"]) {
@@ -165,6 +169,20 @@ async function checkNativePosSurface(origin) {
       failures.push(`${origin}/pos: exposed legacy POS marker ${legacyMarker}`);
     }
   }
+
+  if (exposesPastedStaffToken(html)) {
+    failures.push(`${origin}/pos: exposed a pasted staff token control`);
+  }
+}
+
+function hasStaffAccessState(html) {
+  return ["Staff sign in", "Setup required", "Checking staff session", "Identity verified"].some((marker) =>
+    html.includes(marker)
+  );
+}
+
+function exposesPastedStaffToken(html) {
+  return html.includes("Staff Token") || html.includes("Bearer token");
 }
 
 async function checkCheckoutPageNoLegacyWrites(origin) {

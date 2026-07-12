@@ -35,7 +35,10 @@ screen now loads authorized Terminal readers from a staff-gated Convex route
 instead of asking staff to type Stripe reader/location IDs. Reader collection is
 still locked until staff auth, Convex envs, Stripe webhooks, and Stripe
 Terminal test-reader acceptance are complete. Native `/admin` now has a
-staff-token operations snapshot plus audited booking/member status actions.
+staff-authenticated operations snapshot plus audited booking/member status
+actions. On the current branch, Admin and POS no longer ask a person to paste a
+raw staff token: route-scoped Clerk v7 obtains a short-lived `convex` JWT inside
+the shared `staffFetch` wrapper. This is not merged or dashboard-configured yet.
 `/admin.html` permanently redirects to `/admin`; there is no old admin browser
 app or shared data facade. The old static checkout URL remains reachable at
 `/checkout.html` as a permanent redirect to `/checkout`; the old browser
@@ -63,30 +66,37 @@ stored line amounts remain the payment authority.
 2. Run `bun run vercel:project:check` and keep the Vercel project rooted at
    `apps/web` with Next.js, Node `24.x`, and the repo-owned Bun canary
    commands in `apps/web/vercel.json`.
-3. Add `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview and Production.
-4. Add Stripe secrets in Convex, not Vercel browser env vars.
-5. Keep Stripe in test mode first.
-6. Create the Stripe webhook endpoint after Convex gives you the site URL.
-7. Use Stripe test cards and a test Terminal reader only.
-8. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
+3. Configure Clerk staff authentication using the numbered dashboard steps
+   below.
+4. Add `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
+   `CLERK_SECRET_KEY` in Vercel Preview and Production.
+5. Add `CLERK_JWT_ISSUER_DOMAIN` in Convex and deploy the matching
+   `convex/auth.config.ts`.
+6. Add Stripe secrets in Convex, not Vercel browser env vars.
+7. Keep Stripe in test mode first.
+8. Create the Stripe webhook endpoint after Convex gives you the site URL.
+9. Use Stripe test cards and a test Terminal reader only.
+10. Keep `SKYLA_POS_TERMINAL_ACCEPTANCE` unset until no-write preflight,
    webhook setup, and reader registry checks pass; then enable it only for the
    controlled test-reader attempt.
-9. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
-10. Seed the first staff admin, then remove the bootstrap token.
-11. Confirm `/api/pos/readers` returns readers only with a valid staff token.
-12. Run the linked acceptance harness against a Vercel Preview URL.
-13. Confirm member and event forms save into Convex in Preview.
-14. Confirm checkout and POS stay server-priced with test payments.
-15. Verify idempotent paid-order booking fulfillment against linked Convex and
+11. Add `SKYLA_TERMINAL_READER_REGISTRY` in Convex with no duplicate reader IDs.
+12. Seed the first staff admin with the Clerk user ID as `subject`, then remove
+    the bootstrap token.
+13. Confirm `/api/pos/readers` returns readers only for a signed-in, authorized
+    staff identity; keep bearer-token checks for automation.
+14. Run the linked acceptance harness against a Vercel Preview URL.
+15. Confirm member and event forms save into Convex in Preview.
+16. Confirm checkout and POS stay server-priced with test payments.
+17. Verify idempotent paid-order booking fulfillment against linked Convex and
     a signed Stripe test webhook before any card acceptance.
-16. Follow the ledgered migration runbook for legacy bookings, members, and
+18. Follow the ledgered migration runbook for legacy bookings, members, and
     inquiries. Dry-run, quarantine, development apply, and reconcile before
     explicit production confirmation.
-17. Disable or redeploy old Supabase payment functions from the fail-closed
+19. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-18. Finish native admin/POS work and
+20. Finish native admin/POS work and
     test-reader acceptance before enabling card acceptance.
-19. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+21. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
@@ -108,9 +118,17 @@ stored line amounts remain the payment authority.
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
   present, and `apps/web/vercel.json` as the Bun canary install/build source
   of truth.
+- The current branch passed `bun run check` on 2026-07-12: 125 web tests,
+  143 Convex tests, 39 script tests, lint, all typechecks, the Next.js
+  production build, artifact checks, and legacy Supabase retirement checks.
+  `bun install --frozen-lockfile` and `bun audit --audit-level=low` also passed
+  with no vulnerabilities.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
-  checker that fails until `NEXT_PUBLIC_CONVEX_URL` is present in Preview and
-  Production and fails if Stripe/staff/Terminal secrets are placed in Vercel.
+  checker. The current branch extends its gate to require
+  `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
+  `CLERK_SECRET_KEY` in Preview and Production while still rejecting misplaced
+  Stripe, staff-bootstrap, and Terminal secrets. This branch change is not
+  merged or deployed yet.
 - Query Vercel for the newest deployment URL before recording fresh operational
   evidence. Future docs-only merges may create newer URLs with the same app
   behavior.
@@ -416,6 +434,41 @@ flowchart TD
 
 ## Dashboard Checklist
 
+### Staff Authentication Setup
+
+These are the human dashboard steps for this branch. Stop if any value belongs
+to a different Clerk application or Convex deployment; a partial setup should
+remain fail closed.
+
+1. In Clerk, create or select the Skyla staff application. Disable unrestricted
+   public sign-up; invite or otherwise restrict account creation to approved
+   staff.
+2. In Clerk, activate the Convex integration, confirm it supplies the required
+   `convex` JWT audience/template, and note the application's Frontend API
+   issuer domain.
+3. In Vercel project `junyen-enterprises/web`, add
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` to Preview and Production.
+4. In the same Vercel project, add `CLERK_SECRET_KEY` to Preview and Production
+   as a secret. Never give it a `NEXT_PUBLIC_*` name.
+5. Add `NEXT_PUBLIC_CONVEX_URL` to Vercel Preview and Production, using the
+   Convex deployment intended for each environment.
+6. In each matching Convex deployment, set `CLERK_JWT_ISSUER_DOMAIN` to the
+   Clerk issuer from step 2, then deploy `convex/auth.config.ts`.
+7. Run `bun run vercel:env:check`, `bun run convex:env:check`, and
+   `bun run dashboard:readiness`. The Clerk gates must pass before staff
+   acceptance; the overall report may still fail on later Stripe gates.
+8. Create or invite the first Clerk staff user. Record that user's Clerk user
+   ID, which normally starts with `user_`; do not use the email as the Convex
+   subject.
+9. Temporarily set `SKYLA_STAFF_BOOTSTRAP_TOKEN` in that Convex deployment and
+   call `staffBootstrap.upsertStaffUser` with the Clerk user ID as `subject`
+   plus the intended Skyla role. Verify sign-in and role enforcement, then
+   remove the bootstrap token immediately.
+10. On the Vercel Preview branch alias, verify `/staff-sign-in`, `/admin`,
+    `/pos`, and `/pos-next`. Confirm an authorized role succeeds, a valid Clerk
+    user without a `staffUsers` row fails closed, sign-out clears staff data,
+    and the automation bearer contract still passes its acceptance tests.
+
 ### Vercel
 
 - [ ] Confirm project root is `apps/web`.
@@ -429,17 +482,20 @@ flowchart TD
 - [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:project:check` before
       dashboard edits and after deployment-setting changes. It should report
       `readyForProjectShape: true`.
-- [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Preview and Production after Convex is
+- [ ] Add `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
+      `CLERK_SECRET_KEY` to Preview and Production after Convex and Clerk are
       linked.
 - [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:env:check` after adding
-      Vercel envs. It should report `readyForConvexUrl: true` and
-      `safeSecretPlacement: true`.
+      Vercel envs. It should report `readyForConvexUrl: true`,
+      `readyForStaffAuth: true`, and `safeSecretPlacement: true`.
 - [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run dashboard:readiness` after
       Vercel and Convex dashboard edits. It should report
       `status: "linked_preflight_ready"` before `bun run test:acceptance:preflight`.
 - [ ] Confirm only public browser config is in Vercel. Stripe secrets,
       webhook secrets, staff bootstrap token, and Terminal reader registry
-      belong in Convex, not `NEXT_PUBLIC_*`.
+      belong in Convex, not `NEXT_PUBLIC_*`. `CLERK_SECRET_KEY` is intentionally
+      in Vercel for the server-side Next.js Clerk integration but must never be
+      public.
 - [ ] Add Google Ads public env vars only when ads are ready.
 - [ ] Keep secrets out of `NEXT_PUBLIC_*`.
 - [ ] Confirm `/pos` and `/pos-next` remain `X-Robots-Tag: noindex, nofollow`
@@ -456,6 +512,8 @@ flowchart TD
 ### Convex
 
 - [ ] Create or link the Skyla Convex project.
+- [ ] Set `CLERK_JWT_ISSUER_DOMAIN` to the issuer for the Clerk application
+      paired with this deployment, then deploy `convex/auth.config.ts`.
 - [ ] For legacy data migration only, generate a temporary random 32+ character
       `SKYLA_DATA_MIGRATION_TOKEN`, set it interactively in the selected Convex
       deployment, and keep the same value only in the operator shell.
@@ -479,17 +537,19 @@ flowchart TD
       Stripe test-reader acceptance attempt.
 - [ ] Run `bun run convex:env:check`.
 - [ ] Before payment acceptance, run
-      `SKYLA_CONVEX_ENV_REQUIRE=cloud,stripe-checkout,stripe-webhook bun run convex:env:check`.
+      `SKYLA_CONVEX_ENV_REQUIRE=cloud,staff-auth,stripe-checkout,stripe-webhook bun run convex:env:check`.
 - [ ] Before Terminal reader acceptance, run
-      `SKYLA_CONVEX_ENV_REQUIRE=cloud,stripe-webhook,terminal-reader bun run convex:env:check`.
+      `SKYLA_CONVEX_ENV_REQUIRE=cloud,staff-auth,stripe-webhook,terminal-reader bun run convex:env:check`.
 - [ ] Run `bun run convex:codegen`.
 - [ ] Temporarily set `SKYLA_STAFF_BOOTSTRAP_TOKEN`, run
-      `staffBootstrap.upsertStaffUser` for the initial admin, then remove the
-      token.
+      `staffBootstrap.upsertStaffUser` for the initial admin with the Clerk user
+      ID as `subject`, verify the Clerk-backed session, then remove the token.
 - [ ] Seed active `staffUsers` records for admins/viewers/POS staff before
       using native `/admin`, `/pos`, or `/pos-next`.
-- [ ] Verify `/api/admin/operations` returns `200` with a valid staff token and
-      `401`/`503` without auth or envs.
+- [ ] Verify `/api/admin/operations` returns `200` for a Clerk-authenticated
+      identity with an allowed `staffUsers` role and `401`/`403`/`503` without
+      identity, role authority, or required envs. Repeat with a bearer token for
+      the automation contract.
 - [ ] Verify `/api/admin/bookings/status` returns `200` with a valid admin/pos
       token for `confirmed` and `checked-in`, rejects arbitrary statuses with
       `400`, and returns `503` while Convex is unconfigured.
@@ -759,32 +819,35 @@ Current dependency note:
 ## Next Work Order
 
 1. Link real Convex cloud and set Vercel `NEXT_PUBLIC_CONVEX_URL`.
-2. Seed initial staff with `staffBootstrap.upsertStaffUser`, verify native
-   `/admin`, then remove `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
-3. Seed the code-owned catalog from native `/admin` or
+2. Complete the Clerk dashboard steps above: set both Clerk keys in Vercel,
+   set `CLERK_JWT_ISSUER_DOMAIN` in Convex, and deploy the Convex auth config.
+3. Seed initial staff with the Clerk user ID as the
+   `staffBootstrap.upsertStaffUser` subject, verify native `/admin`, then remove
+   `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
+4. Seed the code-owned catalog from native `/admin` or
    `POST /api/admin/catalog`, then verify `GET /api/admin/catalog` reports an
    active version before any future price edit work.
-4. Verify native `/members` applications persist through
+5. Verify native `/members` applications persist through
    `/api/members/applications` in preview and production after Convex is linked.
-5. Verify preview checkout draft persistence returns `persisted: true`.
-6. Create Stripe test webhook endpoint and set Convex Stripe env vars.
-7. Set Convex/Vercel env vars so the App Router checkout can persist orders
+6. Verify preview checkout draft persistence returns `persisted: true`.
+7. Create Stripe test webhook endpoint and set Convex Stripe env vars.
+8. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-8. Prove a signed Stripe test payment creates one confirmed booking and replay
+9. Prove a signed Stripe test payment creates one confirmed booking and replay
    creates no duplicate; verify the browser return remains pending until the
    webhook result is authoritative.
-9. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
+10. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-10. Accept Stripe Terminal final webhook reconciliation in test mode with a real
+11. Accept Stripe Terminal final webhook reconciliation in test mode with a real
    test reader and matching Convex sale.
-11. Allow staff to use native `/pos` for card-present payment only after
+12. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-12. Accept the read-only refund ledger in linked Stripe test mode, including
+13. Accept the read-only refund ledger in linked Stripe test mode, including
     historical PaymentIntent-linkage review. Keep refund initiation and booking
     cancellation out of Admin until a separate typed workflow and runbook exist.
-13. Rebuild POS as the protected live App Router/Convex register.
-14. Migrate remaining Supabase data and disable legacy Supabase functions only
+14. Rebuild POS as the protected live App Router/Convex register.
+15. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff
@@ -803,6 +866,11 @@ What has been done:
   behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
 - Payment and staff payment API responses are marked `no-store`; staff-gated
   Terminal routes also vary by `Authorization`.
+- On this branch, Admin and POS no longer expose a pasted-token field. Clerk v7
+  signs in human staff and `staffFetch` acquires a short-lived `convex` JWT for
+  each protected request; Convex still checks `staffUsers` and
+  `requireStaffUser` for the actual role. Dashboard setup and deployment are
+  still pending, while bearer auth remains available to automation.
 - There is also a one-command production-readiness smoke that bundles route,
   payment no-write, member no-write, experience inquiry no-write, and staff
   compatibility redirect checks.
@@ -824,7 +892,9 @@ What has been done:
 What still needs to be done:
 
 - Link the real Convex cloud project.
-- Add the required Vercel and Convex environment variables.
+- Add the required Convex URL and Clerk keys to Vercel Preview/Production, add
+  the Clerk issuer to Convex, deploy the auth config, and seed the first
+  `staffUsers` row from a Clerk user ID.
 - Test the native `/members` application form in preview after Convex is linked.
 - Create the Stripe webhook endpoint in the Stripe dashboard.
 - Test checkout with Stripe test cards only.

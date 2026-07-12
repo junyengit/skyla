@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CafeItemKey, TicketPackageKey } from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
+import { useStaffSession } from "@/components/staff-auth-provider";
 
 type TicketOption = {
   key: TicketPackageKey;
@@ -75,6 +78,7 @@ type TerminalReaderOption = {
 };
 
 type TerminalReadersResponse = {
+  staff: { emailLower: string; role: "admin" | "pos" };
   readers: TerminalReaderOption[];
 };
 
@@ -113,14 +117,16 @@ function readerOptionKey(option: TerminalReaderOption) {
 }
 
 export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraftClientProps) {
+  const staffSession = useStaffSession();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<Tab>("tickets");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
-  const [staffToken, setStaffToken] = useState("");
   const [readerOptions, setReaderOptions] = useState<TerminalReaderOption[]>([]);
   const [selectedReaderKey, setSelectedReaderKey] = useState("");
   const [isLoadingReaders, setIsLoadingReaders] = useState(false);
   const [readerMessage, setReaderMessage] = useState<string | null>(null);
+  const [authorizedStaff, setAuthorizedStaff] = useState<TerminalReadersResponse["staff"] | null>(null);
   const [customName, setCustomName] = useState("");
   const [customAmount, setCustomAmount] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -131,6 +137,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
   const [isSendingTerminal, setIsSendingTerminal] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const reviewVersionRef = useRef(0);
+  const authEpochRef = useRef(0);
 
   const activeCafeItems = useMemo(
     () =>
@@ -156,6 +163,13 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
           : cafeItems.find((item) => item.key === line.itemKey)?.priceCents ?? 0;
     return sum + unitAmountCents * line.quantity;
   }, 0);
+
+  useEffect(() => {
+    return () => {
+      authEpochRef.current += 1;
+      reviewVersionRef.current += 1;
+    };
+  }, []);
 
   function resetReview() {
     reviewVersionRef.current += 1;
@@ -240,27 +254,21 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
   }
 
   async function loadTerminalReaders() {
-    const token = staffToken.trim();
-    if (!token) {
-      setReaderMessage("Staff bearer token is required to load authorized readers.");
-      return;
-    }
-
+    const authEpoch = authEpochRef.current;
     setIsLoadingReaders(true);
     setReaderMessage(null);
 
     try {
-      const response = await fetch("/api/pos/readers", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await staffSession.staffFetch("/api/pos/readers");
       const data = (await response.json()) as TerminalReadersResponse | { error?: string };
       if (!response.ok) {
         throw new Error("error" in data ? data.error ?? "Could not load authorized readers" : "Could not load authorized readers");
       }
+      if (authEpoch !== authEpochRef.current) return;
 
-      const readers = (data as TerminalReadersResponse).readers;
+      const readerData = data as TerminalReadersResponse;
+      const readers = readerData.readers;
+      setAuthorizedStaff(readerData.staff);
       setReaderOptions(readers);
       setSelectedReaderKey((current) => {
         if (readers.some((option) => readerOptionKey(option) === current)) {
@@ -275,16 +283,18 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       );
       resetReview();
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setReaderOptions([]);
       setSelectedReaderKey("");
       setReaderMessage(error instanceof Error ? error.message : "Could not load authorized readers");
       resetReview();
     } finally {
-      setIsLoadingReaders(false);
+      if (authEpoch === authEpochRef.current) setIsLoadingReaders(false);
     }
   }
 
   async function reviewSale() {
+    const authEpoch = authEpochRef.current;
     if (cart.length === 0) {
       setMessage("Cart is empty.");
       return;
@@ -298,15 +308,12 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
     const reviewVersion = reviewVersionRef.current;
     const lines = cart.map(linePayload);
     const email = customerEmail || undefined;
-    const token = staffToken.trim();
     const storedReaderId = selectedReader?.readerId;
 
     try {
-      const response = await fetch("/api/order-drafts/pos", {
+      const response = await staffSession.staffFetch("/api/order-drafts/pos", {
         method: "POST",
-        headers: token
-          ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-          : { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lines,
           customerEmail: email,
@@ -318,7 +325,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       if (!response.ok) {
         throw new Error("error" in data ? data.error ?? "Could not review this sale" : "Could not review this sale");
       }
-      if (reviewVersion !== reviewVersionRef.current) {
+      if (reviewVersion !== reviewVersionRef.current || authEpoch !== authEpochRef.current) {
         return;
       }
       const nextDraft = data as PosDraftResponse;
@@ -334,17 +341,18 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
           : "Server total reviewed. Terminal payment requires Convex, staff auth, and a stored reader."
       );
     } catch (error) {
+      if (reviewVersion !== reviewVersionRef.current || authEpoch !== authEpochRef.current) return;
       setDraft(null);
       setTerminalResult(null);
       setMessage(error instanceof Error ? error.message : "Could not review this sale");
     } finally {
-      setIsReviewing(false);
+      if (authEpoch === authEpochRef.current) setIsReviewing(false);
     }
   }
 
   async function sendToTerminalReader() {
+    const authEpoch = authEpochRef.current;
     const saleRef = draft?.saleRef ?? draft?.draft.saleRef;
-    const token = staffToken.trim();
     if (!terminalAccepted) {
       setMessage("Reader handoff remains locked until test-reader acceptance is enabled.");
       return;
@@ -357,26 +365,20 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       setMessage("Review the sale with an authorized Stripe reader before sending it to Terminal.");
       return;
     }
-    if (!token) {
-      setMessage("Staff bearer token is required before sending Terminal payment.");
-      return;
-    }
-
     setIsSendingTerminal(true);
     setTerminalResult(null);
     setMessage(null);
 
     try {
       const headers = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       };
       const body = JSON.stringify({
         saleRef,
         idempotencyKey
       });
 
-      const intentResponse = await fetch("/api/payments/stripe-terminal", {
+      const intentResponse = await staffSession.staffFetch("/api/payments/stripe-terminal", {
         method: "POST",
         headers,
         body
@@ -385,8 +387,9 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       if (!intentResponse.ok) {
         throw new Error(intentData.error ?? "Could not create Terminal PaymentIntent");
       }
+      if (authEpoch !== authEpochRef.current) return;
 
-      const processResponse = await fetch("/api/payments/stripe-terminal/process", {
+      const processResponse = await staffSession.staffFetch("/api/payments/stripe-terminal/process", {
         method: "POST",
         headers,
         body
@@ -395,6 +398,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       if (!processResponse.ok) {
         throw new Error("error" in processData ? processData.error ?? "Could not send sale to reader" : "Could not send sale to reader");
       }
+      if (authEpoch !== authEpochRef.current) return;
 
       const nextResult = processData as TerminalProcessResponse;
       setTerminalResult(nextResult);
@@ -404,11 +408,27 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
           : "Sale sent to the stored reader. Wait for Stripe confirmation before treating it as paid."
       );
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setTerminalResult(null);
       setMessage(error instanceof Error ? error.message : "Could not send sale to reader");
     } finally {
-      setIsSendingTerminal(false);
+      if (authEpoch === authEpochRef.current) setIsSendingTerminal(false);
     }
+  }
+
+  async function endStaffSession() {
+    authEpochRef.current += 1;
+    reviewVersionRef.current += 1;
+    setCart([]);
+    setCustomerEmail("");
+    setReaderOptions([]);
+    setSelectedReaderKey("");
+    setReaderMessage(null);
+    setAuthorizedStaff(null);
+    setDraft(null);
+    setTerminalResult(null);
+    setMessage(null);
+    await staffSession.signOut();
   }
 
   return (
@@ -572,22 +592,40 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
         </label>
 
         <div className="posNextTerminalSetup" aria-label="Terminal setup">
-          <label>
-            <span>Staff Token</span>
-            <input
-              autoComplete="off"
-              placeholder="Bearer token"
-              type="password"
-              value={staffToken}
-              onChange={(event) => {
-                setStaffToken(event.target.value);
-                setReaderOptions([]);
-                setSelectedReaderKey("");
-                setReaderMessage(null);
-                resetReview();
-              }}
-            />
-          </label>
+          <div className="posNextStaffSession">
+            {staffSession.status === "signed-in" || staffSession.status === "signing-out" ? (
+              <>
+                <span>{authorizedStaff ? "Staff authorized" : "Identity verified"}</span>
+                <strong>{authorizedStaff?.emailLower ?? staffSession.email ?? "Verify staff access"}</strong>
+                <button
+                  className="secondaryAction"
+                  type="button"
+                  disabled={staffSession.status === "signing-out"}
+                  onClick={() => void endStaffSession()}
+                >
+                  {staffSession.status === "signing-out" ? "Signing out" : "Sign out"}
+                </button>
+              </>
+            ) : staffSession.status === "unconfigured" ? (
+              <>
+                <span>Setup required</span>
+                <strong>Clerk and Convex are not linked yet.</strong>
+              </>
+            ) : staffSession.status === "loading" ? (
+              <span>Checking staff session</span>
+            ) : (
+              <>
+                <span>Signed out</span>
+                <Link
+                  className="secondaryAction"
+                  href={`/staff-sign-in?returnTo=${encodeURIComponent(pathname === "/pos-next" ? "/pos-next" : "/pos")}`}
+                  prefetch={false}
+                >
+                  Staff sign in
+                </Link>
+              </>
+            )}
+          </div>
           <div className="posNextTerminalPicker">
             <label>
               <span>Authorized Reader</span>
@@ -610,7 +648,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
             <button
               className="secondaryAction"
               type="button"
-              disabled={isLoadingReaders || !staffToken.trim()}
+              disabled={isLoadingReaders || staffSession.status !== "signed-in"}
               onClick={loadTerminalReaders}
             >
               {isLoadingReaders ? "Loading" : "Load Readers"}
@@ -662,7 +700,12 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
         {message ? <p className="posNextMessage">{message}</p> : null}
 
         <div className="posNextActions">
-          <button className="primaryAction" type="button" disabled={isReviewing || cart.length === 0} onClick={reviewSale}>
+          <button
+            className="primaryAction"
+            type="button"
+            disabled={isReviewing || cart.length === 0 || staffSession.status !== "signed-in"}
+            onClick={reviewSale}
+          >
             {isReviewing ? "Reviewing" : "Review Sale"}
             <ArrowRight size={18} />
           </button>
@@ -676,7 +719,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
               !draft?.persisted ||
               !draft.saleRef ||
               !draft.draft.readerId ||
-              !staffToken.trim()
+              staffSession.status !== "signed-in"
             }
             onClick={sendToTerminalReader}
           >

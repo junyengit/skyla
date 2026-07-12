@@ -54,9 +54,12 @@ As of July 12, 2026:
   `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
   install/build commands even when the dashboard settings page shows defaults.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
-  the remaining Convex/Stripe env setup. It reports only env names/scopes,
-  fails until `NEXT_PUBLIC_CONVEX_URL` is in Preview/Production, and fails if
-  Stripe/staff/Terminal secrets are accidentally placed in Vercel.
+  the remaining Convex/Stripe env setup. The current branch extends it with
+  Clerk gates. It reports only env names/scopes and fails until
+  `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
+  `CLERK_SECRET_KEY` are in Preview/Production. It still rejects misplaced
+  Stripe, staff-bootstrap, and Terminal secrets; the Clerk secret is the
+  intentional server-side Vercel exception.
 - Future docs-only or tooling merges may create newer production URLs with the
   same app behavior. Use Vercel project `junyen-enterprises/web` or
   `vercel ls web --scope junyen-enterprises` before recording fresh
@@ -82,9 +85,10 @@ As of July 12, 2026:
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished. After adding Vercel envs, run
   `bun run vercel:project:check` and `bun run vercel:env:check` to verify the
-  Vercel project shape and `NEXT_PUBLIC_CONVEX_URL` scope. After Vercel and
-  Convex dashboard edits, run `bun run dashboard:readiness` for one safe JSON
-  summary of the remaining dashboard actions before linked Preview acceptance.
+  Vercel project shape plus Convex URL and Clerk-key scopes. After Vercel,
+  Clerk, and Convex dashboard edits, run `bun run dashboard:readiness` for one
+  safe JSON summary of the remaining dashboard actions before linked Preview
+  acceptance.
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
@@ -158,7 +162,8 @@ PAYMENT_SMOKE_BASE_URL=https://www.skydeckla.com bun run test:payments
 ```
 
 For dashboard setup progress, run this separately. It is expected to fail until
-the Vercel and Convex dashboard gates are ready for linked Preview acceptance:
+the Vercel, Clerk, and Convex dashboard gates are ready for linked Preview
+acceptance:
 
 ```bash
 bun run vercel:project:check
@@ -167,6 +172,16 @@ bun run dashboard:readiness
 
 ## Current Bridge Notes
 
+- The current branch removes raw pasted staff-token fields from Admin and POS.
+  Route-scoped Clerk v7 handles human sign-in, while `staffFetch` requests a
+  short-lived `convex` JWT for each protected API call. Convex `staffUsers` and
+  `requireStaffUser` remain role authority; the bearer API contract remains for
+  controlled automation. This is not merged or deployed, and it fails closed
+  until Vercel Preview/Production have `NEXT_PUBLIC_CONVEX_URL`,
+  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY`, Convex has
+  `CLERK_JWT_ISSUER_DOMAIN`, and the first Clerk user ID is bootstrapped as the
+  staff `subject` before the temporary bootstrap token is removed. See
+  [ADR 0034](docs/decisions/0034-clerk-convex-staff-auth.md).
 - Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
 - Native `/about` is a server-rendered content route. Native `/cafe` renders

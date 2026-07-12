@@ -8,6 +8,16 @@ const required = [
     key: "NEXT_PUBLIC_CONVEX_URL",
     targets: ["production", "preview"],
     note: "required by Vercel-hosted Next routes before Convex-backed writes can persist"
+  },
+  {
+    key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    targets: ["production", "preview"],
+    note: "browser-safe Clerk key required by the staff sign-in provider"
+  },
+  {
+    key: "CLERK_SECRET_KEY",
+    targets: ["production", "preview"],
+    note: "server-only Clerk key required by the Next.js staff auth proxy"
   }
 ];
 const forbiddenKeys = [
@@ -56,7 +66,10 @@ const output = {
   source: source.kind,
   scope: source.scope,
   projectRoot: source.projectRoot,
-  readyForConvexUrl: checks.every((check) => check.ok),
+  readyForConvexUrl: checks.find((check) => check.key === "NEXT_PUBLIC_CONVEX_URL")?.ok ?? false,
+  readyForStaffAuth: checks
+    .filter((check) => check.key === "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || check.key === "CLERK_SECRET_KEY")
+    .every((check) => check.ok),
   safeSecretPlacement: forbidden.every((check) => check.ok) && publicSecretLike.length === 0,
   checks,
   forbidden,

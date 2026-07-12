@@ -2251,6 +2251,31 @@ h3 {
   margin-top: 12px;
 }
 
+.posNextStaffSession {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  padding: 10px 12px;
+}
+
+.posNextStaffSession span {
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.posNextStaffSession strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .posNextTerminalSetup label:first-child {
   grid-column: 1 / -1;
 }
@@ -2540,6 +2565,22 @@ h3 {
   grid-template-columns: minmax(260px, 0.28fr) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+}
+
+.staffSignInShell {
+  min-height: calc(100svh - 126px);
+  display: grid;
+  place-items: center;
+  padding: 24px 0;
+}
+
+.staffSignInShell > * {
+  width: min(440px, 100%);
+}
+
+.staffSignInShell .cl-rootBox,
+.staffSignInShell .cl-cardBox {
+  width: 100%;
 }
 
 .adminOpsPanel,
@@ -3330,6 +3371,10 @@ h3 {
 }
 
 @media (max-width: 640px) {
+  .posNextStaffSession {
+    grid-template-columns: 1fr;
+  }
+
   .adminOpsGrid,
   .adminOpsReadiness,
   .adminOpsRow,

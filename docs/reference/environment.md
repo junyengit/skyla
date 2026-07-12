@@ -8,9 +8,14 @@ safe for browser code, secret means dashboard/server only.
 
 - Vercel owns the web app environment.
 - Convex owns database functions and payment actions.
+- Clerk authenticates human staff; Convex `staffUsers` records and
+  `requireStaffUser` still authorize their Skyla roles.
 - Stripe keys stay server-side except the publishable key.
 - The live site can keep running without Convex envs, but writes and payments
   intentionally fail closed until Convex and Stripe envs are both configured.
+- The staff UI also fails closed until the Clerk keys exist in Vercel and the
+  matching Clerk issuer exists in Convex. It does not fall back to pasted staff
+  tokens.
 - Supabase variables are legacy-only during this cutover. Do not add them back
   for new Next.js App Router flows.
 - Legacy data migration uses a short-lived Convex token and direct HTTPS client
@@ -22,8 +27,11 @@ safe for browser code, secret means dashboard/server only.
 | --- | --- | --- | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | yes | Vercel | Production/Preview/Development | Browser-safe canonical URL. | Helpful for UI links and return URLs. |
 | `NEXT_PUBLIC_CONVEX_URL` | yes | Vercel | Production/Preview/Development | Lets Next routes call the linked Convex deployment. | Required for persisted checkout drafts from Vercel. |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | yes | Vercel | Preview/Production | Initializes route-scoped Clerk v7 on the staff sign-in, Admin, and POS routes. | Required in both scopes before staff sign-in acceptance. Missing configuration shows setup-required and keeps staff workflows closed. |
+| `CLERK_SECRET_KEY` | no | Vercel | Preview/Production | Lets the Next.js Clerk integration validate and manage the server-side staff session. | Required in both scopes. Never expose it through `NEXT_PUBLIC_*` or place it in Convex. |
 | `CONVEX_DEPLOYMENT` | no | local + Convex CLI | local/dev | Links local codegen to the real Convex project. | Must not be `anonymous:*` for cloud readiness. |
 | `CONVEX_URL` | no | operator shell / local tooling | Development or migration session | Server-side Convex URL for local checks and the direct HTTPS legacy migration client. | Migration commands require this or `--convex-url`; cloud URLs must be HTTPS on `convex.cloud`, localhost is allowed only for local development, and every remote apply/rollback requires explicit confirmation because the URL does not identify its environment. |
+| `CLERK_JWT_ISSUER_DOMAIN` | no | Convex | Production/Preview/Development | Identifies the trusted Clerk issuer for the `convex` JWT integration. | Required before Convex accepts Clerk-authenticated staff calls. It must match the Clerk application used by the corresponding Vercel environment. |
 | `SKYLA_STRIPE_MODE` | no | Convex | Production/Preview/Development | Required Stripe mode guard. Use `test` for preview/test acceptance and `live` only after live cutover is approved. | Required before any Stripe Checkout, Terminal, or webhook action can run. |
 | `STRIPE_SECRET_KEY` | no | Convex | Production/Preview/Development | Allows Convex actions to create Stripe Checkout Sessions and Stripe Terminal PaymentIntents. Must match `SKYLA_STRIPE_MODE` (`sk_test_` for `test`, `sk_live_` for `live`). | Required before `payments.createStripeCheckoutSession` or `payments.createStripeTerminalPaymentIntent` can run. |
 | `SKYLA_PAYMENT_RETURN_ORIGINS` | no | Convex | Production/Preview/Development | Comma-separated allowed origins for Stripe success/cancel URLs. | Required; example `https://skydeckla.com,https://www.skydeckla.com`. |
@@ -52,7 +60,7 @@ them as permanent Vercel or Convex runtime variables.
 | `SKYLA_ACCEPTANCE_MODE` | yes | `linked-test` | Explicitly opts into linked Preview writes. |
 | `SKYLA_ACCEPTANCE_STRIPE_MODE` | yes | `test` | Refuses acceptance unless the operator confirms Stripe test mode. |
 | `SKYLA_ACCEPTANCE_NO_REAL_CARDS` | yes | `1` | Confirms no real cards should be used. |
-| `SKYLA_STAFF_TEST_TOKEN` | yes | `<seeded staff token>` | Staff bearer token for reader and POS draft checks. |
+| `SKYLA_STAFF_TEST_TOKEN` | yes | `<seeded staff token>` | Staff bearer token for controlled automation and reader/POS acceptance checks. The human UI does not ask staff to paste it. |
 | `SKYLA_ACCEPTANCE_STRIPE_CHECKOUT` | no | `1` | Also create a Stripe test-mode Checkout Session from the stored `orderRef`; requires the remote readiness snapshot to report Stripe Checkout ready in test mode. |
 | `SKYLA_ACCEPTANCE_TERMINAL_READER` | no | `1` | Also ask a Stripe test Terminal reader to process the stored sale; requires the remote readiness snapshot to report Terminal reader processing ready in test mode. |
 | `SKYLA_ALLOW_PRODUCTION_ACCEPTANCE` | no | `1` | Allows the harness to run against `skydeckla.com`; leave unset for Preview-first acceptance. |
@@ -125,18 +133,21 @@ values for deployments and is the source of truth for Skyla's Bun canary path.
 
 `vercel:env:check` reads `vercel env ls --format json` from the linked
 `apps/web` project and reports only names/scopes. It fails until
-`NEXT_PUBLIC_CONVEX_URL` exists in Preview and Production, and it also fails if
-Stripe, staff, or Terminal secrets are accidentally placed in the Vercel
-project instead of Convex. Do not print secret values in logs, PRs, or docs.
-Check presence, scope, and shape only.
+`NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
+`CLERK_SECRET_KEY` exist in Preview and Production. It also fails if Stripe,
+staff-bootstrap, or Terminal secrets are accidentally placed in the Vercel
+project instead of Convex. `CLERK_SECRET_KEY` is the intentional Vercel-side
+exception because Clerk's Next.js server integration needs it. Do not print
+secret values in logs, PRs, or docs. Check presence, scope, and shape only.
 
 `dashboard:readiness` combines the safe Vercel project, Vercel env, and Convex
 env checks into one JSON report. It exits non-zero until the linked Preview
 no-write preflight has the minimum dashboard shape: Vercel project shape is
-aligned, Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and Production, Vercel
-has no misplaced payment/staff secrets, Convex is cloud linked, Stripe Checkout
-envs are present, and Stripe webhook envs are present. The report includes
-ordered `nextActions` for the dashboards and always keeps
+aligned, Vercel has its Convex URL and both Clerk keys in Preview and
+Production, Vercel has no misplaced payment/staff-bootstrap secrets, Convex is
+cloud linked, Convex trusts `CLERK_JWT_ISSUER_DOMAIN`, Stripe Checkout envs are
+present, and Stripe webhook envs are present. The report includes ordered
+`nextActions` for the dashboards and always keeps
 `safeToUseRealCards: false` during migration verification.
 
 ## Staff Bootstrap Token
@@ -145,8 +156,10 @@ Use `SKYLA_STAFF_BOOTSTRAP_TOKEN` only to create or update initial
 `staffUsers` rows after the real Convex project is linked. It must be at least
 32 characters and contain no whitespace.
 
-After staff is seeded and a real staff bearer token can load `/admin`, remove
-the bootstrap token from Convex:
+Use the Clerk user ID, not an email address or a temporary token, as the
+`subject` passed to `staffBootstrap.upsertStaffUser`. After that Clerk-backed
+identity can load `/admin` with the expected Convex role, remove the bootstrap
+token from Convex:
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bunx convex env remove SKYLA_STAFF_BOOTSTRAP_TOKEN
