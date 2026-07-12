@@ -93,6 +93,9 @@ flowchart LR
   admin, native POS, and saved `.html` compatibility routes smoke-test
   successfully. The compatibility layer is now a centralized Next.js redirect
   registry rather than duplicate static pages.
+- Checkout, Members, Experiences, and Privacy use customer-facing language.
+  Temporary fallback messages provide an email next step without exposing
+  internal migration, framework, database, or dashboard status.
 - Checkout and POS no-write probes replace browser-supplied totals with
   server-owned totals.
 - Stripe execution routes fail closed while Convex and Stripe dashboards are not

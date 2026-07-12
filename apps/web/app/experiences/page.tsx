@@ -140,9 +140,10 @@ export default function ExperiencesPage() {
           <h2>Designed for slower arrivals, private moments, and hosted groups.</h2>
         </div>
         <p>
-          The experience program is moving out of the legacy browser-storage
-          path. Requests now go through a server API first, then into Convex
-          when the secure database is connected.
+          From first drinks to full-deck celebrations, each experience is shaped
+          around the size, timing, and tone of your group. Share what you are
+          planning and our events team will recommend the right space and
+          service.
         </p>
       </section>
 
@@ -234,7 +235,7 @@ export default function ExperiencesPage() {
         <div className="publicBandHeader">
           <p className="sectionLabel">Reserve an experience</p>
           <h2>Tell us what you are planning.</h2>
-          <p>The form only shows success after the server accepts the inquiry.</p>
+          <p>Share a few details and the events team will follow up by email.</p>
         </div>
         <ExperienceInquiryClient />
       </section>

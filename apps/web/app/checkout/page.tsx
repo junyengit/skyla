@@ -7,7 +7,7 @@ import { CheckoutClient } from "@/components/checkout-client";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Reserve Sky LA tickets through the server-backed checkout flow.",
+  description: "Reserve Sky LA tickets and review your visit details before secure hosted payment.",
   referrer: "no-referrer"
 };
 
@@ -57,8 +57,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         </div>
         <h1>Checkout</h1>
         <p>
-          Pick a visit, confirm the server-calculated total, then continue to
-          hosted card payment when the Convex and Stripe dashboards are wired.
+          Choose your visit, review the exact total, and continue to secure
+          hosted card payment.
         </p>
       </section>
 
@@ -72,11 +72,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
       <section className="checkoutTrust" aria-label="Checkout safeguards">
         <div>
           <ShieldCheck size={22} />
-          <span>Server totals only</span>
+          <span>Prices verified before payment</span>
         </div>
         <div>
           <ArrowRight size={22} />
-          <span>Stripe hosted payment after Convex persistence</span>
+          <span>Secure hosted card payment</span>
         </div>
       </section>
     </main>

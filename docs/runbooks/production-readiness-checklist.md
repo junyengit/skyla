@@ -882,7 +882,7 @@ What has been done:
 - Admin, native POS, and `/pos-next` use high-contrast dark staff screens; the
   staff contrast test keeps admin/POS text, controls, and POS headings white on
   black. Saved staff `.html` URLs redirect to those screens.
-- `/admin` is being moved into Next.js. It now has staff-gated operations,
+- `/admin` is now a native Next.js staff surface with operations,
   booking/member status buttons, announcement/hours config, and voucher
   redemption code. It also has admin-only CSV exports for bookings, members,
   inquiries, orders, POS sales, and payments. Those exports use fixed columns,

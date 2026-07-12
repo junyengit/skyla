@@ -98,6 +98,38 @@ describe("App Router route ownership", () => {
     }
   });
 
+  it("keeps internal migration status out of customer-facing copy", () => {
+    const customerFacingFiles = [
+      "app/checkout/page.tsx",
+      "components/checkout-client.tsx",
+      "app/experiences/page.tsx",
+      "components/experience-inquiry-client.tsx",
+      "app/members/page.tsx",
+      "components/members-application-client.tsx",
+      "app/privacy/page.tsx"
+    ];
+    const internalPhrases = [
+      /legacy browser/i,
+      /browser-storage/i,
+      /server API/i,
+      /App Router/i,
+      /Convex dashboard/i,
+      /dashboards are wired/i,
+      /secure database is connected/i,
+      /server accepts the application/i,
+      /server accepts the inquiry/i,
+      /stored in Convex/i,
+      /server-backed checkout/i
+    ];
+
+    for (const path of customerFacingFiles) {
+      const contents = readFileSync(join(webDir, path), "utf8");
+      for (const phrase of internalPhrases) {
+        expect(contents, `${path} exposes ${phrase}`).not.toMatch(phrase);
+      }
+    }
+  });
+
   it("generates robots and sitemap metadata from the shared route registry", () => {
     expect(new Set(nativePublicRoutes).size).toBe(nativePublicRoutes.length);
     expect(new Set(staffRoutes).size).toBe(staffRoutes.length);

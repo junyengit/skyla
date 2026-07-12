@@ -117,7 +117,7 @@ export function MembersApplicationClient() {
       if (!response.ok || !data.member) {
         throw new Error(
           data.code === "convex_unconfigured"
-            ? "Membership applications are temporarily paused while the secure database is connected. Please email reservations@skydeckla.com and we will follow up manually."
+            ? "Membership applications are temporarily unavailable. Please email reservations@skydeckla.com and we will follow up."
             : data.error ?? "Could not submit this application"
         );
       }
