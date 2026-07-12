@@ -418,10 +418,11 @@ Current order-spine state:
   gated until the dashboard checks pass.
 - Not present yet: `convex.json`, linked cloud deployment, Vercel Convex env vars, Stripe dashboard webhook endpoint, live payment acceptance
 - Stripe Checkout/webhook status: local code exists and is server-authoritative
-  by stored `orderRef`, async failure events leave the order terminal instead
-  of pending, and `/checkout` is the App Router path. Live card payment remains
-  blocked until Vercel/Convex envs and the real Stripe dashboard endpoint are
-  configured.
+  by stored `orderRef`; paid reconciliation atomically creates one confirmed
+  booking from stored fulfillment fields; async failure events leave the order
+  terminal instead of pending; and `/checkout` is the App Router path. Live
+  card payment remains blocked until Vercel/Convex envs, the real Stripe
+  dashboard endpoint, and linked test-mode fulfillment acceptance are complete.
 - `/checkout.html` and other saved `.html` URLs are centralized permanent
   redirects in `apps/web/site-routes.mjs`; no compatibility HTML documents are
   shipped in `apps/web/public`.

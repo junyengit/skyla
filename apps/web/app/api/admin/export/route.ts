@@ -65,6 +65,7 @@ const exportColumns: Record<ExportKind, ExportColumn[]> = {
     { header: "order_ref", value: field("orderRef") },
     { header: "status", value: field("status") },
     { header: "visit_date", value: field("visitDate") },
+    { header: "entry_time", value: field("entryTime") },
     { header: "email", value: field("emailLower") },
     { header: "first_name", value: field("firstName") },
     { header: "last_name", value: field("lastName") },

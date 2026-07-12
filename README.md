@@ -200,9 +200,12 @@ bun run dashboard:readiness
   Stripe webhook route. `/api/payments/stripe-checkout` and the App Router
   `/checkout` page are wired for this path. Public payment responses are
   allowlisted so accidental Stripe `clientSecret` fields are not returned to
-  the browser. Live card payment still needs real Convex envs, Stripe envs, and
-  Stripe dashboard endpoint setup. Convex also requires `SKYLA_STRIPE_MODE` so
-  test keys/webhooks and live keys/webhooks cannot be mixed silently.
+  the browser. A reconciled paid webhook atomically creates one confirmed
+  booking from the stored email, visit date, entry time, and ticket lines;
+  replayed Stripe events reuse that booking. Live card payment still needs real
+  Convex envs, Stripe envs, and Stripe dashboard endpoint setup. Convex also
+  requires `SKYLA_STRIPE_MODE` so test keys/webhooks and live keys/webhooks
+  cannot be mixed silently.
 - `/api/order-drafts/pos` and native `/pos` add a POS draft review path. The
   older `/pos-next` URL still renders the same native shell during rollout.
   It prices ticket, cafe, and custom POS lines on the server and ignores browser

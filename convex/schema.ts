@@ -195,6 +195,8 @@ export default defineSchema({
     bookingRef: v.string(),
     orderRef: v.optional(v.string()),
     visitDate: v.optional(v.string()),
+    entryTime: v.optional(v.string()),
+    partySize: v.optional(v.number()),
     status: v.string(),
     emailLower: v.optional(v.string()),
     checkedInAt: v.optional(v.number()),

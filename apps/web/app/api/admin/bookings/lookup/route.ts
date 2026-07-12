@@ -26,6 +26,7 @@ type BookingLookupResult = {
     bookingRef: string;
     orderRef?: string;
     visitDate?: string;
+    entryTime?: string;
     status: string;
     emailLower?: string;
     firstName?: string;

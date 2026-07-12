@@ -4,6 +4,8 @@
 
 Accepted for the Stripe payment migration.
 
+Extended by Decision 0030 for atomic Checkout booking fulfillment.
+
 ## Context
 
 Stripe Checkout Session creation now starts from stored Convex orders, and

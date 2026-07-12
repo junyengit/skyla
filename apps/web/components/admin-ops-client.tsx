@@ -36,6 +36,7 @@ type AdminBooking = {
   bookingRef: string;
   orderRef?: string;
   visitDate?: string;
+  entryTime?: string;
   status: string;
   emailLower?: string;
   firstName?: string;
@@ -740,7 +741,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                 <div className="adminOpsLookupCard" key={booking.bookingRef}>
                   <div>
                     <strong>{booking.bookingRef}</strong>
-                    <span>{[guestName, booking.emailLower, booking.visitDate].filter(Boolean).join(" / ")}</span>
+                    <span>{[guestName, booking.emailLower, booking.visitDate, booking.entryTime].filter(Boolean).join(" / ")}</span>
                     <em>{booking.partySize ? `${booking.partySize} guests` : booking.orderRef ?? "No party size"}</em>
                   </div>
                   <span>{booking.status}</span>
