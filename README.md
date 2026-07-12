@@ -45,9 +45,9 @@ As of July 12, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest production deployment evidence recorded here:
-  `https://web-dyh99dnjq-junyen-enterprises.vercel.app` from merge commit
-  `fc7a497358b573563d9f0772d3728c4bc853c562` (PR #121, deployment
-  `dpl_H64P1fywRZnxzyi4qdf12pULncAS`, status `READY`). This identifies the current deployment;
+  `https://web-k4sx362fp-junyen-enterprises.vercel.app` from merge commit
+  `c6a13e5bdba0e3410aa2657cd6c3889c35013228` (PR #125, deployment
+  `dpl_8a3zSvT4o9XT3rRjukd44magVr41`, status `READY`). This identifies the current deployment;
   it does not mean the Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
@@ -94,7 +94,7 @@ As of July 12, 2026:
   Stripe dashboard setup is finished. `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables on July 12,
   2026.
-- Payment API audit and smoke checks on July 7, 2026 found no raw card
+- Payment API audit and smoke checks on July 12, 2026 found no raw card
   collection or storage, no public `clientSecret` response exposure, and
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
@@ -104,7 +104,7 @@ As of July 12, 2026:
 - Payment route failures use stable public error codes/messages so raw
   Stripe/Convex/provider details and env names are not returned to browsers.
 - Vercel production runtime checks found no `error` or `fatal` logs in the
-  checked post-merge window for the recorded PR #121 deployment. The observed
+  checked post-merge window for the recorded PR #125 deployment. The observed
   non-200 responses were expected staff-auth `401` and Convex-unconfigured
   `503` gates from the smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest

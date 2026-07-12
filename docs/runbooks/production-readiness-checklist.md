@@ -105,11 +105,11 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest production deployment evidence recorded here on 2026-07-12:
-  `https://web-dyh99dnjq-junyen-enterprises.vercel.app`
+  `https://web-k4sx362fp-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-12:
-  `dpl_H64P1fywRZnxzyi4qdf12pULncAS` (`READY`)
+  `dpl_8a3zSvT4o9XT3rRjukd44magVr41` (`READY`)
 - Evidence merge commit checked on 2026-07-12:
-  `fc7a497358b573563d9f0772d3728c4bc853c562` (PR #121). This deployment
+  `c6a13e5bdba0e3410aa2657cd6c3889c35013228` (PR #125). This deployment
   identity does not mean the Supabase-to-Convex data migration has run.
 - Post-merge readiness passed on apex, `www`, and the immutable deployment;
   payment smokes passed on all three; Vercel reported no runtime error clusters
@@ -119,7 +119,7 @@ stored line amounts remain the payment authority.
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
   present, and `apps/web/vercel.json` as the Bun canary install/build source
   of truth.
-- PR #121 passed `bun run check` on 2026-07-12: 125 web tests,
+- PR #125 passed `bun run check` on 2026-07-12: 126 web tests,
   143 Convex tests, 39 script tests, lint, all typechecks, the Next.js
   production build, artifact checks, and legacy Supabase retirement checks.
   `bun install --frozen-lockfile` and `bun audit --audit-level=low` also passed

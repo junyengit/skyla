@@ -22,7 +22,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       wrapper requests a short-lived `convex` JWT for each protected call;
       `staffUsers` and `requireStaffUser` remain Convex role authority, and the
       bearer API contract remains available for automation.
-- [x] Passed the branch gate with 125 web tests, 143 Convex tests, 39 script
+- [x] Passed the current main gate with 126 web tests, 143 Convex tests, 39 script
       tests, lint, all typechecks, the Next production build, artifact and
       legacy-retirement guards, frozen Bun install, and a low-threshold audit
       with no vulnerabilities. Headless desktop/mobile QA found no overflow,
@@ -32,9 +32,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Merged Clerk staff-auth PR #121 as
       `fc7a497358b573563d9f0772d3728c4bc853c562` after CI, CodeQL, Vercel,
       correctness, and security review passed.
+- [x] Merged public-copy cleanup PR #125 as
+      `c6a13e5bdba0e3410aa2657cd6c3889c35013228` after CI, CodeQL, Vercel,
+      production-build, desktop/mobile visual, and no-write Preview review.
 - [x] Verified READY production deployment
-      `https://web-dyh99dnjq-junyen-enterprises.vercel.app`
-      (`dpl_H64P1fywRZnxzyi4qdf12pULncAS`). Apex and `www` serve the same
+      `https://web-k4sx362fp-junyen-enterprises.vercel.app`
+      (`dpl_8a3zSvT4o9XT3rRjukd44magVr41`). Apex and `www` serve the same
       deployment ID; production-readiness and payment smokes passed on all
       three bases, and Vercel returned no error/fatal logs in the checked
       post-merge window.
