@@ -204,12 +204,15 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     legacyId: v.optional(v.string()),
+    legacySource: v.optional(v.string()),
+    legacyFingerprint: v.optional(v.string()),
     rawLegacy: v.optional(v.any())
   })
     .index("by_bookingRef", ["bookingRef"])
     .index("by_orderRef", ["orderRef"])
     .index("by_visitDate_status", ["visitDate", "status"])
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
+    .index("by_legacyId", ["legacyId"])
     .index("by_createdAt", ["createdAt"]),
 
   voucherRedemptionEvents: defineTable({
@@ -239,11 +242,14 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     legacyId: v.optional(v.string()),
+    legacySource: v.optional(v.string()),
+    legacyFingerprint: v.optional(v.string()),
     rawLegacy: v.optional(v.any())
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
+    .index("by_legacyId", ["legacyId"])
     .index("by_idempotencyKey", ["idempotencyKey"]),
 
   inquiries: defineTable({
@@ -262,12 +268,64 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     legacyId: v.optional(v.string()),
+    legacySource: v.optional(v.string()),
+    legacyFingerprint: v.optional(v.string()),
     rawLegacy: v.optional(v.any())
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
+    .index("by_legacyId", ["legacyId"])
     .index("by_idempotencyKey", ["idempotencyKey"]),
+
+  legacyMigrationBatches: defineTable({
+    batchId: v.string(),
+    source: v.string(),
+    kind: v.union(v.literal("bookings"), v.literal("members"), v.literal("inquiries")),
+    inputHash: v.string(),
+    recordCount: v.number(),
+    createdCount: v.number(),
+    reusedCount: v.number(),
+    completedAt: v.number(),
+    rolledBackAt: v.optional(v.number()),
+    rollbackDeletedCount: v.optional(v.number()),
+    rollbackManualReviewCount: v.optional(v.number())
+  })
+    .index("by_batchId", ["batchId"])
+    .index("by_source_completedAt", ["source", "completedAt"])
+    .index("by_completedAt", ["completedAt"]),
+
+  legacyImportRecords: defineTable({
+    batchId: v.string(),
+    source: v.string(),
+    kind: v.union(v.literal("bookings"), v.literal("members"), v.literal("inquiries")),
+    legacyId: v.string(),
+    targetId: v.string(),
+    sourceFingerprint: v.string(),
+    targetFingerprint: v.string(),
+    operation: v.union(v.literal("created"), v.literal("reused")),
+    importedAt: v.number()
+  })
+    .index("by_batchId", ["batchId"])
+    .index("by_source_kind_legacyId", ["source", "kind", "legacyId"])
+    .index("by_targetId_importedAt", ["targetId", "importedAt"]),
+
+  legacyMigrationSources: defineTable({
+    source: v.string(),
+    bookingCount: v.number(),
+    memberCount: v.number(),
+    inquiryCount: v.number(),
+    ledgerRecordCount: v.number(),
+    batchCount: v.number(),
+    activeBatchCount: v.number(),
+    updatedAt: v.number()
+  }).index("by_source", ["source"]),
+
+  legacyMigrationTargets: defineTable({
+    targetId: v.string(),
+    activeBatchCount: v.number(),
+    updatedAt: v.number()
+  }).index("by_targetId", ["targetId"]),
 
   config: defineTable({
     key: v.string(),

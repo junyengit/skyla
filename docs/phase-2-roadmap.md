@@ -1,6 +1,6 @@
 # Skyla Phase 2 Roadmap
 
-Last updated: 2026-07-07
+Last updated: 2026-07-12
 
 ## Plain-English Goal
 
@@ -241,8 +241,16 @@ Initial server boundaries:
 Definition of done:
 
 - Supabase reads/writes are replaced route-by-route.
-- Dual-run migration has reconciled counts and sampled data.
+- The legacy `bookings`, `members`, and `inquiries` export has passed immutable
+  SHA-256 review, quarantine, development apply, count/sample reconciliation,
+  and explicit production confirmation.
 - Supabase functions are disabled only after verification and explicit rollback decision.
+
+Legacy data migration is narrower than the target schema. It does not import
+`config`, Supabase Auth/passwords, orders, POS sales, payment events, or webhook
+events. Historical bookings create booking records only and never manufacture
+financial ledger history. The current implementation is documented in
+`docs/runbooks/supabase-convex-data-migration.md`; no cloud migration has run.
 
 ### 4. Product Functionality Rebuild
 
@@ -328,8 +336,11 @@ Baseline now in place:
 7. Server-authoritative order/payment boundary.
 8. Members flow.
 9. Admin/POS rebuild.
-10. Supabase shutdown after Convex/payment verification.
+10. Ledgered bookings/members/inquiries migration, development reconciliation,
+    and explicit production confirmation.
 11. Compatibility bridge removal route-by-route.
+12. Supabase read-only retention and eventual shutdown only after data and
+    payment verification.
 
 ## Raw Operational Data For Agents
 
@@ -342,14 +353,14 @@ Current verified Vercel data:
 - Vercel project root: `apps/web`
 - Production branch: `main`
 - Latest verified production commit:
-  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113)
+  `61ec73f83188f117e444a9da2d971ae709a27ee1` (PR #116)
 - Latest verified production deployment evidence:
-  `https://web-5whdulzh0-junyen-enterprises.vercel.app`
+  `https://web-8hw004wy3-junyen-enterprises.vercel.app`
 - Latest verified production deployment ID:
-  `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`
-- Latest app-code verification: PR #113. This includes payment response
-  hardening, staff contrast, route/payment/readiness smokes, and visual QA.
-  Query Vercel before recording fresh operational evidence.
+  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`
+- Latest deployment identity: PR #116. This does not claim that the legacy data
+  migration has been applied. Query Vercel and rerun the relevant smokes before
+  recording fresh behavior evidence.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -471,4 +482,7 @@ bunx vercel ls web --scope junyen-enterprises
 - Root legacy files have been removed after Vercel cutover verification.
 - Compatibility pages in `apps/web/public` remain until App Router replacements are tested.
 - Client-side payment/admin logic must not be treated as secure just because it is now served from Vercel.
-- Convex migration should be dual-run and reconciled before Supabase shutdown.
+- The ledgered legacy migration must be dry-run, applied to development, and
+  reconciled before explicit production confirmation. Keep Supabase read-only
+  after production reconciliation; localStorage recovery remains a separate,
+  manually deduplicated source.

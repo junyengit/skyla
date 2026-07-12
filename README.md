@@ -44,10 +44,11 @@ flowchart LR
 As of July 12, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest full app/payment production verification recorded here:
-  `https://web-5whdulzh0-junyen-enterprises.vercel.app` from merge commit
-  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113,
-  deployment `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`, status `READY`).
+- Latest production deployment evidence recorded here:
+  `https://web-8hw004wy3-junyen-enterprises.vercel.app` from merge commit
+  `61ec73f83188f117e444a9da2d971ae709a27ee1` (PR #116, deployment
+  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`). This identifies the current deployment;
+  it does not mean the Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
@@ -240,6 +241,11 @@ bun run dashboard:readiness
   `SKYLA_SUPABASE_RETIREMENT_BASE_URL` and
   `SKYLA_SUPABASE_RETIREMENT_LIVE=1` to prove deployed legacy endpoints are
   disabled or redeployed from the retired stubs.
+- A ledgered migration path now exists for legacy `bookings`, `members`, and
+  `inquiries`. It uses immutable Supabase exports, deterministic SHA-256
+  manifests, quarantine, development-first HTTPS apply, reconciliation, and
+  per-batch rollback. It deliberately excludes config, Supabase Auth/passwords,
+  orders, and payment events. No cloud data migration has been performed.
 
 Useful operator references:
 
@@ -248,6 +254,7 @@ Useful operator references:
 - [Plain-English Current State](docs/current-state-simple.md)
 - [Stripe Checkout Cutover Runbook](docs/runbooks/stripe-checkout-cutover.md)
 - [Convex Deployment Runbook](docs/runbooks/convex-deployment.md)
+- [Supabase To Convex Data Migration Runbook](docs/runbooks/supabase-convex-data-migration.md)
 
 ## Deployment Direction
 

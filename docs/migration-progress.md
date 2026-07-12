@@ -1321,6 +1321,37 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] No Skyla Convex cloud project is visible to the currently authenticated
       local Convex account; project creation/linking remains a dashboard step.
 
+### 2026-07-12 PR #116 Deployment And Legacy Data Migration Preparation
+
+- [x] Recorded current production deployment evidence for PR #116 merge commit
+      `61ec73f83188f117e444a9da2d971ae709a27ee1`:
+      `https://web-8hw004wy3-junyen-enterprises.vercel.app`
+      (`dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`).
+- [x] Added a narrowly scoped legacy migration implementation for Supabase
+      `bookings`, `members`, and `inquiries`, with deterministic SHA-256 plans,
+      quarantine, 1-50 row batches, stable source identities, batch/row ledgers,
+      summary reconciliation, and conservative per-batch rollback.
+- [x] Kept historical bookings separate from canonical orders and payment
+      events. The migration excludes config, Supabase Auth/passwords, orders,
+      POS sales, and payment/webhook ledgers.
+- [x] Changed the operator CLI to use `ConvexHttpClient` over an explicit HTTPS
+      Convex URL, so PII and the temporary migration token are not placed in
+      process arguments. Remote commands still require an explicit deployment
+      label; every remote apply and rollback requires `--confirm-production`
+      because the Convex URL does not identify its environment.
+- [x] Documented verified physical-table export SQL for `id`, `data`, and
+      `created_at`, immutable source/timestamp/SHA controls, private review
+      artifacts, development-first apply, reconciliation, rollback, production
+      confirmation, token removal, read-only Supabase retention, and separate
+      localStorage recovery.
+- [ ] Export the real Supabase source and resolve every quarantined row.
+- [ ] Apply and reconcile the reviewed plan on a linked Convex development
+      deployment.
+- [ ] Record human production approval, apply the exact reviewed plan with
+      `--confirm-production`, reconcile it, and remove the temporary token.
+- [ ] Keep Supabase read-only for the agreed retention window after production
+      reconciliation. No cloud data migration has occurred yet.
+
 ## Decisions
 
 - Keep duplicate legacy static files out of the root and `apps/web/public`;
