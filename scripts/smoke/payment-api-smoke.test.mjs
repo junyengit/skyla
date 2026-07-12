@@ -172,6 +172,11 @@ function handler({ omitProvenance = false, wrongHash = false } = {}) {
       return;
     }
 
+    if (request.method === "POST" && request.url === "/api/payments/stripe-checkout/status") {
+      json(response, { code: "convex_unconfigured" }, 503, noStoreHeaders());
+      return;
+    }
+
     json(response, { error: "not found" }, 404);
   };
 }

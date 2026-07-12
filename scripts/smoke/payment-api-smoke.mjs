@@ -200,6 +200,22 @@ expectFailClosedCode("Stripe Checkout execution", checkoutPayment, 503, [
 ]);
 expectNoStore("Stripe Checkout execution", checkoutPayment);
 
+const checkoutStatus = await postJson("/api/payments/stripe-checkout/status", {
+  checkoutSessionId: "cs_test_smoke1234567890"
+});
+expect(
+  "Stripe Checkout status",
+  [404, 502, 503].includes(checkoutStatus.status),
+  `expected HTTP 404, 502, or 503, got ${checkoutStatus.status}`
+);
+expect(
+  "Stripe Checkout status",
+  ["checkout_not_found", "convex_unconfigured", "payment_service_unavailable"].includes(checkoutStatus.json?.code),
+  `unexpected code ${checkoutStatus.json?.code ?? "none"}`
+);
+expectNoClientSecret("Stripe Checkout status", checkoutStatus);
+expectNoStore("Stripe Checkout status", checkoutStatus);
+
 const terminalUnauthed = await postJson("/api/payments/stripe-terminal", {
   saleRef: "SALE260704-SMOKE1",
   idempotencyKey: "smoke_terminal_no_auth",
@@ -280,4 +296,5 @@ console.log(`- Checkout total: ${checkoutDraft.json.draft.totalCents} cents`);
 console.log(`- POS total: ${posDraft.json.draft.totalCents} cents`);
 console.log("- Checkout/POS catalog-priced lines include code-owned catalog provenance metadata.");
 console.log("- Stripe execution routes fail closed without real Convex/Stripe dashboard wiring and POS Terminal acceptance.");
+console.log("- Checkout return status derives the order from a stored Stripe Session capability and is non-cacheable.");
 console.log("- Payment and staff-gated POS responses are marked no-store, with Authorization variance on staff routes.");

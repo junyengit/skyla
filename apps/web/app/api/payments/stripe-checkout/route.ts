@@ -93,8 +93,8 @@ export async function POST(request: Request) {
       {
         orderRef,
         idempotencyKey,
-        successUrl: `${origin}/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}&order=${encodeURIComponent(orderRef)}`,
-        cancelUrl: `${origin}/checkout?stripe=cancel&order=${encodeURIComponent(orderRef)}`
+        successUrl: `${origin}/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${origin}/checkout?stripe=cancel`
       },
       { url: deploymentUrl }
     );

@@ -202,7 +202,11 @@ bun run dashboard:readiness
   allowlisted so accidental Stripe `clientSecret` fields are not returned to
   the browser. A reconciled paid webhook atomically creates one confirmed
   booking from the stored email, visit date, entry time, and ticket lines;
-  replayed Stripe events reuse that booking. Live card payment still needs real
+  replayed Stripe events reuse that booking. The Checkout return page polls a
+  non-cacheable status endpoint that uses the Stripe Session ID as a bearer
+  capability, derives its order from the stored ledger, and shows confirmed
+  only when the paid order, paid
+  ledger, and booking agree. Live card payment still needs real
   Convex envs, Stripe envs, and Stripe dashboard endpoint setup. Convex also
   requires `SKYLA_STRIPE_MODE` so test keys/webhooks and live keys/webhooks
   cannot be mixed silently.

@@ -65,6 +65,9 @@ sequenceDiagram
   Stripe-->>Webhook: payment event
   Webhook->>Convex: verify signature, amount, currency, status, idempotency
   Convex->>Convex: mark paid + insert one confirmed booking + audit
+  Browser->>Next: POST status(Checkout Session ID)
+  Next->>Convex: derive order from stored session ledger
+  Convex-->>Browser: pending, confirmed, failed, or canceled
 ```
 
 ## Required Env Before Frontend Cutover
@@ -249,6 +252,11 @@ Expected after Convex is wired:
       booking and same-ID or different-ID Stripe replay cannot duplicate it.
 - [ ] Linked test-mode acceptance proves the signed webhook creates one booking
       with the stored email, date, time, and ticket quantity.
+- [x] The return page uses the Stripe Session ID as a bearer capability, derives
+      the order from its stored payment event, and shows confirmed only when the
+      paid ledger, paid order, and booking agree.
+- [ ] Linked test-mode acceptance proves the return page moves from pending to
+      confirmed after the signed webhook.
 - [ ] Home page checkout links resolve to the App Router `/checkout` page, not
       the legacy static rewrite.
 - [x] Legacy Supabase Stripe card creation, old Checkout session verification,

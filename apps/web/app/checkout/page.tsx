@@ -7,7 +7,8 @@ import { CheckoutClient } from "@/components/checkout-client";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Reserve Sky LA tickets through the server-backed checkout flow."
+  description: "Reserve Sky LA tickets through the server-backed checkout flow.",
+  referrer: "no-referrer"
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -19,7 +20,7 @@ function firstParam(value: string | string[] | undefined) {
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const stripeStatus = firstParam(params.stripe);
-  const orderRef = firstParam(params.order);
+  const checkoutSessionId = firstParam(params.session_id);
   const packageOptions = listTicketPackages()
     .map((ticket) => ({
       key: ticket.key,
@@ -65,7 +66,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         packages={packageOptions}
         addons={addonOptions}
         stripeStatus={stripeStatus === "success" || stripeStatus === "cancel" ? stripeStatus : undefined}
-        returnedOrderRef={orderRef}
+        returnedCheckoutSessionId={checkoutSessionId}
       />
 
       <section className="checkoutTrust" aria-label="Checkout safeguards">

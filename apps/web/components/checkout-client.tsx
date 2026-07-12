@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { checkoutEntryTimes, type AddonKey, type TicketPackageKey } from "@skyla/payments";
 import { ArrowRight, CalendarDays, ShieldCheck } from "@skyla/ui/icons";
 
@@ -45,7 +45,7 @@ type CheckoutClientProps = {
   packages: PackageOption[];
   addons: AddonOption[];
   stripeStatus?: "success" | "cancel";
-  returnedOrderRef?: string;
+  returnedCheckoutSessionId?: string;
 };
 
 type AddonQuantities = Partial<Record<AddonKey, number>>;
@@ -74,7 +74,7 @@ export function CheckoutClient({
   packages,
   addons,
   stripeStatus,
-  returnedOrderRef
+  returnedCheckoutSessionId
 }: CheckoutClientProps) {
   const [packageKey, setPackageKey] = useState<TicketPackageKey>(packages[0]?.key ?? "general");
   const [adults, setAdults] = useState(2);
@@ -88,6 +88,10 @@ export function CheckoutClient({
   const [isReviewing, setIsReviewing] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [returnStatus, setReturnStatus] = useState<"checking" | "pending" | "confirmed" | "failed" | "canceled" | "unavailable">(
+    stripeStatus === "success" ? "checking" : "pending"
+  );
+  const [verifiedOrderRef, setVerifiedOrderRef] = useState<string | null>(null);
 
   const selectedPackage = packages.find((item) => item.key === packageKey) ?? packages[0];
   const normalizedEmail = customerEmail.trim().toLowerCase();
@@ -100,6 +104,87 @@ export function CheckoutClient({
       ) as AddonQuantities,
     [addonQuantities]
   );
+
+  useEffect(() => {
+    if (stripeStatus !== "success" || !returnedCheckoutSessionId) {
+      return;
+    }
+    const checkoutSessionId = returnedCheckoutSessionId;
+
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.searchParams.delete("stripe");
+    returnUrl.searchParams.delete("session_id");
+    returnUrl.searchParams.delete("order");
+    window.history.replaceState(window.history.state, "", returnUrl);
+
+    function scheduleNext(callback: () => void, delay: number) {
+      timer = setTimeout(callback, delay);
+    }
+
+    async function checkStatus() {
+      attempts += 1;
+      try {
+        const response = await fetch("/api/payments/stripe-checkout/status", {
+          method: "POST",
+          cache: "no-store",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ checkoutSessionId })
+        });
+        const data = (await response.json()) as {
+          orderRef?: string;
+          status?: "pending" | "confirmed" | "failed" | "canceled";
+        };
+        if (!response.ok || !data.status || !data.orderRef) {
+          if (response.status === 400 || response.status === 404) {
+            if (!disposed) setReturnStatus("unavailable");
+            return;
+          }
+          throw new Error("status unavailable");
+        }
+        if (disposed) return;
+        setVerifiedOrderRef(data.orderRef);
+        setReturnStatus(data.status);
+        if (data.status === "pending") {
+          if (attempts < 10) {
+            scheduleNext(checkStatus, 1500);
+          } else {
+            setReturnStatus("unavailable");
+          }
+        }
+      } catch {
+        if (disposed) return;
+        if (attempts < 10) {
+          scheduleNext(checkStatus, Math.min(1000 * 2 ** (attempts - 1), 4000));
+        } else {
+          setReturnStatus("unavailable");
+        }
+      }
+    }
+
+    void checkStatus();
+    return () => {
+      disposed = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [returnedCheckoutSessionId, stripeStatus]);
+
+  function returnNotice() {
+    if (stripeStatus === "cancel") return "Payment was canceled before completion.";
+    if (!returnedCheckoutSessionId) {
+      return "Returned from Stripe, but the confirmation identity is incomplete. Please contact support before trying another payment.";
+    }
+    if (returnStatus === "confirmed") return `Payment confirmed. Booking ${verifiedOrderRef} was created.`;
+    if (returnStatus === "failed") return "Stripe reported that the payment failed. No booking was confirmed.";
+    if (returnStatus === "canceled") return "The payment expired or was canceled. No booking was confirmed.";
+    if (returnStatus === "unavailable") {
+      return `Returned from Stripe, but confirmation is taking longer than expected.${verifiedOrderRef ? ` Keep order reference ${verifiedOrderRef}.` : ""} Please contact support before trying another payment.`;
+    }
+    return "Returned from Stripe. Waiting for the signed payment webhook.";
+  }
 
   function resetDraft() {
     setDraft(null);
@@ -189,10 +274,11 @@ export function CheckoutClient({
   return (
     <section className="checkoutShell" aria-label="Ticket checkout">
       {stripeStatus ? (
-        <div className={`checkoutNotice ${stripeStatus === "success" ? "isGood" : "isWarn"}`}>
-          {stripeStatus === "success"
-            ? `Stripe returned successfully${returnedOrderRef ? ` for ${returnedOrderRef}` : ""}. Confirmation is pending the signed payment webhook.`
-            : "Payment was canceled before completion."}
+        <div
+          aria-live="polite"
+          className={`checkoutNotice ${returnStatus === "confirmed" ? "isGood" : "isWarn"}`}
+        >
+          {returnNotice()}
         </div>
       ) : null}
 

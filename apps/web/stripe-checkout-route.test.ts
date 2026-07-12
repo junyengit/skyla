@@ -146,8 +146,8 @@ describe("/api/payments/stripe-checkout", () => {
         orderRef: "SKY2607-ABC123",
         idempotencyKey: "checkout_20260704_abc123",
         successUrl:
-          "https://www.skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}&order=SKY2607-ABC123",
-        cancelUrl: "https://www.skydeckla.com/checkout?stripe=cancel&order=SKY2607-ABC123"
+          "https://www.skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}",
+        cancelUrl: "https://www.skydeckla.com/checkout?stripe=cancel"
       },
       { url: "https://example.convex.cloud" }
     );
