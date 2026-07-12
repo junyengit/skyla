@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Superseded by [Decision 0029](./0029-app-router-compatibility-redirects.md).
 
 ## Context
 

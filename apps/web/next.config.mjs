@@ -1,4 +1,4 @@
-import { legacyRoutes, noindexAppRoutes, noindexLegacyRoutes } from "./legacy-routes.mjs";
+import { htmlCompatibilityRedirects, noindexRoutes } from "./site-routes.mjs";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
@@ -11,17 +11,11 @@ const nextConfig = {
       new URL("https://api.qrserver.com/**")
     ]
   },
-  async rewrites() {
-    return [
-      {
-        source: "/index.html",
-        destination: "/"
-      },
-      ...legacyRoutes.map((route) => ({
-        source: `/${route}`,
-        destination: `/${route}.html`
-      }))
-    ];
+  async redirects() {
+    return htmlCompatibilityRedirects.map((redirect) => ({
+      ...redirect,
+      permanent: true
+    }));
   },
   async headers() {
     const securityHeaders = [
@@ -39,45 +33,13 @@ const nextConfig = {
         source: "/:path*",
         headers: securityHeaders
       },
-      ...noindexLegacyRoutes.flatMap((route) => [
-        {
-          source: `/${route}`,
-          headers: [
-            ...securityHeaders,
-            { key: "X-Robots-Tag", value: "noindex, nofollow" }
-          ]
-        },
-        {
-          source: `/${route}.html`,
-          headers: [
-            ...securityHeaders,
-            { key: "X-Robots-Tag", value: "noindex, nofollow" }
-          ]
-        },
-        {
-          source: `/${route}/:path*`,
-          headers: [
-            ...securityHeaders,
-            { key: "X-Robots-Tag", value: "noindex, nofollow" }
-          ]
-        }
-      ]),
-      ...noindexAppRoutes.flatMap((route) => [
-        {
-          source: `/${route}`,
-          headers: [
-            ...securityHeaders,
-            { key: "X-Robots-Tag", value: "noindex, nofollow" }
-          ]
-        },
-        {
-          source: `/${route}/:path*`,
-          headers: [
-            ...securityHeaders,
-            { key: "X-Robots-Tag", value: "noindex, nofollow" }
-          ]
-        }
-      ])
+      ...noindexRoutes.map((source) => ({
+        source,
+        headers: [
+          ...securityHeaders,
+          { key: "X-Robots-Tag", value: "noindex, nofollow" }
+        ]
+      }))
     ];
   }
 };

@@ -1,26 +1,23 @@
 import {
-  legacyRoutes,
+  htmlCompatibilityRedirects,
   nativePublicRoutes,
-  noindexAppRoutes,
-  noindexLegacyRoutes
-} from "../../apps/web/legacy-routes.mjs";
+  robotsDisallowRoutes,
+  staffRoutes
+} from "../../apps/web/site-routes.mjs";
 
 const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? "https://www.skydeckla.com");
 
 const routes = Array.from(new Set([
   "/",
-  "/index.html",
-  ...nativePublicRoutes.flatMap((route) => [`/${route}`, `/${route}.html`]),
-  ...noindexAppRoutes.map((route) => `/${route}`),
-  ...legacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`]),
-  ...noindexLegacyRoutes.map((route) => `/${route}.html`),
+  ...nativePublicRoutes.map((route) => `/${route}`),
+  ...staffRoutes.map((route) => `/${route}`),
+  ...htmlCompatibilityRedirects.map(({ source }) => source),
   "/robots.txt",
   "/sitemap.xml"
 ]));
 
 const noindexRoutes = Array.from(new Set([
-  ...noindexAppRoutes.map((route) => `/${route}`),
-  ...noindexLegacyRoutes.flatMap((route) => [`/${route}`, `/${route}.html`])
+  ...robotsDisallowRoutes
 ]));
 
 const failures = [];

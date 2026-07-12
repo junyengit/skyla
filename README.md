@@ -20,35 +20,34 @@ supabase/functions  Legacy Supabase Edge Functions kept until Convex cutover
 scripts/            Smoke, security, setup, and migration helpers
 ```
 
-Static compatibility pages and active image assets live under
-`apps/web/public`. The remaining `.html` files are handoff pages for saved links;
-they do not call legacy Supabase payment or staff scripts.
+Active image assets and the ads helper live under `apps/web/public`. Saved
+`.html` URLs are centralized as permanent redirects in
+`apps/web/site-routes.mjs`; duplicate compatibility pages are no longer shipped.
 
 ```mermaid
 flowchart LR
   domain["skydeckla.com"]
   vercel["Vercel project: web"]
   web["apps/web Next.js"]
-  bridge["apps/web/public handoff pages"]
+  redirects["Next route registry + saved-link redirects"]
   convex["Convex + server-authoritative payments"]
   supabase["Legacy Supabase function stubs"]
 
   domain --> vercel --> web
-  web --> bridge
-  bridge --> web
+  web --> redirects --> web
   web -. "dashboard-gated" .-> convex
   supabase -. "fail closed until dashboard decommission" .-> convex
 ```
 
 ## Current Hosting State
 
-As of July 7, 2026:
+As of July 12, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest full app/payment production verification recorded here:
-  `https://web-3oity7xei-junyen-enterprises.vercel.app` from merge commit
-  `8150de2becc3b24c8a20da6c828a1873061a3ff6` (PR #112,
-  deployment `dpl_HYqCZRkedqtEdyuaPsbHGHBHA8uA`, status `READY`).
+  `https://web-5whdulzh0-junyen-enterprises.vercel.app` from merge commit
+  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113,
+  deployment `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`, status `READY`).
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
@@ -105,26 +104,25 @@ As of July 7, 2026:
   `503` gates from the smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
   deployment ID and evidence.
-- The Next app serves the new homepage, `/about`, `/cafe`, `/experiences`,
+- The Next app serves the homepage, `/about`, `/cafe`, `/experiences`,
   `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
-  older `/pos-next` draft review URL through App Router. Staff compatibility
-  URLs `/admin.html` and `/pos.html` now hand off to the native routes and no
-  longer ship the retired `shared-data.js`, `admin.js`, or `pos.js` browser
-  apps. The old public `.html` URLs remain available during route-by-route
-  cutover.
+  older `/pos-next` draft review URL through App Router. Saved public and staff
+  `.html` URLs redirect at the Next.js routing layer to their native routes; no
+  duplicate HTML applications are shipped from `apps/web/public`.
 
 ## Current Bun And Cleanup State
 
 - pnpm has been replaced with Bun canary and a committed text `bun.lock`.
 - Repo-owned Vercel install/build commands live under `apps/web/vercel.json`.
 - Duplicate root GitHub Pages static files have been removed from the active tree after Vercel custom-domain cutover verification.
-- Keeps app-owned compatibility files in `apps/web/public`.
+- Keeps saved-link compatibility in the checked route registry instead of
+  duplicate files.
 - Uses Vercel deployment rollback for hosting rollback.
 
 ## Local Development
 
 Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+1de77f961`. Bun's documented canary upgrade command is
+`1.4.0-canary.1+2e2230a81`. Bun's documented canary upgrade command is
 `bun upgrade --canary`; installs should still use `bun install --frozen-lockfile`.
 
 ```bash
@@ -145,8 +143,7 @@ bun run test:unit
 bun run build
 bun run convex:schema:typecheck
 bun run convex:functions:typecheck
-bun run security:artifacts
-bun run security:audit
+bun run security
 ```
 
 For a full local gate that matches the migration baseline:
@@ -173,24 +170,23 @@ bun run dashboard:readiness
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
 - Native `/about` is a server-rendered content route. Native `/cafe` renders
   active menu items from `@skyla/payments`, the same catalog source used by
-  checkout and POS. Their `.html` compatibility copies no longer load
-  `shared-data.js`.
+  checkout and POS. Their saved `.html` URLs redirect through the shared route
+  registry.
 - Native `/members` is an App Router page with a server-gated application
   form. It posts to `/api/members/applications` with an idempotency key and
   only shows success after Convex accepts the mutation. Until Convex/Vercel envs
   are linked, the form reports the safe `convex_unconfigured` pause instead of
-  saving to browser localStorage or Supabase. `/members.html` remains as a
-  compatibility artifact during the transition.
+  saving to browser localStorage or Supabase. `/members.html` redirects to the
+  native page.
 - Native `/experiences` is an App Router page with a server-gated event inquiry
   form. It posts to `/api/experiences/inquiries` with an idempotency key and
   only fires lead tracking after the server accepts the inquiry. Until
   Convex/Vercel envs are linked, the form reports the safe
   `convex_unconfigured` pause instead of saving to browser localStorage or
-  Supabase. `/experiences.html` remains as a compatibility artifact during the
-  transition.
+  Supabase. `/experiences.html` redirects to the native page.
 - Legacy Stripe Terminal reader registration is retired in repo code. The old
   staff browser assets have been removed from `apps/web/public`, `/pos.html`
-  now hands off to native `/pos`, and the repo copy of the Supabase Terminal
+  redirects to native `/pos`, and the repo copy of the Supabase Terminal
   function returns `410` for every old bridge action. Native `/pos` still needs
   staff auth, Convex envs, Stripe dashboard webhook setup,
   `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled`, and test-reader acceptance before
@@ -218,9 +214,15 @@ bun run dashboard:readiness
   test-reader acceptance are complete.
 - Legacy browser-authoritative Kaskade/crypto checkout is retired from the
   public compatibility checkout and in the repo copy of the Supabase functions.
-- Public static page CTAs now point to `/checkout`, the App Router checkout
-  path; `/checkout.html` is only a compatibility handoff to the native
-  checkout route and no longer ships the old checkout script or stylesheet.
+- Public CTAs point to `/checkout`, the App Router checkout path;
+  `/checkout.html` permanently redirects there and no longer has a static
+  compatibility document.
+- `robots.txt` and `sitemap.xml` are generated by App Router metadata routes
+  from the same checked route registry used by redirects and smoke tests.
+- The July 12 dependency sweep upgraded `@types/node` to `26.1.1`. TypeScript
+  `7.0.2` passes direct project typechecks but Next.js `16.2.10` rejects it
+  during `next build`, so production remains on TypeScript `6.0.3`. ESLint 10
+  remains blocked by the current React/Next lint plugin stack.
 - Supabase functions remain legacy transition surfaces until Convex,
   server-authoritative payment creation, admin, and POS replacements are
   verified and the dashboard deployments are disabled or redeployed from the

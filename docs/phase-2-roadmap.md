@@ -10,7 +10,8 @@ Skyla is moving from a flat static site with browser-heavy business logic into a
 - Next.js owns public pages, checkout, admin, and POS.
 - Convex becomes the canonical database and server logic layer.
 - Stripe, Kaskade, email, admin, and POS actions become server-authoritative.
-- Legacy static files are kept only as app-owned compatibility pages under `apps/web/public`.
+- Saved legacy URLs are kept through centralized Next.js redirects; duplicate
+  compatibility pages are not shipped.
 - Bun canary is adopted deliberately across local development, CI, and Vercel builds.
 
 The work should move in small PRs. Each PR should leave the site deployable, testable, and reversible.
@@ -23,7 +24,7 @@ flowchart LR
   domain["skydeckla.com"]
   vercel["Vercel project: junyen-enterprises/web"]
   next["apps/web Next.js App Router"]
-  bridge["apps/web/public legacy bridge"]
+  redirects["Central saved-link redirects"]
   admin["Native /admin ops snapshot"]
   experiences["Native /experiences inquiry page + API"]
   members["Native /members application page + API"]
@@ -35,7 +36,7 @@ flowchart LR
   visitor --> domain
   domain --> vercel
   vercel --> next
-  next --> bridge
+  next --> redirects
   next --> admin
   next --> experiences
   next --> members
@@ -55,20 +56,21 @@ Why this is not the final state:
 
 - Live writes and payment acceptance are still blocked on dashboard wiring.
 - Supabase-era functions and data access are still outside the target architecture.
-- Public content compatibility files in `apps/web/public` are now handoff-only
-  where typed App Router routes own the content. Staff compatibility files are
-  now handoffs too; the old staff JS/CSS/localStorage facade has been removed
-  from the active public bundle.
-- `/admin` is now being cut over route-by-route: the native page is staff-token gated and has read-only operations, audited booking/member status actions, typed announcement/hours config, and voucher redemption code, while `/admin.html` hands off to native `/admin`.
+- Public and staff `.html` compatibility URLs are centralized permanent Next.js
+  redirects. The duplicate static handoff documents and old staff
+  JS/CSS/localStorage facade are absent from the active public bundle.
+- `/admin` is staff-token gated and has read-only operations, audited
+  booking/member status actions, typed announcement/hours config, and voucher
+  redemption code; `/admin.html` redirects to native `/admin`.
 - The native `/members` page now posts to the server application API and fails
-  closed until Convex is configured. `/members.html` remains as a compatibility
-  artifact while linked Convex acceptance is verified.
+  closed until Convex is configured. `/members.html` redirects to the native
+  route.
 - The native `/experiences` page now posts to the server inquiry API and fails
-  closed until Convex is configured. `/experiences.html` remains as a
-  compatibility artifact while linked Convex acceptance is verified.
+  closed until Convex is configured. `/experiences.html` redirects to the
+  native route.
 - The native `/pos` page now renders the server-priced App Router POS shell.
   `/pos-next` remains as a compatibility URL for the same shell, and
-  `/pos.html` hands off to native `/pos`. Live Terminal collection still waits
+  `/pos.html` redirects to native `/pos`. Live Terminal collection still waits
   on Stripe test-reader acceptance and dashboard env setup.
 
 ## Target Shape
@@ -173,14 +175,14 @@ Move the repo from "static site plus new app" to "new app with explicit compatib
 Initial actions:
 
 - Remove root legacy duplicates after Vercel custom-domain cutover is verified.
-- Keep `apps/web/public` compatibility files until their App Router replacements are live.
+- Replace completed route handoff files with centralized Next.js redirects.
 - Deduplicate images so canonical assets live under `apps/web/public/images`.
 - Keep `output/`, `tmp/`, generated PDFs, logs, local env files, and generated CSVs ignored.
 
 Definition of done:
 
 - Root contains project-level files only.
-- Public URLs are served by App Router routes or intentional compatibility redirects.
+- Public URLs are served by App Router routes or checked compatibility redirects.
 - Legacy source remains discoverable, but not mixed with active app entrypoints.
 
 ### 2. Bun Adoption
@@ -267,8 +269,8 @@ Definition of done:
 Current admin cutover rule:
 
 - `/admin` should move to native App Router functionality first.
-- `/admin.html` is a noindex compatibility handoff to native `/admin`; do not
-  reintroduce the old browser admin app.
+- `/admin.html` is a noindex permanent redirect to native `/admin`; do not
+  reintroduce a static admin compatibility app.
 - New native admin code must use staff-gated Convex/Next server boundaries, not browser Supabase writes or local password/sessionStorage gates.
 - Booking/member status actions may be added when they validate allowed states,
   enforce staff roles on the server, and write audit events.
@@ -340,13 +342,13 @@ Current verified Vercel data:
 - Vercel project root: `apps/web`
 - Production branch: `main`
 - Latest verified production commit:
-  `a5027bdaeb311c1eed938560b0a77590ed9439b4` (PR #94)
+  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113)
 - Latest verified production deployment evidence:
-  `https://web-iwfcnvi0b-junyen-enterprises.vercel.app`
+  `https://web-5whdulzh0-junyen-enterprises.vercel.app`
 - Latest verified production deployment ID:
-  `dpl_3gB3pRz1WzEJ9xB4Mn3btSMgdqXf`
-- Latest app-code verification: PR #94. This includes payment readiness
-  hardening and dashboard checklist cleanup.
+  `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`
+- Latest app-code verification: PR #113. This includes payment response
+  hardening, staff contrast, route/payment/readiness smokes, and visual QA.
   Query Vercel before recording fresh operational evidence.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
@@ -363,15 +365,13 @@ Current verified Vercel data:
   `SkylaData.addMember`; application success remains gated until Convex is
   linked in Vercel.
 - Staff contrast cache-bust PR: `#44`
-- Staff contrast state: `/admin`, `/admin.html`, `/pos`, `/pos-next`, and
-  `/pos.html` use dark staff surfaces with readable white text. Staff
-  compatibility pages are now self-contained handoffs and the retired
-  `admin.css`, `admin.js`, `pos.css`, `pos.js`, and `shared-data.js` assets are
-  absent from `apps/web/public`.
+- Staff contrast state: `/admin`, `/pos`, and `/pos-next` use dark staff
+  surfaces with readable white text. `/admin.html` and `/pos.html` redirect to
+  those native routes; retired staff assets are absent from `apps/web/public`.
 - Production-readiness smoke PR: `#45`
 - Production-readiness state: `bun run test:production-readiness` bundles the
   route matrix, no-write payment probes, member application and experience
-  inquiry no-write probes, and staff compatibility handoff/retired-asset checks
+  inquiry no-write probes, saved-link redirect checks, and retired-asset checks
   for custom domains plus an optional Vercel deployment URL.
 - Payment/hosting/readability PR: `#46`
 - Payment/hosting/readability state: Stripe actions require explicit
@@ -422,12 +422,9 @@ Current order-spine state:
   of pending, and `/checkout` is the App Router path. Live card payment remains
   blocked until Vercel/Convex envs and the real Stripe dashboard endpoint are
   configured.
-- Legacy compatibility checkout has been reduced to a handoff at
-  `apps/web/public/checkout.html`; the old browser checkout script and
-  stylesheet are no longer shipped in `apps/web/public`.
-- Public content `.html` compatibility files have been reduced to handoffs for
-  native App Router pages; old public page CSS and the shared navigation script
-  are no longer shipped in `apps/web/public`.
+- `/checkout.html` and other saved `.html` URLs are centralized permanent
+  redirects in `apps/web/site-routes.mjs`; no compatibility HTML documents are
+  shipped in `apps/web/public`.
 - Local no-deployment Convex gate: `bun run convex:schema:typecheck`
 - Convex helper gates: `bun run convex:test:unit`, `bun run convex:functions:typecheck`
 - Convex env gate: `bun run convex:env:check`
@@ -441,7 +438,7 @@ Current package baseline:
 - Turborepo `2.10.4`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
-- Last verified Bun revision: `1.4.0-canary.1+1de77f961`
+- Last verified Bun revision: `1.4.0-canary.1+2e2230a81`
 
 Useful verification commands:
 
