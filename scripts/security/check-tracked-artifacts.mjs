@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 const forbiddenPathPatterns = [
   /^output\//,
   /^tmp\//,
+  /^\.migration\//,
   /(^|\/)\.env(\.|$)/,
   /\.(csv|xlsx|pdf|log|pem|p12|pfx|key)$/i
 ];

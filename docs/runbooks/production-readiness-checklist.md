@@ -79,23 +79,27 @@ stored line amounts remain the payment authority.
 14. Confirm checkout and POS stay server-priced with test payments.
 15. Verify idempotent paid-order booking fulfillment against linked Convex and
     a signed Stripe test webhook before any card acceptance.
-16. Disable or redeploy old Supabase payment functions from the fail-closed
+16. Follow the ledgered migration runbook for legacy bookings, members, and
+    inquiries. Dry-run, quarantine, development apply, and reconcile before
+    explicit production confirmation.
+17. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
-17. Finish native admin/POS work and
+18. Finish native admin/POS work and
     test-reader acceptance before enabling card acceptance.
-18. After each merge, rerun route, payment, readiness, dependency, and CodeQL
+19. After each merge, rerun route, payment, readiness, dependency, and CodeQL
     checks and record the production deployment URL here.
 
 ## Current Verified State
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- Latest full app/payment production verification recorded here on 2026-07-12:
-  `https://web-5whdulzh0-junyen-enterprises.vercel.app`
+- Latest production deployment evidence recorded here on 2026-07-12:
+  `https://web-8hw004wy3-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-12:
-  `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`
+  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`
 - Evidence merge commit checked on 2026-07-12:
-  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113).
+  `61ec73f83188f117e444a9da2d971ae709a27ee1` (PR #116). This deployment
+  identity does not mean the Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` passed on 2026-07-12. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
@@ -449,6 +453,14 @@ flowchart TD
 ### Convex
 
 - [ ] Create or link the Skyla Convex project.
+- [ ] For legacy data migration only, generate a temporary random 32+ character
+      `SKYLA_DATA_MIGRATION_TOKEN`, set it interactively in the selected Convex
+      deployment, and keep the same value only in the operator shell.
+- [ ] Run remote migration commands through `ConvexHttpClient` with an explicit
+      `--deployment` plus HTTPS `--convex-url` or `CONVEX_URL`; every remote
+      apply/rollback requires `--confirm-production`, including development,
+      because the URL cannot prove its environment. Remove the token
+      immediately after summary reconciliation or rollback.
 - [ ] Run real project codegen, not anonymous local mode.
 - [ ] Set `SKYLA_STRIPE_MODE` to `test` for Preview/test acceptance. Use `live`
       only after test cards, test webhooks, and test reader acceptance pass.
@@ -578,6 +590,22 @@ flowchart TD
       functions inherit the fail-closed behavior.
 
 ### Supabase Legacy
+
+- [ ] Follow
+      `docs/runbooks/supabase-convex-data-migration.md`; migration scope is only
+      `bookings`, `members`, and `inquiries`.
+- [ ] Verify the physical tables really contain `id`, `data`, and `created_at`,
+      then preserve one immutable JSON export with UTC timestamp and SHA-256.
+- [ ] Confirm config, Supabase Auth/passwords, orders, POS sales, and
+      payment/webhook events are absent. Historical bookings must not create
+      financial ledger records.
+- [ ] Dry-run into private reviewed artifacts, resolve all quarantine, apply to
+      Convex development over HTTPS, and reconcile counts, batches, and samples.
+- [ ] Record human production approval before `--confirm-production`; after
+      production reconciliation, remove the token and retain Supabase
+      read-only for the agreed window.
+- [ ] Review localStorage recovery separately with a distinct source and manual
+      deduplication against Supabase. No cloud legacy-data apply is recorded.
 
 - [ ] In the Supabase dashboard, identify the old Skyla project before making
       changes. Record the project ref from the URL or API settings; the live

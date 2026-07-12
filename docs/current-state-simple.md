@@ -33,6 +33,13 @@ Stripe Session against Convex's server-created payment ledger, derives the
 order there, and shows confirmed only
 when the paid ledger, paid order, and booking all agree.
 
+A ledgered migration path is now implemented for legacy bookings, members, and
+inquiries. It has immutable export, SHA-256 manifest, quarantine,
+development-first apply, summary reconciliation, and per-batch rollback
+controls. It does not migrate config, Supabase Auth/passwords, orders, or
+payment events, and historical bookings do not create financial records. No
+Supabase export has been applied to a cloud Convex deployment.
+
 Admin and POS staff screens use white text on black staff surfaces. The current
 catalog is code-owned in `@skyla/payments`; Convex now has code paths and
 native admin controls for versioned catalog seeding and audited rollback, but
@@ -60,7 +67,9 @@ flowchart LR
 
 ## What Works Now
 
-- Vercel production deployment is ready for PR #113 merge commit `3ee576a`.
+- Current production deployment evidence points to PR #116 merge commit
+  `61ec73f83188f117e444a9da2d971ae709a27ee1` and deployment
+  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and saved `.html` compatibility routes smoke-test
@@ -124,6 +133,16 @@ safe behavior.
 ## Dashboard Checklist
 
 - [ ] Link or create the real Skyla Convex cloud project.
+- [ ] Follow
+      `docs/runbooks/supabase-convex-data-migration.md` for the separate legacy
+      bookings/members/inquiries migration; do not improvise a dashboard copy.
+- [ ] Verify the physical Supabase tables and export only `id`, `data`, and
+      `created_at` into an immutable, timestamped, SHA-256-recorded snapshot.
+- [ ] Dry-run to zero unresolved quarantine, apply to Convex development,
+      reconcile counts and samples, and record explicit production approval.
+- [ ] Set a temporary random 32+ character `SKYLA_DATA_MIGRATION_TOKEN` only in
+      the selected Convex deployment and operator shell, then remove it after
+      summary reconciliation or rollback.
 - [ ] Run `bun run vercel:project:check` before dashboard changes. It should
       pass with project `junyen-enterprises/web`, root `apps/web`, Next.js,
       Node `24.x`, and the Bun canary commands in `apps/web/vercel.json`.
@@ -177,11 +196,12 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest full production evidence recorded here | PR #115, merged to `main` on July 12, 2026 |
-| Evidence deployment | `dpl_6gz3NCa9AeyidX2gHLrnnHDfCM41`, status `READY` |
-| Evidence URL | `https://web-hqcnvg444-junyen-enterprises.vercel.app` |
-| Evidence commit | `02d4e07f923dcf398befb5278fca497cac7be39a` |
-| App/payment behavior verification | PR #115 post-merge readiness smoke passed on apex, `www`, and immutable production URL; no Vercel runtime errors in the checked 30-minute window |
+| Latest production deployment evidence recorded here | PR #116, merged to `main` on July 12, 2026 |
+| Evidence deployment | `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn` |
+| Evidence URL | `https://web-8hw004wy3-junyen-enterprises.vercel.app` |
+| Evidence commit | `61ec73f83188f117e444a9da2d971ae709a27ee1` |
+| App/payment behavior verification | PR #115 remains the latest full post-merge readiness smoke recorded here; PR #116 is the newer deployment identity. |
+| Legacy data migration | Implementation and local tests exist for bookings, members, and inquiries; no cloud apply has occurred. |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | GitHub governance | Rechecked July 6, 2026: `main` requires strict `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel` checks; admins are enforced; force pushes, branch deletion, and unresolved conversations are blocked; Dependabot vulnerability alerts and automated security fixes are enabled |
 | Bun | `1.4.0-canary.1+2e2230a81` locally on July 12, 2026 |
@@ -191,7 +211,7 @@ safe behavior.
 | Dependency sweep | July 12: upgraded `@types/node` to `26.1.1`. TypeScript `7.0.2` passes direct typechecks but Next.js `16.2.10` rejects it during `next build`, so TypeScript stays on `6.0.3`. ESLint `10.7.0` remains deferred because the current React/Next lint plugin stack is incompatible. |
 | `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #115 with centralized `.html` redirect assertions |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge; checks exact catalog line provenance metadata and canonical line amounts |
-| `bun run test:production-readiness` | Passed after PR #115 on `https://skydeckla.com`, `https://www.skydeckla.com`, and `https://web-hqcnvg444-junyen-enterprises.vercel.app`; production remains dashboard-gated and no-write |
+| `bun run test:production-readiness` | Last full recorded pass was after PR #115 on `https://skydeckla.com`, `https://www.skydeckla.com`, and its immutable production URL; production remains dashboard-gated and no-write. |
 | Convex payment snapshot provenance gate | PR #105 adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
 | Terminal reader gate | Added unit coverage proving Terminal PaymentIntent snapshots fail before Stripe when the stored POS sale has no trusted Terminal reader |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
@@ -235,3 +255,6 @@ smoke checks before recording fresh exact-deployment evidence.
    replays cannot drop or spoof catalog identity before Stripe handoff.
 10. Keep the Stripe public response allowlists and `clientSecret` regression
    tests in place for any future payment route changes.
+11. Run the reviewed Supabase-to-Convex bookings/members/inquiries migration
+    only after a cloud Convex development deployment is linked; keep Supabase
+    read-only after production reconciliation.

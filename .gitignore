@@ -5,6 +5,7 @@
 # passport form drafts, logs, or other sensitive operational exports.
 output/
 tmp/
+.migration/
 *.log
 
 # Node / Turborepo / Next.js
