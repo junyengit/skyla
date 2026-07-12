@@ -99,6 +99,22 @@ type OperationsSnapshot = {
       rawEventId?: string;
       createdAt: number;
     }>;
+    refunds: Array<{
+      providerRefundIdMasked: string;
+      providerPaymentIntentIdMasked: string;
+      paymentProvider: "stripe" | "terminal";
+      orderRef?: string;
+      saleRef?: string;
+      status: "pending" | "requires_action" | "succeeded" | "failed" | "canceled";
+      amountCents: number;
+      currency: "usd";
+      reason?: string;
+      failureReason?: string;
+      providerEventCreatedAt: number;
+      rawEventIdMasked: string;
+      createdAt: number;
+      updatedAt: number;
+    }>;
     bookings: AdminBooking[];
     members: Array<{
       memberId: string;
@@ -1166,6 +1182,32 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
               : null}
 
             {activeTab === "payments"
+              ? snapshot?.recent.refunds.map((refund) => (
+                  <div
+                    className="adminOpsRow"
+                    key={`${refund.providerRefundIdMasked}:${refund.providerEventCreatedAt}`}
+                  >
+                    <div>
+                      <strong>Refund {refund.providerRefundIdMasked}</strong>
+                      <span>
+                        {[
+                          refund.orderRef,
+                          refund.saleRef,
+                          refund.providerPaymentIntentIdMasked,
+                          refund.rawEventIdMasked
+                        ]
+                          .filter(Boolean)
+                          .join(" / ")}
+                      </span>
+                    </div>
+                    <span>{money(refund.amountCents)}</span>
+                    <span>{[refund.status, refund.reason, refund.failureReason].filter(Boolean).join(" / ")}</span>
+                    <time>{shortDate(refund.providerEventCreatedAt)}</time>
+                  </div>
+                ))
+              : null}
+
+            {activeTab === "payments"
               ? snapshot?.recent.paymentEvents.map((event) => (
                   <div className="adminOpsRow" key={`${event.provider}:${event.providerPaymentId}:${event.createdAt}`}>
                     <div>
@@ -1180,17 +1222,17 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
               : null}
 
             {snapshot &&
-            snapshot.recent[
-              activeTab === "orders"
-                ? "orders"
-                : activeTab === "pos"
-                  ? "posSales"
-                  : activeTab === "bookings"
-                    ? "bookings"
-                    : activeTab === "members"
-                      ? "members"
-                      : "paymentEvents"
-            ].length === 0 ? (
+            (activeTab === "payments"
+              ? snapshot.recent.refunds.length === 0 && snapshot.recent.paymentEvents.length === 0
+              : snapshot.recent[
+                  activeTab === "orders"
+                    ? "orders"
+                    : activeTab === "pos"
+                      ? "posSales"
+                      : activeTab === "bookings"
+                        ? "bookings"
+                        : "members"
+                ].length === 0) ? (
               <p className="adminOpsEmpty">No recent records</p>
             ) : null}
 

@@ -33,6 +33,13 @@ Stripe Session against Convex's server-created payment ledger, derives the
 order there, and shows confirmed only
 when the paid ledger, paid order, and booking all agree.
 
+Signed Stripe refund events now have a read-only reconciliation path. A refund
+must match a paid Checkout or Terminal PaymentIntent, amount, currency, and the
+still-paid order or POS sale. Admin can see the normalized refund in Payments,
+but Skyla cannot initiate a refund and does not automatically cancel a booking
+or sale. This code still needs linked Stripe test-mode acceptance before refund
+events are enabled in the Dashboard.
+
 A ledgered migration path is now implemented for legacy bookings, members, and
 inquiries. It has immutable export, SHA-256 manifest, quarantine,
 development-first apply, summary reconciliation, and per-batch rollback
@@ -127,6 +134,9 @@ safe behavior.
       Terminal reader registry values in Convex, not Vercel.
 - [ ] Create the Stripe webhook endpoint against the Convex HTTP URL, not old
       Supabase function URLs.
+- [ ] After this refund code is deployed and older paid rows are checked for
+      PaymentIntent linkage, subscribe that endpoint to `refund.created`,
+      `refund.updated`, and `refund.failed`.
 - [ ] Confirm old Supabase Stripe/Kaskade webhook endpoints are disabled or
       redeployed fail-closed before live payment acceptance.
 
@@ -158,6 +168,11 @@ safe behavior.
 - [ ] Set Convex `SKYLA_STRIPE_MODE=test`.
 - [ ] Set Convex `STRIPE_SECRET_KEY` with a test key first.
 - [ ] Create a Stripe test webhook endpoint for Convex.
+- [ ] Before adding refund event subscriptions, verify every existing paid
+      Checkout/Terminal ledger row has `providerPaymentIntentId`; resolve any
+      older row explicitly rather than guessing its Stripe identity.
+- [ ] Subscribe the test endpoint to `refund.created`, `refund.updated`, and
+      `refund.failed` only after the refund code is deployed.
 - [ ] Set Convex `STRIPE_WEBHOOK_SECRET`.
 - [ ] Set Convex `SKYLA_PAYMENT_RETURN_ORIGINS` to the Vercel preview and
       production origins.
@@ -180,6 +195,9 @@ safe behavior.
       replay creates no duplicate in linked Convex test mode.
 - [ ] Verify POS sends a stored `saleRef` total to a Stripe test reader.
 - [ ] Verify Stripe webhooks reconcile checkout and Terminal final states.
+- [ ] In test mode, verify partial, full, failed, duplicate, and out-of-order
+      refund events appear read-only in Admin without changing a booking, order,
+      or POS sale.
 - [ ] Disable or redeploy old Supabase Stripe/Kaskade functions so any live
       legacy endpoints return the repo's fail-closed behavior.
 - [ ] Run `bun run test:supabase-retired:live` with
@@ -222,6 +240,7 @@ safe behavior.
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
+| Refund reconciliation | Local code and tests now correlate signed Stripe refund events to paid PaymentIntents, handle Stripe's reversible succeeded lifecycle, enforce final failed/canceled and cumulative amount guards, and expose server-masked read-only Admin rows. Linked test-mode acceptance is pending. |
 | Stripe API version pin | Requests send `Stripe-Version: 2026-02-25.clover`. Stripe currently documents `2026-06-24.dahlia` as the current API version, but this crosses a named major release and should be upgraded only with a Workbench/webhook endpoint version plan and linked acceptance tests. |
 | Staff visual QA | Helium confirmed production `/admin`, `/pos`, and `/pos-next` render white-on-black staff screens on July 6, 2026; `apps/web/staff-contrast.test.ts` still passes. A fresh July 12 Helium pass is pending because the Mac was locked. |
 | Vercel runtime evidence | No runtime errors were reported for the checked 30-minute window after PR #117. |
@@ -245,7 +264,8 @@ smoke checks before recording fresh exact-deployment evidence.
    checkout/POS line `catalogContentHash` values before moving runtime reads to
    Convex catalog data.
 4. Only then design admin catalog/pricing edits on top of versioned drafts.
-5. Finish refunds with Stripe reconciliation and audit events.
+5. Run linked Stripe test-mode refund acceptance and verify older paid rows have
+   PaymentIntent linkage before enabling refund subscriptions.
 6. Finish destructive admin actions only with typed validators and rollback
    runbooks.
 7. Run no-write linked acceptance preflight after dashboard setup.

@@ -12,6 +12,17 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 
 ## Current Status
 
+- [x] Added signed Stripe refund parsing for `refund.created`,
+      `refund.updated`, and `refund.failed` with sanitized provider data.
+- [x] Added a normalized Convex refund ledger correlated to the paid Checkout or
+      Terminal PaymentIntent, plus identity, amount, currency, cumulative-total,
+      stale-event, and final-state guards.
+- [x] Added read-only refund rows to native Admin Payments without refund or
+      automatic booking-cancellation actions.
+- [x] Added focused refund parser, mutation, projection, API, and UI tests.
+- [ ] Deploy and accept this refund slice in linked Convex/Stripe test mode,
+      after verifying older paid ledger rows have PaymentIntent linkage.
+
 - [x] Verified current production is GitHub Pages from `main` root.
 - [x] Verified latest package baseline through npm registry:
   - Next.js `16.2.10`
@@ -1431,10 +1442,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   the Supabase dashboard.
 - The native `/admin` path now has front-desk booking lookup/check-in, audited
   status actions, announcement/hours config, and native voucher redemption on
-  the current branch. It still intentionally excludes hard deletes, bulk
-  clears, reset-all settings, payment refunds, and pricing/menu/catalog
-  mutations until typed validators, reconciliation rules, and rollback
-  procedures exist.
+  the current branch. It now shows signed refund reconciliation read-only, but
+  still intentionally excludes refund initiation, automatic booking
+  cancellation, hard deletes, bulk clears, reset-all settings, and
+  pricing/menu/catalog mutations until typed validators, reconciliation rules,
+  and rollback procedures exist.
 - Branch `codex/native-pos-route-cutover` moves extensionless `/pos` from the
   legacy rewrite bridge to the native server-priced POS shell, keeps `/pos-next`
   as a compatibility URL, and originally left `/pos.html` as the explicit

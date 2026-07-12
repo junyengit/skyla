@@ -80,7 +80,29 @@ describe("admin operations route", () => {
         pendingMembers: { value: 5, capped: false },
         approvedMembers: { value: 6, capped: false }
       },
-      recent: { orders: [], posSales: [], paymentEvents: [], bookings: [], members: [] }
+      recent: {
+        orders: [],
+        posSales: [],
+        paymentEvents: [],
+        refunds: [
+          {
+            providerRefundIdMasked: "re_t...3456",
+            providerPaymentIntentIdMasked: "pi_t...3456",
+            paymentProvider: "stripe",
+            orderRef: "ORD-123",
+            status: "succeeded",
+            amountCents: 2500,
+            currency: "usd",
+            reason: "requested_by_customer",
+            providerEventCreatedAt: 2000,
+            rawEventIdMasked: "evt_...3456",
+            createdAt: 2000,
+            updatedAt: 2000
+          }
+        ],
+        bookings: [],
+        members: []
+      }
     });
 
     const response = await route.GET(
@@ -90,6 +112,16 @@ describe("admin operations route", () => {
 
     expect(response.status).toBe(200);
     expect(data.staff.emailLower).toBe("ops@example.com");
+    expect(data.recent.refunds[0]).toMatchObject({
+      providerRefundIdMasked: "re_t...3456",
+      providerPaymentIntentIdMasked: "pi_t...3456",
+      rawEventIdMasked: "evt_...3456",
+      orderRef: "ORD-123",
+      amountCents: 2500,
+      status: "succeeded"
+    });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("vary")).toContain("Authorization");
     expect(fetchQuery).toHaveBeenCalledWith(
       "admin:getOperationsSnapshot",
       { limit: 8 },

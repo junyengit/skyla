@@ -20,6 +20,7 @@ export type StripeCheckoutWebhookOutcome =
       providerEventId: string;
       eventType: string;
       providerPaymentId: string;
+      providerPaymentIntentId: string;
       orderRef: string;
       amountCents: number;
       currency: "usd";
@@ -62,6 +63,37 @@ export type StripeTerminalWebhookOutcome =
       raw: Record<string, unknown>;
     };
 
+export type StripeRefundStatus = "pending" | "requires_action" | "succeeded" | "failed" | "canceled";
+
+export type StripeRefundWebhookOutcome =
+  | {
+      outcome: "refund";
+      providerEventId: string;
+      eventType: string;
+      providerRefundId: string;
+      providerPaymentIntentId: string;
+      status: StripeRefundStatus;
+      amountCents: number;
+      currency: "usd";
+      reason?: string;
+      failureReason?: string;
+      providerEventCreatedAt: number;
+      raw: Record<string, unknown>;
+    }
+  | {
+      outcome: "ignored";
+      providerEventId: string;
+      eventType: string;
+      raw: Record<string, unknown>;
+    };
+
+export function stripeRefundWebhookDisposition(status: string) {
+  return {
+    ok: status !== "failed" && status !== "retryable",
+    httpStatus: status === "retryable" ? 503 : 200
+  } as const;
+}
+
 export function stripeCheckoutOrderStatusAfterUnpaidOutcome(outcome: "failed" | "canceled"): "canceled" | "expired" {
   return outcome === "failed" ? "canceled" : "expired";
 }
@@ -90,6 +122,18 @@ type StripeTerminalPaymentIntentObject = {
   status?: unknown;
   metadata?: unknown;
   latest_charge?: unknown;
+};
+
+type StripeRefundObject = {
+  id?: unknown;
+  object?: unknown;
+  payment_intent?: unknown;
+  amount?: unknown;
+  currency?: unknown;
+  status?: unknown;
+  reason?: unknown;
+  failure_reason?: unknown;
+  created?: unknown;
 };
 
 export async function verifyStripeWebhookSignature(
@@ -144,9 +188,10 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
       return ignored(providerEventId, eventType, orderRef, "checkout_session_not_paid", event, session);
     }
     const providerPaymentId = stringValue(session.id);
+    const providerPaymentIntentId = stringValue(session.payment_intent);
     const amountCents = numberValue(session.amount_total);
     const currency = currencyValue(session.currency);
-    if (!providerPaymentId || !orderRef || amountCents === undefined || !currency) {
+    if (!providerPaymentId || !providerPaymentIntentId || !orderRef || amountCents === undefined || !currency) {
       return ignored(providerEventId, eventType, orderRef, "missing_checkout_payment_fields", event, session);
     }
 
@@ -155,6 +200,7 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
       providerEventId,
       eventType,
       providerPaymentId,
+      providerPaymentIntentId,
       orderRef,
       amountCents,
       currency,
@@ -266,6 +312,63 @@ export function stripeWebhookObjectType(event: StripeWebhookEvent) {
   return stringValue((object as { object?: unknown }).object);
 }
 
+export function stripeRefundOutcomeFromEvent(event: StripeWebhookEvent): StripeRefundWebhookOutcome {
+  const providerEventId = stringValue(event.id) ?? "missing_event_id";
+  const eventType = stringValue(event.type) ?? "unknown";
+  const refund = refundObject(event.data?.object);
+  const ignoredRefund = (reason: string): StripeRefundWebhookOutcome => ({
+    outcome: "ignored",
+    providerEventId,
+    eventType,
+    raw: refundSanitizedRaw(event, refund, reason)
+  });
+
+  if (!event.id || !event.type) return ignoredRefund("missing_event_identity");
+  if (!refund || refund.object !== "refund") return ignoredRefund("not_refund");
+  if (!(["refund.created", "refund.updated", "refund.failed"] as string[]).includes(eventType)) {
+    return ignoredRefund("unsupported_event_type");
+  }
+
+  const providerRefundId = stringValue(refund.id);
+  const providerPaymentIntentId = stringValue(refund.payment_intent);
+  const amountCents = numberValue(refund.amount);
+  const currency = currencyValue(refund.currency);
+  const status = refundStatus(refund.status);
+  const providerEventCreatedAt = numberValue(event.created);
+  if (
+    !providerRefundId ||
+    !providerPaymentIntentId ||
+    amountCents === undefined ||
+    !Number.isSafeInteger(amountCents) ||
+    amountCents <= 0 ||
+    !currency ||
+    !status ||
+    providerEventCreatedAt === undefined ||
+    !Number.isSafeInteger(providerEventCreatedAt) ||
+    providerEventCreatedAt < 0
+  ) {
+    return ignoredRefund("missing_refund_fields");
+  }
+  if (eventType === "refund.failed" && status !== "failed") {
+    return ignoredRefund("refund_failed_status_mismatch");
+  }
+
+  return {
+    outcome: "refund",
+    providerEventId,
+    eventType,
+    providerRefundId,
+    providerPaymentIntentId,
+    status,
+    amountCents,
+    currency,
+    reason: stringValue(refund.reason),
+    failureReason: stringValue(refund.failure_reason),
+    providerEventCreatedAt: providerEventCreatedAt * 1000,
+    raw: refundSanitizedRaw(event, refund, status)
+  };
+}
+
 function parseStripeSignatureHeader(header: string | null) {
   if (!header) {
     return null;
@@ -326,6 +429,18 @@ function terminalPaymentIntentObject(value: unknown): StripeTerminalPaymentInten
     return undefined;
   }
   return value as StripeTerminalPaymentIntentObject;
+}
+
+function refundObject(value: unknown): StripeRefundObject | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  return value as StripeRefundObject;
+}
+
+function refundStatus(value: unknown): StripeRefundStatus | undefined {
+  const status = stringValue(value);
+  return status && ["pending", "requires_action", "succeeded", "failed", "canceled"].includes(status)
+    ? (status as StripeRefundStatus)
+    : undefined;
 }
 
 function checkoutOrderRef(session: StripeCheckoutSessionObject | undefined) {
@@ -423,6 +538,29 @@ function terminalSanitizedRaw(
           status: stringValue(intent.status),
           latest_charge: stringValue(intent.latest_charge),
           metadata: terminalMetadataSummary(intent.metadata)
+        })
+      : undefined
+  });
+}
+
+function refundSanitizedRaw(event: StripeWebhookEvent, refund: StripeRefundObject | undefined, reason: string) {
+  return withoutUndefined({
+    reason,
+    eventId: stringValue(event.id),
+    eventType: stringValue(event.type),
+    created: numberValue(event.created),
+    livemode: typeof event.livemode === "boolean" ? event.livemode : undefined,
+    refund: refund
+      ? withoutUndefined({
+          id: stringValue(refund.id),
+          object: stringValue(refund.object),
+          payment_intent: stringValue(refund.payment_intent),
+          amount: numberValue(refund.amount),
+          currency: stringValue(refund.currency),
+          status: stringValue(refund.status),
+          reason: stringValue(refund.reason),
+          failure_reason: stringValue(refund.failure_reason),
+          created: numberValue(refund.created)
         })
       : undefined
   });

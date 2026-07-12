@@ -19,9 +19,11 @@ type OperationsSnapshot = {
     role: "admin" | "pos" | "viewer";
   };
   readiness: {
+    stripeMode: boolean;
     stripeSecret: boolean;
     stripeWebhookSecret: boolean;
     terminalReaderRegistry: boolean;
+    terminalAcceptance: boolean;
     paymentReturnOrigins: boolean;
   };
   counts: {
@@ -67,6 +69,22 @@ type OperationsSnapshot = {
       currency: "usd";
       rawEventId?: string;
       createdAt: number;
+    }>;
+    refunds: Array<{
+      providerRefundIdMasked: string;
+      providerPaymentIntentIdMasked: string;
+      paymentProvider: "stripe" | "terminal";
+      orderRef?: string;
+      saleRef?: string;
+      status: "pending" | "requires_action" | "succeeded" | "failed" | "canceled";
+      amountCents: number;
+      currency: "usd";
+      reason?: string;
+      failureReason?: string;
+      providerEventCreatedAt: number;
+      rawEventIdMasked: string;
+      createdAt: number;
+      updatedAt: number;
     }>;
     bookings: Array<{
       bookingRef: string;
