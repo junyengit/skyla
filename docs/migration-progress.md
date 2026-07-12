@@ -13,7 +13,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 ## Current Status
 
 - [x] Removed raw pasted staff-token controls from the Admin and POS UI on the
-      current branch.
+      production App Router surfaces.
 - [x] Added route-scoped Clerk v7 staff sign-in. The shared `staffFetch`
       wrapper requests a short-lived `convex` JWT for each protected call;
       `staffUsers` and `requireStaffUser` remain Convex role authority, and the
@@ -25,12 +25,21 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       framework overlay, or console errors and confirmed white text on the
       black Admin/POS surfaces; a fresh Helium pass remains pending while macOS
       is locked.
+- [x] Merged Clerk staff-auth PR #121 as
+      `fc7a497358b573563d9f0772d3728c4bc853c562` after CI, CodeQL, Vercel,
+      correctness, and security review passed.
+- [x] Verified READY production deployment
+      `https://web-dyh99dnjq-junyen-enterprises.vercel.app`
+      (`dpl_H64P1fywRZnxzyi4qdf12pULncAS`). Apex and `www` serve the same
+      deployment ID; production-readiness and payment smokes passed on all
+      three bases, and Vercel returned no error/fatal logs in the checked
+      post-merge window.
 - [ ] Configure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and
       `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview/Production; configure
       `CLERK_JWT_ISSUER_DOMAIN` in Convex; deploy the auth config; bootstrap the
       first `staffUsers` row with a Clerk user ID as `subject`; remove the
-      bootstrap token; and complete linked Preview acceptance. This branch is
-      not merged or deployed yet and must fail closed until those steps pass.
+      bootstrap token; and complete linked Preview acceptance. Production must
+      remain fail closed until those steps pass.
 - [x] Added signed Stripe refund parsing for `refund.created`,
       `refund.updated`, and `refund.failed` with sanitized provider data.
 - [x] Added a normalized Convex refund ledger correlated to the paid Checkout or
@@ -51,7 +60,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       and immutable production; no real charge occurred and Vercel reported no
       runtime error clusters or error/fatal logs in the checked 30-minute window.
 
-- [x] Verified current production is GitHub Pages from `main` root.
+- [x] Recorded the initial GitHub Pages-from-`main` production baseline before
+      the Vercel cutover; GitHub Pages is now disabled.
 - [x] Verified latest package baseline through npm registry:
   - Next.js `16.2.10`
   - React `19.2.7`
@@ -912,8 +922,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       staff-authenticated operations snapshot, front-desk booking
       lookup/check-in, audited booking/member status actions, typed
       announcement/hours config, native voucher redemption, and admin-only CSV
-      exports. The current branch replaces pasted UI tokens with Clerk, but its
-      dashboard setup and linked acceptance remain pending. Native `/pos` owns
+      exports. PR #121 replaces pasted UI tokens with Clerk, but dashboard
+      setup and linked acceptance remain pending. Native `/pos` owns
       the extensionless POS shell and staff-gated Terminal reader selector;
       pricing/menu/catalog/delete/refund workflows and live Stripe Terminal
       test-reader acceptance still remain.
@@ -1468,7 +1478,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   acceptance are stable.
 - Shipped code creates Stripe Terminal PaymentIntents from stored `saleRef`
   records only. Native `/pos` has replaced the extensionless legacy POS route.
-  The current branch adds Clerk UI authentication, but live reader collection
+  PR #121 adds Clerk UI authentication, but live reader collection
   still needs Clerk/Convex/Vercel dashboard setup, linked acceptance, and
   Stripe test-reader acceptance before staff should use card-present payment.
 - The reader-processing work adds server-driven reader processing for stored POS sales. Reader handoff still stays non-final; signed Stripe `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` webhooks now reconcile the stored sale against `saleRef`, Terminal PaymentIntent ID, amount, currency, and webhook idempotency.
@@ -1480,9 +1490,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   also returns `410` for old Checkout session verification. This does not change
   any already deployed Supabase function until it is redeployed or disabled in
   the Supabase dashboard.
-- The native `/admin` path now has front-desk booking lookup/check-in, audited
-  status actions, announcement/hours config, and native voucher redemption on
-  the current branch. It now shows signed refund reconciliation read-only, but
+- The production native `/admin` path now has front-desk booking
+  lookup/check-in, audited status actions, announcement/hours config, native
+  voucher redemption, and read-only signed refund reconciliation, but
   still intentionally excludes refund initiation, automatic booking
   cancellation, hard deletes, bulk clears, reset-all settings, and
   pricing/menu/catalog mutations until typed validators, reconciliation rules,

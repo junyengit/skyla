@@ -36,9 +36,10 @@ instead of asking staff to type Stripe reader/location IDs. Reader collection is
 still locked until staff auth, Convex envs, Stripe webhooks, and Stripe
 Terminal test-reader acceptance are complete. Native `/admin` now has a
 staff-authenticated operations snapshot plus audited booking/member status
-actions. On the current branch, Admin and POS no longer ask a person to paste a
-raw staff token: route-scoped Clerk v7 obtains a short-lived `convex` JWT inside
-the shared `staffFetch` wrapper. This is not merged or dashboard-configured yet.
+actions. PR #121 removed pasted staff tokens from production Admin and POS;
+route-scoped Clerk v7 obtains a short-lived `convex` JWT inside the shared
+`staffFetch` wrapper. Dashboard configuration and linked acceptance remain
+pending.
 `/admin.html` permanently redirects to `/admin`; there is no old admin browser
 app or shared data facade. The old static checkout URL remains reachable at
 `/checkout.html` as a permanent redirect to `/checkout`; the old browser
@@ -104,11 +105,11 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest production deployment evidence recorded here on 2026-07-12:
-  `https://web-mjicopj2r-junyen-enterprises.vercel.app`
+  `https://web-dyh99dnjq-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-12:
-  `dpl_D4wmWoj1x1tUYsy7fnfT2gqJnT6G` (`READY`)
+  `dpl_H64P1fywRZnxzyi4qdf12pULncAS` (`READY`)
 - Evidence merge commit checked on 2026-07-12:
-  `eabd40aeaf34f51e8c8c7bcb92d8f6aad48d77a8` (PR #119). This deployment
+  `fc7a497358b573563d9f0772d3728c4bc853c562` (PR #121). This deployment
   identity does not mean the Supabase-to-Convex data migration has run.
 - Post-merge readiness passed on apex, `www`, and the immutable deployment;
   payment smokes passed on all three; Vercel reported no runtime error clusters
@@ -118,17 +119,16 @@ stored line amounts remain the payment authority.
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
   present, and `apps/web/vercel.json` as the Bun canary install/build source
   of truth.
-- The current branch passed `bun run check` on 2026-07-12: 125 web tests,
+- PR #121 passed `bun run check` on 2026-07-12: 125 web tests,
   143 Convex tests, 39 script tests, lint, all typechecks, the Next.js
   production build, artifact checks, and legacy Supabase retirement checks.
   `bun install --frozen-lockfile` and `bun audit --audit-level=low` also passed
   with no vulnerabilities.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
-  checker. The current branch extends its gate to require
+  checker. PR #121 extends its gate to require
   `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
   `CLERK_SECRET_KEY` in Preview and Production while still rejecting misplaced
-  Stripe, staff-bootstrap, and Terminal secrets. This branch change is not
-  merged or deployed yet.
+  Stripe, staff-bootstrap, and Terminal secrets.
 - Query Vercel for the newest deployment URL before recording fresh operational
   evidence. Future docs-only merges may create newer URLs with the same app
   behavior.
