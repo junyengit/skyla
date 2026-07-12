@@ -436,9 +436,9 @@ flowchart TD
 
 ### Staff Authentication Setup
 
-These are the human dashboard steps for this branch. Stop if any value belongs
-to a different Clerk application or Convex deployment; a partial setup should
-remain fail closed.
+These are the human dashboard steps for the deployed staff-auth implementation.
+Stop if any value belongs to a different Clerk application or Convex deployment;
+a partial setup should remain fail closed.
 
 1. In Clerk, create or select the Skyla staff application. Disable unrestricted
    public sign-up; invite or otherwise restrict account creation to approved
