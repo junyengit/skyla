@@ -12,6 +12,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 
 ## Current Status
 
+- [x] Removed customer-visible migration and infrastructure status language
+      from Checkout, Members, Experiences, and Privacy. Public fallback messages
+      now explain what a guest can do next without exposing Convex, dashboard,
+      App Router, or legacy-storage details; route tests guard that boundary.
 - [x] Removed raw pasted staff-token controls from the Admin and POS UI on the
       production App Router surfaces.
 - [x] Added route-scoped Clerk v7 staff sign-in. The shared `staffFetch`

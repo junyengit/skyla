@@ -129,7 +129,7 @@ export function ExperienceInquiryClient() {
       if (!response.ok || !data.inquiry) {
         throw new Error(
           data.code === "convex_unconfigured"
-            ? "Experience requests are temporarily paused while the secure database is connected. Please email events@skylalosangeles.com and the team will follow up manually."
+            ? "Experience requests are temporarily unavailable. Please email events@skylalosangeles.com and the team will follow up."
             : data.error ?? "Could not submit this inquiry"
         );
       }

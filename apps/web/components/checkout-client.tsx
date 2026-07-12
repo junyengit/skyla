@@ -226,7 +226,9 @@ export function CheckoutClient({
       const nextDraft = data as DraftResponse;
       setDraft(nextDraft);
       if (!nextDraft.persisted) {
-        setMessage("Online card checkout is waiting on the Convex dashboard connection. Reservations can still be handled by email.");
+        setMessage(
+          "Online checkout is temporarily unavailable. Please email reservations@skydeckla.com and we will help with your visit."
+        );
       }
     } catch (error) {
       setDraft(null);
@@ -238,7 +240,7 @@ export function CheckoutClient({
 
   async function startPayment() {
     if (!draft?.persisted || !draft.orderRef) {
-      setMessage("Payment is locked until this order is stored in Convex.");
+      setMessage("Review and save this order before continuing to payment.");
       return;
     }
     setIsPaying(true);

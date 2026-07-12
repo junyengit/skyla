@@ -60,10 +60,10 @@ export default function PrivacyPage() {
           body: (
             <>
               <p>
-                The Next.js booking, staff, POS, and application workflows are
-                designed to store canonical business data in <strong>Convex</strong>.
-                Saved legacy URLs may redirect during the migration, but the
-                native App Router pages are the only active implementations.
+                Booking, staff, point-of-sale, and application information is
+                stored through service providers selected to operate and secure
+                Sky LA. We limit access to the people and systems that need it
+                to provide the requested service.
               </p>
               <p>
                 Confirmation emails may be delivered through the configured

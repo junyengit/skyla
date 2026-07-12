@@ -60,7 +60,7 @@ describe("App Router route ownership", () => {
     const checks: Array<[string, string[]]> = [
       ["app/about/page.tsx", ["Best Space"]],
       ["app/cafe/page.tsx", ["listCafeItems", "@skyla/payments"]],
-      ["app/checkout/page.tsx", ["CheckoutClient"]],
+      ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],
       ["app/experiences/page.tsx", ["ExperienceInquiryClient"]],
       ["components/experience-inquiry-client.tsx", ["/api/experiences/inquiries", "idempotencyKey"]],
@@ -95,6 +95,38 @@ describe("App Router route ownership", () => {
       "styles.css"
     ]) {
       expect(existsSync(join(publicDir, retiredAsset)), retiredAsset).toBe(false);
+    }
+  });
+
+  it("keeps internal migration status out of customer-facing copy", () => {
+    const customerFacingFiles = [
+      "app/checkout/page.tsx",
+      "components/checkout-client.tsx",
+      "app/experiences/page.tsx",
+      "components/experience-inquiry-client.tsx",
+      "app/members/page.tsx",
+      "components/members-application-client.tsx",
+      "app/privacy/page.tsx"
+    ];
+    const internalPhrases = [
+      /legacy browser/i,
+      /browser-storage/i,
+      /server API/i,
+      /App Router/i,
+      /Convex dashboard/i,
+      /dashboards are wired/i,
+      /secure database is connected/i,
+      /server accepts the application/i,
+      /server accepts the inquiry/i,
+      /stored in Convex/i,
+      /server-backed checkout/i
+    ];
+
+    for (const path of customerFacingFiles) {
+      const contents = readFileSync(join(webDir, path), "utf8");
+      for (const phrase of internalPhrases) {
+        expect(contents, `${path} exposes ${phrase}`).not.toMatch(phrase);
+      }
     }
   });
 

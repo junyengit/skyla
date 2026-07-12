@@ -141,9 +141,9 @@ export default function MembersPage() {
         </div>
         <p>
           Sky LA membership is designed for guests who return often, host
-          carefully, and want a calmer path through the building. Applications
-          now flow through the server API instead of the legacy browser storage
-          path.
+          thoughtfully, and value a calmer rhythm through the building. Every
+          application is reviewed for fit, availability, and the way you plan
+          to use the space.
         </p>
       </section>
 
@@ -214,8 +214,8 @@ export default function MembersPage() {
           <p className="sectionLabel">Apply for membership</p>
           <h2>Begin your application.</h2>
           <p>
-            Applications are reviewed by the membership team. The form only
-            confirms success after the server accepts the application.
+            Tell us how you hope to use Sky LA. The membership team will review
+            your application and follow up by email.
           </p>
         </div>
         <MembersApplicationClient />
