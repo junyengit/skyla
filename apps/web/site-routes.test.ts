@@ -60,7 +60,7 @@ describe("App Router route ownership", () => {
     const checks: Array<[string, string[]]> = [
       ["app/about/page.tsx", ["Best Space"]],
       ["app/cafe/page.tsx", ["listCafeItems", "@skyla/payments"]],
-      ["app/checkout/page.tsx", ["CheckoutClient"]],
+      ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],
       ["app/experiences/page.tsx", ["ExperienceInquiryClient"]],
       ["components/experience-inquiry-client.tsx", ["/api/experiences/inquiries", "idempotencyKey"]],

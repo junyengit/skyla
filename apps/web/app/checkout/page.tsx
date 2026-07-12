@@ -35,7 +35,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     }));
 
   return (
-    <main className="checkoutPage">
+    <main className="checkoutPage" data-native-checkout="true">
       <nav className="nav checkoutNav" aria-label="Primary navigation">
         <Link className="brand" href="/">
           Sky LA

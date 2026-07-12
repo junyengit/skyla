@@ -209,7 +209,7 @@ async function checkCheckoutPageNoLegacyWrites(origin) {
       failures.push(`${origin}${path}: exposed legacy browser-authoritative checkout path`);
     }
 
-    if (path === "/checkout" && !html.includes("Server totals only")) {
+    if (path === "/checkout" && !html.includes('data-native-checkout="true"')) {
       failures.push(`${origin}${path}: did not render the native checkout page`);
     }
   }
