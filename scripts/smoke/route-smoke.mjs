@@ -2,6 +2,7 @@ import {
   htmlCompatibilityRedirects,
   nativePublicRoutes,
   robotsDisallowRoutes,
+  sitemapEntries,
   staffRoutes
 } from "../../apps/web/site-routes.mjs";
 
@@ -39,6 +40,8 @@ for (const route of routes) {
   }
 }
 
+await checkMetadataRoutes();
+
 if (failures.length > 0) {
   console.error(`Smoke check failed for ${baseUrl.origin}:`);
   for (const failure of failures) {
@@ -48,3 +51,33 @@ if (failures.length > 0) {
 }
 
 console.log(`Smoke check passed for ${baseUrl.origin} (${routes.length} routes).`);
+
+async function checkMetadataRoutes() {
+  const robotsResponse = await fetch(new URL("/robots.txt", baseUrl));
+  const robots = await robotsResponse.text();
+  if (!robotsResponse.headers.get("content-type")?.includes("text/plain")) {
+    failures.push(`/robots.txt: expected text/plain content type`);
+  }
+  for (const route of robotsDisallowRoutes) {
+    if (!robots.includes(`Disallow: ${route}`)) {
+      failures.push(`/robots.txt: missing Disallow: ${route}`);
+    }
+  }
+
+  const sitemapResponse = await fetch(new URL("/sitemap.xml", baseUrl));
+  const sitemap = await sitemapResponse.text();
+  if (!sitemapResponse.headers.get("content-type")?.includes("application/xml")) {
+    failures.push(`/sitemap.xml: expected application/xml content type`);
+  }
+  for (const { path } of sitemapEntries) {
+    const canonical = new URL(path, "https://skydeckla.com").toString();
+    if (!sitemap.includes(`<loc>${canonical}</loc>`)) {
+      failures.push(`/sitemap.xml: missing ${canonical}`);
+    }
+  }
+  for (const route of staffRoutes) {
+    if (sitemap.includes(`skydeckla.com/${route}`)) {
+      failures.push(`/sitemap.xml: staff route /${route} must not be indexed`);
+    }
+  }
+}

@@ -18,8 +18,10 @@ Keep saved links working through one checked route registry:
 
 - `apps/web/site-routes.mjs` owns native public routes, staff routes, saved
   `.html` redirects, robots exclusions, and sitemap entries.
-- `apps/web/next.config.mjs` emits permanent redirects for the old `.html`
+- `apps/web/next.config.mjs` emits permanent redirects for public `.html`
   paths and preserves request query strings.
+- `apps/web/proxy.ts` handles `/admin.html` and `/pos.html` so their 308
+  responses also carry `X-Robots-Tag: noindex, nofollow`.
 - `app/robots.ts` and `app/sitemap.ts` generate metadata from the registry.
 - `apps/web/public` contains assets only; it no longer contains compatibility
   HTML, `robots.txt`, or `sitemap.xml`.

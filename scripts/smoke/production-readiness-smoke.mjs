@@ -1,5 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { htmlCompatibilityRedirects } from "../../apps/web/site-routes.mjs";
+import {
+  htmlCompatibilityRedirects,
+  staffHtmlCompatibilityRedirects
+} from "../../apps/web/site-routes.mjs";
 import { paymentDraftProvenanceIssues } from "./payment-provenance.mjs";
 
 const defaultBaseUrls = ["https://skydeckla.com", "https://www.skydeckla.com"];
@@ -87,8 +90,8 @@ async function checkCompatibilityRedirects(origin) {
     url.searchParams.set("skyla_compat", "1");
     const response = await fetch(url, { redirect: "manual" });
 
-    if (![307, 308].includes(response.status)) {
-      failures.push(`${origin}${source}: expected redirect, got ${response.status}`);
+    if (response.status !== 308) {
+      failures.push(`${origin}${source}: expected permanent 308 redirect, got ${response.status}`);
       continue;
     }
 
@@ -104,6 +107,12 @@ async function checkCompatibilityRedirects(origin) {
     }
     if (target.searchParams.get("skyla_compat") !== "1") {
       failures.push(`${origin}${source}: redirect did not preserve the query string`);
+    }
+    if (
+      staffHtmlCompatibilityRedirects.some((redirect) => redirect.source === source) &&
+      response.headers.get("x-robots-tag") !== "noindex, nofollow"
+    ) {
+      failures.push(`${origin}${source}: staff compatibility redirect is missing X-Robots-Tag noindex, nofollow`);
     }
   }
 }

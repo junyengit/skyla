@@ -190,7 +190,7 @@ safe behavior.
 | `bun run vercel:project:check` | Passed against `junyen-enterprises/web`: project ID, root `apps/web`, Next.js, Node `24.x`, local Vercel link, and repo Bun canary install/build config are aligned |
 | `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
 | `bun run dashboard:readiness` | Includes `vercelProjectShape: true`; still fails until Vercel and Convex/Stripe dashboard env gates are shaped for linked Preview preflight |
-| `bun run check` | Passed locally for PR #113 with Turbo `2.10.4`; the next branch reruns it with Bun `1.4.0-canary.1+2e2230a81`, App Router metadata routes, and the Node type patch |
+| `bun run check` | Passed locally on the current redirect-cleanup branch with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, App Router metadata routes, and the Node type patch |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |

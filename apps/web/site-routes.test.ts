@@ -1,14 +1,17 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
 
 import robots from "./app/robots";
 import sitemap from "./app/sitemap";
 import nextConfig from "./next.config.mjs";
+import { proxy } from "./proxy";
 import {
   htmlCompatibilityRedirects,
   nativePublicRoutes,
   noindexRoutes,
+  publicHtmlCompatibilityRedirects,
   robotsDisallowRoutes,
   sitemapEntries,
   staffRoutes
@@ -22,7 +25,7 @@ describe("App Router route ownership", () => {
     const redirects = await nextConfig.redirects?.();
 
     expect(redirects).toEqual(
-      htmlCompatibilityRedirects.map((redirect) => ({
+      publicHtmlCompatibilityRedirects.map((redirect) => ({
         ...redirect,
         permanent: true
       }))
@@ -34,6 +37,19 @@ describe("App Router route ownership", () => {
     for (const { source } of htmlCompatibilityRedirects) {
       expect(source.endsWith(".html"), source).toBe(true);
       expect(existsSync(join(publicDir, source.slice(1))), source).toBe(false);
+    }
+  });
+
+  it("redirects staff compatibility URLs permanently with noindex", () => {
+    for (const [handler, source, destination] of [
+      [proxy, "/admin.html", "/admin"],
+      [proxy, "/pos.html", "/pos"]
+    ] as const) {
+      const response = handler(new NextRequest(`https://skydeckla.com${source}?from=test`));
+
+      expect(response.status).toBe(308);
+      expect(response.headers.get("location")).toBe(`https://skydeckla.com${destination}?from=test`);
+      expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
     }
   });
 

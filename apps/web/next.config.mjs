@@ -1,4 +1,4 @@
-import { htmlCompatibilityRedirects, noindexRoutes } from "./site-routes.mjs";
+import { noindexRoutes, publicHtmlCompatibilityRedirects } from "./site-routes.mjs";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
@@ -12,7 +12,7 @@ const nextConfig = {
     ]
   },
   async redirects() {
-    return htmlCompatibilityRedirects.map((redirect) => ({
+    return publicHtmlCompatibilityRedirects.map((redirect) => ({
       ...redirect,
       permanent: true
     }));

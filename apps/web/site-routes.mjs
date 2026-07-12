@@ -2,18 +2,24 @@ export const nativePublicRoutes = ["about", "cafe", "checkout", "experiences", "
 
 export const staffRoutes = ["admin", "pos", "pos-next"];
 
-export const htmlCompatibilityRedirects = [
+export const publicHtmlCompatibilityRedirects = [
   { source: "/index.html", destination: "/" },
-  ...nativePublicRoutes.map((route) => ({ source: `/${route}.html`, destination: `/${route}` })),
+  ...nativePublicRoutes.map((route) => ({ source: `/${route}.html`, destination: `/${route}` }))
+];
+
+export const staffHtmlCompatibilityRedirects = [
   ...staffRoutes
     .filter((route) => route !== "pos-next")
     .map((route) => ({ source: `/${route}.html`, destination: `/${route}` }))
 ];
 
+export const htmlCompatibilityRedirects = [
+  ...publicHtmlCompatibilityRedirects,
+  ...staffHtmlCompatibilityRedirects
+];
+
 export const noindexRoutes = [
-  ...staffRoutes.flatMap((route) => [`/${route}`, `/${route}/:path*`]),
-  "/admin.html",
-  "/pos.html"
+  ...staffRoutes.flatMap((route) => [`/${route}`, `/${route}/:path*`])
 ];
 
 export const robotsDisallowRoutes = ["/admin", "/admin.html", "/pos", "/pos.html", "/pos-next"];
