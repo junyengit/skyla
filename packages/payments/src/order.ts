@@ -13,6 +13,16 @@ import {
 export type OrderLineKind = "ticket" | "addon" | "cafe" | "custom";
 export type StaffRole = "admin" | "pos" | "viewer";
 
+export const checkoutEntryTimes = [
+  { value: "11:00", label: "11:00 AM" },
+  { value: "12:30", label: "12:30 PM" },
+  { value: "14:00", label: "2:00 PM" },
+  { value: "15:30", label: "3:30 PM" },
+  { value: "17:00", label: "5:00 PM" },
+  { value: "18:30", label: "6:30 PM" }
+] as const;
+export const checkoutBookingWindowDays = 365;
+
 export type OrderLine = {
   kind: OrderLineKind;
   productKey?: string;

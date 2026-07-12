@@ -99,6 +99,8 @@ describe("/api/order-drafts/checkout", () => {
         feeCents: 405,
         totalCents: 8505
       },
+      visitDate: "2026-07-18",
+      entryTime: "14:00",
       customerEmail: "guest@example.com",
       lines: [
         {
@@ -118,6 +120,8 @@ describe("/api/order-drafts/checkout", () => {
         adults: 2,
         children: 1,
         addons: { matcha: 1 },
+        visitDate: "2026-07-18",
+        entryTime: "14:00",
         customerEmail: "GUEST@EXAMPLE.COM",
         idempotencyKey: "checkout_20260704_abc123",
         totalCents: 1
@@ -133,6 +137,8 @@ describe("/api/order-drafts/checkout", () => {
         subtotalCents: 8100,
         feeCents: 405,
         totalCents: 8505,
+        visitDate: "2026-07-18",
+        entryTime: "14:00",
         customerEmail: "guest@example.com"
       }
     });
@@ -143,6 +149,8 @@ describe("/api/order-drafts/checkout", () => {
         adults: 2,
         children: 1,
         addons: { matcha: 1 },
+        visitDate: "2026-07-18",
+        entryTime: "14:00",
         customerEmail: "GUEST@EXAMPLE.COM",
         source: "next-route",
         idempotencyKey: "checkout_20260704_abc123"

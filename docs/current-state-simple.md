@@ -14,18 +14,20 @@ The linked acceptance harness also checks that payment creation reuses the
 stored draft idempotency keys, so Stripe Checkout and Terminal cannot drift
 away from the server-owned order or POS sale draft.
 Convex payment snapshots now also refuse to start or process Stripe Checkout
-and Terminal payments if stored catalog-priced lines are missing or spoofing
-the code-owned catalog provenance.
+if its stored email, date, time, or ticket lines are incomplete, and Checkout
+and Terminal both reject missing or spoofed code-owned catalog provenance.
 
 Real card charging is still intentionally blocked. That is good for now. The
 site needs the real Convex project, Vercel environment variable, Stripe test
 webhook, seeded staff account, and Stripe test-reader setup before checkout or
 POS should run a real payment flow.
 
-One code gate also remains before Checkout acceptance: the signed paid webhook
-reconciles the order and payment ledger, but it does not yet create the guest's
-booking. Do not enable card acceptance until paid-order fulfillment creates one
-idempotent booking linked to the stored order.
+The signed paid Checkout webhook now reconciles the payment ledger, marks the
+order paid, and creates exactly one confirmed booking in the same Convex
+mutation. Stripe retries reuse the booking instead of duplicating it. This code
+still needs a linked test-mode Convex/Stripe acceptance run before cards are
+enabled. Payment creation also rejects past dates, dates over 365 days away,
+and entry times outside the shared server-owned slot list.
 
 Admin and POS staff screens use white text on black staff surfaces. The current
 catalog is code-owned in `@skyla/payments`; Convex now has code paths and
@@ -151,6 +153,8 @@ safe behavior.
 - [ ] Verify `/members` writes to Convex in preview.
 - [ ] Verify `/experiences` writes to Convex in preview.
 - [ ] Verify checkout creates a Stripe Checkout session in test mode.
+- [ ] Verify a signed paid Checkout webhook creates one confirmed booking and a
+      replay creates no duplicate in linked Convex test mode.
 - [ ] Verify POS sends a stored `saleRef` total to a Stripe test reader.
 - [ ] Verify Stripe webhooks reconcile checkout and Terminal final states.
 - [ ] Disable or redeploy old Supabase Stripe/Kaskade functions so any live
@@ -209,25 +213,23 @@ smoke checks before recording fresh exact-deployment evidence.
 
 ## Next Code Work
 
-1. Make paid Checkout reconciliation create exactly one confirmed booking from
-   the stored order, and prove webhook replay cannot duplicate it.
-2. Add an authoritative post-return order/booking status check instead of
+1. Add an authoritative post-return order/booking status check instead of
    treating `?stripe=success` as payment confirmation.
-3. Keep runtime catalog/pricing code-owned until linked Convex acceptance passes.
-4. After dashboard setup, seed the code-owned catalog into Convex from native
+2. Keep runtime catalog/pricing code-owned until linked Convex acceptance passes.
+3. After dashboard setup, seed the code-owned catalog into Convex from native
    `/admin` and verify `/api/admin/catalog` shows an active version.
-5. Confirm seeded `productSnapshots.contentHash` values match stored
+4. Confirm seeded `productSnapshots.contentHash` values match stored
    checkout/POS line `catalogContentHash` values before moving runtime reads to
    Convex catalog data.
-6. Only then design admin catalog/pricing edits on top of versioned drafts.
-7. Finish refunds with Stripe reconciliation and audit events.
-8. Finish destructive admin actions only with typed validators and rollback
+5. Only then design admin catalog/pricing edits on top of versioned drafts.
+6. Finish refunds with Stripe reconciliation and audit events.
+7. Finish destructive admin actions only with typed validators and rollback
    runbooks.
-9. Run no-write linked acceptance preflight after dashboard setup.
-10. Run linked Convex/Stripe write acceptance after the preflight passes; the
+8. Run no-write linked acceptance preflight after dashboard setup.
+9. Run linked Convex/Stripe write acceptance after the preflight passes; the
    harness now checks persisted checkout/POS line provenance before optional
    Stripe Checkout or Terminal legs.
-11. Keep Convex payment snapshot provenance gates in place so stored draft
+10. Keep Convex payment snapshot provenance and fulfillment gates in place so stored draft
    replays cannot drop or spoof catalog identity before Stripe handoff.
-12. Keep the Stripe public response allowlists and `clientSecret` regression
+11. Keep the Stripe public response allowlists and `clientSecret` regression
    tests in place for any future payment route changes.

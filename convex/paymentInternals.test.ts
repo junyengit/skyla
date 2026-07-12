@@ -17,6 +17,7 @@ type TableName =
   | "posSaleLines"
   | "paymentEvents"
   | "webhookEvents"
+  | "bookings"
   | "auditEvents"
   | "staffUsers";
 type MockDoc = Record<string, unknown> & { _id: string; _creationTime: number };
@@ -73,6 +74,7 @@ type CheckoutWebhookResult = {
 
 const orderRef = "ORD260704-ABC123";
 const saleRef = "SALE260704-ABC123";
+const checkoutVisitDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const providerPaymentId = "pi_terminal_123";
 const checkoutProviderPaymentId = "cs_test_123";
 
@@ -112,6 +114,22 @@ describe("payment snapshot provenance gates", () => {
         }
       ]
     });
+  });
+
+  it.each([
+    ["customer email", { customerEmailLower: undefined }, "customerEmailLower is required"],
+    ["visit date", { visitDate: undefined }, "visitDate is required"],
+    ["entry time", { entryTime: undefined }, "entryTime is required"],
+    ["ticket line", { lineKind: "custom", lineMetadata: { reason: "test fixture" } }, "requires at least one ticket line"]
+  ])("rejects Checkout payment snapshots without a fulfillment-ready %s", async (_label, options, message) => {
+    const { ctx } = createCheckoutSnapshotCtx(options);
+
+    await expect(
+      runCheckoutPaymentSnapshot(ctx, {
+        orderRef,
+        idempotencyKey: "acc_checkout_test"
+      })
+    ).rejects.toThrow(message);
   });
 
   it("rejects Terminal reader processing when stored POS line provenance is spoofed", async () => {
@@ -165,6 +183,22 @@ describe("Stripe Checkout webhook internals", () => {
     expect(result).toEqual({ status: "processed", duplicate: false, orderRef });
     expect(state.orders[0].status).toBe("paid");
     expect(state.paymentEvents.some((event) => event.status === "paid" && event.rawEventId === "evt_checkout_paid")).toBe(true);
+    expect(state.bookings).toHaveLength(1);
+    expect(state.bookings[0]).toMatchObject({
+      bookingRef: orderRef,
+      orderRef,
+      visitDate: checkoutVisitDate,
+      entryTime: "14:00",
+      partySize: 2,
+      status: "confirmed",
+      emailLower: "guest@example.com"
+    });
+    expect(state.auditEvents).toHaveLength(1);
+    expect(state.auditEvents[0]).toMatchObject({
+      action: "checkout.bookingFulfilled",
+      entityType: "booking",
+      entityRef: orderRef
+    });
     expect(state.webhookEvents[0]).toMatchObject({
       provider: "stripe",
       providerEventId: "evt_checkout_paid",
@@ -200,6 +234,37 @@ describe("Stripe Checkout webhook internals", () => {
     expect(firstResult).toEqual({ status: "processed", duplicate: false, orderRef });
     expect(replayResult).toEqual({ status: "processed", duplicate: true, orderRef });
     expect(state.webhookEvents).toHaveLength(1);
+    expect(state.bookings).toHaveLength(1);
+    expect(state.auditEvents).toHaveLength(1);
+  });
+
+  it("does not duplicate fulfillment when Stripe delivers a second paid event id", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_paid_first",
+      eventType: "checkout.session.completed",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd"
+    });
+    const secondResult = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_paid_second",
+      eventType: "checkout.session.async_payment_succeeded",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd"
+    });
+
+    expect(secondResult).toEqual({ status: "processed", duplicate: false, orderRef });
+    expect(state.bookings).toHaveLength(1);
+    expect(state.auditEvents).toHaveLength(1);
+    expect(state.paymentEvents.filter((event) => event.status === "paid")).toHaveLength(1);
+    expect(state.webhookEvents).toHaveLength(2);
   });
 
   it("fails Checkout webhooks whose Stripe amount does not match the stored order", async () => {
@@ -219,6 +284,7 @@ describe("Stripe Checkout webhook internals", () => {
     expect(result).toEqual({ status: "failed", duplicate: false, orderRef });
     expect(state.orders[0].status).toBe("payment_pending");
     expect(state.paymentEvents).toHaveLength(1);
+    expect(state.bookings).toHaveLength(0);
     expect(state.webhookEvents[0]).toMatchObject({
       provider: "stripe",
       providerEventId: "evt_checkout_amount_mismatch",
@@ -379,7 +445,13 @@ async function runTerminalReaderProcessSnapshot(
 }
 
 function createCheckoutSnapshotCtx(
-  options: { lineMetadata?: Record<string, string | number | boolean> } = {}
+  options: {
+    lineMetadata?: Record<string, string | number | boolean>;
+    customerEmailLower?: string;
+    visitDate?: string;
+    entryTime?: string;
+    lineKind?: string;
+  } = {}
 ): { ctx: MockCtx; state: MockState } {
   const state = createEmptyState();
   state.orders.push({
@@ -392,6 +464,9 @@ function createCheckoutSnapshotCtx(
     subtotalCents: 5800,
     feeCents: 290,
     totalCents: 6090,
+    customerEmailLower: "customerEmailLower" in options ? options.customerEmailLower : "guest@example.com",
+    visitDate: "visitDate" in options ? options.visitDate : checkoutVisitDate,
+    entryTime: "entryTime" in options ? options.entryTime : "14:00",
     idempotencyKey: "acc_checkout_test",
     createdAt: 1,
     updatedAt: 1
@@ -400,7 +475,7 @@ function createCheckoutSnapshotCtx(
     _id: "orderLineItems_1",
     _creationTime: 1,
     orderRef,
-    kind: "ticket",
+    kind: options.lineKind ?? "ticket",
     productKey: "general",
     name: "General Admission",
     quantity: 2,
@@ -537,9 +612,24 @@ function createCheckoutWebhookCtx(
     feeCents: 90,
     totalCents: 6090,
     expectedProvider: "stripe",
+    customerEmailLower: "guest@example.com",
+    visitDate: checkoutVisitDate,
+    entryTime: "14:00",
     idempotencyKey: "acc_checkout_test",
     createdAt: 1,
     updatedAt: 1
+  });
+  state.orderLineItems.push({
+    _id: "orderLineItems_1",
+    _creationTime: 1,
+    orderRef,
+    kind: "ticket",
+    productKey: "general",
+    name: "General Admission",
+    quantity: 2,
+    unitAmountCents: 2900,
+    lineTotalCents: 5800,
+    metadata: catalogLineMetadata(ticketPackages.general)
   });
   state.paymentEvents.push({
     _id: "paymentEvents_1",
@@ -616,6 +706,7 @@ function createEmptyState(): MockState {
     posSaleLines: [],
     paymentEvents: [],
     webhookEvents: [],
+    bookings: [],
     auditEvents: [],
     staffUsers: []
   };

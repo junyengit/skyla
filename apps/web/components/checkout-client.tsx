@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AddonKey, TicketPackageKey } from "@skyla/payments";
+import { checkoutEntryTimes, type AddonKey, type TicketPackageKey } from "@skyla/payments";
 import { ArrowRight, CalendarDays, ShieldCheck } from "@skyla/ui/icons";
 
 type PackageOption = {
@@ -50,7 +50,7 @@ type CheckoutClientProps = {
 
 type AddonQuantities = Partial<Record<AddonKey, number>>;
 
-const entryTimes = ["11:00 AM", "12:30 PM", "2:00 PM", "3:30 PM", "5:00 PM", "6:30 PM"];
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function money(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -80,7 +80,7 @@ export function CheckoutClient({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [visitDate, setVisitDate] = useState(todayIso);
-  const [entryTime, setEntryTime] = useState(entryTimes[0]);
+  const [entryTime, setEntryTime] = useState<string>(checkoutEntryTimes[0].value);
   const [customerEmail, setCustomerEmail] = useState("");
   const [addonQuantities, setAddonQuantities] = useState<AddonQuantities>({});
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
@@ -90,7 +90,9 @@ export function CheckoutClient({
   const [message, setMessage] = useState<string | null>(null);
 
   const selectedPackage = packages.find((item) => item.key === packageKey) ?? packages[0];
-  const canReview = !!selectedPackage && adults > 0 && !!visitDate && !!entryTime;
+  const normalizedEmail = customerEmail.trim().toLowerCase();
+  const canReview =
+    !!selectedPackage && adults > 0 && !!visitDate && !!entryTime && emailPattern.test(normalizedEmail);
   const addonInput = useMemo(
     () =>
       Object.fromEntries(
@@ -128,7 +130,7 @@ export function CheckoutClient({
           addons: addonInput,
           visitDate,
           entryTime,
-          customerEmail: customerEmail || undefined,
+          customerEmail: normalizedEmail,
           idempotencyKey
         })
       });
@@ -189,7 +191,7 @@ export function CheckoutClient({
       {stripeStatus ? (
         <div className={`checkoutNotice ${stripeStatus === "success" ? "isGood" : "isWarn"}`}>
           {stripeStatus === "success"
-            ? `Stripe returned successfully${returnedOrderRef ? ` for ${returnedOrderRef}` : ""}. Webhook reconciliation marks the stored order paid.`
+            ? `Stripe returned successfully${returnedOrderRef ? ` for ${returnedOrderRef}` : ""}. Confirmation is pending the signed payment webhook.`
             : "Payment was canceled before completion."}
         </div>
       ) : null}
@@ -267,6 +269,7 @@ export function CheckoutClient({
               <input
                 inputMode="email"
                 placeholder="guest@example.com"
+                required
                 type="email"
                 value={customerEmail}
                 onChange={(event) => {
@@ -278,17 +281,17 @@ export function CheckoutClient({
           </div>
 
           <div className="checkoutTimes" aria-label="Entry time">
-            {entryTimes.map((time) => (
+            {checkoutEntryTimes.map((time) => (
               <button
-                className={time === entryTime ? "isSelected" : ""}
-                key={time}
+                className={time.value === entryTime ? "isSelected" : ""}
+                key={time.value}
                 type="button"
                 onClick={() => {
-                  setEntryTime(time);
+                  setEntryTime(time.value);
                   resetDraft();
                 }}
               >
-                {time}
+                {time.label}
               </button>
             ))}
           </div>

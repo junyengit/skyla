@@ -3,6 +3,11 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
+import {
+  assertCheckoutFulfillmentReady,
+  buildConfirmedCheckoutFulfillment,
+  type ConfirmedCheckoutBooking
+} from "./lib/checkoutFulfillment";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
 import {
   stripeTerminalIntentIdempotencyKey,
@@ -43,6 +48,7 @@ export const getCheckoutPaymentSnapshot = internalQuery({
       .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
       .collect();
     assertStoredPaymentLineProvenance(lines, "Checkout");
+    assertCheckoutFulfillmentReady(order, lines);
 
     return {
       orderRef: order.orderRef,
@@ -914,6 +920,31 @@ export const recordStripeCheckoutWebhook = internalMutation({
     }
 
     if (args.outcome === "paid") {
+      const now = Date.now();
+      const lines = await ctx.db
+        .query("orderLineItems")
+        .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+        .collect();
+      assertStoredPaymentLineProvenance(lines, "Checkout webhook");
+      const fulfillment = buildConfirmedCheckoutFulfillment(order, lines, now);
+      const existingBooking = await ctx.db
+        .query("bookings")
+        .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+        .unique();
+
+      if (existingBooking) {
+        assertMatchingCheckoutBooking(existingBooking, fulfillment.booking);
+      } else {
+        await ctx.db.insert("bookings", fulfillment.booking);
+        await ctx.db.insert("auditEvents", {
+          action: "checkout.bookingFulfilled",
+          entityType: "booking",
+          entityRef: fulfillment.booking.bookingRef,
+          metadata: fulfillment.auditMetadata,
+          createdAt: now
+        });
+      }
+
       const existingPaidEvent = providerEvents.find((event) => event.status === "paid");
       if (!existingPaidEvent) {
         await ctx.db.insert("paymentEvents", {
@@ -926,7 +957,7 @@ export const recordStripeCheckoutWebhook = internalMutation({
           amountCents,
           rawEventId: args.providerEventId,
           raw: args.raw,
-          createdAt: Date.now()
+          createdAt: now
         });
       }
 
@@ -934,7 +965,7 @@ export const recordStripeCheckoutWebhook = internalMutation({
         await ctx.db.patch(order._id, {
           status: "paid",
           expectedProvider: "stripe",
-          updatedAt: Date.now()
+          updatedAt: now
         });
       }
 
@@ -980,6 +1011,24 @@ export const recordStripeCheckoutWebhook = internalMutation({
     return { status: "processed", duplicate: false, orderRef: args.orderRef };
   }
 });
+
+function assertMatchingCheckoutBooking(
+  existing: {
+    bookingRef: string;
+    orderRef?: string;
+    visitDate?: string;
+    entryTime?: string;
+    partySize?: number;
+    emailLower?: string;
+  },
+  expected: ConfirmedCheckoutBooking
+) {
+  const immutableFields = ["bookingRef", "orderRef", "visitDate", "entryTime", "partySize", "emailLower"] as const;
+  const mismatch = immutableFields.find((field) => existing[field] !== expected[field]);
+  if (mismatch) {
+    throw new Error(`Stored checkout booking does not match paid order fulfillment: ${mismatch}`);
+  }
+}
 
 async function insertWebhookEvent(
   ctx: MutationCtx,

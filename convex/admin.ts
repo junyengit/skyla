@@ -157,6 +157,7 @@ function publicBooking(booking: {
   bookingRef: string;
   orderRef?: string;
   visitDate?: string;
+  entryTime?: string;
   status: string;
   emailLower?: string;
   firstName?: string;
@@ -177,6 +178,7 @@ function publicBooking(booking: {
     bookingRef: booking.bookingRef,
     orderRef: booking.orderRef,
     visitDate: booking.visitDate,
+    entryTime: booking.entryTime,
     status: booking.status,
     emailLower: booking.emailLower,
     firstName,

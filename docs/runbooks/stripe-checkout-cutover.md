@@ -24,6 +24,8 @@ What changed in this slice:
 - Convex now has a `POST /stripe-webhook` HTTP action that verifies Stripe's
   raw-body signature, dedupes event IDs, and marks stored orders paid only
   after amount, currency, provider, and status reconciliation.
+- A paid webhook also creates one confirmed booking from the stored order in
+  that same mutation. A replay checks and reuses the existing booking.
 
 The primary `/checkout` page now uses the App Router and calls the server draft
 route first. It shows a closed payment state until the real Convex deployment,
@@ -62,6 +64,7 @@ sequenceDiagram
   Browser->>Stripe: complete payment
   Stripe-->>Webhook: payment event
   Webhook->>Convex: verify signature, amount, currency, status, idempotency
+  Convex->>Convex: mark paid + insert one confirmed booking + audit
 ```
 
 ## Required Env Before Frontend Cutover
@@ -242,6 +245,10 @@ Expected after Convex is wired:
       idempotently.
 - [ ] Paid webhook events reconcile session id, order ref, amount, currency,
       provider, and order status before marking the order paid.
+- [x] Local unit coverage proves paid reconciliation creates one confirmed
+      booking and same-ID or different-ID Stripe replay cannot duplicate it.
+- [ ] Linked test-mode acceptance proves the signed webhook creates one booking
+      with the stored email, date, time, and ticket quantity.
 - [ ] Home page checkout links resolve to the App Router `/checkout` page, not
       the legacy static rewrite.
 - [x] Legacy Supabase Stripe card creation, old Checkout session verification,

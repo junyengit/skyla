@@ -1307,8 +1307,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       return.
 - [x] Changed GitHub CI to run the complete `bun run security` gate, including
       the retired-Supabase guard that was previously omitted by the workflow.
-- [ ] Paid Stripe Checkout reconciliation still needs to create exactly one
-      confirmed booking from the stored order before any card acceptance.
+- [x] Paid Stripe Checkout reconciliation now creates exactly one confirmed
+      booking from stored fulfillment fields in the same Convex mutation, with
+      same-event and different-event replay coverage.
+- [x] Checkout now stores `HH:mm` entry times instead of sending display labels
+      such as `2:00 PM`, and requires a valid guest email before order review.
+- [ ] Prove booking fulfillment against the linked Convex project and a signed
+      Stripe test webhook before any card acceptance.
 - [ ] No Skyla Convex cloud project is visible to the currently authenticated
       local Convex account; project creation/linking remains a dashboard step.
 
@@ -1358,9 +1363,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Vercel/domain setup may require browser login or user confirmation before cloud-side changes.
 - Immediately after the nameserver cutover, this Mac's system resolver returned stale GitHub Pages behavior even while authoritative/external DNS and Vercel verification were correct. The later custom-domain smoke tests now pass on apex and `www`; keep this note for future DNS investigations.
 - Payment/auth/data migration must not be done as a cosmetic rewrite; server authority is the main security requirement.
-- A paid Checkout order is not yet fulfillment-complete: current webhook code
-  reconciles payment/order ledgers but does not insert a booking. Keep card
-  acceptance disabled until booking creation is atomic and replay-safe.
+- Paid Checkout booking fulfillment is now atomic and replay-safe in local code.
+  Keep card acceptance disabled until the linked Convex/Stripe test-mode run
+  proves the signed webhook creates one booking and replay creates no duplicate.
 - Retired July 7, 2026: the Bun/Turbo lockfile warning no longer appears after
   Turbo `2.10.4` and the current text `bun.lock`. Keep future Bun canary
   lockfile-format changes visible in focused dependency PRs.

@@ -18,11 +18,11 @@ Terminal reader saved on it. The primary `/checkout` page now uses the Next.js
 App Router and fails closed until the real Convex deployment, Vercel env vars,
 and Stripe dashboard webhook endpoint are ready.
 
-The signed paid Checkout webhook currently reconciles the order and payment
-ledger but does not yet insert the guest booking. This is a release blocker for
-card acceptance even after dashboard wiring: a successful charge must create
-exactly one confirmed booking from the stored order, including on webhook
-replay.
+The signed paid Checkout webhook now reconciles the order and payment ledger
+and inserts exactly one confirmed guest booking in the same Convex mutation.
+It derives fulfillment only from the stored email, date, time, and ticket lines;
+webhook replay reuses the existing booking. Linked test-mode acceptance remains
+a release gate before card acceptance.
 
 The extensionless `/pos` route is now the native server-priced POS shell. The
 older `/pos-next` URL still renders that native shell during rollout, and
@@ -74,8 +74,8 @@ stored line amounts remain the payment authority.
 12. Run the linked acceptance harness against a Vercel Preview URL.
 13. Confirm member and event forms save into Convex in Preview.
 14. Confirm checkout and POS stay server-priced with test payments.
-15. Implement and test idempotent paid-order booking fulfillment before any
-    card acceptance.
+15. Verify idempotent paid-order booking fulfillment against linked Convex and
+    a signed Stripe test webhook before any card acceptance.
 16. Disable or redeploy old Supabase payment functions from the fail-closed
     repo copies.
 17. Finish native admin/POS work and
@@ -717,18 +717,21 @@ Current dependency note:
 6. Create Stripe test webhook endpoint and set Convex Stripe env vars.
 7. Set Convex/Vercel env vars so the App Router checkout can persist orders
    and start Stripe Checkout.
-8. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
+8. Prove a signed Stripe test payment creates one confirmed booking and replay
+   creates no duplicate; verify the browser return remains pending until the
+   webhook result is authoritative.
+9. Add real Vercel/Convex envs, then accept native `/pos` Terminal reader processing on a
    Stripe test reader using stored `saleRef` and stored reader IDs.
-9. Accept Stripe Terminal final webhook reconciliation in test mode with a real
+10. Accept Stripe Terminal final webhook reconciliation in test mode with a real
    test reader and matching Convex sale.
-10. Allow staff to use native `/pos` for card-present payment only after
+11. Allow staff to use native `/pos` for card-present payment only after
    Terminal capture uses stored `saleRef` totals and signed webhooks reconcile
    final state.
-11. Finish native Admin beyond lookup/status/config/voucher/export actions:
+12. Finish native Admin beyond lookup/status/config/voucher/export actions:
    refunds, catalog/pricing edits, and any destructive action with typed
    validators, audit logs, and rollback steps.
-12. Rebuild POS as the protected live App Router/Convex register.
-13. Migrate remaining Supabase data and disable legacy Supabase functions only
+13. Rebuild POS as the protected live App Router/Convex register.
+14. Migrate remaining Supabase data and disable legacy Supabase functions only
    after acceptance tests pass.
 
 ## Plain-English Handoff
