@@ -1321,12 +1321,19 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] No Skyla Convex cloud project is visible to the currently authenticated
       local Convex account; project creation/linking remains a dashboard step.
 
-### 2026-07-12 PR #116 Deployment And Legacy Data Migration Preparation
+### 2026-07-12 PR #117 Legacy Data Migration Preparation
 
-- [x] Recorded current production deployment evidence for PR #116 merge commit
-      `61ec73f83188f117e444a9da2d971ae709a27ee1`:
-      `https://web-8hw004wy3-junyen-enterprises.vercel.app`
-      (`dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`).
+- [x] Merged PR #117 as
+      `e5973048ea3f5ce3c577eb979232cd520a577407` after CI, CodeQL, and Vercel
+      checks passed.
+- [x] Verified READY production deployment
+      `https://web-kyy17u2k9-junyen-enterprises.vercel.app`
+      (`dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm`).
+- [x] Passed post-merge readiness on apex, `www`, and immutable production,
+      plus route/payment smokes on apex; Vercel reported no runtime errors in
+      the checked 30-minute window.
+- [ ] Repeat the visual staff pass in Helium after the Mac is unlocked. The
+      automated white-on-black staff contrast test passed.
 - [x] Added a narrowly scoped legacy migration implementation for Supabase
       `bookings`, `members`, and `inquiries`, with deterministic SHA-256 plans,
       quarantine, 1-50 row batches, stable source identities, batch/row ledgers,

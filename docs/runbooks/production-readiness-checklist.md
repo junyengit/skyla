@@ -94,12 +94,15 @@ stored line amounts remain the payment authority.
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Latest production deployment evidence recorded here on 2026-07-12:
-  `https://web-8hw004wy3-junyen-enterprises.vercel.app`
+  `https://web-kyy17u2k9-junyen-enterprises.vercel.app`
 - Evidence deployment ID checked on 2026-07-12:
-  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`
+  `dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm` (`READY`)
 - Evidence merge commit checked on 2026-07-12:
-  `61ec73f83188f117e444a9da2d971ae709a27ee1` (PR #116). This deployment
+  `e5973048ea3f5ce3c577eb979232cd520a577407` (PR #117). This deployment
   identity does not mean the Supabase-to-Convex data migration has run.
+- Post-merge readiness passed on apex, `www`, and the immutable deployment;
+  route/payment smokes passed on apex, and Vercel reported no runtime errors in
+  the checked 30-minute window.
 - `bun run vercel:project:check` passed on 2026-07-12. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when

@@ -67,9 +67,9 @@ flowchart LR
 
 ## What Works Now
 
-- Current production deployment evidence points to PR #116 merge commit
-  `61ec73f83188f117e444a9da2d971ae709a27ee1` and deployment
-  `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn`.
+- Current production deployment evidence points to PR #117 merge commit
+  `e5973048ea3f5ce3c577eb979232cd520a577407` and READY deployment
+  `dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm`.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project.
 - Public routes, native checkout, native members, native experiences, native
   admin, native POS, and saved `.html` compatibility routes smoke-test
@@ -196,11 +196,11 @@ safe behavior.
 | Check | Result |
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
-| Latest production deployment evidence recorded here | PR #116, merged to `main` on July 12, 2026 |
-| Evidence deployment | `dpl_G3UAZUZitMWy6fGkJQy4h1TTSCCn` |
-| Evidence URL | `https://web-8hw004wy3-junyen-enterprises.vercel.app` |
-| Evidence commit | `61ec73f83188f117e444a9da2d971ae709a27ee1` |
-| App/payment behavior verification | PR #115 remains the latest full post-merge readiness smoke recorded here; PR #116 is the newer deployment identity. |
+| Latest production deployment evidence recorded here | PR #117, merged to `main` on July 12, 2026 |
+| Evidence deployment | `dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm`, status `READY` |
+| Evidence URL | `https://web-kyy17u2k9-junyen-enterprises.vercel.app` |
+| Evidence commit | `e5973048ea3f5ce3c577eb979232cd520a577407` |
+| App/payment behavior verification | PR #117 post-merge readiness passed on apex, `www`, and the immutable deployment; route and payment smokes passed on apex without a real charge. |
 | Legacy data migration | Implementation and local tests exist for bookings, members, and inquiries; no cloud apply has occurred. |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | GitHub governance | Rechecked July 6, 2026: `main` requires strict `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel` checks; admins are enforced; force pushes, branch deletion, and unresolved conversations are blocked; Dependabot vulnerability alerts and automated security fixes are enabled |
@@ -209,21 +209,22 @@ safe behavior.
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=high` | No vulnerabilities found |
 | Dependency sweep | July 12: upgraded `@types/node` to `26.1.1`. TypeScript `7.0.2` passes direct typechecks but Next.js `16.2.10` rejects it during `next build`, so TypeScript stays on `6.0.3`. ESLint `10.7.0` remains deferred because the current React/Next lint plugin stack is incompatible. |
-| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #115 with centralized `.html` redirect assertions |
+| `bun run test:smoke` | Passed on `https://skydeckla.com` after PR #117 with centralized `.html` redirect assertions |
 | `bun run test:payments` | Passed on `https://skydeckla.com`; no real Stripe charge; checks exact catalog line provenance metadata and canonical line amounts |
-| `bun run test:production-readiness` | Last full recorded pass was after PR #115 on `https://skydeckla.com`, `https://www.skydeckla.com`, and its immutable production URL; production remains dashboard-gated and no-write. |
+| `bun run test:production-readiness` | Passed after PR #117 on `https://skydeckla.com`, `https://www.skydeckla.com`, and `https://web-kyy17u2k9-junyen-enterprises.vercel.app`; production remains dashboard-gated and no-write. |
 | Convex payment snapshot provenance gate | PR #105 adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
 | Terminal reader gate | Added unit coverage proving Terminal PaymentIntent snapshots fail before Stripe when the stored POS sale has no trusted Terminal reader |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:project:check` | Passed against `junyen-enterprises/web`: project ID, root `apps/web`, Next.js, Node `24.x`, local Vercel link, and repo Bun canary install/build config are aligned |
 | `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
 | `bun run dashboard:readiness` | Includes `vercelProjectShape: true`; still fails until Vercel and Convex/Stripe dashboard env gates are shaped for linked Preview preflight |
-| `bun run check` | Passed locally on the Checkout status branch with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, 20 web test files, 18 Convex test files, and the Next production build |
+| `bun run check` | Passed before PR #117 merge with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, 20 web test files/106 tests, 20 Convex test files/127 tests, 9 script files/37 tests, both Convex typechecks, and the Next production build |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |
 | Stripe API version pin | Requests send `Stripe-Version: 2026-02-25.clover`. Stripe currently documents `2026-06-24.dahlia` as the current API version, but this crosses a named major release and should be upgraded only with a Workbench/webhook endpoint version plan and linked acceptance tests. |
-| Staff visual QA | Helium confirmed production `/admin`, `/pos`, and `/pos-next` render white-on-black staff screens on July 6, 2026; `apps/web/staff-contrast.test.ts` guards admin/POS body text, controls, and POS headings on dark staff surfaces |
+| Staff visual QA | Helium confirmed production `/admin`, `/pos`, and `/pos-next` render white-on-black staff screens on July 6, 2026; `apps/web/staff-contrast.test.ts` still passes. A fresh July 12 Helium pass is pending because the Mac was locked. |
+| Vercel runtime evidence | No runtime errors were reported for the checked 30-minute window after PR #117. |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
