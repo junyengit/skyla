@@ -45,9 +45,9 @@ As of July 12, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - Latest production deployment evidence recorded here:
-  `https://web-kyy17u2k9-junyen-enterprises.vercel.app` from merge commit
-  `e5973048ea3f5ce3c577eb979232cd520a577407` (PR #117, deployment
-  `dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm`, status `READY`). This identifies the current deployment;
+  `https://web-mjicopj2r-junyen-enterprises.vercel.app` from merge commit
+  `eabd40aeaf34f51e8c8c7bcb92d8f6aad48d77a8` (PR #119, deployment
+  `dpl_D4wmWoj1x1tUYsy7fnfT2gqJnT6G`, status `READY`). This identifies the current deployment;
   it does not mean the Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
