@@ -803,11 +803,13 @@ Current dependency note:
 - `bun run security:audit` runs `bun audit --audit-level=high` and reports no
   high-severity vulnerabilities.
 - `vitest` is patched to `4.1.10`.
-- `bun outdated --recursive` reports only a major ESLint update (`9.39.4` to
-  `10.6.0`) in `@skyla/web`. I retested that upgrade on 2026-07-06; lint fails
+- `bun outdated --recursive` reports TypeScript `7.0.2` across the workspaces and
+  ESLint `10.7.0` in `@skyla/web`. TypeScript 7 passes direct typechecks but
+  Next.js `16.2.10` rejects it during `next build`. I retested the ESLint major
+  upgrade on 2026-07-06; lint fails
   because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
-  the current Next lint stack. Keep ESLint on `9.39.4` until the upstream lint
-  plugin stack supports ESLint 10.
+  the current Next lint stack. Keep TypeScript on `6.0.3` and ESLint on `9.39.4`
+  until the upstream Next/lint stack supports those majors.
 - The public homepage, checkout, admin, POS, and cafe display prices now route
   through `@skyla/payments` catalog helpers. Admin still shows this as a
   code-owned read-only catalog. Convex now has catalog versioning, immutable
@@ -866,11 +868,12 @@ What has been done:
   behavior on the Vercel URL, `skydeckla.com`, and `www.skydeckla.com`.
 - Payment and staff payment API responses are marked `no-store`; staff-gated
   Terminal routes also vary by `Authorization`.
-- On this branch, Admin and POS no longer expose a pasted-token field. Clerk v7
+- Production Admin and POS no longer expose a pasted-token field. Clerk v7
   signs in human staff and `staffFetch` acquires a short-lived `convex` JWT for
   each protected request; Convex still checks `staffUsers` and
-  `requireStaffUser` for the actual role. Dashboard setup and deployment are
-  still pending, while bearer auth remains available to automation.
+  `requireStaffUser` for the actual role. The code is deployed; dashboard setup
+  and linked acceptance remain pending, while bearer auth remains available to
+  automation.
 - There is also a one-command production-readiness smoke that bundles route,
   payment no-write, member no-write, experience inquiry no-write, and staff
   compatibility redirect checks.
