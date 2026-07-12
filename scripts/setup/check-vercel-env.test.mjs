@@ -9,6 +9,10 @@ import { describe, expect, it } from "vitest";
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scriptPath = resolve(repoRoot, "scripts/setup/check-vercel-env.mjs");
 const stripeSecretKeyName = ["STRIPE", "SECRET_KEY"].join("_");
+const readyStaffAuthEnvs = [
+  { key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", target: ["preview", "production"] },
+  { key: "CLERK_SECRET_KEY", target: ["preview", "production"] }
+];
 
 function runCheck(payload) {
   return spawnSync(process.execPath, [scriptPath], {
@@ -62,18 +66,35 @@ describe("check-vercel-env", () => {
         presentTargets: [],
         ok: false,
         note: "required by Vercel-hosted Next routes before Convex-backed writes can persist"
+      },
+      {
+        key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+        requiredTargets: ["production", "preview"],
+        present: false,
+        presentTargets: [],
+        ok: false,
+        note: "browser-safe Clerk key required by the staff sign-in provider"
+      },
+      {
+        key: "CLERK_SECRET_KEY",
+        requiredTargets: ["production", "preview"],
+        present: false,
+        presentTargets: [],
+        ok: false,
+        note: "server-only Clerk key required by the Next.js staff auth proxy"
       }
     ]);
     expect(result.stderr).toContain("One or more Vercel env readiness checks failed");
   });
 
-  it("passes when NEXT_PUBLIC_CONVEX_URL is present for Preview and Production only", () => {
+  it("passes when the Convex URL and Clerk keys cover Preview and Production", () => {
     const result = runCheck({
       envs: [
         {
           key: "NEXT_PUBLIC_CONVEX_URL",
           target: ["preview", "production"]
         },
+        ...readyStaffAuthEnvs,
         {
           key: "NEXT_PUBLIC_GOOGLE_ADS_TAG_ID",
           target: "production"
@@ -84,6 +105,7 @@ describe("check-vercel-env", () => {
     expect(result.status).toBe(0);
     const output = parseStdout(result);
     expect(output.readyForConvexUrl).toBe(true);
+    expect(output.readyForStaffAuth).toBe(true);
     expect(output.safeSecretPlacement).toBe(true);
     expect(output.checks[0].presentTargets).toEqual(["preview", "production"]);
   });
@@ -93,14 +115,15 @@ describe("check-vercel-env", () => {
       {
         key: "NEXT_PUBLIC_CONVEX_URL",
         target: ["preview", "production"]
-      }
+      },
+      ...readyStaffAuthEnvs
     ])}`);
 
     expect(result.status).toBe(0);
     const output = parseStdout(result);
     expect(output.source).toBe("vercel-cli");
     expect(output.readyForConvexUrl).toBe(true);
-    expect(output.envCount).toBe(1);
+    expect(output.envCount).toBe(3);
   });
 
   it("flags Stripe and staff secrets if they are accidentally added to Vercel", () => {
@@ -110,6 +133,7 @@ describe("check-vercel-env", () => {
           key: "NEXT_PUBLIC_CONVEX_URL",
           target: ["production", "preview"]
         },
+        ...readyStaffAuthEnvs,
         {
           key: stripeSecretKeyName,
           target: ["production"]

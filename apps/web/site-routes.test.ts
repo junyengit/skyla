@@ -40,12 +40,15 @@ describe("App Router route ownership", () => {
     }
   });
 
-  it("redirects staff compatibility URLs permanently with noindex", () => {
+  it("redirects staff compatibility URLs permanently with noindex", async () => {
     for (const [handler, source, destination] of [
       [proxy, "/admin.html", "/admin"],
       [proxy, "/pos.html", "/pos"]
     ] as const) {
-      const response = handler(new NextRequest(`https://skydeckla.com${source}?from=test`));
+      const response = await handler(new NextRequest(`https://skydeckla.com${source}?from=test`));
+
+      expect(response).toBeInstanceOf(Response);
+      if (!response) throw new Error(`Expected ${source} to redirect`);
 
       expect(response.status).toBe(308);
       expect(response.headers.get("location")).toBe(`https://skydeckla.com${destination}?from=test`);

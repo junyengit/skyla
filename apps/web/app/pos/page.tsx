@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { PosRegisterPage } from "@/components/pos-register-page";
+import { StaffAuthProvider } from "@/components/staff-auth-provider";
+import { isStaffAuthConfigured } from "@/lib/staff-auth-config";
 
 export const metadata: Metadata = {
   title: "POS",
@@ -11,5 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function PosPage() {
-  return <PosRegisterPage variant="primary" />;
+  return (
+    <StaffAuthProvider enabled={isStaffAuthConfigured()}>
+      <PosRegisterPage variant="primary" />
+    </StaffAuthProvider>
+  );
 }

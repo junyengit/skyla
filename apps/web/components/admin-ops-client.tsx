@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, CalendarDays, Download, ShieldCheck } from "@skyla/ui/icons";
+import { useStaffSession } from "@/components/staff-auth-provider";
 
 type Readiness = {
   stripeMode: boolean;
@@ -313,7 +315,7 @@ function maskedIdentifier(value?: string) {
 }
 
 export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
-  const [staffToken, setStaffToken] = useState("");
+  const staffSession = useStaffSession();
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [configSnapshot, setConfigSnapshot] = useState<ConfigSnapshot | null>(null);
   const [convexCatalogSnapshot, setConvexCatalogSnapshot] = useState<CatalogSnapshot | null>(null);
@@ -328,31 +330,27 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [exportKind, setExportKind] = useState<ExportKind | null>(null);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const authEpochRef = useRef(0);
 
   const readinessScore = useMemo(() => (snapshot ? totalReady(snapshot.readiness) : 0), [snapshot]);
   const canManageCatalog = snapshot?.staff.role === "admin";
 
-  async function loadOperations() {
-    const token = staffToken.trim();
-    if (!token) {
-      setMessage("Staff token required.");
-      setSnapshot(null);
-      setConfigSnapshot(null);
-      setConvexCatalogSnapshot(null);
-      return;
-    }
+  useEffect(() => {
+    return () => {
+      authEpochRef.current += 1;
+    };
+  }, []);
 
+  async function loadOperations() {
+    const authEpoch = authEpochRef.current;
     setIsLoading(true);
     setMessage(null);
 
     try {
-      const headers = {
-        Authorization: `Bearer ${token}`
-      };
       const [operationsResponse, configResponse, catalogResponse] = await Promise.all([
-        fetch("/api/admin/operations?limit=12", { headers }),
-        fetch("/api/admin/config", { headers }),
-        fetch("/api/admin/catalog", { headers })
+        staffSession.staffFetch("/api/admin/operations?limit=12"),
+        staffSession.staffFetch("/api/admin/config"),
+        staffSession.staffFetch("/api/admin/catalog")
       ]);
       const operationsData = (await operationsResponse.json()) as OperationsSnapshot | { error?: string; code?: string };
       const configData = (await configResponse.json()) as ConfigSnapshot | { error?: string; code?: string };
@@ -368,18 +366,20 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!catalogResponse.ok) {
         throw new Error("error" in catalogData ? catalogData.error ?? "Could not load admin catalog" : "Could not load admin catalog");
       }
+      if (authEpoch !== authEpochRef.current) return;
       setSnapshot(operationsData as OperationsSnapshot);
       setConfigSnapshot(configData as ConfigSnapshot);
       setConvexCatalogSnapshot(catalogData as CatalogSnapshot);
       setAnnouncementDraft((configData as ConfigSnapshot).config.announcement);
       setHoursDraft((configData as ConfigSnapshot).config.hours);
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setSnapshot(null);
       setConfigSnapshot(null);
       setConvexCatalogSnapshot(null);
       setMessage(error instanceof Error ? error.message : "Could not load admin operations");
     } finally {
-      setIsLoading(false);
+      if (authEpoch === authEpochRef.current) setIsLoading(false);
     }
   }
 
@@ -387,21 +387,15 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
     endpoint: "/api/admin/bookings/status" | "/api/admin/bookings/vouchers" | "/api/admin/members/status",
     body: Record<string, string>
   ) {
-    const token = staffToken.trim();
-    if (!token) {
-      setMessage("Staff token required.");
-      return;
-    }
-
+    const authEpoch = authEpochRef.current;
     setActionKey(`${endpoint}:${Object.values(body).join(":")}`);
     setMessage(null);
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await staffSession.staffFetch(endpoint, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(body)
       });
@@ -409,15 +403,18 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!response.ok) {
         throw new Error(data.error ?? "Admin action failed");
       }
+      if (authEpoch !== authEpochRef.current) return;
       await loadOperations();
       if ((endpoint === "/api/admin/bookings/status" || endpoint === "/api/admin/bookings/vouchers") && bookingLookupQuery.trim()) {
         await lookupBooking({ silent: true });
       }
+      if (authEpoch !== authEpochRef.current) return;
       setMessage("Admin action saved.");
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setMessage(error instanceof Error ? error.message : "Admin action failed");
     } finally {
-      setActionKey(null);
+      if (authEpoch === authEpochRef.current) setActionKey(null);
     }
   }
 
@@ -434,13 +431,8 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   }
 
   async function lookupBooking(options: { silent?: boolean } = {}) {
-    const token = staffToken.trim();
+    const authEpoch = authEpochRef.current;
     const query = bookingLookupQuery.trim();
-    if (!token) {
-      setMessage("Staff token required.");
-      setBookingLookup(null);
-      return;
-    }
     if (!query) {
       setMessage("Booking reference or email required.");
       setBookingLookup(null);
@@ -453,25 +445,25 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
     }
 
     try {
-      const response = await fetch(`/api/admin/bookings/lookup?q=${encodeURIComponent(query)}&limit=6`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await staffSession.staffFetch(
+        `/api/admin/bookings/lookup?q=${encodeURIComponent(query)}&limit=6`
+      );
       const data = (await response.json()) as BookingLookupResult | { error?: string };
       if (!response.ok) {
         throw new Error("error" in data ? data.error ?? "Booking lookup failed" : "Booking lookup failed");
       }
+      if (authEpoch !== authEpochRef.current) return;
       setBookingLookup(data as BookingLookupResult);
       if (!options.silent) {
         const count = (data as BookingLookupResult).matches.length;
         setMessage(count ? `Found ${count} booking${count === 1 ? "" : "s"}.` : "No booking found.");
       }
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setBookingLookup(null);
       setMessage(error instanceof Error ? error.message : "Booking lookup failed");
     } finally {
-      setIsLookupLoading(false);
+      if (authEpoch === authEpochRef.current) setIsLookupLoading(false);
     }
   }
 
@@ -490,21 +482,15 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   }
 
   async function saveConfig(key: "announcement" | "hours") {
-    const token = staffToken.trim();
-    if (!token) {
-      setMessage("Staff token required.");
-      return;
-    }
-
+    const authEpoch = authEpochRef.current;
     setActionKey(`config:${key}`);
     setMessage(null);
 
     try {
-      const response = await fetch("/api/admin/config", {
+      const response = await staffSession.staffFetch("/api/admin/config", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           key,
@@ -515,21 +501,20 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!response.ok) {
         throw new Error(data.error ?? "Config update failed");
       }
+      if (authEpoch !== authEpochRef.current) return;
       await loadOperations();
+      if (authEpoch !== authEpochRef.current) return;
       setMessage("Config saved.");
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setMessage(error instanceof Error ? error.message : "Config update failed");
     } finally {
-      setActionKey(null);
+      if (authEpoch === authEpochRef.current) setActionKey(null);
     }
   }
 
   async function runCatalogAction(action: "seedCodeOwnedCatalog" | "activateVersion", version?: string) {
-    const token = staffToken.trim();
-    if (!token) {
-      setMessage("Staff token required.");
-      return;
-    }
+    const authEpoch = authEpochRef.current;
     if (action === "activateVersion" && !version) {
       setMessage("Catalog version required.");
       return;
@@ -540,11 +525,10 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
 
     try {
       const note = catalogNote.trim();
-      const response = await fetch("/api/admin/catalog", {
+      const response = await staffSession.staffFetch("/api/admin/catalog", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           action,
@@ -556,17 +540,14 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!response.ok) {
         throw new Error(data.error ?? "Catalog action failed");
       }
-      const snapshotResponse = await fetch("/api/admin/catalog", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const snapshotResponse = await staffSession.staffFetch("/api/admin/catalog");
       const snapshotData = (await snapshotResponse.json()) as CatalogSnapshot | { error?: string };
       if (!snapshotResponse.ok) {
         throw new Error(
           "error" in snapshotData ? snapshotData.error ?? "Catalog refresh failed" : "Catalog refresh failed"
         );
       }
+      if (authEpoch !== authEpochRef.current) return;
       setConvexCatalogSnapshot(snapshotData as CatalogSnapshot);
       setCatalogNote("");
       setMessage(
@@ -575,34 +556,27 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
           : "Catalog action saved."
       );
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setMessage(error instanceof Error ? error.message : "Catalog action failed");
     } finally {
-      setActionKey(null);
+      if (authEpoch === authEpochRef.current) setActionKey(null);
     }
   }
 
   async function downloadExport(kind: ExportKind) {
-    const token = staffToken.trim();
-    if (!token) {
-      setMessage("Staff token required.");
-      return;
-    }
-
+    const authEpoch = authEpochRef.current;
     setExportKind(kind);
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/export?kind=${encodeURIComponent(kind)}&limit=250`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await staffSession.staffFetch(`/api/admin/export?kind=${encodeURIComponent(kind)}&limit=250`);
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? "Export failed");
       }
 
       const blob = await response.blob();
+      if (authEpoch !== authEpochRef.current) return;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -613,10 +587,21 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       URL.revokeObjectURL(url);
       setMessage(`${exportLabel(kind)} export downloaded.`);
     } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
       setMessage(error instanceof Error ? error.message : "Export failed");
     } finally {
-      setExportKind(null);
+      if (authEpoch === authEpochRef.current) setExportKind(null);
     }
+  }
+
+  async function endStaffSession() {
+    authEpochRef.current += 1;
+    setSnapshot(null);
+    setConfigSnapshot(null);
+    setConvexCatalogSnapshot(null);
+    setBookingLookup(null);
+    setMessage(null);
+    await staffSession.signOut();
   }
 
   return (
@@ -629,17 +614,40 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
             <h1>Operations</h1>
           </div>
         </div>
-        <label>
-          <span>Staff Token</span>
-          <input
-            autoComplete="off"
-            placeholder="Bearer token"
-            type="password"
-            value={staffToken}
-            onChange={(event) => setStaffToken(event.target.value)}
-          />
-        </label>
-        <button className="primaryAction" type="button" disabled={isLoading} onClick={loadOperations}>
+        {staffSession.status === "signed-in" || staffSession.status === "signing-out" ? (
+          <div className="adminOpsStaff">
+            <span>{snapshot ? "Staff authorized" : "Identity verified"}</span>
+            <strong>{staffSession.email ?? "Authorized staff"}</strong>
+            <button
+              className="secondaryAction"
+              type="button"
+              disabled={staffSession.status === "signing-out"}
+              onClick={() => void endStaffSession()}
+            >
+              {staffSession.status === "signing-out" ? "Signing out" : "Sign out"}
+            </button>
+          </div>
+        ) : staffSession.status === "loading" ? (
+          <p className="adminOpsMessage">Checking staff session.</p>
+        ) : staffSession.status === "unconfigured" ? (
+          <div className="adminOpsStaff">
+            <span>Setup required</span>
+            <strong>Clerk and Convex are not linked yet.</strong>
+          </div>
+        ) : (
+          <div className="adminOpsStaff">
+            <span>Signed out</span>
+            <Link className="secondaryAction" href="/staff-sign-in?returnTo=/admin" prefetch={false}>
+              Staff sign in
+            </Link>
+          </div>
+        )}
+        <button
+          className="primaryAction"
+          type="button"
+          disabled={isLoading || staffSession.status !== "signed-in"}
+          onClick={loadOperations}
+        >
           {isLoading ? "Loading" : "Load Snapshot"}
           <ArrowRight size={18} />
         </button>

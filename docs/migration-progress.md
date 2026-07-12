@@ -12,6 +12,25 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 
 ## Current Status
 
+- [x] Removed raw pasted staff-token controls from the Admin and POS UI on the
+      current branch.
+- [x] Added route-scoped Clerk v7 staff sign-in. The shared `staffFetch`
+      wrapper requests a short-lived `convex` JWT for each protected call;
+      `staffUsers` and `requireStaffUser` remain Convex role authority, and the
+      bearer API contract remains available for automation.
+- [x] Passed the branch gate with 125 web tests, 143 Convex tests, 39 script
+      tests, lint, all typechecks, the Next production build, artifact and
+      legacy-retirement guards, frozen Bun install, and a low-threshold audit
+      with no vulnerabilities. Headless desktop/mobile QA found no overflow,
+      framework overlay, or console errors and confirmed white text on the
+      black Admin/POS surfaces; a fresh Helium pass remains pending while macOS
+      is locked.
+- [ ] Configure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and
+      `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview/Production; configure
+      `CLERK_JWT_ISSUER_DOMAIN` in Convex; deploy the auth config; bootstrap the
+      first `staffUsers` row with a Clerk user ID as `subject`; remove the
+      bootstrap token; and complete linked Preview acceptance. This branch is
+      not merged or deployed yet and must fail closed until those steps pass.
 - [x] Added signed Stripe refund parsing for `refund.created`,
       `refund.updated`, and `refund.failed` with sanitized provider data.
 - [x] Added a normalized Convex refund ledger correlated to the paid Checkout or
@@ -889,7 +908,15 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       `/about`, `/cafe`, `/experiences`, `/members`, `/privacy`, and `/terms`,
       and removed the old public page CSS/navigation script assets from
       `apps/web/public`.
-- [ ] Admin/POS protected App Router rebuild. Native `/admin` now has a staff-token operations snapshot, front-desk booking lookup/check-in, audited booking/member status actions, typed announcement/hours config, native voucher redemption, and admin-only CSV exports for canonical bookings, members, inquiries, orders, POS sales, and payment events. Native `/pos` now owns the extensionless POS shell and staff-gated Terminal reader selector, but pricing/menu/catalog/delete/refund workflows and live Stripe Terminal test-reader acceptance still remain.
+- [ ] Admin/POS protected App Router rebuild. Native `/admin` has a
+      staff-authenticated operations snapshot, front-desk booking
+      lookup/check-in, audited booking/member status actions, typed
+      announcement/hours config, native voucher redemption, and admin-only CSV
+      exports. The current branch replaces pasted UI tokens with Clerk, but its
+      dashboard setup and linked acceptance remain pending. Native `/pos` owns
+      the extensionless POS shell and staff-gated Terminal reader selector;
+      pricing/menu/catalog/delete/refund workflows and live Stripe Terminal
+      test-reader acceptance still remain.
       The legacy `/admin.html` and `/pos.html` staff apps have now been retired
       to native handoff pages, and the old `shared-data.js`, `admin.js`, and
       `pos.js` assets are gone from `apps/web/public`.
@@ -1386,6 +1413,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - Keep the tracked artifact guard enforcing that old root static files, root
   `images/`, `CNAME`, and root compatibility scripts/styles do not return.
 - Use `apps/web` as the Vercel project root.
+- Use Clerk for human staff authentication while Convex `staffUsers` and
+  `requireStaffUser` remain role authority. Keep bearer auth for controlled
+  automation, and keep all staff workflows fail closed when Clerk/Convex envs
+  are incomplete.
 - Preserve legacy URLs with centralized Next.js redirects while App Router owns
   the actual pages.
 - Do not commit or deploy `output/` or `tmp/`.
@@ -1435,11 +1466,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   members, and experience lead routes are now native App Router pages. Replace
   the public helper with a typed analytics integration once dashboard wiring and
   acceptance are stable.
-- Shipped code now creates Stripe Terminal PaymentIntents from stored `saleRef`
-  records only. Native `/pos` has replaced the extensionless legacy POS route,
-  but live reader collection still needs staff auth wiring, dashboard/env
-  acceptance, and Stripe test-reader acceptance before staff should use it for
-  card-present payment.
+- Shipped code creates Stripe Terminal PaymentIntents from stored `saleRef`
+  records only. Native `/pos` has replaced the extensionless legacy POS route.
+  The current branch adds Clerk UI authentication, but live reader collection
+  still needs Clerk/Convex/Vercel dashboard setup, linked acceptance, and
+  Stripe test-reader acceptance before staff should use card-present payment.
 - The reader-processing work adds server-driven reader processing for stored POS sales. Reader handoff still stays non-final; signed Stripe `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` webhooks now reconcile the stored sale against `saleRef`, Terminal PaymentIntent ID, amount, currency, and webhook idempotency.
 - The real Convex cloud project is still not linked in this worktree or wired into production Vercel. Current validation uses `CONVEX_AGENT_MODE=anonymous bunx convex dev --once --typecheck enable` until the real deployment exists.
 - Stripe Checkout session creation and webhook reconciliation now exist in Convex code, and the primary `/checkout` UI is wired to the Next/Convex bridge. Live card payment is still gated until real Convex/Stripe envs and Stripe dashboard endpoint setup are complete.

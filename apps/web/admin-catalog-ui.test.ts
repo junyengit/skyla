@@ -8,7 +8,7 @@ describe("admin catalog UI", () => {
   it("exposes catalog seed and activation actions without browser price editing", () => {
     expect(adminClient).toContain('"seedCodeOwnedCatalog"');
     expect(adminClient).toContain('"activateVersion"');
-    expect(adminClient).toContain('fetch("/api/admin/catalog"');
+    expect(adminClient).toContain('staffSession.staffFetch("/api/admin/catalog"');
     expect(adminClient).toContain("Seed Code Catalog");
     expect(adminClient).toContain("Activate");
 

@@ -54,11 +54,20 @@ admin cannot edit prices yet. Checkout and POS catalog lines also carry
 code-owned catalog provenance metadata so stored drafts can show which catalog
 version, source, authority, and item hash produced each priced line.
 
+On the current branch, the Admin and POS interfaces no longer show a raw pasted
+staff-token field. Route-scoped Clerk v7 signs in human staff, and a shared
+`staffFetch` wrapper obtains a short-lived `convex` JWT only when it makes a
+protected request. Convex `staffUsers` records and `requireStaffUser` remain the
+role authority, and the bearer API contract remains available for controlled
+automation. This branch is not merged or deployed, and Clerk/Convex/Vercel
+dashboard setup is still pending, so the new sign-in path must remain closed.
+
 ## Architecture
 
 ```mermaid
 flowchart LR
   browser["Guest or staff browser"]
+  clerk["Clerk staff sign-in (branch; dashboard pending)"]
   next["Vercel Next.js app (apps/web)"]
   catalog["Code-owned payment catalog (@skyla/payments)"]
   convex["Convex cloud (not linked yet)"]
@@ -66,6 +75,8 @@ flowchart LR
   supabase["Legacy Supabase functions"]
 
   browser --> next
+  browser -. "staff routes" .-> clerk
+  clerk -. "short-lived convex JWT via staffFetch" .-> next
   next --> catalog
   next -. "after NEXT_PUBLIC_CONVEX_URL is set" .-> convex
   convex -. "after Stripe envs/webhook are set" .-> stripe
@@ -97,6 +108,13 @@ flowchart LR
 - Admin CSV exports, booking lookup, booking/member status actions,
   announcement/hours config, voucher redemption, and POS reader selection are
   native Next/Convex-shaped flows.
+- In the current branch, Admin/POS raw token inputs are removed and the staff
+  pages use route-scoped Clerk through `staffFetch`. This is branch-local code,
+  not production evidence; without the required Clerk and Convex envs it shows
+  setup-required and protected calls fail closed.
+- Convex continues to authorize roles through `staffUsers` and
+  `requireStaffUser`. A Clerk account is not automatically Skyla staff, and API
+  bearer authentication remains supported for acceptance tooling.
 - Catalog versioning is modeled in Convex code: admins can seed the code-owned
   catalog from native `/admin`, store immutable snapshots, and activate a
   previous version for rollback after the real Convex project is linked. The
@@ -157,13 +175,19 @@ safe behavior.
       pass with project `junyen-enterprises/web`, root `apps/web`, Next.js,
       Node `24.x`, and the Bun canary commands in `apps/web/vercel.json`.
 - [ ] Add `NEXT_PUBLIC_CONVEX_URL` to Vercel Preview and Production.
+- [ ] Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to Vercel
+      Preview and Production; keep only the publishable key public.
+- [ ] Add `CLERK_JWT_ISSUER_DOMAIN` to the matching Convex deployments and
+      deploy the Convex auth config.
 - [ ] Run `bun run vercel:env:check` after Vercel env setup. It should pass
-      only when `NEXT_PUBLIC_CONVEX_URL` is present in Preview/Production and
-      Stripe/staff/Terminal secrets are absent from Vercel.
+      only when the Convex URL and both Clerk keys are present in
+      Preview/Production and misplaced Stripe/staff-bootstrap/Terminal secrets
+      are absent from Vercel.
 - [ ] Run `bun run dashboard:readiness` to get one safe JSON summary of the
-      Vercel and Convex dashboard state plus the next dashboard actions. It
-      should pass before linked Preview acceptance; it still says real cards
-      are not allowed for migration verification.
+      Vercel, Clerk, and Convex dashboard state plus the next dashboard
+      actions. Its Clerk gates and the later payment gates must pass before
+      linked Preview acceptance; it still says real cards are not allowed for
+      migration verification.
 - [ ] Add Convex deployment details locally only when needed for linked codegen.
 - [ ] Set Convex `SKYLA_STRIPE_MODE=test`.
 - [ ] Set Convex `STRIPE_SECRET_KEY` with a test key first.
@@ -176,7 +200,8 @@ safe behavior.
 - [ ] Set Convex `STRIPE_WEBHOOK_SECRET`.
 - [ ] Set Convex `SKYLA_PAYMENT_RETURN_ORIGINS` to the Vercel preview and
       production origins.
-- [ ] Seed initial staff with the bootstrap mutation.
+- [ ] Seed initial staff with the bootstrap mutation, using the Clerk user ID
+      as `subject`.
 - [ ] Remove or unset `SKYLA_STAFF_BOOTSTRAP_TOKEN` after staff is seeded.
 - [ ] Seed the code-owned catalog from native `/admin`, or through
       `POST /api/admin/catalog` with `{"action":"seedCodeOwnedCatalog"}`, using
@@ -234,9 +259,10 @@ safe behavior.
 | Terminal reader gate | Added unit coverage proving Terminal PaymentIntent snapshots fail before Stripe when the stored POS sale has no trusted Terminal reader |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
 | `bun run vercel:project:check` | Passed against `junyen-enterprises/web`: project ID, root `apps/web`, Next.js, Node `24.x`, local Vercel link, and repo Bun canary install/build config are aligned |
-| `bun run vercel:env:check` | Failed as expected against the real `junyen-enterprises/web` dashboard with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true` |
-| `bun run dashboard:readiness` | Includes `vercelProjectShape: true`; still fails until Vercel and Convex/Stripe dashboard env gates are shaped for linked Preview preflight |
-| `bun run check` | Passed before PR #119 merge with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, 22 web test files/108 tests, 20 Convex test files/143 tests, 9 script files/37 tests, both Convex typechecks, and the Next production build |
+| `bun run vercel:env:check` | The last production-dashboard evidence failed as expected with `envCount: 0`, `readyForConvexUrl: false`, and `safeSecretPlacement: true`. The current branch also requires both Clerk keys and reports a separate `readyForStaffAuth` gate; that branch behavior is not deployed yet. |
+| `bun run dashboard:readiness` | Includes the Vercel project-shape gate; the current branch adds Clerk keys plus the Convex issuer to the linked Preview preflight gates. It must remain non-zero until Clerk, Convex, Vercel, and Stripe dashboard setup is complete. |
+| Clerk staff auth branch | Raw pasted staff-token UI is removed; route-scoped Clerk v7 supplies short-lived `convex` JWTs through `staffFetch`; `staffUsers` and `requireStaffUser` remain role authority; dashboard configuration, Preview acceptance, merge, and deployment are pending. |
+| `bun run check` | Passed on the current Clerk staff-auth branch with Turbo `2.10.4`, Bun `1.4.0-canary.1+2e2230a81`, 25 web test files/125 tests, 20 Convex test files/143 tests, 10 script files/39 tests, both Convex typechecks, the Next production build, artifact guard, and legacy Supabase retirement guard. The branch is not merged or deployed yet. |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
 | `bun run test:supabase-retired:live` | Operator smoke exists for dashboard verification; it is not run until a Supabase project function base URL is supplied. PR #92 made the smoke require retired `410` markers, or explicit operator approval for disabled `404` results. |
 | Payment API audit | No card PAN/CVC collection or storage; no public client secret exposure; server-owned amount authority |

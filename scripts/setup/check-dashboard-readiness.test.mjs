@@ -46,7 +46,8 @@ describe("check-dashboard-readiness", () => {
       STRIPE_WEBHOOK_SECRET: "",
       SKYLA_TERMINAL_READER_REGISTRY: "",
       SKYLA_POS_TERMINAL_ACCEPTANCE: "",
-      SKYLA_STAFF_BOOTSTRAP_TOKEN: ""
+      SKYLA_STAFF_BOOTSTRAP_TOKEN: "",
+      CLERK_JWT_ISSUER_DOMAIN: ""
     });
 
     expect(result.status).toBe(1);
@@ -58,6 +59,7 @@ describe("check-dashboard-readiness", () => {
     expect(output.gates).toMatchObject({
       vercelProjectShape: true,
       vercelConvexUrl: false,
+      staffAuth: false,
       safeVercelSecretPlacement: true,
       convexCloudPersistence: false,
       stripeCheckout: false,
@@ -66,10 +68,10 @@ describe("check-dashboard-readiness", () => {
     });
     expect(output.nextActions.map((action) => action.id)).toEqual([
       "add-vercel-convex-url",
+      "configure-staff-auth",
       "link-convex-cloud",
       "configure-stripe-checkout-env",
       "configure-stripe-webhook",
-      "seed-staff",
       "configure-terminal-reader"
     ]);
     expect(result.stderr).toContain("Dashboard readiness is not complete");
@@ -81,6 +83,14 @@ describe("check-dashboard-readiness", () => {
         envs: [
           {
             key: "NEXT_PUBLIC_CONVEX_URL",
+            target: ["preview", "production"]
+          },
+          {
+            key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+            target: ["preview", "production"]
+          },
+          {
+            key: "CLERK_SECRET_KEY",
             target: ["preview", "production"]
           }
         ]
@@ -94,7 +104,8 @@ describe("check-dashboard-readiness", () => {
       STRIPE_WEBHOOK_SECRET: stripeWebhookSecretValue,
       SKYLA_TERMINAL_READER_REGISTRY: "tmr_frontdesk@tml_lobby",
       SKYLA_POS_TERMINAL_ACCEPTANCE: "enabled",
-      SKYLA_STAFF_BOOTSTRAP_TOKEN: "0123456789abcdef0123456789abcdef"
+      SKYLA_STAFF_BOOTSTRAP_TOKEN: "0123456789abcdef0123456789abcdef",
+      CLERK_JWT_ISSUER_DOMAIN: "https://clerk.skydeckla.com"
     });
 
     expect(result.status).toBe(0);
@@ -108,6 +119,7 @@ describe("check-dashboard-readiness", () => {
     expect(output.readyForTerminalAcceptance).toBe(true);
     expect(output.nextActions.map((action) => action.id)).toEqual([
       "run-linked-acceptance",
+      "seed-staff",
       "run-linked-write-acceptance"
     ]);
   });

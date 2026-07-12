@@ -3,6 +3,8 @@ import Link from "next/link";
 import { catalogProvenance, listCatalogItems } from "@skyla/payments";
 import { ShieldCheck } from "@skyla/ui/icons";
 import { AdminOpsClient } from "@/components/admin-ops-client";
+import { StaffAuthProvider } from "@/components/staff-auth-provider";
+import { isStaffAuthConfigured } from "@/lib/staff-auth-config";
 
 export const metadata: Metadata = {
   title: "Admin Ops",
@@ -23,23 +25,25 @@ export default function AdminPage() {
   }));
 
   return (
-    <main className="adminOpsPage">
-      <header className="adminOpsHeader">
-        <Link className="brand" href="/">
-          Sky LA
-        </Link>
-        <div className="adminOpsStatus">
-          <ShieldCheck size={18} />
-          <span>Staff ops</span>
-        </div>
-        <nav aria-label="Staff navigation">
-          <Link href="/pos" prefetch={false}>
-            POS
+    <StaffAuthProvider enabled={isStaffAuthConfigured()}>
+      <main className="adminOpsPage">
+        <header className="adminOpsHeader">
+          <Link className="brand" href="/">
+            Sky LA
           </Link>
-        </nav>
-      </header>
+          <div className="adminOpsStatus">
+            <ShieldCheck size={18} />
+            <span>Staff ops</span>
+          </div>
+          <nav aria-label="Staff navigation">
+            <Link href="/pos" prefetch={false}>
+              POS
+            </Link>
+          </nav>
+        </header>
 
-      <AdminOpsClient catalog={catalog} catalogState={catalogProvenance} />
-    </main>
+        <AdminOpsClient catalog={catalog} catalogState={catalogProvenance} />
+      </main>
+    </StaffAuthProvider>
   );
 }

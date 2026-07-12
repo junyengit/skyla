@@ -11,6 +11,7 @@ const vercel = runJsonScript("scripts/setup/check-vercel-env.mjs");
 const gates = {
   vercelProjectShape: Boolean(vercelProject.data?.readyForProjectShape),
   vercelConvexUrl: Boolean(vercel.data?.readyForConvexUrl),
+  staffAuth: Boolean(vercel.data?.readyForStaffAuth && convex.data?.readyForStaffAuth),
   safeVercelSecretPlacement: Boolean(vercel.data?.safeSecretPlacement),
   convexCloudPersistence: Boolean(convex.data?.readyForCloudPersistence),
   stripeCheckout: Boolean(convex.data?.readyForStripeCheckout),
@@ -22,6 +23,7 @@ const gates = {
 const readyForNoWritePreflight =
   gates.vercelProjectShape &&
   gates.vercelConvexUrl &&
+  gates.staffAuth &&
   gates.safeVercelSecretPlacement &&
   gates.convexCloudPersistence &&
   gates.stripeCheckout &&
@@ -145,11 +147,28 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     });
   }
 
+  if (!gates.staffAuth) {
+    actions.push({
+      id: "configure-staff-auth",
+      owner: "clerk-vercel-convex-dashboards",
+      priority: 3,
+      action: "Create the staff-only Clerk application, activate its Convex integration, add Clerk publishable/secret keys to Vercel Preview and Production, and set the matching CLERK_JWT_ISSUER_DOMAIN in Convex.",
+      missing: [
+        ...(vercel?.checks ?? [])
+          .filter((check) =>
+            (check.key === "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || check.key === "CLERK_SECRET_KEY") && !check.ok
+          )
+          .map((check) => check.key),
+        ...missingConvexChecks(convex, ["CLERK_JWT_ISSUER_DOMAIN"])
+      ]
+    });
+  }
+
   if (!gates.convexCloudPersistence) {
     actions.push({
       id: "link-convex-cloud",
       owner: "convex-dashboard",
-      priority: 3,
+      priority: 4,
       action: "Create or link the real Skyla Convex cloud project; local anonymous Convex is not enough for production writes.",
       command: "bun run convex:env:check"
     });
@@ -159,7 +178,7 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     actions.push({
       id: "configure-stripe-checkout-env",
       owner: "convex-dashboard",
-      priority: 4,
+      priority: 5,
       action: "Set Convex SKYLA_STRIPE_MODE=test, STRIPE_SECRET_KEY with a test key, and SKYLA_PAYMENT_RETURN_ORIGINS with production and preview origins.",
       missing: missingConvexChecks(convex, ["SKYLA_STRIPE_MODE", "STRIPE_SECRET_KEY", "SKYLA_PAYMENT_RETURN_ORIGINS"])
     });
@@ -169,7 +188,7 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     actions.push({
       id: "configure-stripe-webhook",
       owner: "stripe-and-convex-dashboard",
-      priority: 5,
+      priority: 6,
       action: "Create a Stripe test webhook endpoint for Convex POST /stripe-webhook and set Convex STRIPE_WEBHOOK_SECRET.",
       missing: missingConvexChecks(convex, ["STRIPE_WEBHOOK_SECRET"])
     });
@@ -185,13 +204,15 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     });
   }
 
-  if (!readyForNoWritePreflight && !gates.staffBootstrap) {
+  if (gates.staffAuth && gates.convexCloudPersistence) {
     actions.push({
       id: "seed-staff",
       owner: "convex-dashboard",
-      priority: 6,
-      action: "Set a temporary Convex SKYLA_STAFF_BOOTSTRAP_TOKEN, seed the first staff user, then remove or rotate the bootstrap token.",
-      missing: missingConvexChecks(convex, ["SKYLA_STAFF_BOOTSTRAP_TOKEN"])
+      priority: 7,
+      action: "Confirm the first Clerk staff user has a matching active staffUsers row. If not, temporarily set SKYLA_STAFF_BOOTSTRAP_TOKEN, seed the Clerk user ID as subject, then remove the bootstrap token.",
+      note: gates.staffBootstrap
+        ? "The bootstrap window is currently open; close it after the staff row is verified."
+        : "The readiness checker cannot inspect staffUsers, so skip only after the row is verified in Convex."
     });
   }
 
@@ -199,7 +220,7 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     actions.push({
       id: "configure-terminal-reader",
       owner: "stripe-and-convex-dashboard",
-      priority: 7,
+      priority: 8,
       action: "Add Convex SKYLA_TERMINAL_READER_REGISTRY with Stripe test reader IDs, then set SKYLA_POS_TERMINAL_ACCEPTANCE=enabled only for the controlled test-reader attempt.",
       missing: missingConvexChecks(convex, ["SKYLA_TERMINAL_READER_REGISTRY", "SKYLA_POS_TERMINAL_ACCEPTANCE"])
     });
@@ -209,7 +230,7 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     actions.push({
       id: "run-linked-write-acceptance",
       owner: "operator",
-      priority: 8,
+      priority: 9,
       action: "After no-write preflight passes, run linked Preview write acceptance with Stripe test cards/readers only.",
       command: "bun run test:acceptance:linked"
     });

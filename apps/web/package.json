@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/nextjs": "7.5.17",
     "@skyla/config": "workspace:*",
     "@skyla/payments": "workspace:*",
     "@skyla/ui": "workspace:*",
@@ -19,14 +20,17 @@
     "motion": "12.42.2",
     "next": "16.2.10",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/node": "26.1.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.10",
+    "happy-dom": "^20.10.6",
     "typescript": "6.0.3"
   }
 }
