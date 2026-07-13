@@ -18,16 +18,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: canary
-
-      - name: Bun version
-        run: bun --revision
-
-      - name: Install
-        run: bun install --frozen-lockfile
+      - name: Install pinned Bun canary and dependencies
+        run: bash scripts/setup/vercel-install-bun-canary.sh
 
       - name: Lint
         run: bun run lint
@@ -49,3 +41,37 @@ jobs:
 
       - name: Security gates
         run: bun run security
+
+  browser-test:
+    name: browser-test
+    needs: ci-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install pinned Bun canary and dependencies
+        run: bash scripts/setup/vercel-install-bun-canary.sh
+
+      - name: Install Chromium
+        run: bun x playwright install --with-deps chromium
+
+      - name: Browser workflows
+        run: bun run --cwd apps/web test:e2e
+        env:
+          PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/skyla-playwright-results
+
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skyla-playwright-failure-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/skyla-playwright-results
+          if-no-files-found: ignore
+          retention-days: 7

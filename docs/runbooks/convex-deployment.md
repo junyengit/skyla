@@ -104,16 +104,33 @@ PATH="$HOME/.bun/bin:$PATH" bunx convex dev --configure new --dev-deployment clo
 
 3. Confirm root `.env.local` contains a non-anonymous `CONVEX_DEPLOYMENT` and
    an HTTPS `CONVEX_URL`.
-4. Add the public Convex URL to Vercel:
+4. Add separate public Convex URLs to Vercel. Preview must use Convex
+   development; Production must use Convex production:
 
 ```bash
 cd apps/web
-printf '%s' "$CONVEX_URL" | PATH="$HOME/.bun/bin:$PATH" bunx vercel env add NEXT_PUBLIC_CONVEX_URL production preview development
+printf '%s' "$CONVEX_DEV_URL" | PATH="$HOME/.bun/bin:$PATH" bunx vercel env add NEXT_PUBLIC_CONVEX_URL preview
+printf '%s' "$CONVEX_PRODUCTION_URL" | PATH="$HOME/.bun/bin:$PATH" bunx vercel env add NEXT_PUBLIC_CONVEX_URL production
 ```
 
-The value should look like `https://<deployment>.convex.cloud`.
+Both values should look like `https://<deployment>.convex.cloud`, but they must
+identify different deployments. Do not create one shared Preview/Production
+binding. The env checker verifies separate scopes; the owner must verify the
+actual dashboard values.
 
-5. Add Stripe action envs to Convex before testing payment creation:
+5. Generate separate Preview and Production `SKYLA_PUBLIC_GATEWAY_SECRET`
+   values in a password manager. Each must be 32-256 characters with no
+   whitespace. Add the Preview value to Vercel Preview and Convex development;
+   add the Production value to Vercel Production and Convex production. Do not
+   print either value in command output, logs, PRs, or documentation.
+
+This secret authenticates `POST /public-gateway`. The Next server derives a
+non-reversible HMAC key from Vercel's trusted client address, and Convex applies
+the durable per-operation quota before accepting PII writes or creating a
+Stripe Checkout Session. The four public write routes fail closed with `503`
+if either side is missing the secret.
+
+6. Add Stripe action envs to Convex before testing payment creation:
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_STRIPE_MODE "test"
@@ -126,8 +143,8 @@ PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_TERMINAL_READER_REGISTRY "
 Use Stripe test-mode values for Preview/Development. Do not paste secret values
 into PRs, logs, or docs.
 
-6. Enable the Terminal acceptance latch only during a controlled test-reader
-   acceptance window.
+7. Enable the Terminal acceptance latch in Vercel and the matching Convex
+   deployment only during a controlled test-reader acceptance window.
 
 Do this only after all of these are true:
 
@@ -141,13 +158,23 @@ Do this only after all of these are true:
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bunx convex env set SKYLA_POS_TERMINAL_ACCEPTANCE "enabled"
+cd apps/web
+printf '%s' "enabled" | PATH="$HOME/.bun/bin:$PATH" bunx vercel env add SKYLA_POS_TERMINAL_ACCEPTANCE preview
+cd ../..
+SKYLA_VERCEL_TERMINAL_ACCEPTANCE_TARGET=preview bun run vercel:env:check
 ```
 
-After the acceptance run, remove the latch unless the production launch owner
-has explicitly approved keeping it on:
+The Vercel latch is server-only but is not a provider secret. Never put
+`SKYLA_TERMINAL_READER_REGISTRY`, `STRIPE_SECRET_KEY`, or
+`STRIPE_WEBHOOK_SECRET` in Vercel. After the acceptance run, remove the latch
+from both systems. A later production acceptance window requires a separate
+owner decision and a Production-only Vercel binding.
 
 ```bash
 PATH="$HOME/.bun/bin:$PATH" bunx convex env remove SKYLA_POS_TERMINAL_ACCEPTANCE
+cd apps/web
+PATH="$HOME/.bun/bin:$PATH" bunx vercel env rm SKYLA_POS_TERMINAL_ACCEPTANCE preview --yes
+cd ../..
 ```
 
 7. Seed staff users before testing native `/admin`, `/pos`, or `/pos-next` against the
@@ -360,7 +387,8 @@ Do not wire the public checkout page to Stripe through Convex until all of
 these are true:
 
 - `bun run convex:env:check` reports `readyForCloudPersistence: true`
-- Vercel has `NEXT_PUBLIC_CONVEX_URL` in Preview and Production
+- Vercel Preview has the Convex development `NEXT_PUBLIC_CONVEX_URL` and Vercel
+  Production has the separate Convex production URL
 - Convex has `SKYLA_STRIPE_MODE` set to `test` for preview acceptance
 - Convex has `STRIPE_SECRET_KEY`, and its `sk_test_` or `sk_live_` prefix
   matches `SKYLA_STRIPE_MODE`

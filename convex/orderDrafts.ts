@@ -1,8 +1,15 @@
 import { orderRefFromId, saleRefFromId } from "@skyla/payments";
 import { v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
+import {
+  assertCheckoutDraftCanStartPayment,
+  checkoutDraftExpiresAt,
+  checkoutDraftIsAbandoned,
+  checkoutDraftTtlMs
+} from "./lib/checkoutDraftExpiry";
 import {
   assertSameDraftFingerprint,
   buildCheckoutDraftWrite,
@@ -11,6 +18,8 @@ import {
   normalizeIdempotencyKey,
   posSaleDraftResult
 } from "./lib/orderDraftPersistence";
+import { assertCheckoutTimeAvailable, safeOperatingHours } from "./lib/operatingHours";
+import { consumePublicGatewayRateLimit } from "./lib/publicGateway";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -77,8 +86,9 @@ const posSaleLine = v.union(
   })
 );
 
-export const createCheckoutOrderDraft = mutation({
+export const createCheckoutOrderDraft = internalMutation({
   args: {
+    gatewayRateLimitKey: v.string(),
     packageKey: ticketPackageKey,
     adults: v.number(),
     children: v.optional(v.number()),
@@ -91,6 +101,7 @@ export const createCheckoutOrderDraft = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    await consumePublicGatewayRateLimit(ctx, "checkout-draft", args.gatewayRateLimitKey, now);
     const pendingWrite = buildCheckoutDraftWrite(args, { orderRef: "pending", now });
     const existingOrder = await ctx.db
       .query("orders")
@@ -100,15 +111,32 @@ export const createCheckoutOrderDraft = mutation({
       .first();
 
     if (existingOrder) {
+      if (existingOrder.status === "expired" || checkoutDraftIsAbandoned(existingOrder, now)) {
+        throw new Error("Checkout order draft has expired");
+      }
+      if (existingOrder.status !== "draft" && existingOrder.status !== "payment_pending") {
+        throw new Error(`Checkout order cannot be reused from status ${existingOrder.status}`);
+      }
       assertSameDraftFingerprint(existingOrder.draftFingerprint, pendingWrite.draftFingerprint);
       const existingLines = await ctx.db
         .query("orderLineItems")
         .withIndex("by_orderRef", (q) => q.eq("orderRef", existingOrder.orderRef))
         .collect();
-      return checkoutDraftResult(existingOrder, existingLines);
+      return checkoutResult(existingOrder, existingLines);
     }
 
-    const orderId = await ctx.db.insert("orders", pendingWrite.order);
+    const hoursRow = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", "hours"))
+      .unique();
+    assertCheckoutTimeAvailable(
+      safeOperatingHours(hoursRow?.data),
+      pendingWrite.input.visitDate,
+      pendingWrite.input.entryTime
+    );
+
+    const expiresAt = now + checkoutDraftTtlMs;
+    const orderId = await ctx.db.insert("orders", { ...pendingWrite.order, expiresAt });
     const orderRef = orderRefFromId(orderId, now);
     const write = buildCheckoutDraftWrite(args, { orderRef, now });
 
@@ -117,7 +145,49 @@ export const createCheckoutOrderDraft = mutation({
       await ctx.db.insert("orderLineItems", line);
     }
 
-    return checkoutDraftResult(write.order, write.lines);
+    await ctx.scheduler.runAt(expiresAt, internal.orderDrafts.expireCheckoutOrderDraft, { orderRef });
+
+    return checkoutResult({ ...write.order, expiresAt }, write.lines);
+  }
+});
+
+export const expireCheckoutOrderDraft = internalMutation({
+  args: { orderRef: v.string() },
+  handler: async (ctx, args) => {
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (query) => query.eq("orderRef", args.orderRef))
+      .unique();
+    const now = Date.now();
+    if (!order || order.channel !== "online" || !checkoutDraftIsAbandoned(order, now)) {
+      return { expired: false };
+    }
+
+    await ctx.db.patch(order._id, {
+      status: "expired",
+      customerEmailLower: undefined,
+      updatedAt: now
+    });
+    return { expired: true };
+  }
+});
+
+export const assertCheckoutOrderDraftActive = internalQuery({
+  args: {
+    orderRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (ctx, args) => {
+    const idempotencyKey = normalizeIdempotencyKey(args.idempotencyKey);
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (query) => query.eq("orderRef", args.orderRef))
+      .unique();
+    if (!order || order.channel !== "online" || order.idempotencyKey !== idempotencyKey) {
+      throw new Error("Checkout order was not found for this payment attempt");
+    }
+    assertCheckoutDraftCanStartPayment(order, Date.now());
+    return { expiresAt: checkoutDraftExpiresAt(order), status: order.status };
   }
 });
 
@@ -132,7 +202,12 @@ export const getCheckoutOrderDraft = query({
       .query("orders")
       .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
       .unique();
-    if (!order || order.idempotencyKey !== idempotencyKey) {
+    if (
+      !order ||
+      order.idempotencyKey !== idempotencyKey ||
+      (order.status !== "draft" && order.status !== "payment_pending") ||
+      checkoutDraftIsAbandoned(order, Date.now())
+    ) {
       return null;
     }
 
@@ -141,7 +216,7 @@ export const getCheckoutOrderDraft = query({
       .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
       .collect();
 
-    return checkoutDraftResult(order, lines);
+    return checkoutResult(order, lines);
   }
 });
 
@@ -240,3 +315,13 @@ export const getPosSaleDraft = query({
     return posSaleDraftResult(sale, lines);
   }
 });
+
+function checkoutResult(
+  order: Parameters<typeof checkoutDraftResult>[0] & { createdAt: number; expiresAt?: number },
+  lines: Parameters<typeof checkoutDraftResult>[1]
+) {
+  return {
+    ...checkoutDraftResult(order, lines),
+    expiresAt: checkoutDraftExpiresAt(order)
+  };
+}

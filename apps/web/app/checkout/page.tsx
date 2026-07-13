@@ -4,6 +4,9 @@ import { listAddons, listTicketPackages } from "@skyla/payments";
 import { ArrowRight, MapPin, ShieldCheck } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
 import { CheckoutClient } from "@/components/checkout-client";
+import { loadPublicOperatingConfig } from "@/lib/public-operating-config";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -18,7 +21,7 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
-  const params = await searchParams;
+  const [params, operatingConfig] = await Promise.all([searchParams, loadPublicOperatingConfig()]);
   const stripeStatus = firstParam(params.stripe);
   const checkoutSessionId = firstParam(params.session_id);
   const packageOptions = listTicketPackages()
@@ -67,6 +70,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         addons={addonOptions}
         stripeStatus={stripeStatus === "success" || stripeStatus === "cancel" ? stripeStatus : undefined}
         returnedCheckoutSessionId={checkoutSessionId}
+        operatingHours={operatingConfig?.operatingHours ?? null}
       />
 
       <section className="checkoutTrust" aria-label="Checkout safeguards">

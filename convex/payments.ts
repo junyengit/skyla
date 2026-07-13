@@ -2,7 +2,8 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import { action, internalAction, internalMutation } from "./_generated/server";
+import { consumePublicGatewayRateLimit } from "./lib/publicGateway";
 import {
   assertStripeReturnOriginAllowed,
   buildStripeCheckoutSessionRequest,
@@ -31,14 +32,28 @@ import { assertStripeSecretMode, parseStripeMode } from "./lib/stripeMode";
 
 declare const process: { env: Record<string, string | undefined> };
 
-export const createStripeCheckoutSession = action({
+export const consumeStripeCheckoutRateLimit = internalMutation({
+  args: { gatewayRateLimitKey: v.string() },
+  handler: async (ctx, args) =>
+    consumePublicGatewayRateLimit(ctx, "stripe-checkout", args.gatewayRateLimitKey)
+});
+
+export const createStripeCheckoutSession = internalAction({
   args: {
+    gatewayRateLimitKey: v.string(),
     orderRef: v.string(),
     idempotencyKey: v.string(),
     successUrl: v.string(),
     cancelUrl: v.string()
   },
   handler: async (ctx, args) => {
+    await ctx.runMutation(internal.payments.consumeStripeCheckoutRateLimit, {
+      gatewayRateLimitKey: args.gatewayRateLimitKey
+    });
+    await ctx.runQuery(internal.orderDrafts.assertCheckoutOrderDraftActive, {
+      orderRef: args.orderRef,
+      idempotencyKey: args.idempotencyKey
+    });
     const secretKey = stripeSecretKey();
     const allowedReturnOrigins = parseStripeReturnOriginAllowlist(process.env.SKYLA_PAYMENT_RETURN_ORIGINS);
 

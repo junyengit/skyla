@@ -49,7 +49,10 @@ export function adminFailureStatus(message: string) {
     message.includes("must be") ||
     normalized.includes("not recognized") ||
     normalized.includes("cannot be submitted") ||
-    normalized.includes("does not match validator")
+    normalized.includes("does not match validator") ||
+    normalized.includes("unexpected end of json input") ||
+    normalized.includes("unexpected token") ||
+    normalized.includes("in json at")
   ) {
     return 400;
   }
@@ -62,7 +65,10 @@ export function adminFailureStatus(message: string) {
   if (normalized.includes("not found")) {
     return 404;
   }
-  if (normalized.includes("cancelled bookings cannot")) {
+  if (
+    normalized.includes("cancelled bookings cannot") ||
+    normalized.includes("already sending")
+  ) {
     return 409;
   }
   if (

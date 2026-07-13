@@ -37,6 +37,12 @@ const memberAdminStatus = v.union(
   v.literal("waitlisted"),
   v.literal("rejected")
 );
+const inquiryAdminStatus = v.union(
+  v.literal("pending"),
+  v.literal("contacted"),
+  v.literal("qualified"),
+  v.literal("closed")
+);
 const adminExportKind = v.union(
   v.literal("bookings"),
   v.literal("members"),
@@ -209,7 +215,16 @@ function publicBooking(booking: {
   updatedAt?: number;
   legacyId?: string;
   rawLegacy?: unknown;
-}, vouchers?: AdminBookingVouchers) {
+}, vouchers?: AdminBookingVouchers, ticketDelivery?: {
+  ticketCode: string;
+  status: "queued" | "sending" | "sent" | "failed" | "suppressed";
+  attemptCount: number;
+  sendVersion: number;
+  lastAttemptAt?: number;
+  sentAt?: number;
+  failureReason?: string;
+  updatedAt: number;
+}) {
   const firstName = booking.firstName ?? legacyString(booking.rawLegacy, "firstName");
   const lastName = booking.lastName ?? legacyString(booking.rawLegacy, "lastName");
   const partySize = booking.partySize ?? legacyNumber(booking.rawLegacy, "partySize") ?? legacyNumber(booking.rawLegacy, "guests");
@@ -229,7 +244,8 @@ function publicBooking(booking: {
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
     legacyId: booking.legacyId,
-    ...(vouchers ? { vouchers } : {})
+    ...(vouchers ? { vouchers } : {}),
+    ...(ticketDelivery ? { ticketDelivery } : {})
   };
 }
 
@@ -309,6 +325,46 @@ function publicInquiry(inquiry: {
   };
 }
 
+function maskedInquiryEmail(value: string | undefined) {
+  const email = value?.trim();
+  if (!email) {
+    return undefined;
+  }
+
+  const separator = email.lastIndexOf("@");
+  if (separator <= 0 || separator === email.length - 1) {
+    return "Contact hidden";
+  }
+
+  const local = email.slice(0, separator);
+  const domain = email.slice(separator + 1);
+  const domainParts = domain.split(".");
+  const domainName = domainParts.shift() ?? "";
+  const suffix = domainParts.length ? `.${domainParts.join(".")}` : "";
+  return `${local.slice(0, 1)}***@${domainName.slice(0, 1)}***${suffix}`;
+}
+
+function inquiryListItem(inquiry: Parameters<typeof publicInquiry>[0]) {
+  const email = inquiry.email ?? legacyString(inquiry.rawLegacy, "email") ?? inquiry.emailLower;
+
+  return {
+    inquiryId: inquiry._id,
+    status: inquiry.status,
+    contactMasked: maskedInquiryEmail(email),
+    experience: inquiry.experience ?? legacyString(inquiry.rawLegacy, "experience"),
+    eventDate: inquiry.eventDate ?? legacyString(inquiry.rawLegacy, "eventDate"),
+    guestCount: inquiry.guestCount ?? legacyString(inquiry.rawLegacy, "guestCount"),
+    source: inquiry.source ?? legacyString(inquiry.rawLegacy, "source"),
+    createdAt: inquiry.createdAt,
+    updatedAt: inquiry.updatedAt,
+    legacyId: inquiry.legacyId
+  };
+}
+
+function inquiryDetail(inquiry: Parameters<typeof publicInquiry>[0]) {
+  return publicInquiry(inquiry);
+}
+
 function legacyString(rawLegacy: unknown, key: string) {
   if (!rawLegacy || typeof rawLegacy !== "object" || Array.isArray(rawLegacy)) {
     return undefined;
@@ -344,6 +400,25 @@ function boundedAdminExportLimit(value: number | undefined) {
     throw new Error(`limit must be an integer between 1 and ${adminExportLimit}`);
   }
   return limit;
+}
+
+function boundedInquiryLimit(value: number | undefined) {
+  const limit = value ?? 25;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+    throw new Error("limit must be an integer between 1 and 50");
+  }
+  return limit;
+}
+
+function normalizedInquiryNotes(value: string | undefined) {
+  if (value === undefined) {
+    return undefined;
+  }
+  const notes = value.trim();
+  if (notes.length > 2000) {
+    throw new Error("notes must be 2000 characters or fewer");
+  }
+  return notes;
 }
 
 function publicConfigState(row: { updatedAt: number; updatedBy?: string } | null, invalid = false) {
@@ -423,7 +498,29 @@ async function publicBookingWithVouchers(
   ctx: QueryCtx | MutationCtx,
   booking: Parameters<typeof publicBooking>[0]
 ) {
-  return publicBooking(booking, await bookingVoucherState(ctx, booking));
+  const [vouchers, ticketDelivery] = await Promise.all([
+    bookingVoucherState(ctx, booking),
+    ctx.db
+      .query("ticketDeliveries")
+      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", booking.bookingRef))
+      .unique()
+  ]);
+  return publicBooking(
+    booking,
+    vouchers,
+    ticketDelivery
+      ? {
+          ticketCode: ticketDelivery.ticketCode,
+          status: ticketDelivery.status,
+          attemptCount: ticketDelivery.attemptCount,
+          sendVersion: ticketDelivery.sendVersion,
+          lastAttemptAt: ticketDelivery.lastAttemptAt,
+          sentAt: ticketDelivery.sentAt,
+          failureReason: ticketDelivery.failureReason,
+          updatedAt: ticketDelivery.updatedAt
+        }
+      : undefined
+  );
 }
 
 export const getOperationsSnapshot = query({
@@ -519,6 +616,109 @@ export const getOperationsSnapshot = query({
         members: recentMembers.map(publicMember)
       }
     };
+  }
+});
+
+export const listExperienceInquiries = query({
+  args: {
+    limit: v.optional(v.number()),
+    status: v.optional(inquiryAdminStatus)
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "viewer"]);
+    const limit = boundedInquiryLimit(args.limit);
+    const status = args.status;
+    const inquiries = status
+      ? await ctx.db
+          .query("inquiries")
+          .withIndex("by_status_createdAt", (q) => q.eq("status", status))
+          .order("desc")
+          .take(limit)
+      : await ctx.db.query("inquiries").withIndex("by_createdAt").order("desc").take(limit);
+
+    return {
+      staff: {
+        emailLower: staffUser.emailLower,
+        role: staffUser.role
+      },
+      inquiries: inquiries.map(inquiryListItem)
+    };
+  }
+});
+
+export const getExperienceInquiryDetail = query({
+  args: {
+    inquiryId: v.id("inquiries")
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "viewer"]);
+    const inquiry = await ctx.db.get(args.inquiryId);
+    if (!inquiry) {
+      throw new Error("Experience inquiry was not found");
+    }
+
+    return {
+      staff: {
+        emailLower: staffUser.emailLower,
+        role: staffUser.role
+      },
+      inquiry: inquiryDetail(inquiry)
+    };
+  }
+});
+
+export const updateExperienceInquiry = mutation({
+  args: {
+    inquiryId: v.id("inquiries"),
+    status: v.optional(inquiryAdminStatus),
+    notes: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin"]);
+    if (args.status === undefined && args.notes === undefined) {
+      throw new Error("status or notes is required");
+    }
+
+    const inquiry = await ctx.db.get(args.inquiryId);
+    if (!inquiry) {
+      throw new Error("Experience inquiry was not found");
+    }
+
+    const notes = normalizedInquiryNotes(args.notes);
+    const existingNotes = inquiry.notes ?? legacyString(inquiry.rawLegacy, "notes") ?? "";
+    const previousStatus = inquiry.status;
+    const statusChanged = args.status !== undefined && args.status !== inquiry.status;
+    const notesChanged = notes !== undefined && notes !== existingNotes;
+    if (!statusChanged && !notesChanged) {
+      return inquiryDetail(inquiry);
+    }
+
+    const now = Date.now();
+    const patch = {
+      ...(args.status !== undefined ? { status: args.status } : {}),
+      ...(notes !== undefined ? { notes } : {}),
+      updatedAt: now
+    };
+    await ctx.db.patch(inquiry._id, patch);
+
+    const metadata: Record<string, string | boolean> = {
+      statusChanged,
+      notesChanged
+    };
+    if (statusChanged && args.status) {
+      metadata.fromStatus = previousStatus;
+      metadata.toStatus = args.status;
+    }
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: staffUser._id,
+      action: "admin.inquiryTriage.update",
+      entityType: "inquiry",
+      entityRef: inquiry._id,
+      metadata,
+      createdAt: now
+    });
+
+    return inquiryDetail({ ...inquiry, ...patch });
   }
 });
 

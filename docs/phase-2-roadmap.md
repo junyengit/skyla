@@ -1,6 +1,16 @@
-# Skyla Phase 2 Roadmap
+# Skyla Phase 2 Roadmap (Historical)
 
 Last updated: 2026-07-12
+
+This roadmap records how Phase 2 was planned and should not be used as a live
+operator checklist. Current authority is
+[current-state-simple.md](current-state-simple.md), the
+[owner dashboard checklist](runbooks/owner-dashboard-checklist.md), accepted
+[ADR 0032](decisions/0032-ledgered-supabase-convex-migration.md) for data
+migration, and accepted
+[ADR 0034](decisions/0034-clerk-convex-staff-auth.md) for human staff auth.
+Conflicting Kaskade, broad-import, pasted-token, or deployment-identity text
+below is superseded.
 
 ## Plain-English Goal
 
@@ -9,7 +19,8 @@ Skyla is moving from a flat static site with browser-heavy business logic into a
 - Vercel serves the production domain.
 - Next.js owns public pages, checkout, admin, and POS.
 - Convex becomes the canonical database and server logic layer.
-- Stripe, Kaskade, email, admin, and POS actions become server-authoritative.
+- Stripe, admin, and POS actions become server-authoritative. Kaskade is
+  retired and has no active implementation workstream.
 - Saved legacy URLs are kept through centralized Next.js redirects; duplicate
   compatibility pages are not shipped.
 - Bun canary is adopted deliberately across local development, CI, and Vercel builds.
@@ -59,7 +70,8 @@ Why this is not the final state:
 - Public and staff `.html` compatibility URLs are centralized permanent Next.js
   redirects. The duplicate static handoff documents and old staff
   JS/CSS/localStorage facade are absent from the active public bundle.
-- `/admin` is staff-token gated and has read-only operations, audited
+- `/admin` uses route-scoped Clerk for human sign-in, with Convex `staffUsers`
+  as role authority, and has read-only operations, audited
   booking/member status actions, typed announcement/hours config, and voucher
   redemption code; `/admin.html` redirects to native `/admin`.
 - The native `/members` page now posts to the server application API and fails
@@ -92,7 +104,6 @@ flowchart TB
 
   subgraph providers["External providers"]
     stripe["Stripe"]
-    kaskade["Kaskade / PharosGate"]
     email["Brevo / email"]
   end
 
@@ -101,7 +112,6 @@ flowchart TB
   routes --> mutations
   routes --> actions
   actions --> stripe
-  actions --> kaskade
   actions --> email
   actions --> ledgers
 ```
@@ -191,7 +201,10 @@ Bun should be adopted deliberately, not by half-switching lockfiles.
 
 Initial actions:
 
-- Install/upgrade canary locally with Bun's canary command: `bun upgrade --canary`.
+- Install the repo-reviewed canary with
+  `bash scripts/setup/vercel-install-bun-canary.sh`. Evaluate a newer moving
+  canary only in a focused pin-refresh branch, then commit its exact revisions
+  and SHA-256 values before CI or Vercel can use it.
 - Generate a text `bun.lock`, not binary-only `bun.lockb`, because Turborepo needs text lockfile analysis.
 - Replace `pnpm-lock.yaml` only after Bun install/build/test passes locally and in CI.
 - Configure Vercel with Bun-compatible install/build commands and `bunVersion` where supported.
@@ -234,7 +247,8 @@ Initial server boundaries:
   Convex mutation spine. Real application acceptance remains gated by real
   Convex/Vercel envs.
 - Checkout/order creation: Convex mutation creates an order with canonical prices.
-- Stripe/Kaskade payment creation: Convex action uses stored order state.
+- Stripe payment creation: Convex actions use stored order state. Kaskade is
+  retired; do not add a replacement action or secret without a new ADR.
 - Webhooks: Convex HTTP actions verify signatures, enforce expected amount/currency/status, and write idempotent events.
 - Admin/POS: Convex queries/mutations enforce staff roles server-side.
 
@@ -342,9 +356,13 @@ Baseline now in place:
 12. Supabase read-only retention and eventual shutdown only after data and
     payment verification.
 
-## Raw Operational Data For Agents
+## Historical Operational Snapshot For Agents
 
-Current verified Vercel data:
+These values are a dated Phase 2 snapshot, not current deployment identity.
+Use [Current Deployment Identity](current-state-simple.md#current-deployment-identity)
+for the one current commit -> deployment -> URL chain.
+
+Historical Vercel data:
 
 - Team: `Junyen Enterprises`
 - Team ID: `team_3kWPO8fPD6E7x39voGoNNeog`
@@ -352,14 +370,6 @@ Current verified Vercel data:
 - Project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - Vercel project root: `apps/web`
 - Production branch: `main`
-- Latest verified production commit:
-  `e5973048ea3f5ce3c577eb979232cd520a577407` (PR #117)
-- Latest verified production deployment evidence:
-  `https://web-kyy17u2k9-junyen-enterprises.vercel.app`
-- Latest verified production deployment ID:
-  `dpl_FNptKigyVuVBFSf8bD4XXsHZ8Thm`
-- Latest deployment identity and behavior evidence: PR #117. Apex, `www`, and
-  immutable readiness smokes passed; no cloud legacy data migration has run.
 - Native member application PR: `#42`
 - Native member application state: server API and Convex mutation are merged,
   tested, and deployed.
@@ -446,10 +456,11 @@ Current package baseline:
 - Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
-- Turborepo `2.10.4`
+- Turborepo `2.10.5`
 - TypeScript `6.0.3`
 - Package manager: Bun canary with text `bun.lock`
-- Last verified Bun revision: `1.4.0-canary.1+2e2230a81`
+- Reviewed Bun version: `1.4.0-canary.1`; see the Bun/Vercel runbook for the
+  platform-specific revision and SHA-256 matrix used by local, CI, and Vercel.
 
 Useful verification commands:
 

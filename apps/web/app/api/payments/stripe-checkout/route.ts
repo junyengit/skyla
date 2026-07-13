@@ -1,5 +1,4 @@
-import { fetchAction } from "convex/nextjs";
-import { makeFunctionReference } from "convex/server";
+import { callPublicConvexGateway, PublicGatewayError } from "../../../../lib/public-convex-gateway";
 import { invalidPaymentRequest, paymentJson, paymentProviderUnavailable, paymentServiceUnavailable } from "../_shared";
 
 type StripeCheckoutRequest = {
@@ -7,14 +6,14 @@ type StripeCheckoutRequest = {
   idempotencyKey?: unknown;
 };
 
-type StripeCheckoutActionArgs = {
+type StripeCheckoutGatewayInput = {
   orderRef: string;
   idempotencyKey: string;
   successUrl: string;
   cancelUrl: string;
 };
 
-type StripeCheckoutActionResult = {
+type StripeCheckoutGatewayResult = {
   orderRef: string;
   provider: "stripe";
   checkoutSessionId: string;
@@ -22,16 +21,6 @@ type StripeCheckoutActionResult = {
   amountCents: number;
   currency: "usd";
 };
-
-const createStripeCheckoutSessionAction = makeFunctionReference<
-  "action",
-  StripeCheckoutActionArgs,
-  StripeCheckoutActionResult
->("payments:createStripeCheckoutSession");
-
-function convexUrl() {
-  return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
-}
 
 function requiredString(value: unknown, label: string) {
   if (typeof value !== "string" || !value.trim()) {
@@ -59,7 +48,7 @@ function isServerConfigurationError(message: string) {
   );
 }
 
-function toPublicCheckoutResult(result: StripeCheckoutActionResult) {
+function toPublicCheckoutResult(result: StripeCheckoutGatewayResult) {
   return {
     orderRef: result.orderRef,
     provider: result.provider,
@@ -72,35 +61,48 @@ function toPublicCheckoutResult(result: StripeCheckoutActionResult) {
 
 export async function POST(request: Request) {
   try {
-    const deploymentUrl = convexUrl();
-    if (!deploymentUrl) {
-      return paymentJson(
-        {
-          error: "Convex is not configured for Stripe Checkout",
-          code: "convex_unconfigured"
-        },
-        { status: 503 }
-      );
-    }
-
     const input = (await request.json()) as StripeCheckoutRequest;
     const orderRef = requiredString(input.orderRef, "orderRef");
     const idempotencyKey = requiredString(input.idempotencyKey, "idempotencyKey");
     const origin = originFor(request);
 
-    const result = await fetchAction(
-      createStripeCheckoutSessionAction,
+    const result = await callPublicConvexGateway<StripeCheckoutGatewayResult>(
+      request,
+      "stripe-checkout",
       {
         orderRef,
         idempotencyKey,
         successUrl: `${origin}/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}/checkout?stripe=cancel`
-      },
-      { url: deploymentUrl }
+      } satisfies StripeCheckoutGatewayInput
     );
 
     return paymentJson(toPublicCheckoutResult(result));
   } catch (error) {
+    if (error instanceof PublicGatewayError) {
+      const headers = error.retryAfterSeconds
+        ? { "Retry-After": String(error.retryAfterSeconds) }
+        : undefined;
+      if (error.status === 429) {
+        return paymentJson(
+          {
+            error: "Too many Stripe Checkout attempts. Please try again later.",
+            code: "rate_limited",
+            ...(error.retryAfterSeconds ? { retryAfterSeconds: error.retryAfterSeconds } : {})
+          },
+          { status: 429, headers }
+        );
+      }
+      if (error.status === 400 || error.status === 409) {
+        return paymentJson(invalidPaymentRequest(error.message), { status: error.status, headers });
+      }
+      return paymentJson(
+        error.status === 503
+          ? paymentServiceUnavailable("Stripe Checkout")
+          : paymentProviderUnavailable("Stripe Checkout"),
+        { status: error.status, headers }
+      );
+    }
     const message = error instanceof Error ? error.message : "Could not start Stripe Checkout";
     const status = message.includes("is required") || message.includes("origin is not allowed")
       ? 400

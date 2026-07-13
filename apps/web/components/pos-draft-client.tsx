@@ -71,6 +71,20 @@ type TerminalProcessResponse = {
   readerActionStatus: string;
 };
 
+type PosSaleStatusResponse = {
+  saleRef: string;
+  status: "draft" | "payment_pending" | "paid" | "canceled" | "expired";
+  currency: "usd";
+  subtotalCents: number;
+  feeCents: number;
+  totalCents: number;
+  paymentStatus?: string;
+  lines: DraftLine[];
+  bookingRef?: string;
+  ticketCode?: string;
+  updatedAt: number;
+};
+
 type TerminalReaderOption = {
   label: string;
   readerId: string;
@@ -133,11 +147,14 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
   const [draft, setDraft] = useState<PosDraftResponse | null>(null);
   const [terminalResult, setTerminalResult] = useState<TerminalProcessResponse | null>(null);
+  const [saleStatus, setSaleStatus] = useState<PosSaleStatusResponse | null>(null);
+  const [isCheckingSaleStatus, setIsCheckingSaleStatus] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
   const [isSendingTerminal, setIsSendingTerminal] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const reviewVersionRef = useRef(0);
   const authEpochRef = useRef(0);
+  const salePollVersionRef = useRef(0);
 
   const activeCafeItems = useMemo(
     () =>
@@ -168,13 +185,17 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
     return () => {
       authEpochRef.current += 1;
       reviewVersionRef.current += 1;
+      salePollVersionRef.current += 1;
     };
   }, []);
 
   function resetReview() {
     reviewVersionRef.current += 1;
+    salePollVersionRef.current += 1;
     setDraft(null);
     setTerminalResult(null);
+    setSaleStatus(null);
+    setIsCheckingSaleStatus(false);
     setMessage(null);
     setIdempotencyKey(createIdempotencyKey());
   }
@@ -331,6 +352,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       const nextDraft = data as PosDraftResponse;
       setDraft(nextDraft);
       setTerminalResult(null);
+      setSaleStatus(null);
       setMessage(
         nextDraft.persisted
           ? !terminalAccepted
@@ -344,6 +366,7 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
       if (reviewVersion !== reviewVersionRef.current || authEpoch !== authEpochRef.current) return;
       setDraft(null);
       setTerminalResult(null);
+      setSaleStatus(null);
       setMessage(error instanceof Error ? error.message : "Could not review this sale");
     } finally {
       if (authEpoch === authEpochRef.current) setIsReviewing(false);
@@ -407,6 +430,9 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
           ? "Reader handoff failed. Keep the sale open and retry or cancel from the dashboard."
           : "Sale sent to the stored reader. Wait for Stripe confirmation before treating it as paid."
       );
+      if (nextResult.status === "processing") {
+        void pollSaleStatus(saleRef, authEpoch, true);
+      }
     } catch (error) {
       if (authEpoch !== authEpochRef.current) return;
       setTerminalResult(null);
@@ -416,9 +442,58 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
     }
   }
 
+  async function pollSaleStatus(saleRef: string, authEpoch: number, repeat: boolean) {
+    const pollVersion = ++salePollVersionRef.current;
+    setIsCheckingSaleStatus(true);
+    try {
+      for (let attempt = 0; attempt < (repeat ? 45 : 1); attempt += 1) {
+        if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2000));
+        if (authEpoch !== authEpochRef.current || pollVersion !== salePollVersionRef.current) return;
+        const response = await staffSession.staffFetch("/api/payments/stripe-terminal/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ saleRef })
+        });
+        const data = (await response.json()) as PosSaleStatusResponse | { error?: string };
+        if (!response.ok) {
+          throw new Error("error" in data ? data.error ?? "Could not load sale status" : "Could not load sale status");
+        }
+        if (authEpoch !== authEpochRef.current || pollVersion !== salePollVersionRef.current) return;
+        const nextStatus = data as PosSaleStatusResponse;
+        setSaleStatus(nextStatus);
+        if (nextStatus.status === "paid") {
+          setMessage(
+            nextStatus.bookingRef
+              ? `Payment confirmed. Booking ${nextStatus.bookingRef} is ready for check-in.`
+              : "Payment confirmed. Receipt is ready."
+          );
+          return;
+        }
+        if (nextStatus.status === "canceled" || nextStatus.status === "expired") {
+          setMessage("Terminal payment did not complete. Keep the sale closed and start a new sale if needed.");
+          return;
+        }
+      }
+      setMessage("Still waiting for Stripe confirmation. Use Refresh Status before treating this sale as paid.");
+    } catch (error) {
+      if (authEpoch !== authEpochRef.current || pollVersion !== salePollVersionRef.current) return;
+      setMessage(error instanceof Error ? error.message : "Could not load sale status");
+    } finally {
+      if (authEpoch === authEpochRef.current && pollVersion === salePollVersionRef.current) {
+        setIsCheckingSaleStatus(false);
+      }
+    }
+  }
+
+  function refreshSaleStatus() {
+    const saleRef = draft?.saleRef ?? draft?.draft.saleRef;
+    if (saleRef) void pollSaleStatus(saleRef, authEpochRef.current, false);
+  }
+
   async function endStaffSession() {
     authEpochRef.current += 1;
     reviewVersionRef.current += 1;
+    salePollVersionRef.current += 1;
     setCart([]);
     setCustomerEmail("");
     setReaderOptions([]);
@@ -427,12 +502,28 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
     setAuthorizedStaff(null);
     setDraft(null);
     setTerminalResult(null);
+    setSaleStatus(null);
+    setIsCheckingSaleStatus(false);
     setMessage(null);
     await staffSession.signOut();
   }
 
+  const paymentAnnouncement = saleStatus
+    ? [
+        `Payment ${saleStatus.status}.`,
+        saleStatus.status === "paid" ? `Paid total ${money(saleStatus.totalCents)}.` : "",
+        saleStatus.bookingRef ? `Booking ${saleStatus.bookingRef}.` : "",
+        message ?? ""
+      ].filter(Boolean).join(" ")
+    : terminalResult
+      ? `Terminal ${terminalResult.status}. ${message ?? ""}`.trim()
+      : message ?? "";
+
   return (
     <section className="posNextShell" aria-label="POS sale draft">
+      <div className="srOnly" role="status" aria-live="polite" aria-atomic="true">
+        {paymentAnnouncement}
+      </div>
       <div className="posNextCatalog">
         <div className="posNextToolbar" role="tablist" aria-label="POS catalog">
           <button
@@ -684,6 +775,12 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
               <strong>{terminalResult.status}</strong>
             </div>
           ) : null}
+          {saleStatus ? (
+            <div>
+              <span>Payment</span>
+              <strong>{saleStatus.status}</strong>
+            </div>
+          ) : null}
         </div>
 
         {draft ? (
@@ -694,6 +791,21 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
                 <strong>{money(line.lineTotalCents)}</strong>
               </div>
             ))}
+          </div>
+        ) : null}
+
+        {saleStatus?.status === "paid" ? (
+          <div className="posNextReceipt" aria-label="Paid sale receipt">
+            <div>
+              <span>Paid total</span>
+              <strong>{money(saleStatus.totalCents)}</strong>
+            </div>
+            {saleStatus.bookingRef ? <p>Booking {saleStatus.bookingRef}</p> : null}
+            {saleStatus.ticketCode ? (
+              <Link href={`/tickets/${saleStatus.ticketCode}`} target="_blank" rel="noreferrer">
+                Open check-in ticket
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
@@ -709,6 +821,16 @@ export function PosDraftClient({ tickets, cafeItems, terminalAccepted }: PosDraf
             {isReviewing ? "Reviewing" : "Review Sale"}
             <ArrowRight size={18} />
           </button>
+          {terminalResult && (draft?.saleRef ?? draft?.draft.saleRef) ? (
+            <button
+              className="secondaryAction"
+              type="button"
+              disabled={isCheckingSaleStatus || staffSession.status !== "signed-in"}
+              onClick={refreshSaleStatus}
+            >
+              {isCheckingSaleStatus ? "Checking Status" : "Refresh Status"}
+            </button>
+          ) : null}
           <button
             className="secondaryAction"
             type="button"

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import {
   assertSameInquiryFingerprint,
   inquiryAuditMetadata,
@@ -8,6 +8,7 @@ import {
   inquiryResult,
   normalizeInquiryArgs
 } from "./lib/inquiries";
+import { consumePublicGatewayRateLimit } from "./lib/publicGateway";
 
 const inquiryExperience = v.union(
   v.literal("date-night"),
@@ -18,8 +19,9 @@ const inquiryExperience = v.union(
   v.literal("other")
 );
 
-export const submitInquiry = mutation({
+export const submitInquiry = internalMutation({
   args: {
+    gatewayRateLimitKey: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     email: v.string(),
@@ -32,6 +34,7 @@ export const submitInquiry = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    await consumePublicGatewayRateLimit(ctx, "experience-inquiry", args.gatewayRateLimitKey, now);
     const input = normalizeInquiryArgs(args);
     const submissionFingerprint = inquiryFingerprint(input);
     const existingInquiry = await ctx.db

@@ -9,6 +9,7 @@ const scriptPath = resolve(repoRoot, "scripts/setup/check-dashboard-readiness.mj
 const stripeSecretKeyName = ["STRIPE", "SECRET_KEY"].join("_");
 const stripeSecretKeyValue = ["sk", "test", "thisShouldNeverAppearInOutput"].join("_");
 const stripeWebhookSecretValue = ["whsec", "thisShouldNeverAppearInOutput"].join("_");
+const publicGatewaySecretValue = "gatewaySecretThatShouldNeverAppear123";
 const goodVercelProject = {
   id: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
   name: "web",
@@ -47,7 +48,12 @@ describe("check-dashboard-readiness", () => {
       SKYLA_TERMINAL_READER_REGISTRY: "",
       SKYLA_POS_TERMINAL_ACCEPTANCE: "",
       SKYLA_STAFF_BOOTSTRAP_TOKEN: "",
-      CLERK_JWT_ISSUER_DOMAIN: ""
+      CLERK_JWT_ISSUER_DOMAIN: "",
+      RESEND_API_KEY: "",
+      SKYLA_TICKET_FROM_EMAIL: "",
+      SKYLA_TICKET_REPLY_TO: "",
+      SKYLA_PUBLIC_ORIGIN: "",
+      SKYLA_PUBLIC_GATEWAY_SECRET: ""
     });
 
     expect(result.status).toBe(1);
@@ -59,19 +65,23 @@ describe("check-dashboard-readiness", () => {
     expect(output.gates).toMatchObject({
       vercelProjectShape: true,
       vercelConvexUrl: false,
+      publicGateway: false,
       staffAuth: false,
       safeVercelSecretPlacement: true,
       convexCloudPersistence: false,
       stripeCheckout: false,
       stripeWebhook: false,
+      ticketEmail: false,
       terminalReaderHandoff: false
     });
     expect(output.nextActions.map((action) => action.id)).toEqual([
       "add-vercel-convex-url",
+      "configure-public-gateway",
       "configure-staff-auth",
       "link-convex-cloud",
       "configure-stripe-checkout-env",
       "configure-stripe-webhook",
+      "configure-ticket-email",
       "configure-terminal-reader"
     ]);
     expect(result.stderr).toContain("Dashboard readiness is not complete");
@@ -83,7 +93,19 @@ describe("check-dashboard-readiness", () => {
         envs: [
           {
             key: "NEXT_PUBLIC_CONVEX_URL",
-            target: ["preview", "production"]
+            target: ["preview"]
+          },
+          {
+            key: "NEXT_PUBLIC_CONVEX_URL",
+            target: ["production"]
+          },
+          {
+            key: "SKYLA_PUBLIC_GATEWAY_SECRET",
+            target: ["preview"]
+          },
+          {
+            key: "SKYLA_PUBLIC_GATEWAY_SECRET",
+            target: ["production"]
           },
           {
             key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
@@ -92,6 +114,14 @@ describe("check-dashboard-readiness", () => {
           {
             key: "CLERK_SECRET_KEY",
             target: ["preview", "production"]
+          },
+          {
+            key: "SKYLA_PUBLIC_ORIGIN",
+            target: ["preview"]
+          },
+          {
+            key: "SKYLA_PUBLIC_ORIGIN",
+            target: ["production"]
           }
         ]
       }),
@@ -105,12 +135,18 @@ describe("check-dashboard-readiness", () => {
       SKYLA_TERMINAL_READER_REGISTRY: "tmr_frontdesk@tml_lobby",
       SKYLA_POS_TERMINAL_ACCEPTANCE: "enabled",
       SKYLA_STAFF_BOOTSTRAP_TOKEN: "0123456789abcdef0123456789abcdef",
-      CLERK_JWT_ISSUER_DOMAIN: "https://clerk.skydeckla.com"
+      CLERK_JWT_ISSUER_DOMAIN: "https://clerk.skydeckla.com",
+      RESEND_API_KEY: "re_test_placeholder",
+      SKYLA_TICKET_FROM_EMAIL: "Sky LA <tickets@skydeckla.com>",
+      SKYLA_TICKET_REPLY_TO: "reservations@skydeckla.com",
+      SKYLA_PUBLIC_ORIGIN: "https://skydeckla.com",
+      SKYLA_PUBLIC_GATEWAY_SECRET: publicGatewaySecretValue
     });
 
     expect(result.status).toBe(0);
     expect(result.stdout).not.toContain(stripeSecretKeyValue);
     expect(result.stdout).not.toContain(stripeWebhookSecretValue);
+    expect(result.stdout).not.toContain(publicGatewaySecretValue);
     const output = parseStdout(result);
     expect(output.status).toBe("linked_preflight_ready");
     expect(output.safeToUseRealCards).toBe(false);

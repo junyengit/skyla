@@ -39,13 +39,27 @@ export const getCheckoutReturnStatus = query({
       .withIndex("by_orderRef", (q) => q.eq("orderRef", orderRef))
       .unique();
 
-    return {
-      orderRef,
-      status: projectCheckoutReturnStatus({
+    const status = projectCheckoutReturnStatus({
         orderStatus: order.status,
         paymentStatuses: matchingEvents.map((event) => event.status),
         bookingExists: Boolean(booking)
-      })
+      });
+    const delivery = booking
+      ? await ctx.db
+          .query("ticketDeliveries")
+          .withIndex("by_bookingRef", (q) => q.eq("bookingRef", booking.bookingRef))
+          .unique()
+      : null;
+
+    return {
+      orderRef,
+      status,
+      ...(status === "confirmed" && booking
+        ? {
+            bookingRef: booking.bookingRef,
+            ...(delivery ? { ticketCode: delivery.ticketCode } : {})
+          }
+        : {})
     };
   }
 });

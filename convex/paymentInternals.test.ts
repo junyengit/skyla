@@ -8,6 +8,7 @@ import {
   getStripeTerminalReaderProcessSnapshot,
   recordStripeCheckoutWebhook,
   recordStripeRefundWebhook,
+  recordStripeTerminalReaderProcess,
   recordStripeTerminalWebhook
 } from "./paymentInternals";
 
@@ -20,6 +21,8 @@ type TableName =
   | "refunds"
   | "webhookEvents"
   | "bookings"
+  | "ticketDeliveries"
+  | "config"
   | "auditEvents"
   | "staffUsers";
 type MockDoc = Record<string, unknown> & { _id: string; _creationTime: number };
@@ -42,6 +45,9 @@ type MockCtx = {
     insert: (table: TableName, doc: Record<string, unknown>) => Promise<string>;
     patch: (id: string, update: Record<string, unknown>) => Promise<void>;
   };
+  scheduler: {
+    runAfter: (delayMs: number, reference: unknown, args: Record<string, unknown>) => Promise<void>;
+  };
 };
 type TerminalWebhookArgs = {
   providerEventId: string;
@@ -49,6 +55,7 @@ type TerminalWebhookArgs = {
   outcome: "paid" | "failed" | "canceled" | "ignored";
   providerPaymentId?: string;
   saleRef?: string;
+  ticketCode?: string;
   amountCents?: number;
   currency?: "usd";
   raw?: Record<string, unknown>;
@@ -58,6 +65,18 @@ type TerminalWebhookResult = {
   duplicate: boolean;
   saleRef?: string;
 };
+type TerminalReaderProcessArgs = {
+  saleRef: string;
+  providerPaymentId: string;
+  readerId: string;
+  amountCents: number;
+  currency: "usd";
+  processAttempt: number;
+  processIdempotencyKey: string;
+  status: "processing" | "paid" | "failed";
+  actorStaffUserId: string;
+  raw?: Record<string, unknown>;
+};
 type CheckoutWebhookArgs = {
   providerEventId: string;
   eventType: string;
@@ -65,6 +84,7 @@ type CheckoutWebhookArgs = {
   providerPaymentId?: string;
   providerPaymentIntentId?: string;
   orderRef?: string;
+  ticketCode?: string;
   amountCents?: number;
   currency?: "usd";
   raw?: Record<string, unknown>;
@@ -217,6 +237,14 @@ describe("Stripe Checkout webhook internals", () => {
       entityType: "booking",
       entityRef: orderRef
     });
+    expect(state.ticketDeliveries).toHaveLength(1);
+    expect(state.ticketDeliveries[0]).toMatchObject({
+      bookingRef: orderRef,
+      orderRef,
+      status: "queued",
+      attemptCount: 0,
+      sendVersion: 1
+    });
     expect(state.webhookEvents[0]).toMatchObject({
       provider: "stripe",
       providerEventId: "evt_checkout_paid",
@@ -254,6 +282,88 @@ describe("Stripe Checkout webhook internals", () => {
     expect(state.webhookEvents).toHaveLength(1);
     expect(state.bookings).toHaveLength(1);
     expect(state.auditEvents).toHaveLength(1);
+  });
+
+  it("backfills one missing ticket delivery from a processed paid Checkout replay", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    state.webhookEvents.push({
+      _id: "webhookEvents_1",
+      _creationTime: 1,
+      provider: "stripe",
+      providerEventId: "evt_checkout_paid_before_delivery",
+      eventType: "checkout.session.completed",
+      processedAt: 1,
+      status: "processed",
+      orderRef
+    });
+    state.bookings.push({
+      _id: "bookings_1",
+      _creationTime: 1,
+      bookingRef: orderRef,
+      orderRef,
+      visitDate: checkoutVisitDate,
+      entryTime: "14:00",
+      partySize: 2,
+      status: "confirmed",
+      emailLower: "guest@example.com",
+      createdAt: 1,
+      updatedAt: 1
+    });
+
+    const replayArgs = {
+      providerEventId: "evt_checkout_paid_before_delivery",
+      eventType: "checkout.session.completed",
+      outcome: "paid" as const,
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd" as const
+    };
+    const firstReplay = await runCheckoutWebhook(ctx, replayArgs);
+    const secondReplay = await runCheckoutWebhook(ctx, {
+      ...replayArgs,
+      ticketCode: "tkt_33333333333333333333333333333333"
+    });
+
+    expect(firstReplay).toEqual({ status: "processed", duplicate: true, orderRef });
+    expect(secondReplay).toEqual({ status: "processed", duplicate: true, orderRef });
+    expect(state.ticketDeliveries).toHaveLength(1);
+    expect(state.ticketDeliveries[0]).toMatchObject({ bookingRef: orderRef, orderRef, status: "queued" });
+  });
+
+  it("does not backfill a Checkout delivery unless the stored order is paid", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "payment_pending" });
+    state.webhookEvents.push({
+      _id: "webhookEvents_1",
+      _creationTime: 1,
+      provider: "stripe",
+      providerEventId: "evt_checkout_not_paid",
+      eventType: "checkout.session.completed",
+      processedAt: 1,
+      status: "processed",
+      orderRef
+    });
+    state.bookings.push({
+      _id: "bookings_1",
+      _creationTime: 1,
+      bookingRef: orderRef,
+      orderRef,
+      status: "confirmed",
+      emailLower: "guest@example.com",
+      createdAt: 1
+    });
+
+    await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_checkout_not_paid",
+      eventType: "checkout.session.completed",
+      outcome: "paid",
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 6090,
+      currency: "usd"
+    });
+
+    expect(state.ticketDeliveries).toHaveLength(0);
   });
 
   it("does not duplicate fulfillment when Stripe delivers a second paid event id", async () => {
@@ -360,6 +470,151 @@ describe("Stripe refund webhook internals", () => {
     expect(state.auditEvents[0]).toMatchObject({ action: "payment.refund.reconciled", entityRef: orderRef });
   });
 
+  it("invalidates Checkout fulfillment when cumulative succeeded refunds reach the paid amount", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    seedCheckoutTicketFulfillment(state);
+
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 3000 }));
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.bookings[0].status).toBe("confirmed");
+
+    const result = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_2",
+        providerRefundId: "re_checkout_2",
+        providerEventCreatedAt: 3000,
+        amountCents: 3090
+      })
+    );
+
+    expect(result).toMatchObject({ status: "processed", stale: false, orderRef });
+    expect(state.orders[0]).toMatchObject({ status: "canceled", updatedAt: expect.any(Number) });
+    expect(state.bookings[0]).toMatchObject({
+      status: "cancelled",
+      cancelledAt: expect.any(Number),
+      updatedAt: expect.any(Number)
+    });
+    expect(state.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "payment.refund.fulfillmentInvalidated",
+        entityType: "order",
+        entityRef: orderRef,
+        metadata: expect.objectContaining({
+          cumulativeSucceededRefundedCents: 6090,
+          entityStatusChanged: true,
+          bookingStatusChanged: true
+        })
+      })
+    );
+
+    const auditCount = state.auditEvents.length;
+    const replay = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_2",
+        providerRefundId: "re_checkout_2",
+        providerEventCreatedAt: 3000,
+        amountCents: 3090
+      })
+    );
+    const stale = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_2_stale",
+        providerRefundId: "re_checkout_2",
+        refundStatus: "pending",
+        providerEventCreatedAt: 2000,
+        amountCents: 3090
+      })
+    );
+    expect(replay).toMatchObject({ status: "processed", duplicate: true, orderRef });
+    expect(stale).toMatchObject({ status: "processed", stale: true, orderRef });
+    expect(state.orders[0].status).toBe("canceled");
+    expect(state.bookings[0].status).toBe("cancelled");
+    expect(state.auditEvents).toHaveLength(auditCount);
+  });
+
+  it("restores only refund-owned Checkout fulfillment after a supported succeeded reversal", async () => {
+    const { ctx, state, scheduled } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    seedCheckoutTicketFulfillment(state);
+
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 6090 }));
+    Object.assign(state.ticketDeliveries[0], {
+      status: "suppressed",
+      failureReason: "booking_cancelled",
+      lastAttemptAt: 5000,
+      updatedAt: 5000
+    });
+    const reversal = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_failed_late",
+        refundStatus: "failed",
+        amountCents: 6090,
+        failureReason: "declined",
+        providerEventCreatedAt: 6000
+      })
+    );
+
+    expect(reversal).toMatchObject({ status: "processed", stale: false, orderRef });
+    expect(state.refunds[0]).toMatchObject({ status: "failed", failureReason: "declined" });
+    expect(state.orders[0]).toMatchObject({ status: "paid", updatedAt: expect.any(Number) });
+    expect(state.bookings[0]).toMatchObject({
+      status: "confirmed",
+      checkedInAt: undefined,
+      cancelledAt: undefined,
+      updatedAt: expect.any(Number)
+    });
+    expect(state.ticketDeliveries[0]).toMatchObject({
+      status: "queued",
+      failureReason: undefined,
+      lastAttemptAt: undefined,
+      sendVersion: 1
+    });
+    expect(scheduled).toEqual([
+      { delayMs: 0, args: { deliveryId: "ticketDeliveries_1" } }
+    ]);
+    expect(state.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "payment.refund.fulfillmentRestored",
+        entityType: "order",
+        entityRef: orderRef,
+        metadata: expect.objectContaining({
+          entityRestored: true,
+          bookingRestored: true,
+          ticketDeliveryRequeued: true
+        })
+      })
+    );
+  });
+
+  it("preserves a booking that was already cancelled when a full Checkout refund is reversed", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
+    seedCheckoutTicketFulfillment(state, { status: "cancelled", cancelledAt: 50, updatedAt: 50 });
+
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 6090 }));
+    await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_refund_failed_late",
+        refundStatus: "failed",
+        amountCents: 6090,
+        failureReason: "declined",
+        providerEventCreatedAt: 6000
+      })
+    );
+
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.bookings[0]).toMatchObject({ status: "cancelled", cancelledAt: 50, updatedAt: 50 });
+    expect(state.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "payment.refund.fulfillmentRestored",
+        metadata: expect.objectContaining({ entityRestored: true, bookingRestored: false })
+      })
+    );
+  });
+
   it("is replay-safe and updates the same refund from pending to succeeded", async () => {
     const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
     const pending = refundArgs({ refundStatus: "pending", providerEventId: "evt_refund_pending" });
@@ -429,19 +684,23 @@ describe("Stripe refund webhook internals", () => {
 
   it("allows a succeeded refund to require corrected banking details", async () => {
     const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
-    await runRefundWebhook(ctx, refundArgs());
+    seedCheckoutTicketFulfillment(state);
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 6090 }));
     const requiresAction = await runRefundWebhook(
       ctx,
       refundArgs({
         providerEventId: "evt_refund_requires_action_late",
         refundStatus: "requires_action",
+        amountCents: 6090,
         providerEventCreatedAt: 6000
       })
     );
 
     expect(requiresAction).toMatchObject({ status: "processed", stale: false });
     expect(state.refunds[0].status).toBe("requires_action");
-    expect(state.auditEvents).toHaveLength(2);
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.bookings[0]).toMatchObject({ status: "confirmed", cancelledAt: undefined });
+    expect(state.auditEvents.some((event) => event.action === "payment.refund.fulfillmentRestored")).toBe(true);
   });
 
   it("does not switch a failed refund state even when a newer event disagrees", async () => {
@@ -531,6 +790,87 @@ describe("Stripe refund webhook internals", () => {
     expect(state.refunds[0]).toMatchObject({ paymentProvider: "terminal", saleRef, amountCents: 1000 });
     expect(state.posSales[0].status).toBe("paid");
   });
+
+  it("invalidates a Terminal ticket sale and booking after a full succeeded refund", async () => {
+    const { ctx, state } = createTerminalWebhookCtx({
+      saleStatus: "paid",
+      terminalStatus: "paid",
+      includeTicket: true
+    });
+    seedTerminalTicketFulfillment(state);
+
+    const result = await runRefundWebhook(
+      ctx,
+      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 2900 })
+    );
+
+    expect(result).toMatchObject({ status: "processed", stale: false, saleRef });
+    expect(state.posSales[0]).toMatchObject({ status: "canceled", updatedAt: expect.any(Number) });
+    expect(state.bookings[0]).toMatchObject({
+      status: "cancelled",
+      cancelledAt: expect.any(Number),
+      updatedAt: expect.any(Number)
+    });
+    expect(state.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "payment.refund.fulfillmentInvalidated",
+        entityType: "posSale",
+        entityRef: saleRef
+      })
+    );
+  });
+
+  it("restores refund-owned Terminal fulfillment after a supported succeeded reversal", async () => {
+    const { ctx, state, scheduled } = createTerminalWebhookCtx({
+      saleStatus: "paid",
+      terminalStatus: "paid",
+      includeTicket: true
+    });
+    seedTerminalTicketFulfillment(state);
+
+    await runRefundWebhook(
+      ctx,
+      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 2900 })
+    );
+    Object.assign(state.ticketDeliveries[0], {
+      status: "suppressed",
+      failureReason: "booking_cancelled",
+      lastAttemptAt: 5000,
+      updatedAt: 5000
+    });
+    const reversal = await runRefundWebhook(
+      ctx,
+      refundArgs({
+        providerEventId: "evt_terminal_refund_failed_late",
+        providerPaymentIntentId: providerPaymentId,
+        refundStatus: "failed",
+        amountCents: 2900,
+        failureReason: "declined",
+        providerEventCreatedAt: 6000
+      })
+    );
+
+    expect(reversal).toMatchObject({ status: "processed", stale: false, saleRef });
+    expect(state.posSales[0].status).toBe("paid");
+    expect(state.bookings[0]).toMatchObject({ status: "confirmed", cancelledAt: undefined });
+    expect(state.ticketDeliveries[0]).toMatchObject({
+      status: "queued",
+      failureReason: undefined,
+      lastAttemptAt: undefined,
+      sendVersion: 1
+    });
+    expect(scheduled).toEqual([
+      { delayMs: 0, args: { deliveryId: "ticketDeliveries_1" } }
+    ]);
+    expect(state.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "payment.refund.fulfillmentRestored",
+        entityType: "posSale",
+        entityRef: saleRef,
+        metadata: expect.objectContaining({ entityRestored: true, bookingRestored: true })
+      })
+    );
+  });
 });
 
 describe("Stripe Terminal webhook internals", () => {
@@ -557,6 +897,118 @@ describe("Stripe Terminal webhook internals", () => {
       status: "processed",
       saleRef
     });
+  });
+
+  it("fulfills a paid POS ticket sale once and queues its ticket confirmation", async () => {
+    const { ctx, state } = createTerminalWebhookCtx({ includeTicket: true });
+
+    const result = await runTerminalWebhook(ctx, {
+      providerEventId: "evt_terminal_ticket_paid",
+      eventType: "payment_intent.succeeded",
+      outcome: "paid",
+      providerPaymentId,
+      saleRef,
+      amountCents: 2900,
+      currency: "usd"
+    });
+
+    expect(result).toEqual({ status: "processed", duplicate: false, saleRef });
+    expect(state.bookings).toHaveLength(1);
+    expect(state.bookings[0]).toMatchObject({
+      bookingRef: saleRef,
+      saleRef,
+      partySize: 1,
+      status: "confirmed",
+      emailLower: "walkup@example.com"
+    });
+    expect(state.ticketDeliveries).toHaveLength(1);
+    expect(state.ticketDeliveries[0]).toMatchObject({
+      bookingRef: saleRef,
+      saleRef,
+      status: "queued",
+      sendVersion: 1
+    });
+    expect(state.auditEvents.some((event) => event.action === "pos.bookingFulfilled")).toBe(true);
+  });
+
+  it("backfills one missing ticket delivery from a processed paid Terminal replay", async () => {
+    const { ctx, state } = createTerminalWebhookCtx({
+      saleStatus: "paid",
+      terminalStatus: "paid",
+      includeTicket: true
+    });
+    state.webhookEvents.push({
+      _id: "webhookEvents_1",
+      _creationTime: 1,
+      provider: "terminal",
+      providerEventId: "evt_terminal_paid_before_delivery",
+      eventType: "payment_intent.succeeded",
+      processedAt: 1,
+      status: "processed",
+      saleRef
+    });
+    state.bookings.push({
+      _id: "bookings_1",
+      _creationTime: 1,
+      bookingRef: saleRef,
+      saleRef,
+      visitDate: "2026-07-12",
+      partySize: 1,
+      status: "confirmed",
+      emailLower: "walkup@example.com",
+      createdAt: 1,
+      updatedAt: 1
+    });
+
+    const replayArgs = {
+      providerEventId: "evt_terminal_paid_before_delivery",
+      eventType: "payment_intent.succeeded",
+      outcome: "paid" as const,
+      providerPaymentId,
+      saleRef,
+      amountCents: 2900,
+      currency: "usd" as const
+    };
+    const firstReplay = await runTerminalWebhook(ctx, replayArgs);
+    const secondReplay = await runTerminalWebhook(ctx, {
+      ...replayArgs,
+      ticketCode: "tkt_44444444444444444444444444444444"
+    });
+
+    expect(firstReplay).toEqual({ status: "processed", duplicate: true, saleRef });
+    expect(secondReplay).toEqual({ status: "processed", duplicate: true, saleRef });
+    expect(state.ticketDeliveries).toHaveLength(1);
+    expect(state.ticketDeliveries[0]).toMatchObject({ bookingRef: saleRef, saleRef, status: "queued" });
+  });
+
+  it("does not backfill a Terminal delivery without an existing confirmed booking", async () => {
+    const { ctx, state } = createTerminalWebhookCtx({
+      saleStatus: "paid",
+      terminalStatus: "paid",
+      includeTicket: true
+    });
+    state.webhookEvents.push({
+      _id: "webhookEvents_1",
+      _creationTime: 1,
+      provider: "terminal",
+      providerEventId: "evt_terminal_paid_without_booking",
+      eventType: "payment_intent.succeeded",
+      processedAt: 1,
+      status: "processed",
+      saleRef
+    });
+
+    await runTerminalWebhook(ctx, {
+      providerEventId: "evt_terminal_paid_without_booking",
+      eventType: "payment_intent.succeeded",
+      outcome: "paid",
+      providerPaymentId,
+      saleRef,
+      amountCents: 2900,
+      currency: "usd"
+    });
+
+    expect(state.ticketDeliveries).toHaveLength(0);
   });
 
   it("fails non-ignored Terminal webhooks that omit the Stripe amount or currency", async () => {
@@ -609,11 +1061,72 @@ describe("Stripe Terminal webhook internals", () => {
     });
     expect(state.webhookEvents[0].raw).toMatchObject({ reason: "pos_sale_already_canceled" });
   });
+
+  it.each([
+    ["paid", "paid", "processing"],
+    ["canceled", "canceled", "failed"]
+  ] as const)(
+    "keeps a %s Terminal webhook authoritative when the reader result arrives later",
+    async (webhookOutcome, finalStatus, readerStatus) => {
+      const { ctx, state } = createTerminalWebhookCtx();
+      state.posSales[0].readerId = "tmr_test_123";
+      state.paymentEvents[0].raw = {
+        readerProcessAttempt: 1,
+        readerProcessIdempotencyKey: "terminal-process-attempt-1",
+        readerProcessReservedAt: 1
+      };
+
+      await runTerminalWebhook(ctx, {
+        providerEventId: `evt_terminal_${webhookOutcome}_before_reader`,
+        eventType: webhookOutcome === "paid" ? "payment_intent.succeeded" : "payment_intent.canceled",
+        outcome: webhookOutcome,
+        providerPaymentId,
+        saleRef,
+        amountCents: 4200,
+        currency: "usd"
+      });
+      const result = await runTerminalReaderProcess(ctx, {
+        saleRef,
+        providerPaymentId,
+        readerId: "tmr_test_123",
+        amountCents: 4200,
+        currency: "usd",
+        processAttempt: 1,
+        processIdempotencyKey: "terminal-process-attempt-1",
+        status: readerStatus,
+        actorStaffUserId: "staffUsers_1",
+        raw: { action: { status: readerStatus } }
+      });
+
+      expect(result).toMatchObject({ status: finalStatus, supersededByWebhook: true });
+      expect(state.paymentEvents[0].status).toBe(finalStatus);
+      expect(state.posSales[0].status).toBe(finalStatus);
+      expect(state.paymentEvents[0].raw).toMatchObject({
+        terminalWebhookRecordedAt: expect.any(Number),
+        readerProcessRecordedAt: expect.any(Number),
+        readerProcess: { action: { status: readerStatus } }
+      });
+      expect(state.auditEvents.at(-1)).toMatchObject({
+        action: "pos.terminalReader.process",
+        metadata: { resultStatus: finalStatus, supersededByWebhook: true }
+      });
+    }
+  );
 });
 
 async function runTerminalWebhook(ctx: MockCtx, args: TerminalWebhookArgs): Promise<TerminalWebhookResult> {
   const mutation = recordStripeTerminalWebhook as unknown as {
     _handler: (ctx: MockCtx, args: TerminalWebhookArgs) => Promise<TerminalWebhookResult>;
+  };
+  return mutation._handler(ctx, {
+    ...args,
+    ticketCode: args.ticketCode ?? (args.outcome === "paid" ? "tkt_11111111111111111111111111111111" : undefined)
+  });
+}
+
+async function runTerminalReaderProcess(ctx: MockCtx, args: TerminalReaderProcessArgs) {
+  const mutation = recordStripeTerminalReaderProcess as unknown as {
+    _handler: (ctx: MockCtx, args: TerminalReaderProcessArgs) => Promise<Record<string, unknown>>;
   };
   return mutation._handler(ctx, args);
 }
@@ -625,7 +1138,8 @@ async function runCheckoutWebhook(ctx: MockCtx, args: CheckoutWebhookArgs): Prom
   return mutation._handler(ctx, {
     ...args,
     providerPaymentIntentId:
-      args.providerPaymentIntentId ?? (args.outcome === "paid" ? checkoutPaymentIntentId : undefined)
+      args.providerPaymentIntentId ?? (args.outcome === "paid" ? checkoutPaymentIntentId : undefined),
+    ticketCode: args.ticketCode ?? (args.outcome === "paid" ? "tkt_22222222222222222222222222222222" : undefined)
   });
 }
 
@@ -838,7 +1352,7 @@ function createTerminalProcessSnapshotCtx(
 
 function createCheckoutWebhookCtx(
   options: { orderStatus?: string; includePaidEvent?: boolean } = {}
-): { ctx: MockCtx; state: MockState } {
+): ReturnType<typeof createMockCtx> {
   const state = createEmptyState();
   state.orders.push({
     _id: "orders_1",
@@ -903,9 +1417,10 @@ function createCheckoutWebhookCtx(
 }
 
 function createTerminalWebhookCtx(
-  options: { saleStatus?: string; terminalStatus?: string } = {}
-): { ctx: MockCtx; state: MockState } {
+  options: { saleStatus?: string; terminalStatus?: string; includeTicket?: boolean } = {}
+): ReturnType<typeof createMockCtx> {
   const state = createEmptyState();
+  const amountCents = options.includeTicket ? 2900 : 4200;
   state.posSales.push(
       {
         _id: "posSales_1",
@@ -913,9 +1428,10 @@ function createTerminalWebhookCtx(
         saleRef,
         status: options.saleStatus ?? "payment_pending",
         currency: "usd",
-        subtotalCents: 4200,
+        subtotalCents: amountCents,
         feeCents: 0,
-        totalCents: 4200,
+        totalCents: amountCents,
+        customerEmailLower: options.includeTicket ? "walkup@example.com" : undefined,
         createdAt: 1,
         updatedAt: 1
       }
@@ -931,12 +1447,96 @@ function createTerminalWebhookCtx(
         idempotencyKey: stripeTerminalIntentIdempotencyKey(saleRef),
         status: options.terminalStatus ?? "processing",
         currency: "usd",
-        amountCents: 4200,
+        amountCents,
         createdAt: 1
       }
   );
+  if (options.includeTicket) {
+    state.posSaleLines.push({
+      _id: "posSaleLines_1",
+      _creationTime: 1,
+      saleRef,
+      kind: "ticket",
+      productKey: "general",
+      name: "General Admission",
+      quantity: 1,
+      unitAmountCents: 2900,
+      lineTotalCents: 2900,
+      metadata: catalogLineMetadata(ticketPackages.general)
+    });
+  } else {
+    state.posSaleLines.push({
+      _id: "posSaleLines_1",
+      _creationTime: 1,
+      saleRef,
+      kind: "custom",
+      name: "Walk-up custom sale",
+      quantity: 1,
+      unitAmountCents: 4200,
+      lineTotalCents: 4200,
+      metadata: { reason: "test fixture" }
+    });
+  }
 
   return createMockCtx(state);
+}
+
+function seedCheckoutTicketFulfillment(state: MockState, booking: Record<string, unknown> = {}) {
+  state.bookings.push({
+    _id: "bookings_1",
+    _creationTime: 1,
+    bookingRef: orderRef,
+    orderRef,
+    visitDate: checkoutVisitDate,
+    entryTime: "14:00",
+    partySize: 2,
+    status: "confirmed",
+    emailLower: "guest@example.com",
+    createdAt: 1,
+    updatedAt: 1,
+    ...booking
+  });
+  state.ticketDeliveries.push({
+    _id: "ticketDeliveries_1",
+    _creationTime: 1,
+    ticketCode: "tkt_22222222222222222222222222222222",
+    bookingRef: orderRef,
+    orderRef,
+    emailLower: "guest@example.com",
+    status: "queued",
+    attemptCount: 0,
+    sendVersion: 1,
+    createdAt: 1,
+    updatedAt: 1
+  });
+}
+
+function seedTerminalTicketFulfillment(state: MockState) {
+  state.bookings.push({
+    _id: "bookings_1",
+    _creationTime: 1,
+    bookingRef: saleRef,
+    saleRef,
+    visitDate: "2026-07-04",
+    partySize: 1,
+    status: "confirmed",
+    emailLower: "walkup@example.com",
+    createdAt: 1,
+    updatedAt: 1
+  });
+  state.ticketDeliveries.push({
+    _id: "ticketDeliveries_1",
+    _creationTime: 1,
+    ticketCode: "tkt_11111111111111111111111111111111",
+    bookingRef: saleRef,
+    saleRef,
+    emailLower: "walkup@example.com",
+    status: "queued",
+    attemptCount: 0,
+    sendVersion: 1,
+    createdAt: 1,
+    updatedAt: 1
+  });
 }
 
 function createEmptyState(): MockState {
@@ -949,13 +1549,20 @@ function createEmptyState(): MockState {
     refunds: [],
     webhookEvents: [],
     bookings: [],
+    ticketDeliveries: [],
+    config: [],
     auditEvents: [],
     staffUsers: []
   };
 }
 
-function createMockCtx(state: MockState): { ctx: MockCtx; state: MockState } {
+function createMockCtx(state: MockState): {
+  ctx: MockCtx;
+  state: MockState;
+  scheduled: Array<{ delayMs: number; args: Record<string, unknown> }>;
+} {
   let nextId = 2;
+  const scheduled: Array<{ delayMs: number; args: Record<string, unknown> }> = [];
 
   const ctx: MockCtx = {
     auth: {
@@ -1013,8 +1620,13 @@ function createMockCtx(state: MockState): { ctx: MockCtx; state: MockState } {
         }
         throw new Error(`Mock document not found: ${id}`);
       }
+    },
+    scheduler: {
+      async runAfter(delayMs, _reference, args) {
+        scheduled.push({ delayMs, args });
+      }
     }
   };
 
-  return { ctx, state };
+  return { ctx, state, scheduled };
 }

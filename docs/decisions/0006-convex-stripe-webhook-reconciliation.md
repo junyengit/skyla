@@ -58,6 +58,8 @@ Add a Convex HTTP action at `POST /stripe-webhook` that:
   endpoint pointed at `https://<convex-site-url>/stripe-webhook`.
 - The Stripe dashboard endpoint must include Checkout Session events and
   Terminal PaymentIntent events.
-- Kaskade still needs an equivalent ref-backed replacement.
+- Historical note: the original plan expected a ref-backed Kaskade replacement.
+  That consequence is superseded; Kaskade/PharosGate is retired and has no
+  active implementation workstream.
 - The frontend checkout must still be wired to the Convex action before this
   webhook receives relevant live Checkout Session events.

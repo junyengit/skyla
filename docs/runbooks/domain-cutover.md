@@ -17,11 +17,11 @@ path through prior Vercel deployments.
   `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, plus
   `www.skydeckla.com` CNAME `junyengit.github.io.`. They are not the preferred
   rollback path after root static cleanup.
-- Historical TXT records included `apple-domain-verification=UKchr7KlrHJiCids`
-  and `brevo-code:bf64ac1498536c7d801c996cabb36ea8`. A 2026-07-02
-  authoritative Vercel DNS check did not return those values. Restore them in
-  Vercel DNS if Apple/Brevo still need domain verification, or record the
-  decision if they were intentionally removed.
+- Owner decision required: historical records reference Apple domain
+  verification and Brevo verification, but history does not prove either
+  service is active today. The owner must confirm each service, then explicitly
+  preserve/restore its current provider-issued record or record its retirement.
+  Do not infer the required value from this runbook.
 - No AAAA records were observed. Do not add AAAA records for Vercel.
 
 Historical note: immediately after the nameserver switch, local OS/browser DNS caches briefly returned stale GitHub Pages behavior while Vercel and external DNS were already correct.
@@ -44,28 +44,21 @@ Verify these values in Vercel immediately before using third-party DNS. If Verce
 ## Cutover Verification
 
 - [x] Vercel production deployment is READY from `main`.
-- [x] The route matrix passes on the Vercel production URL, apex domain, and `www` domain:
-  - `/`
-  - `/about`
-  - `/cafe`
-  - `/experiences`
-  - `/checkout`
-  - `/members`
-  - `/privacy`
-  - `/terms`
-  - `/admin`
-  - `/pos`
-  - `/robots.txt`
-  - `/sitemap.xml`
-- [x] `/admin`, `/admin.html`, `/pos`, and `/pos.html` include `X-Robots-Tag: noindex, nofollow`.
-- [x] Payment and booking flows are intentionally operating in the documented legacy bridge mode.
+- [x] The registry-derived route smoke passes on the Vercel behavior-evidence
+      deployment, apex domain, and `www`. `apps/web/site-routes.mjs` and the
+      smoke output are the route/count authority.
+- [x] Staff routes and compatibility paths covered by the registry remain
+      `noindex, nofollow`.
+- [x] Payment and write routes use the native fail-closed Next/Convex boundary;
+      no legacy browser payment bridge is an approved fallback.
 
 ## Current Nameserver Flow
 
 Use this if GoDaddy remains delegated to Vercel nameservers:
 
 1. Manage `skydeckla.com` and `www.skydeckla.com` in Vercel Project Settings > Domains.
-2. Preserve existing TXT records in Vercel DNS.
+2. Preserve confirmed active TXT records in Vercel DNS. Handle Apple/Brevo only
+   after the explicit owner decision above.
 3. Run production smoke tests after any deployment or DNS change:
    - `SMOKE_BASE_URL=https://skydeckla.com bun run test:smoke`
    - `SMOKE_BASE_URL=https://www.skydeckla.com bun run test:smoke`
@@ -81,7 +74,8 @@ Use this only if moving from Vercel nameservers back to GoDaddy DNS or another D
 4. Lower DNS TTL in GoDaddy if the provider supports it.
 5. Replace the apex GitHub Pages A records with Vercel's required A records.
 6. Replace `www.skydeckla.com` CNAME from `junyengit.github.io.` to Vercel's provided CNAME target.
-7. Preserve all TXT records.
+7. Preserve all confirmed active TXT records; do not recreate historical
+   Apple/Brevo values without owner confirmation and current provider values.
 8. Do not add AAAA records.
 9. Verify Vercel domain status, HTTPS certificate issuance, and apex/`www` redirects.
 10. Smoke-test production.
@@ -94,7 +88,9 @@ Required records if using third-party DNS:
 - `A` record: `@` -> `64.29.17.1`
 - `CNAME` record: `www` -> `2c6615fa9eaccf36.vercel-dns-017.com.`
 
-Remove the GitHub Pages apex A records when adding the Vercel A records. Preserve TXT, Brevo CNAME, and `pay` records.
+Remove the GitHub Pages apex A records when adding the Vercel A records.
+Preserve confirmed active TXT, mail, and `pay` records; Brevo records depend on
+the explicit owner decision above.
 
 ## Hosting Rollback
 

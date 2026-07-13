@@ -38,6 +38,11 @@ const terminalReaderRegistry = env.SKYLA_TERMINAL_READER_REGISTRY ?? "";
 const terminalAcceptance = env.SKYLA_POS_TERMINAL_ACCEPTANCE ?? "";
 const staffBootstrapToken = env.SKYLA_STAFF_BOOTSTRAP_TOKEN ?? "";
 const clerkIssuerDomain = env.CLERK_JWT_ISSUER_DOMAIN ?? "";
+const resendApiKey = env.RESEND_API_KEY ?? "";
+const ticketFromEmail = env.SKYLA_TICKET_FROM_EMAIL ?? "";
+const ticketReplyTo = env.SKYLA_TICKET_REPLY_TO ?? "";
+const publicOrigin = env.SKYLA_PUBLIC_ORIGIN ?? "";
+const publicGatewaySecret = env.SKYLA_PUBLIC_GATEWAY_SECRET ?? "";
 const requiredGateNames = commaList(env.SKYLA_CONVEX_ENV_REQUIRE ?? "");
 const stripeReturnOriginList = commaList(stripeReturnOrigins);
 const terminalReaderRegistryList = commaList(terminalReaderRegistry);
@@ -113,17 +118,49 @@ const checks = [
     present: Boolean(clerkIssuerDomain),
     ok: /^https:\/\/(?:[a-z0-9-]+\.clerk\.accounts\.dev|clerk\.[a-z0-9.-]+\.[a-z]{2,})$/.test(clerkIssuerDomain),
     note: clerkIssuerDomain ? "must exactly match the Clerk Convex integration Frontend API URL" : undefined
+  },
+  {
+    name: "RESEND_API_KEY",
+    present: Boolean(resendApiKey),
+    ok: /^re_[A-Za-z0-9_-]{8,}$/.test(resendApiKey),
+    note: resendApiKey ? "Convex-only provider key for ticket confirmation email" : undefined
+  },
+  {
+    name: "SKYLA_TICKET_FROM_EMAIL",
+    present: Boolean(ticketFromEmail),
+    ok: senderEmailIsValid(ticketFromEmail),
+    note: ticketFromEmail ? "must use a sender on the verified Resend domain" : undefined
+  },
+  {
+    name: "SKYLA_TICKET_REPLY_TO",
+    present: Boolean(ticketReplyTo),
+    ok: !ticketReplyTo || emailIsValid(ticketReplyTo),
+    note: ticketReplyTo ? "optional monitored reply address" : undefined
+  },
+  {
+    name: "SKYLA_PUBLIC_ORIGIN",
+    present: Boolean(publicOrigin),
+    ok: httpsOriginIsValid(publicOrigin),
+    note: publicOrigin ? "bare HTTPS origin used in ticket email links and QR codes" : undefined
+  },
+  {
+    name: "SKYLA_PUBLIC_GATEWAY_SECRET",
+    present: Boolean(publicGatewaySecret),
+    ok: publicGatewaySecret.length >= 32 && publicGatewaySecret.length <= 256 && !/\s/.test(publicGatewaySecret),
+    note: publicGatewaySecret ? "server-only shared secret for authenticated Next-to-Convex public writes" : undefined
   }
 ];
 
 const gates = {
   cloud: checks[0].ok && checks[1].ok,
-  "stripe-checkout": checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[5].ok,
+  "public-gateway": checks[0].ok && checks[1].ok && checks[15].ok,
+  "stripe-checkout": checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[5].ok && checks[15].ok,
   "stripe-webhook": checks[0].ok && checks[3].ok && checks[6].ok,
   "terminal-reader":
     checks[0].ok && checks[1].ok && checks[3].ok && checks[4].ok && checks[6].ok && checks[7].ok && checks[8].ok,
   "staff-bootstrap": checks[0].ok && checks[9].ok,
-  "staff-auth": checks[0].ok && checks[1].ok && checks[10].ok
+  "staff-auth": checks[0].ok && checks[1].ok && checks[10].ok,
+  "ticket-email": checks[0].ok && checks[11].ok && checks[12].ok && checks[13].ok && checks[14].ok
 };
 
 const allowedRequiredGates = Object.keys(gates);
@@ -136,11 +173,13 @@ const unknownRequiredGateCount = requiredGateNames.length - requiredGates.length
 const output = {
   filesChecked: files,
   readyForCloudPersistence: gates.cloud,
+  readyForPublicGateway: gates["public-gateway"],
   readyForStripeCheckout: gates["stripe-checkout"],
   readyForStripeWebhook: gates["stripe-webhook"],
   readyForTerminalReaderHandoff: gates["terminal-reader"],
   readyForStaffBootstrap: gates["staff-bootstrap"],
   readyForStaffAuth: gates["staff-auth"],
+  readyForTicketEmail: gates["ticket-email"],
   allowedRequiredGates,
   requiredGates,
   unknownRequiredGateCount,
@@ -168,4 +207,23 @@ function commaList(value) {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function emailIsValid(value) {
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value.trim());
+}
+
+function senderEmailIsValid(value) {
+  const trimmed = value.trim();
+  const bracketed = trimmed.match(/^[^<>]{1,80}<([^<>]+)>$/);
+  return emailIsValid(bracketed?.[1] ?? trimmed);
+}
+
+function httpsOriginIsValid(value) {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" && url.pathname === "/" && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
 }

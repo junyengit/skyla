@@ -1,6 +1,9 @@
 import { createCheckoutOrderDraft } from "@skyla/payments";
-import { fetchMutation } from "convex/nextjs";
-import { makeFunctionReference } from "convex/server";
+import {
+  callPublicConvexGateway,
+  PublicGatewayError,
+  publicGatewayErrorResponse
+} from "../../../../lib/public-convex-gateway";
 
 type CheckoutDraftInput = Parameters<typeof createCheckoutOrderDraft>[0] & {
   idempotencyKey?: string;
@@ -11,7 +14,7 @@ type CheckoutDraftMutationArgs = Required<Pick<CheckoutDraftInput, "packageKey" 
 
 type PersistedCheckoutDraftResult = {
   orderRef: string;
-  status: "draft";
+  status: "draft" | "payment_pending" | "expired";
   totals: {
     currency: "usd";
     subtotalCents: number;
@@ -21,18 +24,9 @@ type PersistedCheckoutDraftResult = {
   visitDate?: string;
   entryTime?: string;
   customerEmail?: string;
+  expiresAt: number;
   lines: ReturnType<typeof createCheckoutOrderDraft>["lines"];
 };
-
-const createCheckoutOrderDraftMutation = makeFunctionReference<
-  "mutation",
-  CheckoutDraftMutationArgs,
-  PersistedCheckoutDraftResult
->("orderDrafts:createCheckoutOrderDraft");
-
-function convexUrl() {
-  return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
-}
 
 function toDraftResponse(result: PersistedCheckoutDraftResult) {
   return {
@@ -46,6 +40,7 @@ function toDraftResponse(result: PersistedCheckoutDraftResult) {
     visitDate: result.visitDate,
     entryTime: result.entryTime,
     customerEmail: result.customerEmail,
+    expiresAt: result.expiresAt,
     orderRef: result.orderRef
   };
 }
@@ -58,12 +53,12 @@ export async function POST(request: Request) {
   try {
     const input = (await request.json()) as CheckoutDraftInput;
     const draft = createCheckoutOrderDraft(input);
-    const deploymentUrl = convexUrl();
 
-    if (deploymentUrl && input.idempotencyKey) {
+    if (input.idempotencyKey) {
       try {
-        const result = await fetchMutation(
-          createCheckoutOrderDraftMutation,
+        const result = await callPublicConvexGateway<PersistedCheckoutDraftResult>(
+          request,
+          "checkout-draft",
           withoutUndefined({
             packageKey: input.packageKey,
             adults: input.adults,
@@ -74,8 +69,7 @@ export async function POST(request: Request) {
             customerEmail: input.customerEmail,
             source: "next-route",
             idempotencyKey: input.idempotencyKey
-          }),
-          { url: deploymentUrl }
+          }) satisfies CheckoutDraftMutationArgs
         );
 
         return Response.json({
@@ -84,6 +78,13 @@ export async function POST(request: Request) {
           persisted: true
         });
       } catch (error) {
+        if (error instanceof PublicGatewayError) {
+          const response = publicGatewayErrorResponse(error, "Could not persist checkout order draft");
+          return Response.json(
+            { ...(await response.json()), persisted: false },
+            { status: response.status, headers: response.headers }
+          );
+        }
         const message = error instanceof Error ? error.message : "Could not persist checkout order draft";
         const status = message.includes("different draft") ? 409 : message.includes("idempotencyKey must") ? 400 : 502;
 
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
     return Response.json({
       draft,
       persisted: false,
-      persistenceReason: deploymentUrl ? "idempotencyKey_required" : "convex_unconfigured"
+      persistenceReason: "idempotencyKey_required"
     });
   } catch (error) {
     return Response.json(

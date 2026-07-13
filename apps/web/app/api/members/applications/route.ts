@@ -1,7 +1,9 @@
-import { fetchMutation } from "convex/nextjs";
-import { makeFunctionReference } from "convex/server";
-
-import { convexUnconfiguredResponse, convexUrl, optionalString, requiredString } from "../../admin/_shared";
+import {
+  callPublicConvexGateway,
+  PublicGatewayError,
+  publicGatewayErrorResponse
+} from "../../../../lib/public-convex-gateway";
+import { optionalString, requiredString } from "../../admin/_shared";
 
 type MemberTier = "obsidian" | "gold" | "black";
 
@@ -16,7 +18,7 @@ type MemberApplicationRequest = {
   idempotencyKey?: unknown;
 };
 
-type MemberApplicationMutationArgs = {
+type MemberApplicationGatewayInput = {
   firstName: string;
   lastName: string;
   email: string;
@@ -27,7 +29,7 @@ type MemberApplicationMutationArgs = {
   idempotencyKey: string;
 };
 
-type MemberApplicationMutationResult = {
+type MemberApplicationGatewayResult = {
   memberId: string;
   emailLower: string;
   tier: MemberTier;
@@ -36,12 +38,6 @@ type MemberApplicationMutationResult = {
   updatedAt?: number;
   replayed: boolean;
 };
-
-const submitMemberApplicationMutation = makeFunctionReference<
-  "mutation",
-  MemberApplicationMutationArgs,
-  MemberApplicationMutationResult
->("memberApplications:submitApplication");
 
 const memberTiers = new Set<MemberTier>(["obsidian", "gold", "black"]);
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -96,14 +92,10 @@ function failureStatus(message: string) {
 
 export async function POST(request: Request) {
   try {
-    const deploymentUrl = convexUrl();
-    if (!deploymentUrl) {
-      return convexUnconfiguredResponse("Member Applications");
-    }
-
     const input = (await request.json()) as MemberApplicationRequest;
-    const result = await fetchMutation(
-      submitMemberApplicationMutation,
+    const result = await callPublicConvexGateway<MemberApplicationGatewayResult>(
+      request,
+      "member-application",
       withoutUndefined({
         firstName: requiredString(input.firstName, "firstName", 80),
         lastName: requiredString(input.lastName, "lastName", 80),
@@ -113,12 +105,14 @@ export async function POST(request: Request) {
         source: optionalString(input.source, "source", 120),
         bio: optionalString(input.bio, "bio", 2000),
         idempotencyKey: parseIdempotencyKey(input.idempotencyKey)
-      }),
-      { url: deploymentUrl }
+      }) satisfies MemberApplicationGatewayInput
     );
 
     return Response.json({ member: result }, { status: result.replayed ? 200 : 201 });
   } catch (error) {
+    if (error instanceof PublicGatewayError) {
+      return publicGatewayErrorResponse(error, "Could not submit member application");
+    }
     const message = error instanceof Error ? error.message : "Could not submit member application";
     const status = failureStatus(message);
     return Response.json({ error: status === 502 ? "Could not submit member application" : message }, { status });

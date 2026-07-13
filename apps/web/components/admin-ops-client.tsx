@@ -49,6 +49,16 @@ type AdminBooking = {
   createdAt: number;
   updatedAt?: number;
   legacyId?: string;
+  ticketDelivery?: {
+    ticketCode: string;
+    status: "queued" | "sending" | "sent" | "failed" | "suppressed";
+    attemptCount: number;
+    sendVersion: number;
+    lastAttemptAt?: number;
+    sentAt?: number;
+    failureReason?: string;
+    updatedAt: number;
+  };
   vouchers?: BookingVouchers;
 };
 
@@ -135,6 +145,52 @@ type OperationsSnapshot = {
     }>;
   };
 };
+
+type InquiryAdminStatus = "pending" | "contacted" | "qualified" | "closed";
+
+type InquirySummary = {
+  inquiryId: string;
+  status: string;
+  contactMasked?: string;
+  experience?: string;
+  eventDate?: string;
+  guestCount?: string;
+  source?: string;
+  createdAt: number;
+  updatedAt?: number;
+  legacyId?: string;
+};
+
+type InquiryDetail = {
+  inquiryId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  status: string;
+  experience?: string;
+  eventDate?: string;
+  guestCount?: string;
+  notes?: string;
+  source?: string;
+  createdAt: number;
+  updatedAt?: number;
+  legacyId?: string;
+};
+
+type InquiryListResult = {
+  staff: OperationsSnapshot["staff"];
+  inquiries: InquirySummary[];
+};
+
+type InquiryDetailResult = {
+  staff: OperationsSnapshot["staff"];
+  inquiry: InquiryDetail;
+};
+
+type InquiryListLoadResult =
+  | { ok: true; data: InquiryListResult }
+  | { ok: false; error: string };
+
 type AnnouncementType = "info" | "warning" | "success";
 type Weekday = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
 
@@ -224,7 +280,7 @@ type AdminOpsClientProps = {
   };
 };
 
-type AdminTab = "orders" | "bookings" | "members" | "pos" | "payments";
+type AdminTab = "orders" | "bookings" | "members" | "inquiries" | "pos" | "payments";
 type ExportKind = "bookings" | "members" | "inquiries" | "orders" | "posSales" | "payments";
 type BookingAdminStatus = "confirmed" | "checked-in" | "cancelled";
 type MemberAdminStatus = "pending" | "approved" | "waitlisted" | "rejected";
@@ -247,6 +303,23 @@ const exportActions: Array<{ kind: ExportKind; label: string }> = [
   { kind: "posSales", label: "POS" },
   { kind: "payments", label: "Payments" }
 ];
+const adminTabs: Array<{ key: AdminTab; label: string }> = [
+  { key: "orders", label: "Orders" },
+  { key: "pos", label: "POS" },
+  { key: "bookings", label: "Bookings" },
+  { key: "members", label: "Members" },
+  { key: "inquiries", label: "Inquiries" },
+  { key: "payments", label: "Payments" }
+];
+const inquiryStatuses: InquiryAdminStatus[] = ["pending", "contacted", "qualified", "closed"];
+const inquiryExperienceLabels: Record<string, string> = {
+  "date-night": "Date Night",
+  "champagne-caviar": "Champagne & Caviar",
+  "family-suite": "Family Suite",
+  "champagne-room": "Champagne Room",
+  "private-events": "Private Events",
+  other: "Other"
+};
 
 const defaultAnnouncement: AnnouncementConfig = {
   active: false,
@@ -321,6 +394,12 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [convexCatalogSnapshot, setConvexCatalogSnapshot] = useState<CatalogSnapshot | null>(null);
   const [bookingLookup, setBookingLookup] = useState<BookingLookupResult | null>(null);
   const [bookingLookupQuery, setBookingLookupQuery] = useState("");
+  const [inquiries, setInquiries] = useState<InquirySummary[]>([]);
+  const [selectedInquiry, setSelectedInquiry] = useState<InquiryDetail | null>(null);
+  const [inquiryStatusDraft, setInquiryStatusDraft] = useState("");
+  const [inquiryNotesDraft, setInquiryNotesDraft] = useState("");
+  const [inquiryLoadingId, setInquiryLoadingId] = useState<string | null>(null);
+  const [inquiryListError, setInquiryListError] = useState<string | null>(null);
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementConfig>(defaultAnnouncement);
   const [hoursDraft, setHoursDraft] = useState<HoursConfig>(defaultHours);
   const [catalogNote, setCatalogNote] = useState("");
@@ -331,9 +410,11 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const authEpochRef = useRef(0);
+  const inquiryEditorRef = useRef<HTMLFormElement>(null);
 
   const readinessScore = useMemo(() => (snapshot ? totalReady(snapshot.readiness) : 0), [snapshot]);
   const canManageCatalog = snapshot?.staff.role === "admin";
+  const canManageInquiries = snapshot?.staff.role === "admin";
 
   useEffect(() => {
     return () => {
@@ -341,16 +422,49 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
     };
   }, []);
 
+  const selectedInquiryId = selectedInquiry?.inquiryId;
+  useEffect(() => {
+    if (!selectedInquiryId) return;
+
+    const editor = inquiryEditorRef.current;
+    if (!editor) return;
+
+    editor.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+    const firstEnabledField = editor.querySelector<HTMLElement>(
+      "select:not(:disabled), textarea:not(:disabled), button:not(:disabled)"
+    );
+    (firstEnabledField ?? editor).focus({ preventScroll: true });
+  }, [selectedInquiryId]);
+
   async function loadOperations() {
     const authEpoch = authEpochRef.current;
     setIsLoading(true);
     setMessage(null);
+    setInquiryListError(null);
 
     try {
-      const [operationsResponse, configResponse, catalogResponse] = await Promise.all([
+      const [operationsResponse, configResponse, catalogResponse, inquiriesResult] = await Promise.all([
         staffSession.staffFetch("/api/admin/operations?limit=12"),
         staffSession.staffFetch("/api/admin/config"),
-        staffSession.staffFetch("/api/admin/catalog")
+        staffSession.staffFetch("/api/admin/catalog"),
+        (async (): Promise<InquiryListLoadResult> => {
+          try {
+            const response = await staffSession.staffFetch("/api/admin/inquiries?limit=25");
+            const data = (await response.json()) as InquiryListResult | { error?: string; code?: string };
+            if (!response.ok) {
+              return {
+                ok: false,
+                error: "error" in data ? data.error ?? "Could not load experience inquiries" : "Could not load experience inquiries"
+              };
+            }
+            return { ok: true, data: data as InquiryListResult };
+          } catch (error) {
+            return {
+              ok: false,
+              error: error instanceof Error ? error.message : "Could not load experience inquiries"
+            };
+          }
+        })()
       ]);
       const operationsData = (await operationsResponse.json()) as OperationsSnapshot | { error?: string; code?: string };
       const configData = (await configResponse.json()) as ConfigSnapshot | { error?: string; code?: string };
@@ -370,6 +484,11 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       setSnapshot(operationsData as OperationsSnapshot);
       setConfigSnapshot(configData as ConfigSnapshot);
       setConvexCatalogSnapshot(catalogData as CatalogSnapshot);
+      setInquiries(inquiriesResult.ok ? inquiriesResult.data.inquiries : []);
+      setInquiryListError(inquiriesResult.ok ? null : inquiriesResult.error);
+      setSelectedInquiry(null);
+      setInquiryStatusDraft("");
+      setInquiryNotesDraft("");
       setAnnouncementDraft((configData as ConfigSnapshot).config.announcement);
       setHoursDraft((configData as ConfigSnapshot).config.hours);
     } catch (error) {
@@ -377,6 +496,9 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       setSnapshot(null);
       setConfigSnapshot(null);
       setConvexCatalogSnapshot(null);
+      setInquiries([]);
+      setInquiryListError(null);
+      setSelectedInquiry(null);
       setMessage(error instanceof Error ? error.message : "Could not load admin operations");
     } finally {
       if (authEpoch === authEpochRef.current) setIsLoading(false);
@@ -426,8 +548,118 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
     void postAdminAction("/api/admin/bookings/vouchers", { bookingRef, voucherId, action });
   }
 
+  async function resendTicketConfirmation(bookingRef: string) {
+    const authEpoch = authEpochRef.current;
+    setActionKey(`ticket-delivery:${bookingRef}`);
+    setMessage(null);
+
+    try {
+      const response = await staffSession.staffFetch("/api/admin/bookings/ticket-delivery", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ bookingRef })
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not resend ticket confirmation");
+      }
+      if (authEpoch !== authEpochRef.current) return;
+      await lookupBooking({ silent: true });
+      if (authEpoch !== authEpochRef.current) return;
+      setMessage("Ticket confirmation queued.");
+    } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
+      setMessage(error instanceof Error ? error.message : "Could not resend ticket confirmation");
+    } finally {
+      if (authEpoch === authEpochRef.current) setActionKey(null);
+    }
+  }
+
   function updateMemberStatus(memberId: string, status: MemberAdminStatus) {
     void postAdminAction("/api/admin/members/status", { memberId, status });
+  }
+
+  async function openInquiry(inquiryId: string) {
+    const authEpoch = authEpochRef.current;
+    setInquiryLoadingId(inquiryId);
+    setMessage(null);
+
+    try {
+      const response = await staffSession.staffFetch(
+        `/api/admin/inquiries/detail?inquiryId=${encodeURIComponent(inquiryId)}`
+      );
+      const data = (await response.json()) as InquiryDetailResult | { error?: string };
+      if (!response.ok) {
+        throw new Error("error" in data ? data.error ?? "Could not load experience inquiry" : "Could not load experience inquiry");
+      }
+      if (authEpoch !== authEpochRef.current) return;
+      const inquiry = (data as InquiryDetailResult).inquiry;
+      setSelectedInquiry(inquiry);
+      setInquiryStatusDraft(inquiry.status);
+      setInquiryNotesDraft(inquiry.notes ?? "");
+    } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
+      setSelectedInquiry(null);
+      setMessage(error instanceof Error ? error.message : "Could not load experience inquiry");
+    } finally {
+      if (authEpoch === authEpochRef.current) setInquiryLoadingId(null);
+    }
+  }
+
+  async function saveInquiry() {
+    if (!selectedInquiry || !canManageInquiries) {
+      return;
+    }
+
+    const normalizedNotes = inquiryNotesDraft.trim();
+    const statusChanged = inquiryStatusDraft !== selectedInquiry.status;
+    const notesChanged = normalizedNotes !== (selectedInquiry.notes ?? "");
+    if (!statusChanged && !notesChanged) {
+      setMessage("No inquiry changes to save.");
+      return;
+    }
+
+    const authEpoch = authEpochRef.current;
+    setActionKey(`inquiry:${selectedInquiry.inquiryId}`);
+    setMessage(null);
+
+    try {
+      const response = await staffSession.staffFetch("/api/admin/inquiries/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inquiryId: selectedInquiry.inquiryId,
+          ...(statusChanged ? { status: inquiryStatusDraft } : {}),
+          ...(notesChanged ? { notes: normalizedNotes } : {})
+        })
+      });
+      const data = (await response.json()) as { inquiry?: InquiryDetail; error?: string };
+      if (!response.ok || !data.inquiry) {
+        throw new Error(data.error ?? "Could not update experience inquiry");
+      }
+      if (authEpoch !== authEpochRef.current) return;
+      const updatedInquiry = data.inquiry;
+      setSelectedInquiry(updatedInquiry);
+      setInquiryStatusDraft(updatedInquiry.status);
+      setInquiryNotesDraft(updatedInquiry.notes ?? "");
+      setInquiries((current) =>
+        current.map((inquiry) =>
+          inquiry.inquiryId === updatedInquiry.inquiryId
+            ? { ...inquiry, status: updatedInquiry.status, updatedAt: updatedInquiry.updatedAt }
+            : inquiry
+        )
+      );
+      setMessage("Inquiry saved.");
+    } catch (error) {
+      if (authEpoch !== authEpochRef.current) return;
+      setMessage(error instanceof Error ? error.message : "Could not update experience inquiry");
+    } finally {
+      if (authEpoch === authEpochRef.current) setActionKey(null);
+    }
   }
 
   async function lookupBooking(options: { silent?: boolean } = {}) {
@@ -600,6 +832,11 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
     setConfigSnapshot(null);
     setConvexCatalogSnapshot(null);
     setBookingLookup(null);
+    setInquiries([]);
+    setInquiryListError(null);
+    setSelectedInquiry(null);
+    setInquiryStatusDraft("");
+    setInquiryNotesDraft("");
     setMessage(null);
     await staffSession.signOut();
   }
@@ -776,6 +1013,37 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                         ? `Cancelled ${shortDate(booking.cancelledAt)}`
                         : "Ready"}
                   </span>
+                  {booking.ticketDelivery ? (
+                    <div className="adminOpsTicketDelivery">
+                      <div>
+                        <strong>Ticket Confirmation</strong>
+                        <span>
+                          {booking.ticketDelivery.status === "sent" && booking.ticketDelivery.sentAt
+                            ? `Sent ${shortDate(booking.ticketDelivery.sentAt)}`
+                            : booking.ticketDelivery.status === "failed"
+                              ? `Delivery failed after ${booking.ticketDelivery.attemptCount} attempt${booking.ticketDelivery.attemptCount === 1 ? "" : "s"}`
+                              : booking.ticketDelivery.status === "suppressed"
+                                ? "Email delivery suppressed"
+                                : "Delivery queued"}
+                        </span>
+                        {booking.ticketDelivery.failureReason ? <em>{booking.ticketDelivery.failureReason}</em> : null}
+                      </div>
+                      <div className="adminOpsRowActions">
+                        <Link href={`/tickets/${booking.ticketDelivery.ticketCode}`} target="_blank" rel="noreferrer">
+                          Open Ticket
+                        </Link>
+                        {bookingLookup.staff.role === "admin" && booking.emailLower ? (
+                          <button
+                            type="button"
+                            disabled={Boolean(actionKey)}
+                            onClick={() => void resendTicketConfirmation(booking.bookingRef)}
+                          >
+                            Resend Email
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="adminOpsRowActions">
                     {!canMutateBooking ? null : booking.status === "checked-in" ? (
                       <button
@@ -1023,55 +1291,21 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
         </div>
 
         <div className="adminOpsPanel">
-          <div className="adminOpsTabs" role="tablist" aria-label="Recent operations">
-            <button
-              className={activeTab === "orders" ? "isActive" : ""}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "orders"}
-              onClick={() => setActiveTab("orders")}
-            >
-              Orders
-            </button>
-            <button
-              className={activeTab === "pos" ? "isActive" : ""}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "pos"}
-              onClick={() => setActiveTab("pos")}
-            >
-              POS
-            </button>
-            <button
-              className={activeTab === "bookings" ? "isActive" : ""}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "bookings"}
-              onClick={() => setActiveTab("bookings")}
-            >
-              Bookings
-            </button>
-            <button
-              className={activeTab === "members" ? "isActive" : ""}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "members"}
-              onClick={() => setActiveTab("members")}
-            >
-              Members
-            </button>
-            <button
-              className={activeTab === "payments" ? "isActive" : ""}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "payments"}
-              onClick={() => setActiveTab("payments")}
-            >
-              Payments
-            </button>
+          <div className="adminOpsTabs" role="group" aria-label="Recent operations">
+            {adminTabs.map((tab) => (
+              <button
+                className={activeTab === tab.key ? "isActive" : ""}
+                type="button"
+                aria-pressed={activeTab === tab.key}
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <div className="adminOpsTable" role="tabpanel">
+          <div className="adminOpsTable">
             {activeTab === "orders"
               ? snapshot?.recent.orders.map((order) => (
                   <div className="adminOpsRow" key={order.orderRef}>
@@ -1189,6 +1423,100 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                 ))
               : null}
 
+            {activeTab === "inquiries"
+              ? inquiries.map((inquiry) => (
+                  <div className="adminOpsRow adminOpsRowWithActions" key={inquiry.inquiryId}>
+                    <div>
+                      <strong>{inquiryExperienceLabels[inquiry.experience ?? ""] ?? inquiry.experience ?? "Experience inquiry"}</strong>
+                      <span>{[inquiry.contactMasked, inquiry.source, inquiry.legacyId].filter(Boolean).join(" / ")}</span>
+                    </div>
+                    <span>{inquiry.status}</span>
+                    <span>{[inquiry.eventDate, inquiry.guestCount].filter(Boolean).join(" / ")}</span>
+                    <div className="adminOpsRowActions">
+                      <button
+                        type="button"
+                        disabled={Boolean(inquiryLoadingId || actionKey)}
+                        onClick={() => void openInquiry(inquiry.inquiryId)}
+                      >
+                        {inquiryLoadingId === inquiry.inquiryId ? "Opening" : "Open"}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              : null}
+
+            {activeTab === "inquiries" && selectedInquiry ? (
+              <form
+                className="adminOpsConfigCard"
+                aria-labelledby={`inquiry-editor-title-${selectedInquiry.inquiryId}`}
+                ref={inquiryEditorRef}
+                tabIndex={-1}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void saveInquiry();
+                }}
+              >
+                <div className="adminOpsConfigTitle">
+                  <strong id={`inquiry-editor-title-${selectedInquiry.inquiryId}`}>
+                    {[selectedInquiry.firstName, selectedInquiry.lastName].filter(Boolean).join(" ") || "Experience inquiry"}
+                  </strong>
+                  <span>{selectedInquiry.email ?? "No email supplied"}</span>
+                </div>
+                <div className="adminOpsStaff">
+                  <span>{inquiryExperienceLabels[selectedInquiry.experience ?? ""] ?? selectedInquiry.experience ?? "Experience"}</span>
+                  <strong>
+                    {[selectedInquiry.eventDate, selectedInquiry.guestCount, selectedInquiry.source].filter(Boolean).join(" / ")}
+                  </strong>
+                </div>
+                <label>
+                  Status
+                  <select
+                    disabled={!canManageInquiries || Boolean(actionKey)}
+                    value={inquiryStatusDraft}
+                    onChange={(event) => setInquiryStatusDraft(event.target.value)}
+                  >
+                    {!inquiryStatuses.includes(inquiryStatusDraft as InquiryAdminStatus) ? (
+                      <option value={inquiryStatusDraft}>{inquiryStatusDraft || "Unknown"}</option>
+                    ) : null}
+                    {inquiryStatuses.map((status) => (
+                      <option value={status} key={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Notes
+                  <textarea
+                    disabled={!canManageInquiries || Boolean(actionKey)}
+                    maxLength={2000}
+                    rows={6}
+                    style={{
+                      width: "100%",
+                      resize: "vertical",
+                      border: "1px solid rgba(255, 255, 255, 0.16)",
+                      borderRadius: 8,
+                      background: "rgba(0, 0, 0, 0.38)",
+                      padding: 12
+                    }}
+                    value={inquiryNotesDraft}
+                    onChange={(event) => setInquiryNotesDraft(event.target.value)}
+                  />
+                </label>
+                {canManageInquiries ? (
+                  <button className="secondaryAction" type="submit" disabled={Boolean(actionKey)}>
+                    {actionKey === `inquiry:${selectedInquiry.inquiryId}` ? "Saving" : "Save Inquiry"}
+                  </button>
+                ) : null}
+              </form>
+            ) : null}
+
+            {activeTab === "inquiries" && inquiryListError ? (
+              <p className="adminOpsEmpty" role="status">
+                {inquiryListError}
+              </p>
+            ) : null}
+
             {activeTab === "payments"
               ? snapshot?.recent.refunds.map((refund) => (
                   <div
@@ -1232,15 +1560,17 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
             {snapshot &&
             (activeTab === "payments"
               ? snapshot.recent.refunds.length === 0 && snapshot.recent.paymentEvents.length === 0
-              : snapshot.recent[
-                  activeTab === "orders"
-                    ? "orders"
-                    : activeTab === "pos"
-                      ? "posSales"
-                      : activeTab === "bookings"
-                        ? "bookings"
-                        : "members"
-                ].length === 0) ? (
+              : activeTab === "inquiries"
+                ? inquiries.length === 0 && !inquiryListError
+                : snapshot.recent[
+                    activeTab === "orders"
+                      ? "orders"
+                      : activeTab === "pos"
+                        ? "posSales"
+                        : activeTab === "bookings"
+                          ? "bookings"
+                          : "members"
+                  ].length === 0) ? (
               <p className="adminOpsEmpty">No recent records</p>
             ) : null}
 

@@ -3,6 +3,14 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, MapPin, ShieldCheck, Sparkles } from "@skyla/ui/icons";
 import { siteConfig, ticketPackages } from "@skyla/config";
 import { MotionHero } from "@/components/motion-hero";
+import {
+  formatOperatingDay,
+  operatingWeekdays,
+  type PublicOperatingConfig
+} from "@/lib/operating-hours";
+import { loadPublicOperatingConfig } from "@/lib/public-operating-config";
+
+export const dynamic = "force-dynamic";
 
 const views = [
   { src: "/images/view-academy.jpg", label: "Academy Museum" },
@@ -18,7 +26,37 @@ function money(cents: number) {
   }).format(cents / 100);
 }
 
-export default function HomePage() {
+export function VisitorOperatingConfig({ config }: { config: PublicOperatingConfig | null }) {
+  if (!config) return null;
+
+  return (
+    <section className="section intro" aria-label="Visitor information">
+      <div>
+        <p className="sectionLabel">{config.announcement ? "Guest notice" : "Plan your visit"}</p>
+        <h2>Hours and updates.</h2>
+      </div>
+      <p>
+        {config.announcement ? (
+          <span data-announcement-type={config.announcement.type}>
+            <strong role="status">{config.announcement.text}</strong>
+            <br />
+            <br />
+          </span>
+        ) : null}
+        {operatingWeekdays.map((day, index) => (
+          <span key={day}>
+            <strong>{day}:</strong> {formatOperatingDay(config.operatingHours[day])}
+            {index < operatingWeekdays.length - 1 ? <br /> : null}
+          </span>
+        ))}
+      </p>
+    </section>
+  );
+}
+
+export default async function HomePage() {
+  const operatingConfig = await loadPublicOperatingConfig();
+
   return (
     <main>
       <nav className="nav" aria-label="Primary navigation">
@@ -73,6 +111,8 @@ export default function HomePage() {
           </div>
         </MotionHero>
       </section>
+
+      <VisitorOperatingConfig config={operatingConfig} />
 
       <section className="section intro" id="experience">
         <div>

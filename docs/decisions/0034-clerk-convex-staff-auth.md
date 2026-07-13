@@ -68,7 +68,8 @@ flowchart LR
 | --- | --- | --- |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Vercel | Preview and Production |
 | `CLERK_SECRET_KEY` | Vercel | Preview and Production; server secret |
-| `NEXT_PUBLIC_CONVEX_URL` | Vercel | Preview and Production |
+| `NEXT_PUBLIC_CONVEX_URL` (Convex development URL) | Vercel | Preview only |
+| `NEXT_PUBLIC_CONVEX_URL` (Convex production URL) | Vercel | Production only; separate binding/value |
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex | Matching Preview/development and Production deployments |
 
 The Clerk application must have its Convex integration activated so it provides

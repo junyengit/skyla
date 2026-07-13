@@ -1,6 +1,11 @@
 # Skyla Migration Progress
 
-This file is the durable scratchpad for the migration. Update it whenever a task starts, finishes, or is deferred.
+This is the chronological migration ledger. Older deployment IDs, route counts,
+and planned architecture are historical evidence and are not rewritten as
+current truth. Use [current-state-simple.md](current-state-simple.md) for the
+single current deployment identity and
+[owner-dashboard-checklist.md](runbooks/owner-dashboard-checklist.md) for the
+active owner sequence.
 
 ## Completed Foundation Goal
 
@@ -35,14 +40,16 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Merged public-copy cleanup PR #125 as
       `c6a13e5bdba0e3410aa2657cd6c3889c35013228` after CI, CodeQL, Vercel,
       production-build, desktop/mobile visual, and no-write Preview review.
-- [x] Verified READY production deployment
+- [x] Verified the PR #125 behavior-evidence deployment
       `https://web-k4sx362fp-junyen-enterprises.vercel.app`
       (`dpl_8a3zSvT4o9XT3rRjukd44magVr41`). Apex and `www` serve the same
       deployment ID; production-readiness and payment smokes passed on all
       three bases, and Vercel returned no error/fatal logs in the checked
-      post-merge window.
+      post-merge window. A newer PR #126 deployment identity is centralized in
+      `docs/current-state-simple.md`; do not call this PR #125 identity current.
 - [ ] Configure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and
-      `NEXT_PUBLIC_CONVEX_URL` in Vercel Preview/Production; configure
+      separate `NEXT_PUBLIC_CONVEX_URL` bindings from Convex development to
+      Vercel Preview and Convex production to Vercel Production; configure
       `CLERK_JWT_ISSUER_DOMAIN` in Convex; deploy the auth config; bootstrap the
       first `staffUsers` row with a Clerk user ID as `subject`; remove the
       bootstrap token; and complete linked Preview acceptance. Production must
@@ -73,7 +80,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   - Next.js `16.2.10`
   - React `19.2.7`
   - Motion `12.42.2`
-  - Turbo `2.10.4`
+  - Turbo `2.10.5`
   - TypeScript `6.0.3`
 - [x] Added `.gitignore` protection for generated/private artifacts.
 - [x] Added root Turborepo workspace files.
@@ -900,9 +907,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Convex Stripe HTTP webhook action.
 - [x] Legacy Kaskade browser-authoritative checkout and webhook are retired in
       repo code.
-- [ ] Future Kaskade webhook/action handling may return only after it is
-      rebuilt as server-authoritative Convex code from stored order refs.
-- [ ] Future Kaskade server-authoritative action.
+- [x] Superseded the old future-Kaskade items. Kaskade/PharosGate is retired and
+      has no active implementation, secret, or replacement workstream; only
+      deployed legacy endpoint retirement remains in scope.
 - [x] Stripe Terminal sale-ref PaymentIntent action and Next route.
 - [x] Primary `/checkout` frontend cutover to Convex order refs and Stripe action route, with payment gated until envs exist.
 - [x] Native `/pos` draft review route that server-prices POS carts without
@@ -1070,9 +1077,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       that runs the existing Convex and Vercel env checks, reports no secret
       values, and emits one JSON status for humans and agents.
 - [x] The command fails until linked Preview no-write preflight has the minimum
-      dashboard shape: Vercel `NEXT_PUBLIC_CONVEX_URL` in Preview/Production,
-      no misplaced Vercel payment/staff secrets, cloud Convex persistence,
-      Stripe Checkout envs, and Stripe webhook envs.
+      dashboard shape: separate Convex development -> Vercel Preview and Convex
+      production -> Vercel Production URL bindings, no misplaced Vercel
+      payment/staff secrets, cloud Convex persistence, Stripe Checkout envs, and
+      Stripe webhook envs.
 - [x] The output includes ordered `nextActions` for dashboard work and keeps
       `safeToUseRealCards: false` so test-mode acceptance cannot be confused
       with live-card readiness.
@@ -1358,6 +1366,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Upgraded local Bun canary to `1.4.0-canary.1+2e2230a81`. CI and Vercel
       intentionally follow the moving canary channel, so every build must keep
       printing `bun --revision` and canary changes require full verification.
+- [x] Superseded that moving-channel behavior on July 13, 2026. Local, both CI
+      jobs, and Vercel now use one installer with reviewed platform SHA-256 and
+      exact revision pins.
 - [x] Upgraded `@types/node` from `26.1.0` to `26.1.1`.
 - [x] Tested TypeScript `7.0.2` across every project config. Direct typechecks
       pass, but Next.js `16.2.10` rejects it during `next build`; production
@@ -1423,6 +1434,54 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Keep Supabase read-only for the agreed retention window after production
       reconciliation. No cloud data migration has occurred yet.
 
+### 2026-07-13 Final Functionality And Security Branch
+
+- [x] Added ticket creation, QR display, Resend delivery state, stale-send
+      recovery, audited Admin resend, and authoritative POS completion polling.
+- [x] Added public operating hours/announcements, closed-slot enforcement in
+      both Next and Convex, and Admin inquiry triage.
+- [x] Moved anonymous inquiry, membership, checkout-draft, and Stripe Checkout
+      writes behind a signed server gateway. The Convex functions are internal;
+      atomic per-client/global quotas use full HMAC identities and bounded
+      expired-row cleanup.
+- [x] Hardened signed refund reconciliation so cumulative succeeded full
+      refunds invalidate the paid order/POS sale, booking, ticket, QR, check-in,
+      and resend paths; supported reversals restore only refund-owned state and
+      requeue only delivery suppressed by that refund's booking cancellation.
+- [x] Restricted the explicit public-gateway destination to `*.convex.site` or
+      non-production loopback, preventing a bad binding from receiving the
+      shared secret and customer payload.
+- [x] Modeled ambiguous Resend outcomes so recovery reuses the same provider
+      idempotency key instead of risking a duplicate ticket email.
+- [x] Rejected expired/canceled/paid checkout rows during idempotency replay,
+      required explicit environment-scoped ticket origins, and announced
+      asynchronous POS payment outcomes through an accessibility live region.
+- [x] Extended the Bun readiness guard to verify that `DOWNLOAD_URL` actually
+      consumes the fixed Skyla mirror and platform asset variables.
+- [x] Pinned Bun canary by exact revision and platform SHA-256 for local, CI,
+      and Vercel installs; copied the reviewed platform archives and
+      `SHA256SUMS` to fixed Skyla release
+      `toolchain-bun-1.4.0-canary.1-8f1a9540f`; rejected Bun's moving canary URL
+      in the readiness guard; frozen install reports no lockfile changes.
+- [x] Fixed the final ticket-resend review finding so its API response projects
+      the newly queued state and cannot retain stale failure/attempt timestamps.
+- [x] Upgraded Turbo to `2.10.5`, PostCSS to `8.5.19`, `@types/node` to
+      `24.13.3`, and added Playwright `1.61.1` and QRCode `1.5.4`. TypeScript 7
+      and ESLint 10 remain deliberate compatibility deferrals.
+- [x] Passed `bun run check`: 38 web files/188 tests, 30 Convex files/214 tests,
+      10 setup files/46 tests, package tests, lint/typechecks, Next 16.2.10
+      production build, and repository guards.
+- [x] Passed `bun run security` with no high-severity dependency
+      vulnerabilities and passed all eight production-mode Chromium workflows.
+- [x] Inspected fresh production-build screenshots for desktop Admin/POS/home
+      and mobile checkout. Staff text is white and readable on black, setup
+      states are clear, and checkout has no horizontal overflow. Helium remains
+      unavailable while the Mac is locked.
+- [ ] Merge only after CI, CodeQL, and Vercel Preview checks pass, then repeat
+      production route/payment/readiness smokes without a real card.
+- [ ] Complete the owner dashboard checklist and linked Stripe test-mode
+      acceptance before enabling any real payment traffic.
+
 ## Decisions
 
 - Keep duplicate legacy static files out of the root and `apps/web/public`;
@@ -1477,7 +1536,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
   Keep card acceptance disabled until the linked Convex/Stripe test-mode run
   proves the signed webhook creates one booking and replay creates no duplicate.
 - Retired July 7, 2026: the Bun/Turbo lockfile warning no longer appears after
-  Turbo `2.10.4` and the current text `bun.lock`. Keep future Bun canary
+  Turbo `2.10.5` and the current text `bun.lock`. Keep future Bun canary
   lockfile-format changes visible in focused dependency PRs.
 - Google Ads conversion tracking is still a transition bridge, but checkout,
   members, and experience lead routes are now native App Router pages. Replace
@@ -1500,8 +1559,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - The production native `/admin` path now has front-desk booking
   lookup/check-in, audited status actions, announcement/hours config, native
   voucher redemption, and read-only signed refund reconciliation, but
-  still intentionally excludes refund initiation, automatic booking
-  cancellation, hard deletes, bulk clears, reset-all settings, and
+  still intentionally excludes refund initiation, hard deletes, bulk clears,
+  reset-all settings, and
   pricing/menu/catalog mutations until typed validators, reconciliation rules,
   and rollback procedures exist.
 - Branch `codex/native-pos-route-cutover` moves extensionless `/pos` from the

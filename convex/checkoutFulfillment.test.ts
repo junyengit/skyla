@@ -85,6 +85,21 @@ describe("checkout fulfillment helpers", () => {
     );
   });
 
+  it("uses the Los Angeles calendar date at UTC day boundaries", () => {
+    const beforeMidnightPdt = Date.parse("2026-07-13T06:59:59.000Z");
+    expect(() =>
+      assertCheckoutFulfillmentReady({ ...order, visitDate: "2026-07-12" }, lines, beforeMidnightPdt)
+    ).not.toThrow();
+    expect(() =>
+      assertCheckoutFulfillmentReady({ ...order, visitDate: "2026-07-11" }, lines, beforeMidnightPdt)
+    ).toThrow("visitDate cannot be in the past");
+
+    const beforeMidnightPst = Date.parse("2026-01-01T07:59:59.000Z");
+    expect(() =>
+      assertCheckoutFulfillmentReady({ ...order, visitDate: "2025-12-31" }, lines, beforeMidnightPst)
+    ).not.toThrow();
+  });
+
   it("rejects a missing or invalid entryTime", () => {
     expect(() => assertCheckoutFulfillmentReady({ ...order, entryTime: undefined }, lines, now)).toThrow(
       "entryTime is required for checkout fulfillment"
