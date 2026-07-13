@@ -46,8 +46,8 @@ As of July 13, 2026:
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
 - The exact current commit -> deployment -> immutable URL chain is centralized
   in [docs/current-state-simple.md](docs/current-state-simple.md#current-deployment-identity).
-  PR #125 remains the latest full route/payment behavior evidence; it is not
-  the current deployment identity. No Supabase-to-Convex data migration has run.
+  PR #127 is the current deployment and latest full route/payment behavior
+  evidence. No Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; it also verifies the committed Bun canary revision/SHA-256 and rejects
@@ -82,7 +82,7 @@ As of July 13, 2026:
 - GitHub Pages was disabled on July 2, 2026 after Vercel custom-domain
   production was verified, so the old `github.io` surface is no longer an
   active host.
-- Vercel environment variables checked on July 12, 2026: none are configured
+- Vercel environment variables checked on July 13, 2026: none are configured
   yet for `junyen-enterprises/web`, so Convex/Stripe execution stays
   fail-closed until dashboard setup is finished. After adding Vercel envs, run
   `bun run vercel:project:check` and `bun run vercel:env:check` to verify the
@@ -93,9 +93,9 @@ As of July 13, 2026:
 - Production still behaves as Convex-unconfigured. That is why payment execution
   intentionally stops with `convex_unconfigured` until the real Convex and
   Stripe dashboard setup is finished. `vercel env ls` for
-  `junyen-enterprises/web` found no project environment variables on July 12,
+  `junyen-enterprises/web` found no project environment variables on July 13,
   2026.
-- Payment API audit and smoke checks on July 12, 2026 found no raw card
+- Payment API audit and smoke checks on July 13, 2026 found no raw card
   collection or storage, no public `clientSecret` response exposure, and
   server-owned checkout/POS amount authority. Live payment acceptance is still
   dashboard-gated until Convex and Stripe test-mode dashboard setup is done.
@@ -104,10 +104,10 @@ As of July 13, 2026:
   `Vary: Authorization`.
 - Payment route failures use stable public error codes/messages so raw
   Stripe/Convex/provider details and env names are not returned to browsers.
-- Vercel production runtime checks found no `error` or `fatal` logs in the
-  checked post-merge window used for the PR #125 behavior evidence. The observed
-  non-200 responses were expected staff-auth `401` and Convex-unconfigured
-  `503` gates from the smoke probes. See
+- Vercel production runtime checks found no `error`, `fatal`, or HTTP `500` logs
+  in the checked post-merge window after PR #127. The observed non-200 responses
+  were expected staff-auth `401` and Convex-unconfigured `503` gates from the
+  smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
   deployment ID and evidence.
 - The Next app serves the homepage, `/about`, `/cafe`, `/experiences`,

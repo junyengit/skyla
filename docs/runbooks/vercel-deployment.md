@@ -36,9 +36,9 @@ As of July 13, 2026:
 
 - The single current commit -> deployment -> immutable URL chain is recorded in
   [Current Deployment Identity](../current-state-simple.md#current-deployment-identity).
-- PR #125 remains the latest full production route/payment behavior evidence.
-  Keep that evidence separate from newer deployment identity created by
-  docs-only or tooling merges.
+- PR #127 is the current deployment and latest full production route/payment
+  behavior evidence. Its post-merge checks passed on the immutable deployment,
+  apex, and `www`.
 - Query Vercel before replacing the centralized identity; do not copy the exact
   current URL and deployment ID into multiple runbooks.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
