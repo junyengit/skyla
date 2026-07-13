@@ -8,10 +8,11 @@ The committed artifacts now include:
 - `schema.ts`: canonical tables for catalog data, checkout orders, POS sales,
   line items, payment/webhook ledgers, promoted legacy records, staff users,
   config, and audit events.
-- `orderDrafts.ts`: public Convex mutations/queries for persisted checkout
-  order drafts and staff-gated POS sale drafts.
-- `payments.ts`: public Convex actions for creating Stripe Checkout Sessions
-  from stored checkout `orderRef` records only and Stripe Terminal
+- `orderDrafts.ts`: persisted checkout order drafts and staff-gated POS sale
+  drafts. Browser writes pass through the signed, rate-limited Next gateway;
+  the persistence functions are not a direct public browser API.
+- `payments.ts`: server-authoritative actions for creating Stripe Checkout
+  Sessions from stored checkout `orderRef` records only and Stripe Terminal
   PaymentIntents from stored POS `saleRef` records only.
 - `paymentInternals.ts`: internal order snapshot and payment-event ledger
   functions used by payment actions.
@@ -54,7 +55,7 @@ should:
 1. Create or link the real Convex deployment.
 2. Seed staff through `staffBootstrap.upsertStaffUser`, then remove
    `SKYLA_STAFF_BOOTSTRAP_TOKEN`.
-3. Add Kaskade provider actions that accept only `orderRef`, never browser
-   totals.
+3. Keep Kaskade/PharosGate retired and verify every legacy provider endpoint is
+   disabled or serving the tracked HTTP `410` retirement stub.
 4. Accept checkout/POS flows against persisted Convex draft refs with real
    Vercel/Convex/Stripe envs.

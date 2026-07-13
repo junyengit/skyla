@@ -44,10 +44,12 @@ flowchart LR
 As of July 13, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- The exact current commit -> deployment -> immutable URL chain is centralized
-  in [docs/current-state-simple.md](docs/current-state-simple.md#current-deployment-identity).
-  PR #127 is the current deployment and latest full route/payment behavior
-  evidence. No Supabase-to-Convex data migration has run.
+- The stable production aliases and latest dated commit -> deployment ->
+  immutable URL evidence are centralized in
+  [docs/current-state-simple.md](docs/current-state-simple.md#production-deployment-evidence).
+  PR #127 supplied the application changes; the full post-PR #128 production
+  verification is the latest recorded behavior evidence. No Supabase-to-Convex
+  data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; it also verifies the committed Bun canary revision/SHA-256 and rejects
@@ -70,11 +72,11 @@ As of July 13, 2026:
 - Custom-domain smoke tests pass on both the apex domain and `www` without DNS overrides.
 - GitHub `main` is protected. Merges require the `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks to pass; force
-  pushes, branch deletion, and unresolved conversations are blocked. This was
-  rechecked through the GitHub API on July 6, 2026.
-- CodeQL PR checks are passing. The Code Scanning open-alert API returned
-  `404` for the local `gh` token during the latest check, so use the GitHub
-  Security tab to confirm the current open-alert count.
+  pushes, branch deletion, and unresolved conversations are blocked. The
+  required `ci-build` context waits for quality checks and all eight browser
+  workflows. This was rechecked through the GitHub API on July 13, 2026.
+- CodeQL PR checks are passing. The GitHub APIs returned zero open Dependabot,
+  Code Scanning, and Secret Scanning alerts on July 13, 2026.
 - GitHub repo homepage points to `https://skydeckla.com`; Dependabot
   vulnerability alerts and automated security fixes are enabled. The GitHub API
   returned `204` for vulnerability alerts and `{ "enabled": true,
@@ -105,7 +107,7 @@ As of July 13, 2026:
 - Payment route failures use stable public error codes/messages so raw
   Stripe/Convex/provider details and env names are not returned to browsers.
 - Vercel production runtime checks found no `error`, `fatal`, or HTTP `500` logs
-  in the checked post-merge window after PR #127. The observed non-200 responses
+  in the checked post-merge window after PR #128. The observed non-200 responses
   were expected staff-auth `401` and Convex-unconfigured `503` gates from the
   smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
@@ -123,6 +125,10 @@ As of July 13, 2026:
 - Duplicate root GitHub Pages static files have been removed from the active tree after Vercel custom-domain cutover verification.
 - Keeps saved-link compatibility in the checked route registry instead of
   duplicate files.
+- Five unreferenced legacy view photos were removed with the old static tree;
+  every image used by the Next app remains under `apps/web/public/images`.
+  Editorially restoring one should start from the pre-cleanup Git history and
+  include a real page reference, image optimization, and visual review.
 - Uses Vercel deployment rollback for hosting rollback.
 
 ## Local Development
@@ -179,8 +185,8 @@ bun run dashboard:readiness
 
 Dashboard owners should follow the ordered
 [owner dashboard checklist](docs/runbooks/owner-dashboard-checklist.md):
-Convex/Clerk/Vercel first, linked Preview acceptance second, and ADR 0032 data
-migration third.
+Convex/Clerk/Vercel first, Stripe test setup second, linked Preview acceptance
+third, ADR 0032 data migration fourth, and legacy payment retirement last.
 
 ## Current Bridge Notes
 
@@ -312,7 +318,7 @@ Recommended Vercel commands after project linking:
 
 ```bash
 cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh
-cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build
+cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run build --filter=@skyla/web
 ```
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.

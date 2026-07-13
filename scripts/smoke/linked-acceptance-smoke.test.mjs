@@ -243,6 +243,8 @@ describe("linked acceptance write flow", () => {
           orderRef: "ORD260706-ACCEPT",
           draft: {
             totalCents: 8505,
+            visitDate: record.body.visitDate,
+            entryTime: record.body.entryTime,
             lines: [
               {
                 kind: "ticket",
@@ -399,12 +401,18 @@ describe("linked acceptance write flow", () => {
       expect(result.stderr).toBe("");
 
       const checkoutDraft = requests.find((request) => request.url === "/api/order-drafts/checkout");
+      const inquiry = requests.find((request) => request.url === "/api/experiences/inquiries");
       const stripeCheckout = requests.find((request) => request.url === "/api/payments/stripe-checkout");
       const posDraft = requests.find((request) => request.url === "/api/order-drafts/pos");
       const terminalIntent = requests.find((request) => request.url === "/api/payments/stripe-terminal");
       const terminalProcess = requests.find((request) => request.url === "/api/payments/stripe-terminal/process");
 
       expect(stripeCheckout.body.idempotencyKey).toBe(checkoutDraft.body.idempotencyKey);
+      expect(checkoutDraft.body.visitDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Date.parse(`${checkoutDraft.body.visitDate}T12:00:00Z`)).toBeGreaterThan(Date.now());
+      expect(checkoutDraft.body.entryTime).toBe("18:00");
+      expect(inquiry.body.eventDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Date.parse(`${inquiry.body.eventDate}T12:00:00Z`)).toBeGreaterThan(Date.now());
       expect(terminalIntent.body.idempotencyKey).toBe(posDraft.body.idempotencyKey);
       expect(terminalProcess.body.idempotencyKey).toBe(posDraft.body.idempotencyKey);
       expect(terminalIntent.body.idempotencyKey).not.toMatch(/^acc_terminal_/);

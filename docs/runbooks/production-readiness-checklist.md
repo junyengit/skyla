@@ -80,22 +80,23 @@ order.
 
 - Vercel project: `junyen-enterprises/web`
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
-- The exact current commit -> deployment -> URL chain lives only in
-  [Current Deployment Identity](../current-state-simple.md#current-deployment-identity).
-- PR #127 is the current deployment and latest full behavior evidence. Its
-  post-merge readiness and payment smokes passed on apex, `www`, and the current
-  immutable deployment; Vercel reported no error, fatal, or HTTP 500 logs in the
-  checked window.
+- The stable aliases and latest dated commit -> deployment -> URL evidence live
+  in
+  [Production Deployment Evidence](../current-state-simple.md#production-deployment-evidence).
+- PR #127 supplied the application changes. The full post-PR #128 readiness and
+  payment smokes passed on apex, `www`, and its immutable deployment; Vercel
+  reported no error, fatal, or HTTP 500 logs in the checked window.
 - `bun run vercel:project:check` passed on 2026-07-13. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
   present, and `apps/web/vercel.json` as the Bun canary install/build source
   of truth.
-- PR #127 passed `bun run check` locally and in hosted CI on 2026-07-13: 188 web
-  tests, 214 Convex tests, 46 script tests, package tests, lint, all typechecks,
-  the Next.js production build, artifact checks, and legacy Supabase retirement
-  checks. `bun install --frozen-lockfile` and `bun audit --audit-level=high` also
-  passed with no vulnerabilities; eight Chromium workflows passed on the PR and
+- PR #127 passed `bun run check` locally on 2026-07-13: 188 web tests, 214
+  Convex tests, 46 script tests, package tests, lint, all typechecks, the Next.js
+  production build, artifact checks, and legacy Supabase retirement checks.
+  Hosted PR/main CI ran the equivalent component commands individually.
+  `bun install --frozen-lockfile` and `bun audit --audit-level=high` also passed
+  with no vulnerabilities; eight Chromium workflows passed on the PR and
   `main`.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker. It now requires a Preview-only Convex development URL binding, a
@@ -121,16 +122,13 @@ order.
 - Apple/Brevo DNS verification is an unresolved owner decision. Historical
   records are documented in the domain runbook, but they are not proof that
   either service is active or that a record should be restored.
-- GitHub branch protection checked on 2026-07-06: `main` is protected with
+- GitHub branch protection checked on 2026-07-13: `main` is protected with
   strict required checks `ci-build`, `Analyze JavaScript and TypeScript`, and
-  `Vercel`; force pushes, branch deletion, and unresolved conversations are
-  blocked; admins are included in enforcement.
-- GitHub CodeQL PR check passed on 2026-07-05 for native voucher redemption
-  PR #67, POS reader registry selector PR #71, and Supabase checkout retirement
-  PR #73, and linked acceptance readiness PR #75. The Code Scanning open-alert
-  API returned `404` for the local `gh` token during an earlier docs pass, so
-  use the GitHub Security tab to refresh the open-alert count before recording a
-  new alert-list audit.
+  `Vercel`; `ci-build` waits for the quality and eight-workflow browser jobs;
+  force pushes, branch deletion, and unresolved conversations are blocked;
+  admins are included in enforcement.
+- GitHub CodeQL PR checks are passing. The GitHub APIs returned zero open
+  Dependabot, Code Scanning, and Secret Scanning alerts on 2026-07-13.
 - GitHub security toggles checked on 2026-07-06: Dependabot vulnerability
   alerts are enabled (`GET /vulnerability-alerts` returned `204`), automated
   security fixes are enabled and not paused (`GET /automated-security-fixes`
@@ -200,7 +198,7 @@ order.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-13 after PR #127 and the
+- Vercel production runtime logs checked on 2026-07-13 after PR #128 and the
   latest smoke probes: the Vercel runtime log query returned no `error`, `fatal`,
   or HTTP `500` logs in the checked production window. Non-200 responses were
   expected: `401` for staff-auth gates and `503` for Convex-unconfigured
@@ -253,13 +251,12 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the registry-derived route
   smoke. The current count and paths come from `apps/web/site-routes.mjs`; the
-  centralized evidence record notes the PR #125 result without repeating the
-  count across runbooks.
+  centralized evidence record notes the post-PR #128 result without repeating
+  the count across runbooks.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.
-- GitHub CodeQL PR checks are passing; use the GitHub Security tab to refresh
-  the open-alert count because the local token may not have Code Scanning API
-  access.
+- GitHub CodeQL PR checks are passing; the July 13 API audit returned zero open
+  Dependabot, Code Scanning, and Secret Scanning alerts.
 - Admin and POS are marked `noindex, nofollow`.
 - `/admin`, `/admin.html`, `/pos`, `/pos.html`, and `/pos-next` are marked
   `noindex, nofollow` in the current code path.
@@ -459,7 +456,7 @@ a partial setup should remain fail closed.
 - [ ] Confirm install command is
   `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`.
 - [ ] Confirm build command is
-  `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`.
+  `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run build --filter=@skyla/web`.
 - [ ] Run `PATH="$HOME/.bun/bin:$PATH" bun run vercel:project:check` before
       dashboard edits and after deployment-setting changes. It should report
       `readyForProjectShape: true`.
@@ -638,7 +635,10 @@ a partial setup should remain fail closed.
       Stripe test mode. Verify native Admin shows allowlisted refund details,
       failed/canceled states never regress, a later Stripe failure can replace a
       succeeded state, cumulative successful refunds cannot exceed the payment,
-      and no booking/order/POS state changes automatically.
+      partial refunds leave fulfillment active, and a cumulative full refund
+      cancels the order/POS sale, booking, ticket, check-in, resend, and public
+      QR paths. Reverse the succeeded test refund and verify only refund-owned
+      state is restored and only refund-suppressed delivery is requeued.
 - [ ] Create a separate live-mode endpoint only after test mode passes.
 - [ ] Do not use a real credit card during verification. Use Stripe test mode
       cards and Stripe dashboard test webhooks until preview acceptance passes.
@@ -745,13 +745,14 @@ a partial setup should remain fail closed.
 - [x] Require conversation resolution before merge.
 - [x] Keep Dependabot vulnerability alerts enabled.
 - [x] Keep Dependabot automated security fixes enabled.
-- [ ] Confirm secret scanning/secret protection in GitHub's Security dashboard.
+- [x] Confirm secret scanning and push protection are enabled. The July 13 API
+      audit also returned zero open Secret Scanning alerts.
 - [x] Disable the old GitHub Pages deployment after Vercel cutover verification.
 
 Current check: `main` protection is active through GitHub branch protection.
-The CI job is named `ci-build` so it cannot be confused with other GitHub or
-hosting integration checks named `build`. GitHub Pages is no longer an active
-deployment surface for this repo.
+The required `ci-build` job is the final aggregate gate and cannot pass until
+the quality job and all browser workflows succeed. GitHub Pages is no longer an
+active deployment surface for this repo.
 
 ## Verification Commands
 
@@ -862,8 +863,9 @@ What still needs to be done:
 - Create the Stripe webhook endpoint in the Stripe dashboard.
 - Test checkout with Stripe test cards only.
 - Test native `/pos` Terminal with a Stripe test reader only.
-- Finish the protected Admin and POS Next.js/Convex pages for refunds,
-  catalog/pricing edits, destructive admin actions, and live Terminal
-  acceptance, then disable old Supabase functions after dashboard acceptance.
+- Complete linked test-mode acceptance for the shipped read-only refund
+  reconciliation. Finish catalog/pricing edits, any separately approved refund
+  initiation, destructive admin actions, and live Terminal acceptance, then
+  disable old Supabase functions after dashboard acceptance.
 - Use Stripe test cards and a Stripe test Terminal reader first. Do not verify
   this migration with a real credit card.

@@ -2,8 +2,8 @@
 
 This is the chronological migration ledger. Older deployment IDs, route counts,
 and planned architecture are historical evidence and are not rewritten as
-current truth. Use [current-state-simple.md](current-state-simple.md) for the
-single current deployment identity and
+current truth. Use [current-state-simple.md](current-state-simple.md) for stable
+production aliases and dated deployment evidence, and
 [owner-dashboard-checklist.md](runbooks/owner-dashboard-checklist.md) for the
 active owner sequence.
 
@@ -17,6 +17,11 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 
 ## Current Status
 
+- [x] Closed the July 13 completion-audit findings: the required `ci-build`
+      context now aggregates quality and all browser workflows, Vercel builds
+      `@skyla/web` through Turbo's dependency graph, shared packages have real
+      lint/test gates, and linked acceptance persists future visit dates and
+      entry times instead of sending an incomplete Checkout draft.
 - [x] Removed customer-visible migration and infrastructure status language
       from Checkout, Members, Experiences, and Privacy. Public fallback messages
       now explain what a guest can do next without exposing Convex, dashboard,
@@ -27,26 +32,25 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       wrapper requests a short-lived `convex` JWT for each protected call;
       `staffUsers` and `requireStaffUser` remain Convex role authority, and the
       bearer API contract remains available for automation.
-- [x] Passed the current main gate with 126 web tests, 143 Convex tests, 39 script
-      tests, lint, all typechecks, the Next production build, artifact and
-      legacy-retirement guards, frozen Bun install, and a low-threshold audit
-      with no vulnerabilities. Headless desktop/mobile QA found no overflow,
-      framework overlay, or console errors and confirmed white text on the
-      black Admin/POS surfaces; a fresh Helium pass remains pending while macOS
-      is locked.
+- [x] Passed the current main gate with 188 web tests, 214 Convex tests, 46
+      script tests, package tests, lint, all typechecks, the Next 16.2.10
+      production build, artifact and legacy-retirement guards, frozen Bun
+      install, and a high-threshold audit with no vulnerabilities. Eight
+      headless desktop/mobile workflows found no overflow or framework overlay
+      and confirmed white text on the black Admin/POS surfaces; a fresh Helium
+      pass remains pending while macOS is locked.
 - [x] Merged Clerk staff-auth PR #121 as
       `fc7a497358b573563d9f0772d3728c4bc853c562` after CI, CodeQL, Vercel,
       correctness, and security review passed.
 - [x] Merged public-copy cleanup PR #125 as
       `c6a13e5bdba0e3410aa2657cd6c3889c35013228` after CI, CodeQL, Vercel,
       production-build, desktop/mobile visual, and no-write Preview review.
-- [x] Verified the PR #125 behavior-evidence deployment
-      `https://web-k4sx362fp-junyen-enterprises.vercel.app`
-      (`dpl_8a3zSvT4o9XT3rRjukd44magVr41`). Apex and `www` serve the same
-      deployment ID; production-readiness and payment smokes passed on all
-      three bases, and Vercel returned no error/fatal logs in the checked
-      post-merge window. A newer PR #126 deployment identity is centralized in
-      `docs/current-state-simple.md`; do not call this PR #125 identity current.
+- [x] Merged functionality/security PR #127 as `6146622` and current-state PR
+      #128 as `f1b3f00`. The post-PR #128 immutable deployment
+      `dpl_5ccBhaQoMNZDBrcvyBPK8YMSfdfQ`, apex, and `www` passed the full
+      production-readiness/payment smoke without a real charge; Vercel returned
+      no error, fatal, or HTTP 500 logs in the checked window. Exact immutable
+      URLs remain dated evidence because every later merge creates another.
 - [ ] Configure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and
       separate `NEXT_PUBLIC_CONVEX_URL` bindings from Convex development to
       Vercel Preview and Convex production to Vercel Production; configure
@@ -59,8 +63,10 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Added a normalized Convex refund ledger correlated to the paid Checkout or
       Terminal PaymentIntent, plus identity, amount, currency, cumulative-total,
       stale-event, and final-state guards.
-- [x] Added read-only refund rows to native Admin Payments without refund or
-      automatic booking-cancellation actions.
+- [x] Added read-only refund rows to native Admin Payments without browser
+      refund-initiation actions. Cumulative full succeeded refunds cancel
+      refund-owned fulfillment state; supported reversals restore only that
+      state.
 - [x] Added focused refund parser, mutation, projection, API, and UI tests.
 - [ ] Deploy and accept this refund slice in linked Convex/Stripe test mode,
       after verifying older paid ledger rows have PaymentIntent linkage.

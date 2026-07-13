@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "echo \"@skyla/config lint: no-op\"",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch --noImplicitReturns",
     "test:unit": "vitest run src",
     "typecheck": "tsc --noEmit"
   },
@@ -19,6 +19,7 @@
     "@skyla/payments": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
   }
 }

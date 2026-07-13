@@ -44,7 +44,8 @@ mutation paths.
 - `/admin.html` and `/pos.html` have been retired to native handoff pages by
   Decision 0025.
 - Replace free-text POS reader entry with a staff-gated registry selector.
-- Finish native catalog/pricing, refunds, deletes, and reset workflows with
-  typed validators.
+- Complete linked acceptance for shipped read-only refund reconciliation, then
+  finish catalog/pricing, any separately approved refund initiation, deletes,
+  and reset workflows with typed validators.
 - Disable or delete deployed Supabase functions after Convex and Stripe
   dashboard acceptance passes.

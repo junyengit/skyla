@@ -5,9 +5,12 @@ on:
   push:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
-  ci-build:
-    name: ci-build
+  quality:
+    name: quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,7 +47,7 @@ jobs:
 
   browser-test:
     name: browser-test
-    needs: ci-build
+    needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -75,3 +78,14 @@ jobs:
           path: ${{ runner.temp }}/skyla-playwright-results
           if-no-files-found: ignore
           retention-days: 7
+
+  ci-build:
+    name: ci-build
+    if: always()
+    needs: [quality, browser-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require quality and browser workflows
+        run: |
+          test "${{ needs.quality.result }}" = "success"
+          test "${{ needs.browser-test.result }}" = "success"
