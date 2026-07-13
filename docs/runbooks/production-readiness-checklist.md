@@ -83,7 +83,7 @@ order.
 - The stable aliases and latest dated commit -> deployment -> URL evidence live
   in
   [Production Deployment Evidence](../current-state-simple.md#production-deployment-evidence).
-- PR #127 supplied the application changes. The full post-PR #128 readiness and
+- PR #127 supplied the main application changes. The full post-PR #129 readiness and
   payment smokes passed on apex, `www`, and its immutable deployment; Vercel
   reported no error, fatal, or HTTP 500 logs in the checked window.
 - `bun run vercel:project:check` passed on 2026-07-13. It verifies project
@@ -198,9 +198,9 @@ order.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-13 after PR #128 and the
-  latest smoke probes: the Vercel runtime log query returned no `error`, `fatal`,
-  or HTTP `500` logs in the checked production window. Non-200 responses were
+- Vercel production runtime logs checked on 2026-07-13 after PR #129 and the
+  latest smoke probes: the Vercel runtime log query returned no error-level
+  logs in the checked production window. Non-200 responses were
   expected: `401` for staff-auth gates and `503` for Convex-unconfigured
   write/payment gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
@@ -251,7 +251,7 @@ flowchart TD
 - GoDaddy nameservers are pointed at Vercel.
 - Vercel production and both custom domains pass the registry-derived route
   smoke. The current count and paths come from `apps/web/site-routes.mjs`; the
-  centralized evidence record notes the post-PR #128 result without repeating
+  centralized evidence record notes the post-PR #129 result without repeating
   the count across runbooks.
 - GitHub `main` is protected with required `ci-build`,
   `Analyze JavaScript and TypeScript`, and `Vercel` checks.

@@ -37,7 +37,7 @@ As of July 13, 2026:
 - The stable aliases and latest dated commit -> deployment -> immutable URL
   evidence are recorded in
   [Production Deployment Evidence](../current-state-simple.md#production-deployment-evidence).
-- PR #127 supplied the application changes, and the full post-PR #128
+- PR #127 supplied the main application changes, and the full post-PR #129
   production route/payment verification passed on the immutable deployment,
   apex, and `www`.
 - Query Vercel before replacing the centralized identity; do not copy the exact

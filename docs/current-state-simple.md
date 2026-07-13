@@ -12,15 +12,16 @@ The live production addresses are `https://skydeckla.com` and
 `main` deployment, so a committed document cannot safely call one immutable URL
 current forever.
 
-The latest fully verified deployment at this audit was:
+The completion audit's fully verified application deployment was:
 
-`f1b3f00` -> `dpl_5ccBhaQoMNZDBrcvyBPK8YMSfdfQ` ->
-`https://web-nbrxfpypx-junyen-enterprises.vercel.app`
+`ddd904e` -> `dpl_9Bavqyd7nbebpxg8jbc6tB1j1xqV` ->
+`https://web-67ybrto1p-junyen-enterprises.vercel.app`
 
-That commit is `f1b3f00ae6cc66b19f7ba5cdbec0b6755c213c14`, the PR #128
-current-state documentation merge containing the PR #127 functionality and
-security merge. Post-merge route, payment, and production-readiness smokes
-passed on the immutable deployment, apex, and `www` without a real charge. Use
+That commit is `ddd904e87cca8ea71b705622e3f01dca31f642b2`, the PR #129
+completion-audit merge containing the PR #127 application work and PR #128
+documentation baseline. Post-merge route, payment, and production-readiness
+smokes passed on the immutable deployment, apex, and `www` without a real
+charge. This is dated behavior evidence, not a forever-current pointer. Use
 `vercel ls web --scope junyen-enterprises` before an operation that needs the
 exact newest deployment ID.
 
@@ -258,8 +259,8 @@ then remove it from both.
 | --- | --- |
 | Vercel project | `web`, framework `nextjs`, Node `24.x` |
 | Production deployment evidence | See [Production Deployment Evidence](#production-deployment-evidence). The custom-domain aliases are live; the immutable chain is dated evidence and must be refreshed from Vercel before an operation. |
-| App/payment behavior verification | PR #128 post-merge readiness and payment smokes passed on apex, `www`, and its immutable deployment without a real charge; the application implementation came from PR #127. |
-| Route evidence | The PR #128 post-merge smoke used the routes derived from `apps/web/site-routes.mjs`, including `/staff-sign-in` and compatibility redirects. Treat the registry and current smoke output as authority instead of repeating a fixed count in runbooks. |
+| App/payment behavior verification | PR #129 post-merge readiness and payment smokes passed on apex, `www`, and its immutable deployment without a real charge; the main application implementation came from PR #127. |
+| Route evidence | The PR #129 post-merge smoke used the routes derived from `apps/web/site-routes.mjs`, including `/staff-sign-in` and compatibility redirects. Treat the registry and current smoke output as authority instead of repeating a fixed count in runbooks. |
 | Legacy data migration | Implementation and local tests exist for bookings, members, and inquiries; no cloud apply has occurred. |
 | Domains | `skydeckla.com`, `www.skydeckla.com` |
 | GitHub governance | Rechecked July 13, 2026: `main` requires strict `ci-build`, `Analyze JavaScript and TypeScript`, and `Vercel` checks; the `ci-build` workflow gate waits for both quality and all eight browser workflows; admins are enforced; force pushes, branch deletion, and unresolved conversations are blocked; GitHub returned zero open Dependabot, Code Scanning, and Secret Scanning alerts |
@@ -268,9 +269,9 @@ then remove it from both.
 | `bun install --frozen-lockfile` | Passed, no lockfile changes |
 | `bun audit --audit-level=high` | No vulnerabilities found |
 | Dependency sweep | July 13 production merge: upgraded Turbo to `2.10.5`, aligned `@types/node` to Node 24 at `24.13.3`, upgraded the PostCSS override to `8.5.19`, and added Playwright `1.61.1` plus QRCode `1.5.4`. TypeScript stays on `6.0.3` because Next.js `16.2.10` rejects the tested TypeScript 7 major; ESLint 10 remains deferred for plugin compatibility. |
-| `bun run test:smoke` | Passed within the PR #128 post-merge production-readiness run on apex, `www`, and its immutable deployment with registry-derived `.html` redirect assertions |
-| `bun run test:payments` | Passed after PR #128 on apex, `www`, and its immutable deployment; no real Stripe charge; checks exact catalog provenance and canonical amounts |
-| `bun run test:production-readiness` | Passed after PR #128 on the apex, `www`, and its immutable deployment; production remains dashboard-gated and no-write. |
+| `bun run test:smoke` | Passed within the PR #129 post-merge production-readiness run on apex, `www`, and its immutable deployment with registry-derived `.html` redirect assertions |
+| `bun run test:payments` | Passed after PR #129 on apex, `www`, and its immutable deployment; no real Stripe charge; checks exact catalog provenance and canonical amounts |
+| `bun run test:production-readiness` | Passed after PR #129 on the apex, `www`, and its immutable deployment; production remains dashboard-gated and no-write. |
 | Convex payment snapshot provenance gate | PR #105 adds unit coverage proving Checkout snapshots reject missing catalog metadata and Terminal reader processing rejects spoofed catalog hashes before Stripe handoff |
 | Terminal reader gate | Added unit coverage proving Terminal PaymentIntent snapshots fail before Stripe when the stored POS sale has no trusted Terminal reader |
 | `bun run convex:env:check` | Failed as expected because dashboard envs are absent |
@@ -278,7 +279,7 @@ then remove it from both.
 | `bun run vercel:env:check` | Production-dashboard evidence on July 13 failed as expected with `envCount: 0`, `readyForConvexUrl: false`, `readyForStaffAuth: false`, `readyForTicketOrigin: false`, and `safeSecretPlacement: true`. |
 | `bun run dashboard:readiness` | Includes Vercel project shape, separate Preview/Production Convex URLs, matching public-gateway secrets, Clerk keys/issuer, Stripe, Resend, and separately scoped ticket origins. It remains non-zero and keeps `safeToUseRealCards: false` until dashboard setup and linked acceptance are complete. |
 | Clerk staff auth | PR #121 removed raw pasted staff-token UI and deployed route-scoped Clerk v7; `staffUsers` and `requireStaffUser` remain role authority. Dashboard configuration and linked Preview acceptance are pending. |
-| `bun run check` | Passed again in the July 13 completion audit with Turbo `2.10.5`: 38 web files/188 tests, 30 Convex files/214 tests, 10 setup files/46 tests, package tests, lint, both Convex typechecks, the Next 16.2.10 production build, artifact guard, and legacy Supabase retirement guard. PR #127 hosted/main CI ran the equivalent component commands individually. |
+| `bun run check` | Passed again in the July 13 completion audit with Turbo `2.10.5`: 38 web files/188 tests, 30 Convex files/214 tests, 10 setup files/46 tests, package tests, lint, both Convex typechecks, the Next 16.2.10 production build, artifact guard, and legacy Supabase retirement guard. PR #129 hosted/main CI ran the equivalent component commands individually. |
 | `bun run --cwd apps/web test:e2e` | Eight of eight production-mode Chromium workflows passed, including mobile overflow, reduced motion, fail-closed public forms, staff setup states, white-on-black contrast, and the legacy POS redirect. |
 | Local visual QA | July 13 desktop Admin/POS and home plus mobile checkout screenshots were inspected from the production build. Admin and POS text is white and readable on black; setup-required states remain clear; mobile checkout has no horizontal overflow. Helium could not be refreshed because the Mac was locked. |
 | `bun run security:supabase-retired` | Guards all five legacy Supabase payment/webhook function stubs so they stay HTTP-410 retired surfaces without Supabase helper or Stripe/Kaskade API calls |
@@ -287,7 +288,7 @@ then remove it from both.
 | Refund reconciliation | PR #119 shipped the web/backend bundle that correlates signed Stripe refund events to paid PaymentIntents, handles Stripe's reversible succeeded lifecycle, enforces final failed/canceled and cumulative amount guards, and exposes server-masked read-only Admin rows. The real Convex deployment and linked test-mode acceptance are still pending. |
 | Stripe API version pin | Requests send `Stripe-Version: 2026-02-25.clover`. Stripe currently documents `2026-06-24.dahlia` as the current API version, but this crosses a named major release and should be upgraded only with a Workbench/webhook endpoint version plan and linked acceptance tests. |
 | Staff visual QA | The PR #127 hosted Preview and production-mode browser suite confirmed `/admin` and `/pos` render white-on-black staff screens without a Next error overlay. A fresh Helium pass still requires the Mac to be unlocked. |
-| Vercel runtime evidence | No error, fatal, or HTTP 500 logs were reported for the checked post-merge window after PR #128. |
+| Vercel runtime evidence | Vercel returned no error-level runtime logs in the checked post-merge window after PR #129. |
 | Staff/admin APIs | `401` without auth and `503 convex_unconfigured` with fake auth; shared staff JSON responses use `no-store` and `Vary: Authorization` |
 | Catalog versioning local gate | PR #83 merged; focused tests, Convex schema typecheck, Convex function typecheck, and anonymous Convex validation passed |
 | Admin catalog controls | Native `/admin` now exposes admin-only code-owned catalog seed and version activation controls; UI guard tests keep browser price payload/edit controls out of the staff surface |
