@@ -8,7 +8,7 @@
 - Vercel project: `web` (`prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`)
 - Framework preset: Next.js
 - Install command: `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`
-- Build command: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`
+- Build command: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run build --filter=@skyla/web`
 - Output directory: leave as the Vercel Next.js default
 - Package manager: Bun canary with committed text `bun.lock`
 - Vercel Bun runtime: `bunVersion: "1.x"` in `apps/web/vercel.json`
@@ -34,10 +34,11 @@ Bun revision/SHA-256, and immutable installer behavior.
 
 As of July 13, 2026:
 
-- The single current commit -> deployment -> immutable URL chain is recorded in
-  [Current Deployment Identity](../current-state-simple.md#current-deployment-identity).
-- PR #127 is the current deployment and latest full production route/payment
-  behavior evidence. Its post-merge checks passed on the immutable deployment,
+- The stable aliases and latest dated commit -> deployment -> immutable URL
+  evidence are recorded in
+  [Production Deployment Evidence](../current-state-simple.md#production-deployment-evidence).
+- PR #127 supplied the application changes, and the full post-PR #128
+  production route/payment verification passed on the immutable deployment,
   apex, and `www`.
 - Query Vercel before replacing the centralized identity; do not copy the exact
   current URL and deployment ID into multiple runbooks.

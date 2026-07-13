@@ -358,9 +358,9 @@ Baseline now in place:
 
 ## Historical Operational Snapshot For Agents
 
-These values are a dated Phase 2 snapshot, not current deployment identity.
-Use [Current Deployment Identity](current-state-simple.md#current-deployment-identity)
-for the one current commit -> deployment -> URL chain.
+These values are a dated Phase 2 snapshot, not current deployment evidence.
+Use [Production Deployment Evidence](current-state-simple.md#production-deployment-evidence)
+for stable aliases and the latest dated commit -> deployment -> URL evidence.
 
 Historical Vercel data:
 
@@ -410,9 +410,8 @@ Historical Vercel data:
 - Nameservers: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`
 - Protected `main` required checks: `ci-build`, `Analyze JavaScript and
   TypeScript`, `Vercel`
-- CodeQL PR checks are passing. The Code Scanning open-alert API returned
-  `404` for the local `gh` token during the latest check, so use the GitHub
-  Security tab to confirm the current open-alert count.
+- CodeQL PR checks are passing. The GitHub APIs returned zero open Dependabot,
+  Code Scanning, and Secret Scanning alerts on July 13, 2026.
 
 Current order-spine state:
 

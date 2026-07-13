@@ -22,7 +22,7 @@ const expected = {
     framework: "nextjs",
     bunVersion: "1.x",
     installCommand: "cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh",
-    buildCommand: "cd ../.. && export PATH=\"$HOME/.bun/bin:$PATH\" && bun --revision && bun run web:build"
+    buildCommand: "cd ../.. && export PATH=\"$HOME/.bun/bin:$PATH\" && bun --revision && bun run build --filter=@skyla/web"
   }
 };
 

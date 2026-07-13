@@ -72,6 +72,9 @@ const customerEmail = `acceptance+${runId}@example.com`;
 const headers = { authorization: `Bearer ${staffToken}` };
 const checkoutDraftIdempotencyKey = `acc_checkout_${runId}`;
 const posDraftIdempotencyKey = `acc_pos_${runId}`;
+const acceptanceVisitDate = futureLosAngelesDate(14);
+const acceptanceEntryTime = "18:00";
+const acceptanceEventDate = futureLosAngelesDate(30);
 
 const readinessUnauthenticated = await getJson("/api/admin/acceptance-readiness");
 expectStatus("acceptance readiness unauthenticated", readinessUnauthenticated, 401);
@@ -124,6 +127,8 @@ const checkoutDraft = await postJson("/api/order-drafts/checkout", {
   adults: 2,
   children: 1,
   addons: { matcha: 1 },
+  visitDate: acceptanceVisitDate,
+  entryTime: acceptanceEntryTime,
   customerEmail,
   idempotencyKey: checkoutDraftIdempotencyKey,
   totalCents: 1,
@@ -137,6 +142,16 @@ expect("checkout draft", checkoutDraft.json?.persisted === true, "expected persi
 expect("checkout draft", typeof checkoutDraft.json?.orderRef === "string", "expected orderRef");
 expect("checkout draft", checkoutDraft.json?.draft?.totalCents > 1, "expected canonical server total");
 expect("checkout draft", checkoutDraft.json?.draft?.totalCents !== 1, "browser total was trusted");
+expect(
+  "checkout draft",
+  checkoutDraft.json?.draft?.visitDate === acceptanceVisitDate,
+  "expected persisted visitDate"
+);
+expect(
+  "checkout draft",
+  checkoutDraft.json?.draft?.entryTime === acceptanceEntryTime,
+  "expected persisted entryTime"
+);
 expectNoClientSecret("checkout draft", checkoutDraft);
 for (const issue of checkoutDraftProvenanceIssues(checkoutDraft.json?.draft?.lines)) {
   fail("checkout draft provenance", issue);
@@ -182,7 +197,7 @@ const inquiry = await postJson("/api/experiences/inquiries", {
   lastName: "Inquiry",
   email: customerEmail,
   experience: "private-events",
-  eventDate: "2026-08-20",
+  eventDate: acceptanceEventDate,
   guestCount: "9-12",
   notes: "Automated linked acceptance inquiry.",
   source: "linked-acceptance-smoke",
@@ -447,6 +462,19 @@ function expect(label, condition, message) {
   if (!condition) {
     fail(label, message);
   }
+}
+
+function futureLosAngelesDate(daysFromNow) {
+  const date = new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function fail(label, message) {

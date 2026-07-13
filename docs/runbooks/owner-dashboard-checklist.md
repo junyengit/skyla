@@ -12,10 +12,6 @@ through all migration verification.
 - [ ] In Vercel Domains, confirm `skydeckla.com` and `www.skydeckla.com` both
       show **Valid Configuration** with issued SSL certificates. Keep the
       GoDaddy nameservers pointed at Vercel.
-- [ ] In GitHub repository **Settings > Branches**, add `browser-test` to the
-      required checks for `main`. The existing required checks are `ci-build`,
-      `Analyze JavaScript and TypeScript`, and `Vercel`; the new browser job is
-      green but is not yet enforced by branch protection.
 - [ ] In GitHub repository **Settings > Releases**, enable release immutability
       before the next Bun toolchain pin is published. GitHub applies this only
       to future releases, so leave the current checksum-pinned mirror intact and
@@ -69,6 +65,11 @@ through all migration verification.
       to the same Stripe mode and Convex environment.
 - [ ] Register only Stripe test Terminal readers/locations in
       `SKYLA_TERMINAL_READER_REGISTRY`. Do not use a live reader or real card.
+- [ ] Keep the code and webhook endpoint on `2026-02-25.clover` for the first
+      linked acceptance. [Stripe currently documents
+      `2026-06-24.dahlia`](https://docs.stripe.com/api/versioning); treat that
+      named-major upgrade as a separate Workbench change with matching webhook
+      version, regression tests, and rollback review.
 
 ## 3. Linked Preview Acceptance
 
@@ -80,11 +81,14 @@ through all migration verification.
       `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` in Vercel Preview and the matching
       Convex development deployment. Verify the Vercel latch with
       `SKYLA_VERCEL_TERMINAL_ACCEPTANCE_TARGET=preview bun run vercel:env:check`.
-- [ ] Run `bun run test:acceptance:linked` with Stripe test cards/readers, verify
-      signed webhook reconciliation, replay safety, the public QR ticket, and
-      one delivered test confirmation email. Verify Admin can see delivery
-      state and requeue a failed message, then remove the Terminal latch from
-      Vercel and Convex.
+- [ ] Run `bun run test:acceptance:linked` with Stripe test cards/readers. The
+      harness proves persisted member, inquiry, checkout, and POS drafts,
+      server-owned totals, Checkout Session creation, and reader handoff.
+- [ ] Complete a separate Stripe-hosted test checkout and use Workbench test
+      delivery/replay tools to verify signed webhook reconciliation, replay
+      safety, the public QR ticket, and one delivered test confirmation email.
+      Verify Admin can see delivery state and requeue a failed message, run the
+      refund cases below, then remove the Terminal latch from Vercel and Convex.
 - [ ] If Admin reports `email_delivery_outcome_unknown`, retry within Resend's
       24-hour idempotency window so Skyla reuses the same send key. If the event
       is older, inspect the Resend dashboard before any new send to avoid a
@@ -102,3 +106,20 @@ through all migration verification.
       production confirmation.
 - [ ] Remove `SKYLA_DATA_MIGRATION_TOKEN` after reconciliation or rollback and
       retain Supabase read-only until the owner makes the retention decision.
+
+## 5. Legacy Payment Retirement
+
+- [ ] In Stripe Workbench, inventory every endpoint that still targets a
+      Supabase function. Disable the old endpoint only after the matching Convex
+      test endpoint has passed signed-event and replay acceptance.
+- [ ] In the old Supabase project, record whether `stripe-checkout`,
+      `stripe-terminal`, `stripe-webhook`, `kaskade-payment`, and
+      `kaskade-webhook` are deployed. Disable them or redeploy the tracked HTTP
+      `410` retirement stubs; do not leave an old payment path callable.
+- [ ] Run `SKYLA_SUPABASE_RETIREMENT_LIVE=1
+      SKYLA_SUPABASE_RETIREMENT_BASE_URL=https://<project-ref>.supabase.co/functions/v1
+      bun run test:supabase-retired:live` and retain the result with the cutover
+      evidence.
+- [ ] After Convex production reconciliation and the owner-approved retention
+      window, export any required backup and remove the obsolete Supabase
+      deployment. Keep GitHub Pages disabled; Vercel remains the only web host.

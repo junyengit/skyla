@@ -39,7 +39,8 @@ instead of reactivating the old browser apps.
 
 - Link real Convex and Stripe dashboard envs.
 - Add a staff-gated POS reader registry selector.
-- Finish native catalog/pricing, refunds, deletes, and reset workflows with
-  typed validators, audit events, and rollback steps.
+- Complete linked acceptance for shipped read-only refund reconciliation, then
+  finish catalog/pricing, any separately approved refund initiation, deletes,
+  and reset workflows with typed validators, audit events, and rollback steps.
 - Disable or delete deployed Supabase functions after Convex and Stripe
   dashboard acceptance passes.

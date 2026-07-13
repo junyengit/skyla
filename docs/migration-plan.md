@@ -231,7 +231,7 @@ Status: Vercel setup, route verification, Vercel domain verification, and custom
 - [x] Set root directory to `apps/web`.
 - [x] Use install/build commands compatible with the monorepo:
   - Install: `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`
-  - Build: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`
+  - Build: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run build --filter=@skyla/web`
 - [ ] Add production environment variables as migrated server flows require them.
 - [x] Deploy preview and production builds.
 - [x] Add `skydeckla.com` and `www.skydeckla.com` to the Vercel project.

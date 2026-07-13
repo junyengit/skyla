@@ -100,7 +100,7 @@ Recommended settings after Bun migration:
 - Root directory: `apps/web`
 - Framework preset: Next.js
 - Install command: `cd ../.. && bash scripts/setup/vercel-install-bun-canary.sh`
-- Build command: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:build`
+- Build command: `cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run build --filter=@skyla/web`
 - Runtime: `bunVersion: "1.x"` in `apps/web/vercel.json`
 
 `bunVersion: "1.x"` controls Vercel's Bun Functions runtime, whose minor and
