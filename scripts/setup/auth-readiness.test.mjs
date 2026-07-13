@@ -21,9 +21,14 @@ describe("staff auth dashboard readiness", () => {
     const ready = run("scripts/setup/check-vercel-env.mjs", {
       SKYLA_VERCEL_ENV_JSON: JSON.stringify({
         envs: [
-          { key: "NEXT_PUBLIC_CONVEX_URL", target: ["preview", "production"] },
+          { key: "NEXT_PUBLIC_CONVEX_URL", target: ["preview"] },
+          { key: "NEXT_PUBLIC_CONVEX_URL", target: ["production"] },
+          { key: "SKYLA_PUBLIC_GATEWAY_SECRET", target: ["preview"] },
+          { key: "SKYLA_PUBLIC_GATEWAY_SECRET", target: ["production"] },
           { key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", target: ["preview", "production"] },
-          { key: "CLERK_SECRET_KEY", target: ["preview", "production"] }
+          { key: "CLERK_SECRET_KEY", target: ["preview", "production"] },
+          { key: "SKYLA_PUBLIC_ORIGIN", target: ["preview"] },
+          { key: "SKYLA_PUBLIC_ORIGIN", target: ["production"] }
         ]
       })
     });
@@ -33,9 +38,14 @@ describe("staff auth dashboard readiness", () => {
     const incomplete = run("scripts/setup/check-vercel-env.mjs", {
       SKYLA_VERCEL_ENV_JSON: JSON.stringify({
         envs: [
-          { key: "NEXT_PUBLIC_CONVEX_URL", target: ["preview", "production"] },
+          { key: "NEXT_PUBLIC_CONVEX_URL", target: ["preview"] },
+          { key: "NEXT_PUBLIC_CONVEX_URL", target: ["production"] },
+          { key: "SKYLA_PUBLIC_GATEWAY_SECRET", target: ["preview"] },
+          { key: "SKYLA_PUBLIC_GATEWAY_SECRET", target: ["production"] },
           { key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", target: ["preview"] },
-          { key: "CLERK_SECRET_KEY", target: ["preview", "production"] }
+          { key: "CLERK_SECRET_KEY", target: ["preview", "production"] },
+          { key: "SKYLA_PUBLIC_ORIGIN", target: ["preview"] },
+          { key: "SKYLA_PUBLIC_ORIGIN", target: ["production"] }
         ]
       })
     });

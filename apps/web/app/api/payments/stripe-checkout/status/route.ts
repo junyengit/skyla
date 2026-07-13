@@ -10,6 +10,8 @@ type CheckoutStatusArgs = {
 type CheckoutStatusResult = {
   orderRef: string;
   status: "pending" | "confirmed" | "failed" | "canceled";
+  bookingRef?: string;
+  ticketCode?: string;
 };
 
 const getCheckoutReturnStatusQuery = makeFunctionReference<"query", CheckoutStatusArgs, CheckoutStatusResult>(
@@ -53,7 +55,12 @@ export async function POST(request: Request) {
       { url: deploymentUrl }
     );
 
-    return paymentJson({ orderRef: result.orderRef, status: result.status });
+    return paymentJson({
+      orderRef: result.orderRef,
+      status: result.status,
+      bookingRef: result.bookingRef,
+      ticketCode: result.ticketCode
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not check Checkout confirmation";
     if (error instanceof SyntaxError || message.includes("is required") || message.includes("is invalid")) {

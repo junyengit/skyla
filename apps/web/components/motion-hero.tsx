@@ -9,7 +9,7 @@ export function MotionHero({ children }: { children: React.ReactNode }) {
     <motion.div
       className="heroContent"
       initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-      animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}

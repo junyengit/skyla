@@ -1,14 +1,11 @@
-import { fetchMutation } from "convex/nextjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { addons, catalogLineMetadata, ticketPackages } from "@skyla/payments";
 
 import { POST } from "./app/api/order-drafts/checkout/route";
 
-vi.mock("convex/nextjs", () => ({
-  fetchMutation: vi.fn()
-}));
-
-const fetchMutationMock = vi.mocked(fetchMutation);
+const fetchMock = vi.fn<typeof fetch>();
+vi.stubGlobal("fetch", fetchMock);
+const gatewaySecret = "checkout-gateway-test-secret-32chars";
 
 function request(body: unknown) {
   return new Request("http://localhost/api/order-drafts/checkout", {
@@ -20,11 +17,12 @@ function request(body: unknown) {
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_CONVEX_URL;
   delete process.env.CONVEX_URL;
-  fetchMutationMock.mockReset();
+  delete process.env.SKYLA_PUBLIC_GATEWAY_SECRET;
+  fetchMock.mockReset();
 });
 
 describe("/api/order-drafts/checkout", () => {
-  it("returns transient canonical totals when Convex is not configured", async () => {
+  it("returns transient canonical totals when no persistence key is requested", async () => {
     const response = await POST(
       request({
         packageKey: "general",
@@ -40,7 +38,7 @@ describe("/api/order-drafts/checkout", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       persisted: false,
-      persistenceReason: "convex_unconfigured",
+      persistenceReason: "idempotencyKey_required",
       draft: {
         subtotalCents: 8100,
         feeCents: 405,
@@ -67,11 +65,26 @@ describe("/api/order-drafts/checkout", () => {
         ]
       }
     });
-    expect(fetchMutationMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when persistence is requested without the server gateway", async () => {
+    const response = await POST(request({
+      packageKey: "general",
+      adults: 1,
+      idempotencyKey: "checkout_20260704_missing"
+    }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "public_gateway_unconfigured"
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("requires an idempotency key before using configured Convex persistence", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
 
     const response = await POST(request({ packageKey: "general", adults: 1 }));
 
@@ -85,34 +98,39 @@ describe("/api/order-drafts/checkout", () => {
         totalCents: 3045
       }
     });
-    expect(fetchMutationMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("persists through Convex when a deployment URL and idempotency key are present", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchMutationMock.mockResolvedValueOnce({
-      orderRef: "SKY2607-ABC123",
-      status: "draft",
-      totals: {
-        currency: "usd",
-        subtotalCents: 8100,
-        feeCents: 405,
-        totalCents: 8505
-      },
-      visitDate: "2026-07-18",
-      entryTime: "14:00",
-      customerEmail: "guest@example.com",
-      lines: [
-        {
-          kind: "ticket",
-          productKey: "general",
-          name: "General Admission",
-          quantity: 2,
-          unitAmountCents: 2900,
-          lineTotalCents: 5800
-        }
-      ]
-    });
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json({
+      ok: true,
+      result: {
+        orderRef: "SKY2607-ABC123",
+        status: "draft",
+        totals: {
+          currency: "usd",
+          subtotalCents: 8100,
+          feeCents: 405,
+          totalCents: 8505
+        },
+        visitDate: "2026-07-18",
+        entryTime: "14:00",
+        customerEmail: "guest@example.com",
+        expiresAt: 1784385000000,
+        lines: [
+          {
+            kind: "ticket",
+            productKey: "general",
+            name: "General Admission",
+            quantity: 2,
+            unitAmountCents: 2900,
+            lineTotalCents: 5800
+          }
+        ]
+      }
+    }));
 
     const response = await POST(
       request({
@@ -139,12 +157,15 @@ describe("/api/order-drafts/checkout", () => {
         totalCents: 8505,
         visitDate: "2026-07-18",
         entryTime: "14:00",
-        customerEmail: "guest@example.com"
+        customerEmail: "guest@example.com",
+        expiresAt: 1784385000000
       }
     });
-    expect(fetchMutationMock).toHaveBeenCalledWith(
-      expect.anything(),
-      {
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      operation: "checkout-draft",
+      rateLimitKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+      input: {
         packageKey: "general",
         adults: 2,
         children: 1,
@@ -154,14 +175,21 @@ describe("/api/order-drafts/checkout", () => {
         customerEmail: "GUEST@EXAMPLE.COM",
         source: "next-route",
         idempotencyKey: "checkout_20260704_abc123"
-      },
-      { url: "https://example.convex.cloud" }
-    );
+      }
+    });
   });
 
   it("returns conflict when Convex rejects idempotency reuse for a different draft", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchMutationMock.mockRejectedValueOnce(new Error("idempotencyKey was already used for a different draft"));
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json(
+      {
+        ok: false,
+        code: "request_conflict",
+        error: "idempotencyKey was already used for a different draft"
+      },
+      { status: 409 }
+    ));
 
     const response = await POST(
       request({

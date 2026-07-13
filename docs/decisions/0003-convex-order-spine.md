@@ -4,7 +4,8 @@ Date: 2026-06-30
 
 ## Status
 
-Accepted as an incremental migration step.
+Accepted as an incremental migration step. Its generic future-provider diagram
+is historical; Kaskade/PharosGate is now retired and not an active target.
 
 ## Context
 
@@ -34,7 +35,7 @@ flowchart LR
   route["Next route: /api/order-drafts/checkout"]
   contracts["@skyla/payments"]
   convex["Convex schema and future mutations"]
-  provider["Future Stripe/Kaskade/Terminal actions"]
+  provider["Future Stripe/Terminal actions (at decision time)"]
 
   browser --> route --> contracts
   contracts -. next PR .-> convex

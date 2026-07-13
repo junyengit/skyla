@@ -1,7 +1,9 @@
-import { fetchMutation } from "convex/nextjs";
-import { makeFunctionReference } from "convex/server";
-
-import { convexUnconfiguredResponse, convexUrl, optionalString, requiredString } from "../../admin/_shared";
+import {
+  callPublicConvexGateway,
+  PublicGatewayError,
+  publicGatewayErrorResponse
+} from "../../../../lib/public-convex-gateway";
+import { optionalString, requiredString } from "../../admin/_shared";
 
 type InquiryExperience =
   | "date-night"
@@ -23,7 +25,7 @@ type ExperienceInquiryRequest = {
   idempotencyKey?: unknown;
 };
 
-type ExperienceInquiryMutationArgs = {
+type ExperienceInquiryGatewayInput = {
   firstName: string;
   lastName: string;
   email: string;
@@ -35,7 +37,7 @@ type ExperienceInquiryMutationArgs = {
   idempotencyKey: string;
 };
 
-type ExperienceInquiryMutationResult = {
+type ExperienceInquiryGatewayResult = {
   inquiryId: string;
   emailLower: string;
   experience: InquiryExperience;
@@ -46,12 +48,6 @@ type ExperienceInquiryMutationResult = {
   updatedAt?: number;
   replayed: boolean;
 };
-
-const submitInquiryMutation = makeFunctionReference<
-  "mutation",
-  ExperienceInquiryMutationArgs,
-  ExperienceInquiryMutationResult
->("inquiries:submitInquiry");
 
 const inquiryExperiences = new Set<InquiryExperience>([
   "date-night",
@@ -131,14 +127,10 @@ function failureStatus(message: string) {
 
 export async function POST(request: Request) {
   try {
-    const deploymentUrl = convexUrl();
-    if (!deploymentUrl) {
-      return convexUnconfiguredResponse("Experience Inquiries");
-    }
-
     const input = (await request.json()) as ExperienceInquiryRequest;
-    const result = await fetchMutation(
-      submitInquiryMutation,
+    const result = await callPublicConvexGateway<ExperienceInquiryGatewayResult>(
+      request,
+      "experience-inquiry",
       withoutUndefined({
         firstName: requiredString(input.firstName, "firstName", 80),
         lastName: requiredString(input.lastName, "lastName", 80),
@@ -149,12 +141,14 @@ export async function POST(request: Request) {
         notes: optionalString(input.notes, "notes", 2000),
         source: optionalString(input.source, "source", 120),
         idempotencyKey: parseIdempotencyKey(input.idempotencyKey)
-      }),
-      { url: deploymentUrl }
+      }) satisfies ExperienceInquiryGatewayInput
     );
 
     return Response.json({ inquiry: result }, { status: result.replayed ? 200 : 201 });
   } catch (error) {
+    if (error instanceof PublicGatewayError) {
+      return publicGatewayErrorResponse(error, "Could not submit experience inquiry");
+    }
     const message = error instanceof Error ? error.message : "Could not submit experience inquiry";
     const status = failureStatus(message);
     return Response.json({ error: status === 502 ? "Could not submit experience inquiry" : message }, { status });

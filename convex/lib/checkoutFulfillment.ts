@@ -41,6 +41,17 @@ const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 const dayMs = 24 * 60 * 60 * 1000;
 const allowedEntryTimes = new Set<string>(checkoutEntryTimes.map((slot) => slot.value));
 
+function losAngelesCalendarDate(timestamp: number) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date(timestamp));
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 function requiredTrimmed(value: string | undefined, label: string, maxLength: number) {
   const normalized = value?.trim();
   if (!normalized) {
@@ -69,8 +80,7 @@ function normalizeVisitDate(value: string | undefined, now: number) {
   if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== visitDate) {
     throw new Error("visitDate must be a real calendar date");
   }
-  const nowDate = new Date(now);
-  const today = Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate());
+  const today = new Date(`${losAngelesCalendarDate(now)}T00:00:00.000Z`).getTime();
   if (date.getTime() < today) {
     throw new Error("visitDate cannot be in the past");
   }

@@ -12,7 +12,7 @@ packages/config     Shared site/business constants
 packages/payments   Server-authoritative pricing and order draft contracts
 packages/ui         Shared UI primitives and icons
 convex/             Target Convex backend schema and future functions
-docs/               Migration plan, runbooks, architecture notes
+docs/               Current-state docs, runbooks, ADRs, and historical plans
 docs/audits         Discovery notes and implementation evidence
 docs/decisions      Lightweight architecture decision records
 docs/marketing      Campaign launch notes and import templates
@@ -41,25 +41,26 @@ flowchart LR
 
 ## Current Hosting State
 
-As of July 12, 2026:
+As of July 13, 2026:
 
 - Vercel project `junyen-enterprises/web` deploys `apps/web` from `main`.
-- Latest production deployment evidence recorded here:
-  `https://web-k4sx362fp-junyen-enterprises.vercel.app` from merge commit
-  `c6a13e5bdba0e3410aa2657cd6c3889c35013228` (PR #125, deployment
-  `dpl_8a3zSvT4o9XT3rRjukd44magVr41`, status `READY`). This identifies the current deployment;
-  it does not mean the Supabase-to-Convex data migration has run.
+- The exact current commit -> deployment -> immutable URL chain is centralized
+  in [docs/current-state-simple.md](docs/current-state-simple.md#current-deployment-identity).
+  PR #125 remains the latest full route/payment behavior evidence; it is not
+  the current deployment identity. No Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
-  `24.x`; `apps/web/vercel.json` remains the source of truth for Bun canary
-  install/build commands even when the dashboard settings page shows defaults.
+  `24.x`; it also verifies the committed Bun canary revision/SHA-256 and rejects
+  mutable remote-shell or self-upgrade install behavior.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel dashboard checker for
   the remaining Convex/Stripe env setup. PR #121 extends it with Clerk gates.
-  It reports only env names/scopes and fails until
-  `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and
-  `CLERK_SECRET_KEY` are in Preview/Production. It still rejects misplaced
-  Stripe, staff-bootstrap, and Terminal secrets; the Clerk secret is the
-  intentional server-side Vercel exception.
+  It reports only env names/scopes and fails until the Convex development URL
+  is bound to Preview, the Convex production URL is bound separately to
+  Production, and both Clerk keys cover Preview/Production. It rejects
+  misplaced Stripe keys, webhook secrets, staff-bootstrap tokens, and Terminal
+  reader registries; the Clerk secret is the intentional server-side Vercel
+  exception. The temporary Terminal acceptance latch is permitted only for an
+  explicitly acknowledged Preview or Production acceptance window.
 - Future docs-only or tooling merges may create newer production URLs with the
   same app behavior. Use Vercel project `junyen-enterprises/web` or
   `vercel ls web --scope junyen-enterprises` before recording fresh
@@ -104,7 +105,7 @@ As of July 12, 2026:
 - Payment route failures use stable public error codes/messages so raw
   Stripe/Convex/provider details and env names are not returned to browsers.
 - Vercel production runtime checks found no `error` or `fatal` logs in the
-  checked post-merge window for the recorded PR #125 deployment. The observed
+  checked post-merge window used for the PR #125 behavior evidence. The observed
   non-200 responses were expected staff-auth `401` and Convex-unconfigured
   `503` gates from the smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
@@ -126,15 +127,21 @@ As of July 12, 2026:
 
 ## Local Development
 
-Use Bun canary. The last locally verified version is
-`1.4.0-canary.1+2e2230a81`. Bun's documented canary upgrade command is
-`bun upgrade --canary`; installs should still use `bun install --frozen-lockfile`.
+Use the repo-reviewed Bun canary pin. The current macOS arm64 revision is
+`1.4.0-canary.1+a59a9c37b`; CI and Vercel use the checksum-pinned Linux x64
+revision `1.4.0-canary.1+8f1a9540f`. All platform archives come from the fixed
+Skyla release `toolchain-bun-1.4.0-canary.1-8f1a9540f`, not Bun's moving
+`canary` asset URL.
 
 ```bash
-bun upgrade --canary
-bun install --frozen-lockfile
+bash scripts/setup/vercel-install-bun-canary.sh
 bun run web:dev
 ```
+
+The installer verifies the archive SHA-256 and exact revision, then performs the
+frozen dependency install. Bun's moving canary upgrade command is reserved for
+evaluating a candidate in a focused pin-and-mirror PR; it must not be used by
+normal local setup, CI, or Vercel.
 
 Use Node `24.x`; `.node-version` is included for version managers. The app runs
 from `apps/web`.
@@ -170,6 +177,11 @@ bun run vercel:project:check
 bun run dashboard:readiness
 ```
 
+Dashboard owners should follow the ordered
+[owner dashboard checklist](docs/runbooks/owner-dashboard-checklist.md):
+Convex/Clerk/Vercel first, linked Preview acceptance second, and ADR 0032 data
+migration third.
+
 ## Current Bridge Notes
 
 - PR #121 removed raw pasted staff-token fields from Admin and POS in production.
@@ -178,6 +190,7 @@ bun run dashboard:readiness
   `requireStaffUser` remain role authority; the bearer API contract remains for
   controlled automation. The deployed UI remains in its setup-required state
   until Vercel Preview/Production have `NEXT_PUBLIC_CONVEX_URL`,
+  environment-specific `SKYLA_PUBLIC_GATEWAY_SECRET` bindings,
   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY`, Convex has
   `CLERK_JWT_ISSUER_DOMAIN`, and the first Clerk user ID is bootstrapped as the
   staff `subject` before the temporary bootstrap token is removed. See
@@ -191,26 +204,31 @@ bun run dashboard:readiness
 - Native `/members` is an App Router page with a server-gated application
   form. It posts to `/api/members/applications` with an idempotency key and
   only shows success after Convex accepts the mutation. Until Convex/Vercel envs
-  are linked, the form reports the safe `convex_unconfigured` pause instead of
-  saving to browser localStorage or Supabase. `/members.html` redirects to the
-  native page.
+  are linked, the form reports a safe temporary-unavailable state instead of
+  saving to browser localStorage or Supabase. The Convex write is internal and
+  can be reached only through the signed, rate-limited Next gateway.
+  `/members.html` redirects to the native page.
 - Native `/experiences` is an App Router page with a server-gated event inquiry
   form. It posts to `/api/experiences/inquiries` with an idempotency key and
   only fires lead tracking after the server accepts the inquiry. Until
-  Convex/Vercel envs are linked, the form reports the safe
-  `convex_unconfigured` pause instead of saving to browser localStorage or
-  Supabase. `/experiences.html` redirects to the native page.
+  Convex/Vercel envs are linked, the form reports a safe temporary-unavailable
+  state instead of saving to browser localStorage or Supabase. The Convex write
+  is internal and can be reached only through the signed, rate-limited Next
+  gateway. `/experiences.html` redirects to the native page.
 - Legacy Stripe Terminal reader registration is retired in repo code. The old
   staff browser assets have been removed from `apps/web/public`, `/pos.html`
   redirects to native `/pos`, and the repo copy of the Supabase Terminal
   function returns `410` for every old bridge action. Native `/pos` still needs
-  staff auth, Convex envs, Stripe dashboard webhook setup,
-  `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled`, and test-reader acceptance before
-  live card-present payment is allowed.
+  staff auth, Convex envs, Stripe dashboard webhook setup, and test-reader
+  acceptance before live card-present payment is allowed. The
+  `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` latch must exist in the selected
+  Vercel runtime and matching Convex deployment only for the controlled
+  acceptance window, then be removed from both.
 - `@skyla/payments`, `convex/schema.ts`, and `/api/order-drafts/checkout`
   establish the first server-authoritative pricing/order spine. This route
   calculates draft totals from selections only and persists Convex order drafts
-  when `NEXT_PUBLIC_CONVEX_URL` plus `idempotencyKey` are present.
+  only when the environment's Convex URL, matching server gateway secret, and
+  `idempotencyKey` are present.
 - `convex/payments.ts` adds the next Stripe Checkout action. It creates Stripe
   sessions from stored `orderRef` records only. `convex/http.ts` adds the
   Stripe webhook route. `/api/payments/stripe-checkout` and the App Router
@@ -237,18 +255,24 @@ bun run dashboard:readiness
   test-reader acceptance are complete.
 - Signed Stripe refund events now reconcile read-only against the paid Checkout
   or Terminal PaymentIntent and its still-paid order/POS sale. Native Admin can
-  display the normalized result, but it cannot initiate refunds and refund
-  events do not automatically cancel bookings or sales. Enable the Dashboard
-  refund subscriptions only after deployment, historical PaymentIntent-linkage
-  review, and linked test-mode acceptance described in ADR 0033.
+  display the normalized result, but it cannot initiate refunds. Partial
+  refunds leave fulfillment active; cumulative succeeded full refunds cancel
+  the order/POS sale and booking so admission fails closed, and supported
+  reversals restore only refund-owned state. Enable the Dashboard refund
+  subscriptions only after deployment, historical PaymentIntent-linkage review,
+  and linked test-mode acceptance described in ADR 0033.
 - Legacy browser-authoritative Kaskade/crypto checkout is retired from the
-  public compatibility checkout and in the repo copy of the Supabase functions.
+  public compatibility checkout and the repo copies of its Supabase functions.
+  There is no active or planned Kaskade implementation in the current
+  architecture; do not configure a Kaskade key or treat it as a cutover target.
 - Public CTAs point to `/checkout`, the App Router checkout path;
   `/checkout.html` permanently redirects there and no longer has a static
   compatibility document.
 - `robots.txt` and `sitemap.xml` are generated by App Router metadata routes
   from the same checked route registry used by redirects and smoke tests.
-- The July 12 dependency sweep upgraded `@types/node` to `26.1.1`. TypeScript
+- The July 13 dependency sweep aligned `@types/node` to the deployed Node 24
+  runtime at `24.13.3` and upgraded the forced PostCSS resolution to `8.5.19`.
+  TypeScript
   `7.0.2` passes direct project typechecks but Next.js `16.2.10` rejects it
   during `next build`, so production remains on TypeScript `6.0.3`. ESLint 10
   remains blocked by the current React/Next lint plugin stack.
@@ -271,6 +295,7 @@ bun run dashboard:readiness
 Useful operator references:
 
 - [Environment Reference](docs/reference/environment.md)
+- [Owner Dashboard Checklist](docs/runbooks/owner-dashboard-checklist.md)
 - [Production Readiness Checklist](docs/runbooks/production-readiness-checklist.md)
 - [Plain-English Current State](docs/current-state-simple.md)
 - [Stripe Checkout Cutover Runbook](docs/runbooks/stripe-checkout-cutover.md)
@@ -292,11 +317,12 @@ cd ../.. && export PATH="$HOME/.bun/bin:$PATH" && bun --revision && bun run web:
 
 Those commands assume Vercel runs them from the configured `apps/web` project root. If Vercel is configured to run from the repository root instead, omit `cd ../..`.
 
-The Vercel production route matrix passes on the custom domains. Keep previous
-Vercel deployments available as rollback while the App Router, Convex, payment,
-admin, and POS migrations continue. See [docs/phase-2-roadmap.md](docs/phase-2-roadmap.md)
-and [docs/runbooks/domain-cutover.md](docs/runbooks/domain-cutover.md) before
-changing domains or disabling legacy backend surfaces.
+The registry-derived Vercel production route matrix passes on the custom
+domains. Keep previous Vercel deployments available as rollback while the
+Convex, payment, admin, and POS acceptance work continues. Use the
+[current-state handoff](docs/current-state-simple.md), accepted ADRs, and
+[domain cutover runbook](docs/runbooks/domain-cutover.md) for active decisions;
+`docs/phase-2-roadmap.md` is historical planning context.
 
 ## Sensitive Artifacts
 

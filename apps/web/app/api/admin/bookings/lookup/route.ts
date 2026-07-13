@@ -37,6 +37,16 @@ type BookingLookupResult = {
     createdAt: number;
     updatedAt?: number;
     legacyId?: string;
+    ticketDelivery?: {
+      ticketCode: string;
+      status: "queued" | "sending" | "sent" | "failed" | "suppressed";
+      attemptCount: number;
+      sendVersion: number;
+      lastAttemptAt?: number;
+      sentAt?: number;
+      failureReason?: string;
+      updatedAt: number;
+    };
     vouchers?: {
       summary: {
         total: number;

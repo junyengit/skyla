@@ -11,11 +11,13 @@ const vercel = runJsonScript("scripts/setup/check-vercel-env.mjs");
 const gates = {
   vercelProjectShape: Boolean(vercelProject.data?.readyForProjectShape),
   vercelConvexUrl: Boolean(vercel.data?.readyForConvexUrl),
+  publicGateway: Boolean(vercel.data?.readyForPublicGateway && convex.data?.readyForPublicGateway),
   staffAuth: Boolean(vercel.data?.readyForStaffAuth && convex.data?.readyForStaffAuth),
   safeVercelSecretPlacement: Boolean(vercel.data?.safeSecretPlacement),
   convexCloudPersistence: Boolean(convex.data?.readyForCloudPersistence),
   stripeCheckout: Boolean(convex.data?.readyForStripeCheckout),
   stripeWebhook: Boolean(convex.data?.readyForStripeWebhook),
+  ticketEmail: Boolean(convex.data?.readyForTicketEmail && vercel.data?.readyForTicketOrigin),
   terminalReaderHandoff: Boolean(convex.data?.readyForTerminalReaderHandoff),
   staffBootstrap: Boolean(convex.data?.readyForStaffBootstrap)
 };
@@ -23,11 +25,13 @@ const gates = {
 const readyForNoWritePreflight =
   gates.vercelProjectShape &&
   gates.vercelConvexUrl &&
+  gates.publicGateway &&
   gates.staffAuth &&
   gates.safeVercelSecretPlacement &&
   gates.convexCloudPersistence &&
   gates.stripeCheckout &&
-  gates.stripeWebhook;
+  gates.stripeWebhook &&
+  gates.ticketEmail;
 const readyForTerminalAcceptance = readyForNoWritePreflight && gates.terminalReaderHandoff;
 const status = readyForNoWritePreflight ? "linked_preflight_ready" : "dashboard_setup_required";
 const nextActions = buildNextActions({
@@ -147,6 +151,22 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
     });
   }
 
+  if (!gates.publicGateway) {
+    actions.push({
+      id: "configure-public-gateway",
+      owner: "vercel-and-convex-dashboards",
+      priority: 2,
+      action: "Generate separate Preview and Production SKYLA_PUBLIC_GATEWAY_SECRET values, then set each value in the matching Vercel target and Convex deployment.",
+      command: "bun run dashboard:readiness",
+      missing: [
+        ...missingConvexChecks(convex, ["SKYLA_PUBLIC_GATEWAY_SECRET"]),
+        ...(vercel?.checks ?? [])
+          .filter((check) => check.key === "SKYLA_PUBLIC_GATEWAY_SECRET" && !check.ok)
+          .map((check) => `${check.key}:${check.requiredTargets.join("+")}`)
+      ]
+    });
+  }
+
   if (!gates.staffAuth) {
     actions.push({
       id: "configure-staff-auth",
@@ -191,6 +211,26 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
       priority: 6,
       action: "Create a Stripe test webhook endpoint for Convex POST /stripe-webhook and set Convex STRIPE_WEBHOOK_SECRET.",
       missing: missingConvexChecks(convex, ["STRIPE_WEBHOOK_SECRET"])
+    });
+  }
+
+  if (!gates.ticketEmail) {
+    actions.push({
+      id: "configure-ticket-email",
+      owner: "resend-vercel-and-convex-dashboards",
+      priority: 7,
+      action: "Verify the Skyla sending domain in Resend, then set Convex RESEND_API_KEY, SKYLA_TICKET_FROM_EMAIL, optional SKYLA_TICKET_REPLY_TO, and the environment's HTTPS SKYLA_PUBLIC_ORIGIN.",
+      missing: [
+        ...missingConvexChecks(convex, [
+          "RESEND_API_KEY",
+          "SKYLA_TICKET_FROM_EMAIL",
+          "SKYLA_TICKET_REPLY_TO",
+          "SKYLA_PUBLIC_ORIGIN"
+        ]),
+        ...(vercel?.checks ?? [])
+          .filter((check) => check.key === "SKYLA_PUBLIC_ORIGIN" && !check.ok)
+          .map((check) => `${check.key}:${check.requiredTargets.join("+")}`)
+      ]
     });
   }
 

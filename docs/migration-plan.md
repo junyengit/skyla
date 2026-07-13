@@ -1,6 +1,16 @@
-# Skyla Modernization Plan
+# Skyla Modernization Plan (Historical)
 
 Last updated: 2026-07-07
+
+This is the original staged modernization plan, retained for decision history.
+It is not an operator runbook or current architecture authority. Use
+[current-state-simple.md](current-state-simple.md), the
+[owner dashboard checklist](runbooks/owner-dashboard-checklist.md),
+[ADR 0032](decisions/0032-ledgered-supabase-convex-migration.md) for the narrow
+ledgered data migration, and
+[ADR 0034](decisions/0034-clerk-convex-staff-auth.md) for human staff auth.
+Where this plan proposes broader imports, Kaskade work, static compatibility
+pages, or pre-Clerk staff access, those items are superseded.
 
 ## Objective
 
@@ -9,7 +19,7 @@ Move Skyla from a flat GitHub Pages static site with Supabase-era operational co
 - Next.js `16.2.10`
 - React `19.2.7`
 - Motion `12.42.2`
-- Turborepo `2.10.4`
+- Turborepo `2.10.5`
 - TypeScript `6.0.3`
 
 The migration is intentionally in-place and staged. Production rollback is now
@@ -35,7 +45,8 @@ Historical backend/data dependencies from the original static/Supabase app:
 - Supabase tables implied by code: `bookings`, `members`, `inquiries`, `config`
 - Supabase Edge Functions under `supabase/functions`
 - Stripe Checkout, Payment Element, Terminal, and webhooks
-- Kaskade/PharosGate crypto payment actions and webhook
+- Kaskade/PharosGate crypto payment actions and webhook (historical and now
+  retired; there is no active replacement workstream)
 - EmailJS/Brevo confirmation emails
 - Meta Pixel and planned Google Ads conversion tracking
 
@@ -187,18 +198,13 @@ Initial indexes:
 - `inquiries.by_status_createdAt`
 - `config.by_key`
 
-Migration steps:
-
-1. Stand up Convex alongside Supabase.
-2. Import Supabase `bookings`, `members`, `inquiries`, and `config`.
-3. Preserve legacy `id`, `createdAt`, and raw `data` for auditability.
-4. Promote important fields to typed top-level fields.
-5. Replace `SkylaData` internals route-by-route.
-6. Port Supabase Edge Functions to Convex actions/HTTP actions.
-7. Update Stripe and Kaskade webhook URLs.
-8. Dual-run and reconcile counts.
-9. Cut over frontend to Convex.
-10. Disable Supabase writes/functions after verification.
+The original migration steps in this phase are superseded by ADR 0032. The
+accepted migration imports only `bookings`, `members`, and `inquiries`; it
+excludes config, Supabase Auth/passwords, orders, POS sales, and all financial
+ledgers. It uses immutable exports, SHA-256 manifests, quarantine,
+development-first apply, reconciliation, and per-batch rollback. Stripe
+webhooks move to Convex during payment acceptance. Kaskade is retired and must
+not be ported or configured.
 
 ### Phase 6: Admin And POS Rebuild
 
@@ -206,8 +212,9 @@ Status: native routes shipped; live operations gated by Convex/staff setup
 
 - Native `/admin`, `/pos`, and `/pos-next` staff surfaces are in the Next.js
   App Router and keep readable white text on dark staff backgrounds.
-- Staff-gated APIs require bearer tokens before returning operations, POS
-  readers, sale drafts, or payment handoffs.
+- Human staff use Clerk under ADR 0034; the short-lived JWT still uses the
+  bearer API transport before protected operations, POS readers, sale drafts,
+  or payment handoffs are returned.
 - Convex staff roles exist as `admin`, `pos`, and `viewer`.
 - Booking/member status actions and POS sale/payment flows write audit/payment
   events where implemented.

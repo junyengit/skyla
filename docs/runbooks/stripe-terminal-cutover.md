@@ -56,10 +56,13 @@ flowchart TD
 
 ## Required Dashboard State
 
-As of July 1, 2026, production correctly returns `convex_unconfigured` for this
-route because Vercel is not wired to a real Convex deployment yet.
+Production currently returns `convex_unconfigured` for this route because
+Vercel is not wired to the production Convex deployment yet. See the
+[current-state handoff](../current-state-simple.md) rather than relying on this
+runbook for deployment identity.
 
-- Vercel has `NEXT_PUBLIC_CONVEX_URL`.
+- Vercel Preview has the Convex development `NEXT_PUBLIC_CONVEX_URL`; Vercel
+  Production has a separate binding for the Convex production URL.
 - Convex has `SKYLA_STRIPE_MODE` set to `test` for preview/test-reader
   acceptance.
 - Convex has `STRIPE_SECRET_KEY`, and its `sk_test_` or `sk_live_` prefix
@@ -67,8 +70,11 @@ route because Vercel is not wired to a real Convex deployment yet.
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` with entries like
   `tmr_frontdesk@tml_lobby`.
 - `SKYLA_POS_TERMINAL_ACCEPTANCE` remains unset until no-write preflight,
-  webhook setup, and reader registry checks pass. Then set it to `enabled` only
-  in the controlled test runtime for the Stripe test-reader acceptance attempt.
+  webhook setup, and reader registry checks pass. Then set it to `enabled` in
+  Vercel Preview and the matching Convex development deployment only for the
+  controlled Stripe test-reader attempt. Remove it from both afterward.
+- Vercel never receives `SKYLA_TERMINAL_READER_REGISTRY`, `STRIPE_SECRET_KEY`,
+  or `STRIPE_WEBHOOK_SECRET`.
 - Staff auth provider is configured for Convex.
 - At least one active `staffUsers` row exists with role `admin` or `pos`.
 - Stripe test-mode reader is registered and available.
@@ -216,8 +222,10 @@ Expected after Convex and Stripe webhook envs are wired:
       idempotency key.
 - [ ] Duplicate in-flight reader handoffs are rejected by the reservation lock.
 - [ ] No-write preflight, signed webhook setup, and reader registry checks pass.
-- [ ] `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` is set only for the controlled
-      test-reader runtime after those no-write gates pass.
+- [ ] `SKYLA_POS_TERMINAL_ACCEPTANCE=enabled` is set in Vercel Preview and the
+      matching Convex development deployment only after those no-write gates
+      pass; `SKYLA_VERCEL_TERMINAL_ACCEPTANCE_TARGET=preview bun run
+      vercel:env:check` confirms the Vercel scope.
 - [ ] Stripe test reader can process the stored intent.
 - [ ] Successful reader handoff leaves the sale pending until Stripe webhook
       confirmation.
@@ -233,6 +241,8 @@ Expected after Convex and Stripe webhook envs are wired:
       after acceptance.
 - [ ] `bun run test:supabase-retired:live` reports disabled `404` or retired
       `410` for `stripe-terminal`; `401`/`403` is inconclusive.
+- [ ] The Terminal acceptance latch is removed from Vercel and Convex after the
+      controlled reader window.
 
 ## Rollback
 

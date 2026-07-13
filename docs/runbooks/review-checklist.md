@@ -17,6 +17,9 @@ Use this after each major phase.
   `apps/web/public`
 - No alternate package-manager lockfiles are reintroduced; Bun canary uses the
   root text `bun.lock`
+- Bun pin changes publish a new uniquely tagged Skyla toolchain release and
+  update its exact revision/platform SHA-256 matrix; CI and Vercel must not
+  execute a remote installer script, moving self-upgrade, or moving asset URL
 - No secrets in source
 - No new client-trusted payment authority
 - Payment actions accept stored refs only, not browser totals
@@ -124,12 +127,14 @@ Use this after each major phase.
   `SKYLA_STRIPE_MODE`
 - Convex has `SKYLA_PAYMENT_RETURN_ORIGINS` in the correct environment
 - Convex has `SKYLA_TERMINAL_READER_REGISTRY` before POS reader handoff testing
-- Vercel has `NEXT_PUBLIC_CONVEX_URL` in the correct environment
+- Vercel Preview has the Convex development `NEXT_PUBLIC_CONVEX_URL`; Vercel
+  Production has a separate binding for the production Convex URL
 - Stripe webhook secret is configured before paid-order completion moves to Convex
 - Stripe dashboard webhook endpoint points to the Convex site URL, not the old Supabase function
 - Stripe Terminal PaymentIntent webhooks subscribe to succeeded, payment_failed,
   and canceled events before native `/pos` handles live card-present sales
-- Kaskade and non-payment legacy paths stay enabled or explicitly disabled until replacements pass acceptance
+- Kaskade legacy endpoints are disabled or serve the retired `410` stubs; there
+  is no active replacement implementation or Kaskade secret
 - `/api/admin/config` writes only typed announcement/hours data, requires admin
   staff, and records `admin.config.update` audit events
 - Native admin booking lookup/check-in should stay limited to staff-gated lookup

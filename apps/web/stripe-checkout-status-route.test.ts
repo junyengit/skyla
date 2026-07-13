@@ -45,6 +45,8 @@ describe("/api/payments/stripe-checkout/status", () => {
     fetchQueryMock.mockResolvedValueOnce({
       orderRef: "SKY2607-ABC123",
       status: "confirmed",
+      bookingRef: "SKY2607-ABC123",
+      ticketCode: "tkt_0123456789abcdef0123456789abcdef",
       emailLower: "must-not-leak@example.com",
       totalCents: 8505
     });
@@ -54,7 +56,12 @@ describe("/api/payments/stripe-checkout/status", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(body).toEqual({ orderRef: "SKY2607-ABC123", status: "confirmed" });
+    expect(body).toEqual({
+      orderRef: "SKY2607-ABC123",
+      status: "confirmed",
+      bookingRef: "SKY2607-ABC123",
+      ticketCode: "tkt_0123456789abcdef0123456789abcdef"
+    });
     expect(JSON.stringify(body)).not.toContain("emailLower");
     expect(JSON.stringify(body)).not.toContain("totalCents");
     expect(fetchQueryMock).toHaveBeenCalledWith(

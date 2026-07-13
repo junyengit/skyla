@@ -54,7 +54,6 @@ flowchart LR
   convexTables["orders, orderLineItems, posSales, posSaleLines"]
   stripe["Stripe Checkout action"]
   terminal["Stripe Terminal actions"]
-  futureProviders["Future Kaskade action"]
 
   browser --> nextRoute --> pricing
   posNext --> nextRoute
@@ -63,7 +62,6 @@ flowchart LR
   convexMutation --> convexTables
   convexTables -. orderRef only .-> stripe
   convexTables -. saleRef only .-> terminal
-  convexTables -. refs only .-> futureProviders
 ```
 
 ## Why This Is Safer
@@ -81,8 +79,8 @@ package, guest count, and add-ons, but the server calculates:
 Provider actions must create payment sessions or intents from a stored
 `orderRef` or `saleRef`, not from a browser-supplied amount. The current Stripe
 Checkout action, Stripe webhook route, Terminal `saleRef` actions, and Terminal
-PaymentIntent webhook reconciliation follow this rule; Kaskade is still a future
-slice.
+PaymentIntent webhook reconciliation follow this rule. Kaskade is retired and
+is not a future provider slice.
 
 Catalog-priced line items also carry catalog provenance metadata. This is audit
 context only: provider actions and reconciliation still trust stored line
@@ -448,11 +446,12 @@ bun run convex:codegen
 
 ## Next Steps
 
-1. Link a real Convex deployment and set Vercel env vars for it.
-2. Add Kaskade actions that only accept stored refs.
-3. Accept the server-driven Stripe Terminal reader path with a test reader and
+1. Link separate Convex development and production deployments to their matching
+   Vercel Preview and Production targets.
+2. Accept the server-driven Stripe Terminal reader path with a test reader and
    final payment reconciliation.
-4. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
+3. Cut the Next checkout/POS flows over to persisted draft refs and the Stripe
    action.
-5. Add the Stripe dashboard endpoint for the Convex webhook.
-6. Dual-run against Supabase and reconcile before cutover.
+4. Add the Stripe dashboard endpoint for the Convex webhook.
+5. Follow ADR 0032 for the narrow legacy data migration and reconcile before
+   Supabase retirement.

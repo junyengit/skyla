@@ -128,7 +128,9 @@ export function ExperienceInquiryClient() {
 
       if (!response.ok || !data.inquiry) {
         throw new Error(
-          data.code === "convex_unconfigured"
+          response.status >= 500 ||
+            data.code === "convex_unconfigured" ||
+            data.code === "public_gateway_unconfigured"
             ? "Experience requests are temporarily unavailable. Please email events@skylalosangeles.com and the team will follow up."
             : data.error ?? "Could not submit this inquiry"
         );

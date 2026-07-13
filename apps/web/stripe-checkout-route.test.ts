@@ -1,13 +1,10 @@
-import { fetchAction } from "convex/nextjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "./app/api/payments/stripe-checkout/route";
 
-vi.mock("convex/nextjs", () => ({
-  fetchAction: vi.fn()
-}));
-
-const fetchActionMock = vi.mocked(fetchAction);
+const fetchMock = vi.fn<typeof fetch>();
+vi.stubGlobal("fetch", fetchMock);
+const gatewaySecret = "stripe-gateway-test-secret-32-chars";
 
 function expectPaymentHeaders(response: Response) {
   expect(response.headers.get("cache-control")).toBe("no-store");
@@ -19,6 +16,7 @@ function request(body: unknown, init?: RequestInit) {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      "x-vercel-forwarded-for": "203.0.113.12",
       ...(init?.headers ?? {})
     },
     body: JSON.stringify(body)
@@ -28,7 +26,8 @@ function request(body: unknown, init?: RequestInit) {
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_CONVEX_URL;
   delete process.env.CONVEX_URL;
-  fetchActionMock.mockReset();
+  delete process.env.SKYLA_PUBLIC_GATEWAY_SECRET;
+  fetchMock.mockReset();
 });
 
 describe("/api/payments/stripe-checkout", () => {
@@ -43,13 +42,14 @@ describe("/api/payments/stripe-checkout", () => {
     expect(response.status).toBe(503);
     expectPaymentHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
-      code: "convex_unconfigured"
+      code: "payment_service_unavailable"
     });
-    expect(fetchActionMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("requires orderRef and idempotencyKey before calling Convex", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
 
     const response = await POST(request({ orderRef: "SKY2607-ABC123" }));
 
@@ -59,12 +59,16 @@ describe("/api/payments/stripe-checkout", () => {
       error: "idempotencyKey is required",
       code: "invalid_payment_request"
     });
-    expect(fetchActionMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("surfaces server configuration failures as unavailable", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchActionMock.mockRejectedValueOnce(new Error("SKYLA_STRIPE_MODE is not configured"));
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json(
+      { ok: false, code: "service_unavailable", error: "The service is temporarily unavailable" },
+      { status: 503 }
+    ));
 
     const response = await POST(
       request({
@@ -85,9 +89,11 @@ describe("/api/payments/stripe-checkout", () => {
 
   it("treats missing Stripe return-origin allowlist as server configuration", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchActionMock.mockRejectedValueOnce(
-      new Error("SKYLA_PAYMENT_RETURN_ORIGINS must list at least one allowed Stripe return origin")
-    );
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json(
+      { ok: false, code: "service_unavailable", error: "The service is temporarily unavailable" },
+      { status: 503 }
+    ));
 
     const response = await POST(
       request({
@@ -108,16 +114,20 @@ describe("/api/payments/stripe-checkout", () => {
 
   it("starts Stripe Checkout through the Convex action with generated return URLs", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
-    fetchActionMock.mockResolvedValueOnce({
-      orderRef: "SKY2607-ABC123",
-      provider: "stripe",
-      checkoutSessionId: "cs_test_123",
-      url: "https://checkout.stripe.com/c/pay/cs_test_123",
-      amountCents: 8505,
-      currency: "usd",
-      clientSecret: "cs_test_secret_should_not_return",
-      client_secret: "cs_test_secret_should_not_return"
-    });
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json({
+      ok: true,
+      result: {
+        orderRef: "SKY2607-ABC123",
+        provider: "stripe",
+        checkoutSessionId: "cs_test_123",
+        url: "https://checkout.stripe.com/c/pay/cs_test_123",
+        amountCents: 8505,
+        currency: "usd",
+        clientSecret: "cs_test_secret_should_not_return",
+        client_secret: "cs_test_secret_should_not_return"
+      }
+    }));
 
     const response = await POST(
       request(
@@ -140,16 +150,45 @@ describe("/api/payments/stripe-checkout", () => {
     expect(JSON.stringify(body)).not.toContain("clientSecret");
     expect(JSON.stringify(body)).not.toContain("client_secret");
     expect(JSON.stringify(body)).not.toContain("should_not_return");
-    expect(fetchActionMock).toHaveBeenCalledWith(
-      expect.anything(),
-      {
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://example.convex.site/public-gateway");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      operation: "stripe-checkout",
+      rateLimitKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+      input: {
         orderRef: "SKY2607-ABC123",
         idempotencyKey: "checkout_20260704_abc123",
         successUrl:
           "https://www.skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}",
         cancelUrl: "https://www.skydeckla.com/checkout?stripe=cancel"
+      }
+    });
+  });
+
+  it("forwards durable Stripe rate limits with no-store payment headers", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json(
+      {
+        ok: false,
+        code: "rate_limited",
+        error: "Too many requests. Please try again later.",
+        retryAfterSeconds: 120
       },
-      { url: "https://example.convex.cloud" }
-    );
+      { status: 429 }
+    ));
+
+    const response = await POST(request({
+      orderRef: "SKY2607-ABC123",
+      idempotencyKey: "checkout_20260704_abc123"
+    }));
+
+    expect(response.status).toBe(429);
+    expectPaymentHeaders(response);
+    expect(response.headers.get("retry-after")).toBe("120");
+    await expect(response.json()).resolves.toMatchObject({
+      code: "rate_limited",
+      retryAfterSeconds: 120
+    });
   });
 });

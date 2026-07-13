@@ -203,6 +203,9 @@ P2 findings:
   through `oven-sh/setup-bun@v2` with canary, and Vercel runs the repo-owned
   Bun canary install/build commands from `apps/web/vercel.json`. Keep using
   `PATH="$HOME/.bun/bin:$PATH"` locally when the shell cannot find `bun`.
+- Superseded July 13, 2026: local development, both CI jobs, and Vercel now use
+  the same repo installer with exact platform revisions and SHA-256 values.
+  The moving setup action/self-upgrade path above is historical evidence only.
 - Dependency audit is currently clean after pinning transitive `postcss` to
   `8.5.16`.
 - No tracked `.env`, `output`, `tmp`, CSV, PDF, or log artifacts were found.

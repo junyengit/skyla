@@ -17,41 +17,41 @@
 
 These commands assume Vercel executes from the configured `apps/web` project
 root. If the Vercel project is configured from the repository root instead,
-omit `cd ../..`. The install script upgrades Bun to canary during the build
-step, prints the exact revision, and runs a frozen install from the repository
-root.
+omit `cd ../..`. The install script downloads the reviewed Bun archive as data,
+verifies its committed SHA-256 and exact Linux x64 revision, and runs a frozen
+install from the repository root. It does not execute an upstream shell
+installer or self-upgrade. `bunVersion: "1.x"` is the separately managed Vercel
+Functions runtime setting, not the build-time package-manager pin.
 
 Vercel's dashboard project settings may show default install/build command
 labels. For Skyla, the committed `apps/web/vercel.json` is the build authority:
 it overrides the framework, install command, build command, and Bun runtime for
 deployments. Run `bun run vercel:project:check` before dashboard work to verify
-both the dashboard root/Node/framework shape and the repo-owned Bun canary
-commands.
+the dashboard root/Node/framework shape, repo-owned commands, exact Linux x64
+Bun revision/SHA-256, and immutable installer behavior.
 
 ## Current Production State
 
-As of July 12, 2026:
+As of July 13, 2026:
 
-- Most recent full production verification recorded here was READY at
-  `https://web-5whdulzh0-junyen-enterprises.vercel.app`.
-- Evidence deployment ID:
-  `dpl_AwqE8nGZZW1Tf3RQvZuk43DLBQtb`.
-- Evidence merge commit:
-  `3ee576a4ca19476d0ef3020b423f5db8849a1799` (PR #113).
-- The recorded production smoke/payment verification came from PR #113 and
-  is summarized in [../current-state-simple.md](../current-state-simple.md).
-- Query Vercel for the exact latest deployment before recording fresh
-  operational evidence; docs-only merges create new production URLs.
+- The single current commit -> deployment -> immutable URL chain is recorded in
+  [Current Deployment Identity](../current-state-simple.md#current-deployment-identity).
+- PR #125 remains the latest full production route/payment behavior evidence.
+  Keep that evidence separate from newer deployment identity created by
+  docs-only or tooling merges.
+- Query Vercel before replacing the centralized identity; do not copy the exact
+  current URL and deployment ID into multiple runbooks.
 - `skydeckla.com` and `www.skydeckla.com` are attached to the Vercel project and Vercel reports both as configured correctly.
-- Vercel production route compatibility is verified on the deployment URL, apex domain, and `www` domain with the 23-route smoke matrix.
+- Vercel production route compatibility is verified on the behavior-evidence
+  deployment URL, apex domain, and `www` domain with the registry-derived smoke
+  matrix. Its count comes from the script and route registry, not this runbook.
 - GoDaddy nameservers have been changed to Vercel nameservers. Custom-domain smoke tests pass without DNS overrides.
 - Vercel Authentication is disabled for production; the deployment URL is publicly reachable.
-- Production payment routes currently fail closed with `convex_unconfigured`
-  until the real Convex deployment URL is added and Stripe dashboard secrets are
-  configured in Convex.
-- The evidence deployment metadata reports target `production`, commit
-  `3ee576a4ca19476d0ef3020b423f5db8849a1799`, framework `nextjs`, Node
-  `24.x`, Bun runtime metadata, and Turbopack bundler metadata from Vercel.
+- Public write and payment routes fail closed until the real Convex deployment
+  URL and matching `SKYLA_PUBLIC_GATEWAY_SECRET` are configured in Vercel and
+  Convex; Stripe actions also require their Convex-only dashboard secrets.
+- The recorded deployment metadata reports target `production`, framework
+  `nextjs`, Node `24.x`, Bun runtime metadata, and Turbopack bundler metadata.
 - Vercel env vars are still absent, so Convex-backed writes and Stripe
   execution remain intentionally fail-closed until dashboard setup is complete.
 
@@ -127,10 +127,23 @@ PATH="$HOME/.bun/bin:$PATH" bunx vercel link --yes --scope junyen-enterprises --
 cd ../..
 ```
 
-It uses `vercel env ls --format json` for the linked `apps/web` project, checks
-that `NEXT_PUBLIC_CONVEX_URL` exists in Preview and Production, and fails if
-Stripe, staff, or Terminal secrets are present in Vercel. It reports env names
-and scopes only; do not print secret values in PRs, logs, or docs.
+It uses `vercel env ls --format json` for the linked `apps/web` project. It
+requires a Preview-only `NEXT_PUBLIC_CONVEX_URL` binding for the Convex
+development deployment and a separate Production-only binding for Convex
+production. It also requires separate Preview-only and Production-only
+`SKYLA_PUBLIC_GATEWAY_SECRET` bindings; each value must match only its
+corresponding Convex deployment. It fails if Stripe keys, webhook secrets,
+staff-bootstrap tokens, or the Terminal reader registry are present in Vercel. The temporary
+`SKYLA_POS_TERMINAL_ACCEPTANCE` latch is allowed only in one explicitly selected
+acceptance target:
+
+```bash
+SKYLA_VERCEL_TERMINAL_ACCEPTANCE_TARGET=preview bun run vercel:env:check
+```
+
+Remove that latch from Vercel and the matching Convex deployment after the
+controlled reader attempt. The checker reports names and scopes only; do not
+print secret values in PRs, logs, or docs.
 
 ## Git Workflow
 
@@ -139,8 +152,8 @@ and scopes only; do not print secret values in PRs, logs, or docs.
 3. GitHub CI runs `bun install --frozen-lockfile`, lint, typecheck, unit tests, build, tracked artifact guard, and dependency audit.
 4. Run smoke tests against the Preview deployment.
 5. Run `bun run test:payments` against the Preview deployment when the change
-   touches checkout, POS, Stripe, Kaskade, Supabase functions, or Convex payment
-   code.
+   touches checkout, POS, Stripe, retired Kaskade/Supabase stubs, or Convex
+   payment code. Kaskade is not an active provider implementation.
 6. Confirm the protected-branch checks are green: `ci-build`,
    `Analyze JavaScript and TypeScript`, and `Vercel`.
 7. Merge to `main`.

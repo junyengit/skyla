@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getCheckoutReturnStatus } from "./checkoutStatus";
 
-type TableName = "paymentEvents" | "orders" | "bookings";
+type TableName = "paymentEvents" | "orders" | "bookings" | "ticketDeliveries";
 type Doc = Record<string, unknown>;
 type State = Record<TableName, Doc[]>;
 
@@ -57,13 +57,23 @@ function paidState(): State {
       { provider: "stripe", providerPaymentId: sessionId, orderRef, status: "paid" }
     ],
     orders: [{ orderRef, channel: "online", status: "paid" }],
-    bookings: [{ orderRef, bookingRef: orderRef, status: "confirmed", emailLower: "must-not-leak@example.com" }]
+    bookings: [{ orderRef, bookingRef: orderRef, status: "confirmed", emailLower: "must-not-leak@example.com" }],
+    ticketDeliveries: [{
+      bookingRef: orderRef,
+      ticketCode: "tkt_0123456789abcdef0123456789abcdef",
+      emailLower: "must-not-leak@example.com"
+    }]
   };
 }
 
 describe("checkout status query", () => {
   it("confirms from one server-created session without returning PII", async () => {
-    await expect(runStatus(paidState())).resolves.toEqual({ orderRef, status: "confirmed" });
+    await expect(runStatus(paidState())).resolves.toEqual({
+      orderRef,
+      status: "confirmed",
+      bookingRef: orderRef,
+      ticketCode: "tkt_0123456789abcdef0123456789abcdef"
+    });
   });
 
   it("does not use paid evidence attached to another order", async () => {

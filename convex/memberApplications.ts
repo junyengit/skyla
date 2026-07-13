@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import {
   assertSameMemberApplicationFingerprint,
   memberApplicationAuditMetadata,
@@ -8,11 +8,13 @@ import {
   memberApplicationResult,
   normalizeMemberApplicationArgs
 } from "./lib/memberApplications";
+import { consumePublicGatewayRateLimit } from "./lib/publicGateway";
 
 const memberTier = v.union(v.literal("obsidian"), v.literal("gold"), v.literal("black"));
 
-export const submitApplication = mutation({
+export const submitApplication = internalMutation({
   args: {
+    gatewayRateLimitKey: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     email: v.string(),
@@ -24,6 +26,7 @@ export const submitApplication = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    await consumePublicGatewayRateLimit(ctx, "member-application", args.gatewayRateLimitKey, now);
     const input = normalizeMemberApplicationArgs(args);
     const applicationFingerprint = memberApplicationFingerprint(input);
     const existingMember = await ctx.db

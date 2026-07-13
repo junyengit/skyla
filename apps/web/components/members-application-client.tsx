@@ -116,7 +116,9 @@ export function MembersApplicationClient() {
 
       if (!response.ok || !data.member) {
         throw new Error(
-          data.code === "convex_unconfigured"
+          response.status >= 500 ||
+            data.code === "convex_unconfigured" ||
+            data.code === "public_gateway_unconfigured"
             ? "Membership applications are temporarily unavailable. Please email reservations@skydeckla.com and we will follow up."
             : data.error ?? "Could not submit this application"
         );

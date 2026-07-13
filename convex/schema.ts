@@ -24,6 +24,12 @@ const staffRole = v.union(v.literal("admin"), v.literal("pos"), v.literal("viewe
 const productKind = v.union(v.literal("ticket"), v.literal("addon"), v.literal("cafe"));
 const lineKind = v.union(v.literal("ticket"), v.literal("addon"), v.literal("cafe"), v.literal("custom"));
 const catalogVersionStatus = v.union(v.literal("active"), v.literal("inactive"));
+const publicGatewayOperation = v.union(
+  v.literal("experience-inquiry"),
+  v.literal("member-application"),
+  v.literal("checkout-draft"),
+  v.literal("stripe-checkout")
+);
 
 const stringRecord = v.record(v.string(), v.union(v.string(), v.number(), v.boolean()));
 
@@ -98,6 +104,7 @@ export default defineSchema({
     source: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
     draftFingerprint: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     rawLegacy: v.optional(v.any())
@@ -105,6 +112,7 @@ export default defineSchema({
     .index("by_orderRef", ["orderRef"])
     .index("by_channel_idempotencyKey", ["channel", "idempotencyKey"])
     .index("by_createdAt", ["createdAt"])
+    .index("by_status_expiresAt", ["status", "expiresAt"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_channel_status_createdAt", ["channel", "status", "createdAt"])
     .index("by_customerEmail_createdAt", ["customerEmailLower", "createdAt"]),
@@ -221,9 +229,21 @@ export default defineSchema({
     .index("by_provider_providerEventId", ["provider", "providerEventId"])
     .index("by_provider_status_processedAt", ["provider", "status", "processedAt"]),
 
+  publicGatewayRateLimits: defineTable({
+    operation: publicGatewayOperation,
+    keyHash: v.string(),
+    count: v.number(),
+    windowStartedAt: v.number(),
+    windowExpiresAt: v.number(),
+    updatedAt: v.number()
+  })
+    .index("by_operation_keyHash", ["operation", "keyHash"])
+    .index("by_windowExpiresAt", ["windowExpiresAt"]),
+
   bookings: defineTable({
     bookingRef: v.string(),
     orderRef: v.optional(v.string()),
+    saleRef: v.optional(v.string()),
     visitDate: v.optional(v.string()),
     entryTime: v.optional(v.string()),
     partySize: v.optional(v.number()),
@@ -240,10 +260,39 @@ export default defineSchema({
   })
     .index("by_bookingRef", ["bookingRef"])
     .index("by_orderRef", ["orderRef"])
+    .index("by_saleRef", ["saleRef"])
     .index("by_visitDate_status", ["visitDate", "status"])
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
     .index("by_legacyId", ["legacyId"])
     .index("by_createdAt", ["createdAt"]),
+
+  ticketDeliveries: defineTable({
+    ticketCode: v.string(),
+    bookingRef: v.string(),
+    orderRef: v.optional(v.string()),
+    saleRef: v.optional(v.string()),
+    emailLower: v.optional(v.string()),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("suppressed")
+    ),
+    attemptCount: v.number(),
+    sendVersion: v.number(),
+    providerMessageId: v.optional(v.string()),
+    lastAttemptAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    failureReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  })
+    .index("by_ticketCode", ["ticketCode"])
+    .index("by_bookingRef", ["bookingRef"])
+    .index("by_orderRef", ["orderRef"])
+    .index("by_saleRef", ["saleRef"])
+    .index("by_status_updatedAt", ["status", "updatedAt"]),
 
   voucherRedemptionEvents: defineTable({
     bookingRef: v.string(),

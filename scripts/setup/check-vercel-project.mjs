@@ -10,6 +10,14 @@ const expected = {
   orgId: "team_3kWPO8fPD6E7x39voGoNNeog",
   framework: "nextjs",
   nodeVersion: "24.x",
+  packageManager: "bun@1.4.0-canary.1",
+  bunCanary: {
+    version: "1.4.0-canary.1",
+    mirrorRelease: "toolchain-bun-1.4.0-canary.1-8f1a9540f",
+    downloadUrlTemplate: "https://github.com/junyengit/skyla/releases/download/$BUN_MIRROR_RELEASE/$BUN_ASSET.zip",
+    linuxX64Revision: "1.4.0-canary.1+8f1a9540f",
+    linuxX64Sha256: "21cd632ff9a5a1277a0586f0581f85419bf909ba496b18328af0a35cbf065711"
+  },
   vercelConfig: {
     framework: "nextjs",
     bunVersion: "1.x",
@@ -20,6 +28,8 @@ const expected = {
 
 const source = loadProjectInspect();
 const repoConfig = loadRepoVercelConfig();
+const rootPackage = loadRootPackage();
+const bunInstaller = loadBunInstaller();
 const localLink = loadLocalProjectLink();
 const dashboard = normalizeProject(source.payload);
 
@@ -31,8 +41,16 @@ const checks = [
   check("dashboardNodeVersion", dashboard.nodeVersion, expected.nodeVersion, "Vercel should build with Node 24.x."),
   check("repoFramework", repoConfig.data?.framework, expected.vercelConfig.framework, "apps/web/vercel.json should force the Next.js preset."),
   check("repoBunVersion", repoConfig.data?.bunVersion, expected.vercelConfig.bunVersion, "apps/web/vercel.json should request Vercel Bun 1.x."),
-  check("repoInstallCommand", repoConfig.data?.installCommand, expected.vercelConfig.installCommand, "The repo install command should upgrade to Bun canary and run a frozen root install."),
-  check("repoBuildCommand", repoConfig.data?.buildCommand, expected.vercelConfig.buildCommand, "The repo build command should build @skyla/web from the Turborepo root.")
+  check("repoInstallCommand", repoConfig.data?.installCommand, expected.vercelConfig.installCommand, "The repo install command should install the checksum-pinned Bun canary and run a frozen root install."),
+  check("repoBuildCommand", repoConfig.data?.buildCommand, expected.vercelConfig.buildCommand, "The repo build command should build @skyla/web from the Turborepo root."),
+  check("repoPackageManager", rootPackage.data?.packageManager, expected.packageManager, "The root packageManager should record the reviewed Bun canary version."),
+  check("repoBunEngine", rootPackage.data?.engines?.bun, expected.bunCanary.version, "The root Bun engine should reject unreviewed semantic versions."),
+  check("repoBunCanaryVersionPin", bunInstaller.pins.version, expected.bunCanary.version, "The installer should pin the reviewed Bun canary version."),
+  check("repoBunMirrorReleasePin", bunInstaller.pins.mirrorRelease, expected.bunCanary.mirrorRelease, "The installer should use Skyla's uniquely tagged Bun release mirror."),
+  check("repoBunDownloadUrlTemplate", bunInstaller.pins.downloadUrlTemplate, expected.bunCanary.downloadUrlTemplate, "The installer download URL should consume the reviewed Skyla release and platform asset variables."),
+  check("repoBunLinuxX64RevisionPin", bunInstaller.pins.linuxX64Revision, expected.bunCanary.linuxX64Revision, "Vercel and Linux CI should install the reviewed Bun revision."),
+  check("repoBunLinuxX64ChecksumPin", bunInstaller.pins.linuxX64Sha256, expected.bunCanary.linuxX64Sha256, "Vercel and Linux CI should verify the reviewed Bun archive SHA-256."),
+  check("repoBunInstallerImmutable", bunInstaller.immutable, true, "The Bun installer must not execute a remote shell installer or self-upgrade from a moving channel.")
 ];
 
 if (localLink.present) {
@@ -70,6 +88,12 @@ const output = {
   expected,
   dashboard,
   repoConfig: repoConfig.data,
+  rootPackage: rootPackage.data,
+  bunInstaller: {
+    path: bunInstaller.path,
+    pins: bunInstaller.pins,
+    immutable: bunInstaller.immutable
+  },
   localLink: {
     present: localLink.present,
     data: localLink.data,
@@ -156,6 +180,62 @@ function loadRepoVercelConfig() {
       error: message
     };
   }
+}
+
+function loadRootPackage() {
+  const path = resolve("package.json");
+  try {
+    return {
+      data: parseJson(readFileSync(path, "utf8"), path)
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    return {
+      data: null,
+      error: message
+    };
+  }
+}
+
+function loadBunInstaller() {
+  const path = resolve(
+    process.env.SKYLA_VERCEL_BUN_INSTALLER_PATH ||
+      "scripts/setup/vercel-install-bun-canary.sh"
+  );
+
+  try {
+    const text = readFileSync(path, "utf8");
+    const mirrorRelease = shellAssignment(text, "BUN_MIRROR_RELEASE");
+    const downloadUrlTemplate = shellAssignment(text, "DOWNLOAD_URL");
+    return {
+      path,
+      pins: {
+        version: shellAssignment(text, "BUN_CANARY_VERSION"),
+        mirrorRelease,
+        downloadUrlTemplate,
+        linuxX64Revision: shellAssignment(text, "BUN_LINUX_X64_REVISION"),
+        linuxX64Sha256: shellAssignment(text, "BUN_LINUX_X64_SHA256")
+      },
+      immutable:
+        !/\bupgrade\s+--canary\b/.test(text) &&
+        !/curl[^\n|]*\|\s*(?:ba)?sh\b/.test(text) &&
+        !/oven-sh\/bun\/releases\/download\/canary/.test(text) &&
+        mirrorRelease === expected.bunCanary.mirrorRelease &&
+        downloadUrlTemplate === expected.bunCanary.downloadUrlTemplate
+    };
+  } catch (error) {
+    return {
+      path,
+      pins: {},
+      immutable: false,
+      error: error instanceof Error ? error.message : "unknown error"
+    };
+  }
+}
+
+function shellAssignment(text, name) {
+  const match = text.match(new RegExp(`^${name}="([^"]+)"$`, "m"));
+  return match?.[1] || "";
 }
 
 function loadLocalProjectLink() {

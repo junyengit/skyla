@@ -6,8 +6,27 @@ const defaultScope = "junyen-enterprises";
 const required = [
   {
     key: "NEXT_PUBLIC_CONVEX_URL",
-    targets: ["production", "preview"],
-    note: "required by Vercel-hosted Next routes before Convex-backed writes can persist"
+    targets: ["preview"],
+    disallowedTargets: ["production"],
+    note: "Vercel Preview must use the Convex development URL, separate from Production"
+  },
+  {
+    key: "NEXT_PUBLIC_CONVEX_URL",
+    targets: ["production"],
+    disallowedTargets: ["preview"],
+    note: "Vercel Production must use the Convex production URL, separate from Preview"
+  },
+  {
+    key: "SKYLA_PUBLIC_GATEWAY_SECRET",
+    targets: ["preview"],
+    disallowedTargets: ["production"],
+    note: "server-only Preview gateway secret paired with the Convex development deployment"
+  },
+  {
+    key: "SKYLA_PUBLIC_GATEWAY_SECRET",
+    targets: ["production"],
+    disallowedTargets: ["preview"],
+    note: "server-only Production gateway secret paired with the Convex production deployment"
   },
   {
     key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
@@ -18,14 +37,28 @@ const required = [
     key: "CLERK_SECRET_KEY",
     targets: ["production", "preview"],
     note: "server-only Clerk key required by the Next.js staff auth proxy"
+  },
+  {
+    key: "SKYLA_PUBLIC_ORIGIN",
+    targets: ["preview"],
+    disallowedTargets: ["production"],
+    note: "Vercel Preview must use its explicit Preview HTTPS origin for ticket QR links"
+  },
+  {
+    key: "SKYLA_PUBLIC_ORIGIN",
+    targets: ["production"],
+    disallowedTargets: ["preview"],
+    note: "Vercel Production must use the canonical production HTTPS origin for ticket QR links"
   }
 ];
 const forbiddenKeys = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
+  "RESEND_API_KEY",
+  "SKYLA_TICKET_FROM_EMAIL",
+  "SKYLA_TICKET_REPLY_TO",
   "SKYLA_STAFF_BOOTSTRAP_TOKEN",
-  "SKYLA_TERMINAL_READER_REGISTRY",
-  "SKYLA_POS_TERMINAL_ACCEPTANCE"
+  "SKYLA_TERMINAL_READER_REGISTRY"
 ];
 
 const source = loadEnvList();
@@ -33,15 +66,21 @@ const envs = normalizeEnvList(source.payload);
 const checks = required.map((item) => {
   const matches = envs.filter((entry) => entry.key === item.key);
   const presentTargets = sortedTargets(matches.flatMap((entry) => entry.targets));
+  const requiredBindings = matches.filter((entry) =>
+    item.targets.every((target) => entry.targets.includes(target)) &&
+    (item.disallowedTargets ?? []).every((target) => !entry.targets.includes(target))
+  );
   return {
     key: item.key,
     requiredTargets: item.targets,
-    present: matches.length > 0,
+    ...(item.disallowedTargets ? { disallowedTargets: item.disallowedTargets } : {}),
+    present: item.targets.every((target) => presentTargets.includes(target)),
     presentTargets,
-    ok: item.targets.every((target) => presentTargets.includes(target)),
+    ok: requiredBindings.length > 0,
     note: item.note
   };
 });
+const terminalAcceptance = checkTerminalAcceptance(envs);
 const forbidden = forbiddenKeys.map((key) => {
   const matches = envs.filter((entry) => entry.key === key);
   const presentTargets = sortedTargets(matches.flatMap((entry) => entry.targets));
@@ -66,12 +105,22 @@ const output = {
   source: source.kind,
   scope: source.scope,
   projectRoot: source.projectRoot,
-  readyForConvexUrl: checks.find((check) => check.key === "NEXT_PUBLIC_CONVEX_URL")?.ok ?? false,
+  readyForConvexUrl: checks
+    .filter((check) => check.key === "NEXT_PUBLIC_CONVEX_URL")
+    .every((check) => check.ok),
+  readyForPublicGateway: checks
+    .filter((check) => check.key === "SKYLA_PUBLIC_GATEWAY_SECRET")
+    .every((check) => check.ok),
   readyForStaffAuth: checks
     .filter((check) => check.key === "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || check.key === "CLERK_SECRET_KEY")
     .every((check) => check.ok),
+  readyForTicketOrigin: checks
+    .filter((check) => check.key === "SKYLA_PUBLIC_ORIGIN")
+    .every((check) => check.ok),
+  readyForTerminalAcceptance: terminalAcceptance.required && terminalAcceptance.ok,
   safeSecretPlacement: forbidden.every((check) => check.ok) && publicSecretLike.length === 0,
   checks,
+  terminalAcceptance,
   forbidden,
   publicSecretLike,
   envCount: envs.length
@@ -85,9 +134,39 @@ const misplacedSecrets = forbidden.filter((check) => !check.ok).length + publicS
 if (source.error) {
   console.error(source.error);
   process.exitCode = 1;
-} else if (failedRequired.length > 0 || misplacedSecrets > 0) {
+} else if (failedRequired.length > 0 || !terminalAcceptance.ok || misplacedSecrets > 0) {
   console.error("One or more Vercel env readiness checks failed. See JSON output.");
   process.exitCode = 1;
+}
+
+function checkTerminalAcceptance(envs) {
+  const key = "SKYLA_POS_TERMINAL_ACCEPTANCE";
+  const requestedTarget = (process.env.SKYLA_VERCEL_TERMINAL_ACCEPTANCE_TARGET ?? "")
+    .trim()
+    .toLowerCase();
+  const allowedTargets = ["preview", "production"];
+  const validRequest = requestedTarget === "" || allowedTargets.includes(requestedTarget);
+  const matches = envs.filter((entry) => entry.key === key);
+  const activeTargets = sortedTargets(matches.flatMap((entry) => entry.targets));
+  const unsupportedTargets = activeTargets.filter((target) => !allowedTargets.includes(target));
+  const expectedTargets = requestedTarget ? [requestedTarget] : [];
+  const targetMatches =
+    validRequest &&
+    expectedTargets.length === activeTargets.length &&
+    expectedTargets.every((target) => activeTargets.includes(target));
+
+  return {
+    key,
+    required: Boolean(requestedTarget),
+    requestedTarget: requestedTarget || undefined,
+    activeTargets,
+    ok: unsupportedTargets.length === 0 && targetMatches,
+    note: requestedTarget
+      ? `required only for the controlled ${requestedTarget} Terminal acceptance window; set the Vercel value to enabled and remove it afterward`
+      : activeTargets.length > 0
+        ? "temporary Terminal latch is active without an acknowledged acceptance target; rerun with SKYLA_VERCEL_TERMINAL_ACCEPTANCE_TARGET=preview|production or remove it"
+        : "leave unset outside a controlled Terminal acceptance window"
+  };
 }
 
 function loadEnvList() {

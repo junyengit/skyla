@@ -1,8 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { checkoutEntryTimes, type AddonKey, type TicketPackageKey } from "@skyla/payments";
 import { ArrowRight, CalendarDays, ShieldCheck } from "@skyla/ui/icons";
+import {
+  formatOperatingDay,
+  isCheckoutEntryTimeAvailable,
+  operatingWeekdayForDate,
+  type OperatingHours
+} from "@/lib/operating-hours";
 
 type PackageOption = {
   key: TicketPackageKey;
@@ -46,11 +53,13 @@ type CheckoutClientProps = {
   addons: AddonOption[];
   stripeStatus?: "success" | "cancel";
   returnedCheckoutSessionId?: string;
+  operatingHours?: OperatingHours | null;
 };
 
 type AddonQuantities = Partial<Record<AddonKey, number>>;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
 
 function money(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -60,7 +69,22 @@ function money(cents: number) {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function clearStripeReturnIdentity() {
+  const returnUrl = new URL(window.location.href);
+  returnUrl.searchParams.delete("stripe");
+  returnUrl.searchParams.delete("session_id");
+  returnUrl.searchParams.delete("order");
+  window.history.replaceState(window.history.state, "", returnUrl);
 }
 
 function createIdempotencyKey() {
@@ -70,17 +94,35 @@ function createIdempotencyKey() {
   return `checkout_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function optionalResponseString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeVerifiedTicketCode(value: unknown) {
+  const ticketCode = optionalResponseString(value)?.toLowerCase();
+  return ticketCode && ticketCodePattern.test(ticketCode) ? ticketCode : null;
+}
+
 export function CheckoutClient({
   packages,
   addons,
   stripeStatus,
-  returnedCheckoutSessionId
+  returnedCheckoutSessionId,
+  operatingHours = null
 }: CheckoutClientProps) {
+  const initialVisitDate = todayIso();
   const [packageKey, setPackageKey] = useState<TicketPackageKey>(packages[0]?.key ?? "general");
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
-  const [visitDate, setVisitDate] = useState(todayIso);
-  const [entryTime, setEntryTime] = useState<string>(checkoutEntryTimes[0].value);
+  const [visitDate, setVisitDate] = useState(initialVisitDate);
+  const [entryTime, setEntryTime] = useState<string>(() => {
+    if (!operatingHours) return checkoutEntryTimes[0].value;
+    return (
+      checkoutEntryTimes.find((time) =>
+        isCheckoutEntryTimeAvailable(operatingHours, initialVisitDate, time.value)
+      )?.value ?? ""
+    );
+  });
   const [customerEmail, setCustomerEmail] = useState("");
   const [addonQuantities, setAddonQuantities] = useState<AddonQuantities>({});
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
@@ -92,11 +134,26 @@ export function CheckoutClient({
     stripeStatus === "success" ? "checking" : "pending"
   );
   const [verifiedOrderRef, setVerifiedOrderRef] = useState<string | null>(null);
+  const [verifiedBookingRef, setVerifiedBookingRef] = useState<string | null>(null);
+  const [verifiedTicketCode, setVerifiedTicketCode] = useState<string | null>(null);
 
   const selectedPackage = packages.find((item) => item.key === packageKey) ?? packages[0];
   const normalizedEmail = customerEmail.trim().toLowerCase();
+  const selectedWeekday = operatingWeekdayForDate(visitDate);
+  const availableEntryTimes = operatingHours
+    ? checkoutEntryTimes.filter((time) =>
+        isCheckoutEntryTimeAvailable(operatingHours, visitDate, time.value)
+      )
+    : checkoutEntryTimes;
+  const selectedEntryTimeAvailable = operatingHours
+    ? isCheckoutEntryTimeAvailable(operatingHours, visitDate, entryTime)
+    : Boolean(entryTime);
   const canReview =
-    !!selectedPackage && adults > 0 && !!visitDate && !!entryTime && emailPattern.test(normalizedEmail);
+    !!selectedPackage &&
+    adults > 0 &&
+    !!visitDate &&
+    selectedEntryTimeAvailable &&
+    emailPattern.test(normalizedEmail);
   const addonInput = useMemo(
     () =>
       Object.fromEntries(
@@ -115,12 +172,6 @@ export function CheckoutClient({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
 
-    const returnUrl = new URL(window.location.href);
-    returnUrl.searchParams.delete("stripe");
-    returnUrl.searchParams.delete("session_id");
-    returnUrl.searchParams.delete("order");
-    window.history.replaceState(window.history.state, "", returnUrl);
-
     function scheduleNext(callback: () => void, delay: number) {
       timer = setTimeout(callback, delay);
     }
@@ -137,6 +188,8 @@ export function CheckoutClient({
         const data = (await response.json()) as {
           orderRef?: string;
           status?: "pending" | "confirmed" | "failed" | "canceled";
+          bookingRef?: string;
+          ticketCode?: string;
         };
         if (!response.ok || !data.status || !data.orderRef) {
           if (response.status === 400 || response.status === 404) {
@@ -147,6 +200,8 @@ export function CheckoutClient({
         }
         if (disposed) return;
         setVerifiedOrderRef(data.orderRef);
+        setVerifiedBookingRef(data.status === "confirmed" ? optionalResponseString(data.bookingRef) : null);
+        setVerifiedTicketCode(data.status === "confirmed" ? normalizeVerifiedTicketCode(data.ticketCode) : null);
         setReturnStatus(data.status);
         if (data.status === "pending") {
           if (attempts < 10) {
@@ -154,6 +209,8 @@ export function CheckoutClient({
           } else {
             setReturnStatus("unavailable");
           }
+        } else {
+          clearStripeReturnIdentity();
         }
       } catch {
         if (disposed) return;
@@ -177,7 +234,11 @@ export function CheckoutClient({
     if (!returnedCheckoutSessionId) {
       return "Returned from Stripe, but the confirmation identity is incomplete. Please contact support before trying another payment.";
     }
-    if (returnStatus === "confirmed") return `Payment confirmed. Booking ${verifiedOrderRef} was created.`;
+    if (returnStatus === "confirmed") {
+      return `Payment confirmed. Booking ${verifiedOrderRef} was created.${
+        verifiedBookingRef ? ` Booking reference ${verifiedBookingRef}.` : ""
+      }`;
+    }
     if (returnStatus === "failed") return "Stripe reported that the payment failed. No booking was confirmed.";
     if (returnStatus === "canceled") return "The payment expired or was canceled. No booking was confirmed.";
     if (returnStatus === "unavailable") {
@@ -196,6 +257,22 @@ export function CheckoutClient({
       const next = Math.max(0, (current[key] ?? 0) + delta);
       return { ...current, [key]: next };
     });
+    resetDraft();
+  }
+
+  function updateVisitDate(nextVisitDate: string) {
+    const firstAvailableEntryTime = operatingHours
+      ? checkoutEntryTimes.find((time) =>
+          isCheckoutEntryTimeAvailable(operatingHours, nextVisitDate, time.value)
+        )?.value ?? ""
+      : checkoutEntryTimes[0].value;
+
+    setVisitDate(nextVisitDate);
+    setEntryTime((current) =>
+      !operatingHours || isCheckoutEntryTimeAvailable(operatingHours, nextVisitDate, current)
+        ? current
+        : firstAvailableEntryTime
+    );
     resetDraft();
   }
 
@@ -281,6 +358,14 @@ export function CheckoutClient({
           className={`checkoutNotice ${returnStatus === "confirmed" ? "isGood" : "isWarn"}`}
         >
           {returnNotice()}
+          {returnStatus === "confirmed" && verifiedTicketCode ? (
+            <div className="checkoutActions">
+              <Link className="secondaryAction" href={`/tickets/${encodeURIComponent(verifiedTicketCode)}`}>
+                Open ticket
+                <ArrowRight size={18} />
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -346,10 +431,7 @@ export function CheckoutClient({
                 min={todayIso()}
                 type="date"
                 value={visitDate}
-                onChange={(event) => {
-                  setVisitDate(event.target.value);
-                  resetDraft();
-                }}
+                onChange={(event) => updateVisitDate(event.target.value)}
               />
             </label>
             <label>
@@ -368,20 +450,37 @@ export function CheckoutClient({
             </label>
           </div>
 
+          {operatingHours && selectedWeekday ? (
+            <p
+              aria-live="polite"
+              className={availableEntryTimes.length === 0 ? "checkoutError" : undefined}
+            >
+              {availableEntryTimes.length === 0
+                ? `Sky LA has no checkout arrival times on ${selectedWeekday}. Choose another date.`
+                : `${selectedWeekday} hours: ${formatOperatingDay(operatingHours[selectedWeekday])}.`}
+            </p>
+          ) : null}
+
           <div className="checkoutTimes" aria-label="Entry time">
-            {checkoutEntryTimes.map((time) => (
-              <button
-                className={time.value === entryTime ? "isSelected" : ""}
-                key={time.value}
-                type="button"
-                onClick={() => {
-                  setEntryTime(time.value);
-                  resetDraft();
-                }}
-              >
-                {time.label}
-              </button>
-            ))}
+            {checkoutEntryTimes.map((time) => {
+              const available =
+                !operatingHours || isCheckoutEntryTimeAvailable(operatingHours, visitDate, time.value);
+              return (
+                <button
+                  className={time.value === entryTime ? "isSelected" : ""}
+                  disabled={!available}
+                  key={time.value}
+                  style={available ? undefined : { cursor: "not-allowed", opacity: 0.38 }}
+                  type="button"
+                  onClick={() => {
+                    setEntryTime(time.value);
+                    resetDraft();
+                  }}
+                >
+                  {time.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

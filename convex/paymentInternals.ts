@@ -1,3 +1,4 @@
+import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
@@ -22,12 +23,22 @@ import {
 } from "./lib/stripeWebhook";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
 import { assertStoredPaymentLineProvenance } from "./lib/orderDraftPersistence";
+import { buildConfirmedPosFulfillment, type ConfirmedPosBooking } from "./lib/posFulfillment";
+import { buildTicketDeliveryRecord } from "./lib/ticketDelivery";
+import { assertCheckoutTimeAvailable, safeOperatingHours } from "./lib/operatingHours";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const terminalProcessReservationTtlMs = 2 * 60 * 1000;
 const finalRefundStatuses = new Set<StripeRefundStatus>(["failed", "canceled"]);
 const refundCorrelationRetryWindowMs = 72 * 60 * 60 * 1000;
+const refundFulfillmentInvalidatedAction = "payment.refund.fulfillmentInvalidated";
+const refundFulfillmentRestoredAction = "payment.refund.fulfillmentRestored";
+const sendTicketConfirmationAction = makeFunctionReference<
+  "action",
+  { deliveryId: Id<"ticketDeliveries"> },
+  null
+>("ticketDelivery:sendTicketConfirmation");
 
 export const getCheckoutPaymentSnapshot = internalQuery({
   args: {
@@ -46,12 +57,23 @@ export const getCheckoutPaymentSnapshot = internalQuery({
       throw new Error(`Checkout order cannot create a Stripe session from status ${order.status}`);
     }
 
-    const lines = await ctx.db
-      .query("orderLineItems")
-      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
-      .collect();
+    const [lines, hoursRow] = await Promise.all([
+      ctx.db
+        .query("orderLineItems")
+        .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
+        .collect(),
+      ctx.db
+        .query("config")
+        .withIndex("by_key", (q) => q.eq("key", "hours"))
+        .unique()
+    ]);
     assertStoredPaymentLineProvenance(lines, "Checkout");
-    assertCheckoutFulfillmentReady(order, lines);
+    const fulfillment = assertCheckoutFulfillmentReady(order, lines);
+    assertCheckoutTimeAvailable(
+      safeOperatingHours(hoursRow?.data),
+      fulfillment.visitDate,
+      fulfillment.entryTime
+    );
 
     return {
       orderRef: order.orderRef,
@@ -454,21 +476,28 @@ export const recordStripeTerminalReaderProcess = internalMutation({
       readerProcessRecordedAt: now,
       ...(args.raw === undefined ? {} : { readerProcess: args.raw })
     };
-    await ctx.db.patch(terminalEvent._id, {
-      status: args.status,
-      raw: nextRaw
-    });
-
-    if (args.status === "paid") {
-      await ctx.db.patch(sale._id, {
-        status: "paid",
-        updatedAt: now
-      });
+    const supersededByWebhook =
+      typeof existingRaw.terminalWebhookRecordedAt === "number" &&
+      Number.isFinite(existingRaw.terminalWebhookRecordedAt);
+    if (supersededByWebhook) {
+      await ctx.db.patch(terminalEvent._id, { raw: nextRaw });
     } else {
-      await ctx.db.patch(sale._id, {
-        status: "payment_pending",
-        updatedAt: now
+      await ctx.db.patch(terminalEvent._id, {
+        status: args.status,
+        raw: nextRaw
       });
+
+      if (args.status === "paid") {
+        await ctx.db.patch(sale._id, {
+          status: "paid",
+          updatedAt: now
+        });
+      } else {
+        await ctx.db.patch(sale._id, {
+          status: "payment_pending",
+          updatedAt: now
+        });
+      }
     }
 
     await ctx.db.insert("auditEvents", {
@@ -481,12 +510,16 @@ export const recordStripeTerminalReaderProcess = internalMutation({
         providerPaymentId: args.providerPaymentId,
         readerId: args.readerId,
         processAttempt: args.processAttempt,
-        status: args.status
+        status: args.status,
+        resultStatus: supersededByWebhook ? terminalEvent.status : args.status,
+        supersededByWebhook
       },
       createdAt: now
     });
 
-    return { eventId: terminalEvent._id, status: args.status };
+    return supersededByWebhook
+      ? { eventId: terminalEvent._id, status: terminalEvent.status, supersededByWebhook: true }
+      : { eventId: terminalEvent._id, status: args.status };
   }
 });
 
@@ -532,6 +565,7 @@ export const recordStripeTerminalWebhook = internalMutation({
     outcome: v.union(v.literal("paid"), v.literal("failed"), v.literal("canceled"), v.literal("ignored")),
     providerPaymentId: v.optional(v.string()),
     saleRef: v.optional(v.string()),
+    ticketCode: v.optional(v.string()),
     amountCents: v.optional(v.number()),
     currency: v.optional(v.literal("usd")),
     raw: v.optional(v.any())
@@ -544,6 +578,7 @@ export const recordStripeTerminalWebhook = internalMutation({
       )
       .first();
     if (existingWebhook) {
+      await repairDuplicatePaidTerminalDelivery(ctx, args, existingWebhook);
       return {
         status: existingWebhook.status,
         duplicate: true,
@@ -683,6 +718,37 @@ export const recordStripeTerminalWebhook = internalMutation({
 
     if (args.outcome === "paid") {
       const now = Date.now();
+      const saleLines = await ctx.db
+        .query("posSaleLines")
+        .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+        .collect();
+      assertStoredPaymentLineProvenance(saleLines, "POS Terminal webhook");
+      const fulfillment = buildConfirmedPosFulfillment(sale, saleLines, now);
+      if (fulfillment) {
+        const existingBooking = await ctx.db
+          .query("bookings")
+          .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+          .unique();
+        if (existingBooking) {
+          assertMatchingPosBooking(existingBooking, fulfillment.booking);
+        } else {
+          await ctx.db.insert("bookings", fulfillment.booking);
+          await ctx.db.insert("auditEvents", {
+            action: "pos.bookingFulfilled",
+            entityType: "booking",
+            entityRef: fulfillment.booking.bookingRef,
+            metadata: fulfillment.auditMetadata,
+            createdAt: now
+          });
+        }
+        await ensureTicketDelivery(ctx, {
+          ticketCode: args.ticketCode,
+          bookingRef: fulfillment.booking.bookingRef,
+          saleRef: args.saleRef,
+          emailLower: fulfillment.booking.emailLower,
+          now
+        });
+      }
       const existingPaidEvent = providerEvents.find((event) => event.saleRef === args.saleRef && event.status === "paid");
       if (!existingPaidEvent) {
         await ctx.db.insert("paymentEvents", {
@@ -922,9 +988,16 @@ export const recordStripeRefundWebhook = internalMutation({
         .query("orders")
         .withIndex("by_orderRef", (q) => q.eq("orderRef", paidEvent.orderRef as string))
         .unique();
+      const activeInvalidation = order?.status === "canceled"
+        ? await findActiveRefundFulfillmentInvalidation(ctx, {
+            entityType: "order",
+            entityRef: paidEvent.orderRef,
+            providerPaymentIntentId: args.providerPaymentIntentId
+          })
+        : undefined;
       if (
         !order ||
-        order.status !== "paid" ||
+        !(order.status === "paid" || (order.status === "canceled" && activeInvalidation)) ||
         order.expectedProvider !== "stripe" ||
         order.totalCents !== paidEvent.amountCents ||
         order.currency !== paidEvent.currency
@@ -943,9 +1016,16 @@ export const recordStripeRefundWebhook = internalMutation({
         .query("posSales")
         .withIndex("by_saleRef", (q) => q.eq("saleRef", paidEvent.saleRef as string))
         .unique();
+      const activeInvalidation = sale?.status === "canceled"
+        ? await findActiveRefundFulfillmentInvalidation(ctx, {
+            entityType: "posSale",
+            entityRef: paidEvent.saleRef as string,
+            providerPaymentIntentId: args.providerPaymentIntentId
+          })
+        : undefined;
       if (
         !sale ||
-        sale.status !== "paid" ||
+        !(sale.status === "paid" || (sale.status === "canceled" && activeInvalidation)) ||
         sale.totalCents !== paidEvent.amountCents ||
         sale.currency !== paidEvent.currency
       ) {
@@ -1077,6 +1157,15 @@ export const recordStripeRefundWebhook = internalMutation({
     if (existingRefund) await ctx.db.patch(existingRefund._id, refundDocument);
     else await ctx.db.insert("refunds", { ...refundDocument, createdAt: now });
 
+    await reconcileRefundFulfillment(ctx, {
+      providerPaymentIntentId: args.providerPaymentIntentId,
+      orderRef: paidEvent.orderRef,
+      saleRef: paidEvent.saleRef,
+      paidAmountCents: paidEvent.amountCents,
+      cumulativeSucceededRefundedCents: succeededRefundedCents,
+      now
+    });
+
     await ctx.db.insert("auditEvents", {
       action: "payment.refund.reconciled",
       entityType: paidEvent.orderRef ? "order" : "posSale",
@@ -1115,6 +1204,202 @@ function refundStatusTransitionAllowed(from: StripeRefundStatus, to: StripeRefun
   return true;
 }
 
+type RefundFulfillmentEntityType = "order" | "posSale";
+type RefundFulfillmentInvalidation = {
+  createdAt: number;
+  metadata?: Record<string, string | number | boolean>;
+};
+
+async function findActiveRefundFulfillmentInvalidation(
+  ctx: MutationCtx,
+  args: {
+    entityType: RefundFulfillmentEntityType;
+    entityRef: string;
+    providerPaymentIntentId: string;
+  }
+) {
+  const events = await ctx.db
+    .query("auditEvents")
+    .withIndex("by_entity", (q) => q.eq("entityType", args.entityType).eq("entityRef", args.entityRef))
+    .collect();
+  let active: RefundFulfillmentInvalidation | undefined;
+  for (const event of events.toSorted((left, right) => left.createdAt - right.createdAt)) {
+    if (event.metadata?.providerPaymentIntentId !== args.providerPaymentIntentId) continue;
+    if (event.action === refundFulfillmentInvalidatedAction) {
+      active = { createdAt: event.createdAt, metadata: event.metadata };
+    } else if (event.action === refundFulfillmentRestoredAction) {
+      active = undefined;
+    }
+  }
+  return active;
+}
+
+async function reconcileRefundFulfillment(
+  ctx: MutationCtx,
+  args: {
+    providerPaymentIntentId: string;
+    orderRef?: string;
+    saleRef?: string;
+    paidAmountCents: number;
+    cumulativeSucceededRefundedCents: number;
+    now: number;
+  }
+) {
+  const entityType: RefundFulfillmentEntityType = args.orderRef ? "order" : "posSale";
+  const entityRef = args.orderRef ?? args.saleRef!;
+  const [entity, booking, activeInvalidation] = await Promise.all([
+    args.orderRef
+      ? ctx.db
+          .query("orders")
+          .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+          .unique()
+      : ctx.db
+          .query("posSales")
+          .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+          .unique(),
+    args.orderRef
+      ? ctx.db
+          .query("bookings")
+          .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+          .unique()
+      : ctx.db
+          .query("bookings")
+          .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+          .unique(),
+    findActiveRefundFulfillmentInvalidation(ctx, {
+      entityType,
+      entityRef,
+      providerPaymentIntentId: args.providerPaymentIntentId
+    })
+  ]);
+  if (!entity) throw new Error("Refund fulfillment entity was not found");
+
+  if (args.cumulativeSucceededRefundedCents === args.paidAmountCents) {
+    if (activeInvalidation) return;
+
+    const entityStatusChanged = entity.status === "paid";
+    const bookingStatusChanged = Boolean(booking && booking.status !== "cancelled");
+    const bookingPreviousStatus = booking?.status;
+    const bookingPreviousCheckedInAt = booking?.checkedInAt;
+    const bookingPreviousCancelledAt = booking?.cancelledAt;
+    if (entityStatusChanged) {
+      await ctx.db.patch(entity._id, { status: "canceled", updatedAt: args.now });
+    }
+    if (booking && bookingStatusChanged) {
+      await ctx.db.patch(booking._id, {
+        status: "cancelled",
+        cancelledAt: args.now,
+        updatedAt: args.now
+      });
+    }
+
+    await ctx.db.insert("auditEvents", {
+      action: refundFulfillmentInvalidatedAction,
+      entityType,
+      entityRef,
+      metadata: scalarMetadata({
+        providerPaymentIntentId: args.providerPaymentIntentId,
+        cumulativeSucceededRefundedCents: args.cumulativeSucceededRefundedCents,
+        entityStatusChanged,
+        entityUpdatedAt: entityStatusChanged ? args.now : undefined,
+        bookingStatusChanged,
+        bookingRef: booking?.bookingRef,
+        bookingPreviousStatus: bookingStatusChanged ? bookingPreviousStatus : undefined,
+        bookingPreviousCheckedInAt: bookingStatusChanged ? bookingPreviousCheckedInAt : undefined,
+        bookingPreviousCancelledAt: bookingStatusChanged ? bookingPreviousCancelledAt : undefined,
+        bookingUpdatedAt: bookingStatusChanged ? args.now : undefined
+      }),
+      createdAt: args.now
+    });
+    return;
+  }
+
+  if (!activeInvalidation) return;
+
+  const metadata = activeInvalidation.metadata ?? {};
+  const expectedEntityUpdatedAt = numericMetadata(metadata.entityUpdatedAt);
+  const entityRestored =
+    metadata.entityStatusChanged === true &&
+    entity.status === "canceled" &&
+    expectedEntityUpdatedAt !== undefined &&
+    entity.updatedAt === expectedEntityUpdatedAt;
+  if (entityRestored) {
+    await ctx.db.patch(entity._id, { status: "paid", updatedAt: args.now });
+  }
+
+  const expectedBookingUpdatedAt = numericMetadata(metadata.bookingUpdatedAt);
+  const previousBookingStatus = stringMetadata(metadata.bookingPreviousStatus);
+  const bookingRestored = Boolean(
+    booking &&
+      metadata.bookingStatusChanged === true &&
+      booking.status === "cancelled" &&
+      booking.bookingRef === metadata.bookingRef &&
+      previousBookingStatus &&
+      previousBookingStatus !== "cancelled" &&
+      expectedBookingUpdatedAt !== undefined &&
+      booking.updatedAt === expectedBookingUpdatedAt
+  );
+  let ticketDeliveryRequeued = false;
+  if (booking && bookingRestored) {
+    await ctx.db.patch(booking._id, {
+      status: previousBookingStatus!,
+      checkedInAt: numericMetadata(metadata.bookingPreviousCheckedInAt),
+      cancelledAt: numericMetadata(metadata.bookingPreviousCancelledAt),
+      updatedAt: args.now
+    });
+    const ticketDelivery = await ctx.db
+      .query("ticketDeliveries")
+      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", booking.bookingRef))
+      .unique();
+    if (
+      ticketDelivery?.status === "suppressed" &&
+      ticketDelivery.failureReason === "booking_cancelled"
+    ) {
+      await ctx.db.patch(ticketDelivery._id, {
+        status: "queued",
+        failureReason: undefined,
+        providerMessageId: undefined,
+        lastAttemptAt: undefined,
+        sentAt: undefined,
+        updatedAt: args.now
+      });
+      await ctx.scheduler.runAfter(0, sendTicketConfirmationAction, {
+        deliveryId: ticketDelivery._id
+      });
+      ticketDeliveryRequeued = true;
+    }
+  }
+
+  await ctx.db.insert("auditEvents", {
+    action: refundFulfillmentRestoredAction,
+    entityType,
+    entityRef,
+    metadata: scalarMetadata({
+      providerPaymentIntentId: args.providerPaymentIntentId,
+      cumulativeSucceededRefundedCents: args.cumulativeSucceededRefundedCents,
+      entityRestored,
+      bookingRef: booking?.bookingRef,
+      bookingRestored,
+      ticketDeliveryRequeued
+    }),
+    createdAt: args.now
+  });
+}
+
+function numericMetadata(value: string | number | boolean | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function stringMetadata(value: string | number | boolean | undefined) {
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function scalarMetadata(value: Record<string, string | number | boolean | undefined>) {
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+  );
+}
+
 export const recordStripeCheckoutWebhook = internalMutation({
   args: {
     providerEventId: v.string(),
@@ -1123,6 +1408,7 @@ export const recordStripeCheckoutWebhook = internalMutation({
     providerPaymentId: v.optional(v.string()),
     providerPaymentIntentId: v.optional(v.string()),
     orderRef: v.optional(v.string()),
+    ticketCode: v.optional(v.string()),
     amountCents: v.optional(v.number()),
     currency: v.optional(v.literal("usd")),
     raw: v.optional(v.any())
@@ -1135,6 +1421,7 @@ export const recordStripeCheckoutWebhook = internalMutation({
       )
       .first();
     if (existingWebhook) {
+      await repairDuplicatePaidCheckoutDelivery(ctx, args, existingWebhook);
       return {
         status: existingWebhook.status,
         duplicate: true,
@@ -1282,6 +1569,13 @@ export const recordStripeCheckoutWebhook = internalMutation({
           createdAt: now
         });
       }
+      await ensureTicketDelivery(ctx, {
+        ticketCode: args.ticketCode,
+        bookingRef: fulfillment.booking.bookingRef,
+        orderRef: args.orderRef,
+        emailLower: fulfillment.booking.emailLower,
+        now
+      });
 
       const existingPaidEvent = providerEvents.find((event) => event.status === "paid");
       if (!existingPaidEvent) {
@@ -1367,6 +1661,149 @@ function assertMatchingCheckoutBooking(
   if (mismatch) {
     throw new Error(`Stored checkout booking does not match paid order fulfillment: ${mismatch}`);
   }
+}
+
+function assertMatchingPosBooking(
+  existing: {
+    bookingRef: string;
+    saleRef?: string;
+    visitDate?: string;
+    partySize?: number;
+    emailLower?: string;
+  },
+  expected: ConfirmedPosBooking
+) {
+  const immutableFields = ["bookingRef", "saleRef", "visitDate", "partySize", "emailLower"] as const;
+  const mismatch = immutableFields.find((field) => existing[field] !== expected[field]);
+  if (mismatch) {
+    throw new Error(`Stored POS booking does not match paid sale fulfillment: ${mismatch}`);
+  }
+}
+
+async function repairDuplicatePaidCheckoutDelivery(
+  ctx: MutationCtx,
+  args: {
+    outcome: "paid" | "failed" | "canceled" | "ignored";
+    orderRef?: string;
+    ticketCode?: string;
+  },
+  existingWebhook: { status: "processed" | "ignored" | "failed"; orderRef?: string }
+) {
+  if (
+    args.outcome !== "paid" ||
+    existingWebhook.status !== "processed" ||
+    !args.ticketCode ||
+    !args.orderRef ||
+    existingWebhook.orderRef !== args.orderRef
+  ) {
+    return;
+  }
+
+  const [order, booking] = await Promise.all([
+    ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+      .unique(),
+    ctx.db
+      .query("bookings")
+      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
+      .unique()
+  ]);
+  if (order?.status !== "paid" || !booking || booking.status !== "confirmed") {
+    return;
+  }
+
+  await ensureTicketDelivery(ctx, {
+    ticketCode: args.ticketCode,
+    bookingRef: booking.bookingRef,
+    orderRef: args.orderRef,
+    emailLower: booking.emailLower,
+    now: Date.now()
+  });
+}
+
+async function repairDuplicatePaidTerminalDelivery(
+  ctx: MutationCtx,
+  args: {
+    outcome: "paid" | "failed" | "canceled" | "ignored";
+    saleRef?: string;
+    ticketCode?: string;
+  },
+  existingWebhook: { status: "processed" | "ignored" | "failed"; saleRef?: string }
+) {
+  if (
+    args.outcome !== "paid" ||
+    existingWebhook.status !== "processed" ||
+    !args.ticketCode ||
+    !args.saleRef ||
+    existingWebhook.saleRef !== args.saleRef
+  ) {
+    return;
+  }
+
+  const [sale, booking] = await Promise.all([
+    ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+      .unique(),
+    ctx.db
+      .query("bookings")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
+      .unique()
+  ]);
+  if (sale?.status !== "paid" || !booking || booking.status !== "confirmed") {
+    return;
+  }
+
+  await ensureTicketDelivery(ctx, {
+    ticketCode: args.ticketCode,
+    bookingRef: booking.bookingRef,
+    saleRef: args.saleRef,
+    emailLower: booking.emailLower,
+    now: Date.now()
+  });
+}
+
+async function ensureTicketDelivery(
+  ctx: MutationCtx,
+  args: {
+    ticketCode?: string;
+    bookingRef: string;
+    orderRef?: string;
+    saleRef?: string;
+    emailLower?: string;
+    now: number;
+  }
+) {
+  const existing = await ctx.db
+    .query("ticketDeliveries")
+    .withIndex("by_bookingRef", (q) => q.eq("bookingRef", args.bookingRef))
+    .unique();
+  if (existing) {
+    const mismatch =
+      existing.orderRef !== args.orderRef ||
+      existing.saleRef !== args.saleRef ||
+      existing.emailLower !== args.emailLower;
+    if (mismatch) {
+      throw new Error("Stored ticket delivery does not match paid booking fulfillment");
+    }
+    return existing._id;
+  }
+  if (!args.ticketCode) {
+    throw new Error("ticketCode is required for paid ticket fulfillment");
+  }
+  const delivery = buildTicketDeliveryRecord(args as {
+    ticketCode: string;
+    bookingRef: string;
+    orderRef?: string;
+    saleRef?: string;
+    emailLower?: string;
+  }, args.now);
+  const deliveryId = await ctx.db.insert("ticketDeliveries", delivery);
+  if (delivery.status === "queued") {
+    await ctx.scheduler.runAfter(0, sendTicketConfirmationAction, { deliveryId });
+  }
+  return deliveryId;
 }
 
 async function insertWebhookEvent(
