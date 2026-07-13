@@ -47,9 +47,9 @@ As of July 13, 2026:
 - The stable production aliases and latest dated commit -> deployment ->
   immutable URL evidence are centralized in
   [docs/current-state-simple.md](docs/current-state-simple.md#production-deployment-evidence).
-  PR #127 supplied the application changes; the full post-PR #128 production
-  verification is the latest recorded behavior evidence. No Supabase-to-Convex
-  data migration has run.
+  PR #127 supplied the main application changes; the full post-PR #129
+  completion-audit verification is the current dated behavior evidence. No
+  Supabase-to-Convex data migration has run.
 - `bun run vercel:project:check` confirms the linked Vercel dashboard project
   is still `junyen-enterprises/web`, rooted at `apps/web`, on Next.js and Node
   `24.x`; it also verifies the committed Bun canary revision/SHA-256 and rejects
@@ -106,8 +106,8 @@ As of July 13, 2026:
   `Vary: Authorization`.
 - Payment route failures use stable public error codes/messages so raw
   Stripe/Convex/provider details and env names are not returned to browsers.
-- Vercel production runtime checks found no `error`, `fatal`, or HTTP `500` logs
-  in the checked post-merge window after PR #128. The observed non-200 responses
+- Vercel production runtime checks found no error-level logs in the checked
+  post-merge window after PR #129. The observed non-200 responses
   were expected staff-auth `401` and Convex-unconfigured `503` gates from the
   smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest

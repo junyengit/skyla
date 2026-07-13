@@ -45,12 +45,13 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Merged public-copy cleanup PR #125 as
       `c6a13e5bdba0e3410aa2657cd6c3889c35013228` after CI, CodeQL, Vercel,
       production-build, desktop/mobile visual, and no-write Preview review.
-- [x] Merged functionality/security PR #127 as `6146622` and current-state PR
-      #128 as `f1b3f00`. The post-PR #128 immutable deployment
-      `dpl_5ccBhaQoMNZDBrcvyBPK8YMSfdfQ`, apex, and `www` passed the full
-      production-readiness/payment smoke without a real charge; Vercel returned
-      no error, fatal, or HTTP 500 logs in the checked window. Exact immutable
-      URLs remain dated evidence because every later merge creates another.
+- [x] Merged functionality/security PR #127 as `6146622`, current-state PR #128
+      as `f1b3f00`, and completion-audit PR #129 as `ddd904e`. The PR #129
+      immutable deployment `dpl_9Bavqyd7nbebpxg8jbc6tB1j1xqV`, apex, and
+      `www` passed the full production-readiness/payment smoke without a real
+      charge; Vercel returned no error-level runtime logs in the checked window.
+      Exact immutable URLs remain dated evidence because every later merge
+      creates another.
 - [ ] Configure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and
       separate `NEXT_PUBLIC_CONVEX_URL` bindings from Convex development to
       Vercel Preview and Convex production to Vercel Production; configure
