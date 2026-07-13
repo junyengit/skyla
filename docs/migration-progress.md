@@ -1434,7 +1434,7 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [ ] Keep Supabase read-only for the agreed retention window after production
       reconciliation. No cloud data migration has occurred yet.
 
-### 2026-07-13 Final Functionality And Security Branch
+### 2026-07-13 Final Functionality And Security Production Merge
 
 - [x] Added ticket creation, QR display, Resend delivery state, stale-send
       recovery, audited Admin resend, and authoritative POS completion polling.
@@ -1477,8 +1477,12 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       and mobile checkout. Staff text is white and readable on black, setup
       states are clear, and checkout has no horizontal overflow. Helium remains
       unavailable while the Mac is locked.
-- [ ] Merge only after CI, CodeQL, and Vercel Preview checks pass, then repeat
-      production route/payment/readiness smokes without a real card.
+- [x] Merged PR #127 as `6146622` after CI, CodeQL, browser workflows, and Vercel
+      Preview passed. The Vercel production deployment
+      `dpl_BiwoKDeCQDVXvEcjH48AEBH6vgLB` is READY, owns the apex and `www`
+      aliases, and passed post-merge route/payment/readiness smokes without a
+      real card. No error, fatal, or HTTP 500 runtime logs appeared in the
+      checked window.
 - [ ] Complete the owner dashboard checklist and linked Stripe test-mode
       acceptance before enabling any real payment traffic.
 

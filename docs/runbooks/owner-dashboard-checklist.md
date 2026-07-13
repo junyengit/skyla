@@ -12,6 +12,10 @@ through all migration verification.
 - [ ] In Vercel Domains, confirm `skydeckla.com` and `www.skydeckla.com` both
       show **Valid Configuration** with issued SSL certificates. Keep the
       GoDaddy nameservers pointed at Vercel.
+- [ ] In GitHub repository **Settings > Branches**, add `browser-test` to the
+      required checks for `main`. The existing required checks are `ci-build`,
+      `Analyze JavaScript and TypeScript`, and `Vercel`; the new browser job is
+      green but is not yet enforced by branch protection.
 - [ ] In GitHub repository **Settings > Releases**, enable release immutability
       before the next Bun toolchain pin is published. GitHub applies this only
       to future releases, so leave the current checksum-pinned mirror intact and

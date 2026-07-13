@@ -82,20 +82,21 @@ order.
 - Vercel project ID: `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`
 - The exact current commit -> deployment -> URL chain lives only in
   [Current Deployment Identity](../current-state-simple.md#current-deployment-identity).
-- PR #125 remains the latest full behavior evidence. Its post-merge readiness
-  passed on apex, `www`, and its immutable deployment;
-  payment smokes passed on all three; Vercel reported no runtime error clusters
-  or error/fatal logs in the checked 30-minute window.
-- `bun run vercel:project:check` passed on 2026-07-12. It verifies project
+- PR #127 is the current deployment and latest full behavior evidence. Its
+  post-merge readiness and payment smokes passed on apex, `www`, and the current
+  immutable deployment; Vercel reported no error, fatal, or HTTP 500 logs in the
+  checked window.
+- `bun run vercel:project:check` passed on 2026-07-13. It verifies project
   `junyen-enterprises/web`, project ID `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr`,
   root `apps/web`, Next.js, Node `24.x`, the local `.vercel` link when
   present, and `apps/web/vercel.json` as the Bun canary install/build source
   of truth.
-- PR #125 passed `bun run check` on 2026-07-12: 126 web tests,
-  143 Convex tests, 39 script tests, lint, all typechecks, the Next.js
-  production build, artifact checks, and legacy Supabase retirement checks.
-  `bun install --frozen-lockfile` and `bun audit --audit-level=low` also passed
-  with no vulnerabilities.
+- PR #127 passed `bun run check` locally and in hosted CI on 2026-07-13: 188 web
+  tests, 214 Convex tests, 46 script tests, package tests, lint, all typechecks,
+  the Next.js production build, artifact checks, and legacy Supabase retirement
+  checks. `bun install --frozen-lockfile` and `bun audit --audit-level=high` also
+  passed with no vulnerabilities; eight Chromium workflows passed on the PR and
+  `main`.
 - PR #96 added `bun run vercel:env:check`, a safe Vercel env presence/scope
   checker. It now requires a Preview-only Convex development URL binding, a
   separate Production-only Convex production URL binding, and both Clerk keys
@@ -108,7 +109,7 @@ order.
 - Custom domains checked on 2026-07-06:
   - `https://skydeckla.com`
   - `https://www.skydeckla.com`
-- Vercel/Convex env behavior checked on 2026-07-12: `vercel env ls` for
+- Vercel/Convex env behavior checked on 2026-07-13: `vercel env ls` for
   `junyen-enterprises/web` found no project environment variables. Production
   still behaves as Convex-unconfigured, so checkout/POS/member/experience
   server writes and payment execution are safely blocked. `bun run
@@ -199,10 +200,10 @@ order.
   non-preview targets unless explicitly allowed, asks the deployed backend for a
   staff-gated readiness snapshot, and writes test member, inquiry, checkout, and
   POS records only after the operator provides a seeded test staff token.
-- Vercel production runtime logs checked on 2026-07-12 after PR #113 and the
-  latest smoke probes: the Vercel runtime log query returned no `error` or
-  `fatal` logs in the checked 30-minute production window. Non-200 responses
-  were expected: `401` for staff-auth gates and `503` for Convex-unconfigured
+- Vercel production runtime logs checked on 2026-07-13 after PR #127 and the
+  latest smoke probes: the Vercel runtime log query returned no `error`, `fatal`,
+  or HTTP `500` logs in the checked production window. Non-200 responses were
+  expected: `401` for staff-auth gates and `503` for Convex-unconfigured
   write/payment gates.
 - Staff API header probes checked on 2026-07-06: `/api/admin/catalog` and
   `/api/pos/readers` now return `Cache-Control: no-store` and
