@@ -1504,12 +1504,20 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       become a server total, then cleared the cart without creating a payment.
 - [x] Merged Dependabot PR #131 for `actions/upload-artifact@7` after quality,
       browser, aggregate CI, CodeQL, and Vercel passed on a compatible runner.
+- [x] Merged Dependabot PR #136 for `actions/setup-node@7`. The action resolved
+      Node `24.18.0` on runner `2.335.1`; an unrelated first-run browser timeout
+      passed all eight workflows on a clean rerun before merge.
 - [x] Upgraded `@clerk/nextjs` from `7.5.17` to `7.5.18`, including its matching
       Clerk backend/react/shared patches, without adding an unused root package.
 - [x] Closed PRs #132-#134 with evidence. ESLint 10 breaks
       `eslint-plugin-react@7.37.5`, TypeScript 7 exceeds the current parser's
       supported range, and Node 26 types do not match the deployed Node 24
       runtime. Major-only Dependabot ignores preserve patch/minor updates.
+- [x] Merged PR #135 as `3d02bd7`. Its exact production deployment
+      `dpl_45TRfQS2Bm73CKUCZCa9QcMd6SJH` is READY at
+      `https://web-1co0qbqsw-junyen-enterprises.vercel.app`, owns the apex and
+      `www` aliases, and passed the three-origin no-write production-readiness
+      suite. Vercel returned no error-level logs in the checked window.
 - [ ] Complete the owner dashboard checklist and linked Stripe test-mode
       acceptance before enabling any real payment traffic.
 
