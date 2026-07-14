@@ -281,7 +281,9 @@ third, ADR 0032 data migration fourth, and legacy payment retirement last.
   TypeScript
   `7.0.2` passes direct project typechecks but Next.js `16.2.10` rejects it
   during `next build`, so production remains on TypeScript `6.0.3`. ESLint 10
-  remains blocked by the current React/Next lint plugin stack.
+  remains blocked by the current React/Next lint plugin stack. Dependabot
+  ignores only those majors plus the Node 26 type major; patch/minor updates on
+  the supported TypeScript, ESLint, and Node 24 type lines remain enabled.
 - Supabase functions remain legacy transition surfaces until Convex,
   server-authoritative payment creation, admin, and POS replacements are
   verified and the dashboard deployments are disabled or redeployed from the
