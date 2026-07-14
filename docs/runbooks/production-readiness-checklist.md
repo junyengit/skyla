@@ -792,13 +792,15 @@ Current dependency note:
 - `bun run security:audit` runs `bun audit --audit-level=high` and reports no
   high-severity vulnerabilities.
 - `vitest` is patched to `4.1.10`.
-- `bun outdated --recursive` reports TypeScript `7.0.2` across the workspaces and
-  ESLint `10.7.0` in `@skyla/web`. TypeScript 7 passes direct typechecks but
-  Next.js `16.2.10` rejects it during `next build`. I retested the ESLint major
-  upgrade on 2026-07-06; lint fails
-  because `eslint-plugin-react@7.37.5` is not compatible with ESLint 10 through
-  the current Next lint stack. Keep TypeScript on `6.0.3` and ESLint on `9.39.4`
-  until the upstream Next/lint stack supports those majors.
+- `@clerk/nextjs` is patched to `7.5.18`; its Clerk transitive packages resolve
+  to the matching patch line without an extra direct root dependency.
+- `bun outdated --recursive` reports TypeScript `7.0.2`, ESLint `10.7.0`, and
+  Node 26 types. Dependabot retested those majors on 2026-07-14: TypeScript 7 is
+  outside the current TypeScript-ESLint parser range, ESLint 10 crashes
+  `eslint-plugin-react@7.37.5`, and Node 26 types do not match the deployed Node
+  24 runtime. Keep TypeScript on `6.0.3`, ESLint on `9.39.4`, and `@types/node`
+  on 24 until their corresponding stack/runtime upgrades. Major-only ignore
+  rules prevent known-bad PR churn while patch/minor updates remain enabled.
 - The public homepage, checkout, admin, POS, and cafe display prices now route
   through `@skyla/payments` catalog helpers. Admin still shows this as a
   code-owned read-only catalog. Convex now has catalog versioning, immutable

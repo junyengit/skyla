@@ -37,8 +37,8 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       production build, artifact and legacy-retirement guards, frozen Bun
       install, and a high-threshold audit with no vulnerabilities. Eight
       headless desktop/mobile workflows found no overflow or framework overlay
-      and confirmed white text on the black Admin/POS surfaces; a fresh Helium
-      pass remains pending while macOS is locked.
+      and confirmed white text on the black Admin/POS surfaces. A July 14 live
+      Helium pass repeated the Home, Checkout, Admin, and POS checks.
 - [x] Merged Clerk staff-auth PR #121 as
       `fc7a497358b573563d9f0772d3728c4bc853c562` after CI, CodeQL, Vercel,
       correctness, and security review passed.
@@ -1414,8 +1414,9 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
 - [x] Passed post-merge readiness on apex, `www`, and immutable production,
       plus route/payment smokes on apex; Vercel reported no runtime errors in
       the checked 30-minute window.
-- [ ] Repeat the visual staff pass in Helium after the Mac is unlocked. The
-      automated white-on-black staff contrast test passed.
+- [x] Repeated the visual staff pass in Helium on July 14. Live `/admin` and
+      `/pos` remain readable white-on-black and clearly fail closed while Clerk
+      and Convex are unconfigured.
 - [x] Added a narrowly scoped legacy migration implementation for Supabase
       `bookings`, `members`, and `inquiries`, with deterministic SHA-256 plans,
       quarantine, 1-50 row batches, stable source identities, batch/row ledgers,
@@ -1482,14 +1483,33 @@ Clean and reorganize the repository around the new Turborepo architecture, adopt
       vulnerabilities and passed all eight production-mode Chromium workflows.
 - [x] Inspected fresh production-build screenshots for desktop Admin/POS/home
       and mobile checkout. Staff text is white and readable on black, setup
-      states are clear, and checkout has no horizontal overflow. Helium remains
-      unavailable while the Mac is locked.
+      states are clear, and checkout has no horizontal overflow. Live Helium
+      verification followed on July 14.
 - [x] Merged PR #127 as `6146622` after CI, CodeQL, browser workflows, and Vercel
       Preview passed. The Vercel production deployment
       `dpl_BiwoKDeCQDVXvEcjH48AEBH6vgLB` is READY, owns the apex and `www`
       aliases, and passed post-merge route/payment/readiness smokes without a
       real card. No error, fatal, or HTTP 500 runtime logs appeared in the
       checked window.
+- [ ] Complete the owner dashboard checklist and linked Stripe test-mode
+      acceptance before enabling any real payment traffic.
+
+### 2026-07-14 Helium And Dependency Follow-up
+
+- [x] Checked live Home, Checkout, Admin, and POS in Helium. The Admin-to-POS
+      route handoff works, both staff surfaces use readable white text on black,
+      and setup-required states keep server review and reader payment disabled.
+- [x] Added one General Admission item to the live client-side POS cart to
+      inspect the populated layout, confirmed the local `$29.00` preview did not
+      become a server total, then cleared the cart without creating a payment.
+- [x] Merged Dependabot PR #131 for `actions/upload-artifact@7` after quality,
+      browser, aggregate CI, CodeQL, and Vercel passed on a compatible runner.
+- [x] Upgraded `@clerk/nextjs` from `7.5.17` to `7.5.18`, including its matching
+      Clerk backend/react/shared patches, without adding an unused root package.
+- [x] Closed PRs #132-#134 with evidence. ESLint 10 breaks
+      `eslint-plugin-react@7.37.5`, TypeScript 7 exceeds the current parser's
+      supported range, and Node 26 types do not match the deployed Node 24
+      runtime. Major-only Dependabot ignores preserve patch/minor updates.
 - [ ] Complete the owner dashboard checklist and linked Stripe test-mode
       acceptance before enabling any real payment traffic.
 
