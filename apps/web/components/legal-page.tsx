@@ -24,7 +24,7 @@ export function LegalPage({ title, updated, intro, sections }: LegalPageProps) {
         </Link>
         <nav aria-label="Legal page navigation">
           <Link href="/about" prefetch={false}>
-            Best Space
+            The Space
           </Link>
           <Link href="/cafe" prefetch={false}>
             Cafe

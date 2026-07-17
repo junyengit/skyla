@@ -17,8 +17,14 @@ function convexDeploymentUrl() {
   return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
 }
 
+// 6100 Wilshire building hours; shown while the Convex-managed config is unreachable.
 const unavailableOperatingHours = Object.fromEntries(
-  operatingWeekdays.map((day) => [day, { open: "00:00", close: "00:00", closed: true }])
+  operatingWeekdays.map((day) => [
+    day,
+    day === "Saturday" || day === "Sunday"
+      ? { open: "00:00", close: "00:00", closed: true }
+      : { open: "09:00", close: "18:00", closed: false }
+  ])
 ) as OperatingHours;
 
 export const unavailablePublicOperatingConfig: PublicOperatingConfig = {
@@ -45,7 +51,8 @@ export async function loadPublicOperatingConfig(): Promise<PublicOperatingConfig
 
   try {
     return (await loadCachedPublicOperatingConfig(deploymentUrl)) ?? unavailablePublicOperatingConfig;
-  } catch {
+  } catch (error) {
+    console.error("Failed to load public operating config from Convex; serving fallback hours.", error);
     return unavailablePublicOperatingConfig;
   }
 }

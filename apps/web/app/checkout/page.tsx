@@ -71,6 +71,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         stripeStatus={stripeStatus === "success" || stripeStatus === "cancel" ? stripeStatus : undefined}
         returnedCheckoutSessionId={checkoutSessionId}
         operatingHours={operatingConfig?.operatingHours ?? null}
+        initialPackageKey={firstParam(params.package)}
       />
 
       <section className="checkoutTrust" aria-label="Checkout safeguards">

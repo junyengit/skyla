@@ -114,7 +114,7 @@ export default function MembersPage() {
         eyebrow="By application only"
         title={
           <>
-            Sky LA
+            Sky LA{" "}
             <span>Members</span>
           </>
         }

@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   },
   description:
     "360-degree rooftop views, cafe, private experiences, and ticketed visits above 6100 Wilshire in Los Angeles.",
+  alternates: {
+    canonical: "./"
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },

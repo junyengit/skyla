@@ -58,7 +58,7 @@ describe("App Router route ownership", () => {
 
   it("keeps public content in native pages without legacy browser data paths", () => {
     const checks: Array<[string, string[]]> = [
-      ["app/about/page.tsx", ["Best Space"]],
+      ["app/about/page.tsx", ["The Space"]],
       ["app/cafe/page.tsx", ["listCafeItems", "@skyla/payments"]],
       ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],

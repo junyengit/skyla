@@ -79,7 +79,7 @@ export default function CafePage() {
         eyebrow="Sky LA top floor"
         title={
           <>
-            Sip Above
+            Sip Above{" "}
             <span>the City</span>
           </>
         }

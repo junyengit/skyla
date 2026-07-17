@@ -5,7 +5,7 @@ import { siteConfig } from "@skyla/config";
 import { ArrowLink, PublicHero, PublicPageShell } from "@/components/public-page-shell";
 
 export const metadata: Metadata = {
-  title: "Best Space",
+  title: "The Space",
   description:
     "Explore Sky LA's penthouse observation space, 360-degree views, 20-foot ceilings, floor-to-ceiling glass, and outdoor patios."
 };
@@ -76,7 +76,7 @@ export default function AboutPage() {
     <PublicPageShell active="about">
       <PublicHero
         eyebrow={siteConfig.address.short}
-        title="Best Space"
+        title="The Space"
         copy="An architectural statement above the heart of Los Angeles, designed for people who want more than a view."
         image="/images/hero-lounge.jpg"
         imageAlt="Sky LA lounge above Los Angeles"

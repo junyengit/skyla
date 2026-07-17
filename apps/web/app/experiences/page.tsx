@@ -102,7 +102,7 @@ export default function ExperiencesPage() {
         eyebrow="Curated experiences"
         title={
           <>
-            Beyond
+            Beyond{" "}
             <span>the View</span>
           </>
         }

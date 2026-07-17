@@ -54,6 +54,7 @@ type CheckoutClientProps = {
   stripeStatus?: "success" | "cancel";
   returnedCheckoutSessionId?: string;
   operatingHours?: OperatingHours | null;
+  initialPackageKey?: string;
 };
 
 type AddonQuantities = Partial<Record<AddonKey, number>>;
@@ -108,10 +109,14 @@ export function CheckoutClient({
   addons,
   stripeStatus,
   returnedCheckoutSessionId,
-  operatingHours = null
+  operatingHours = null,
+  initialPackageKey
 }: CheckoutClientProps) {
   const initialVisitDate = todayIso();
-  const [packageKey, setPackageKey] = useState<TicketPackageKey>(packages[0]?.key ?? "general");
+  const [packageKey, setPackageKey] = useState<TicketPackageKey>(
+    () =>
+      packages.find((item) => item.key === initialPackageKey)?.key ?? packages[0]?.key ?? "general"
+  );
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [visitDate, setVisitDate] = useState(initialVisitDate);
