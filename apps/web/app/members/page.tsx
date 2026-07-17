@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import Script from "next/script";
+import { MarketingScripts } from "@/components/marketing-scripts";
 import { ArrowLink, PublicHero, PublicPageShell } from "@/components/public-page-shell";
 import { MembersApplicationClient } from "@/components/members-application-client";
 
 export const metadata: Metadata = {
   title: "Members",
   description:
-    "Apply for Sky LA membership, including Obsidian, Gold, and Black Card access above 6100 Wilshire."
+    "Apply for Sky LA membership, including Obsidian, Gold, and Black Card access above 6100 Wilshire.",
+  openGraph: {
+    title: "Members | Sky LA",
+    description:
+      "Apply for Sky LA membership, including Obsidian, Gold, and Black Card access above 6100 Wilshire."
+  }
 };
 
 const stats = [
@@ -104,11 +109,7 @@ const privileges = [
 export default function MembersPage() {
   return (
     <PublicPageShell active="members">
-      <Script id="meta-pixel" strategy="afterInteractive">
-        {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','27223205867364422');fbq('track','PageView');`}
-      </Script>
-      <Script src="/ads-config.js" strategy="afterInteractive" />
-      <Script src="/ads-tracking.js?v=1" strategy="afterInteractive" />
+      <MarketingScripts />
 
       <PublicHero
         eyebrow="By application only"

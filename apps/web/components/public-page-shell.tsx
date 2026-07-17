@@ -62,6 +62,10 @@ export function PublicPageShell({ active, children }: PublicPageShellProps) {
   );
 }
 
+const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+  "6100 Wilshire Blvd, Los Angeles, CA 90048"
+)}`;
+
 export function PublicFooter() {
   return (
     <footer className="footer publicFooter">
@@ -71,6 +75,9 @@ export function PublicFooter() {
         <Link href="/checkout" prefetch={false}>
           Tickets
         </Link>
+        <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
+          Get Directions
+        </a>
         <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
         <Link href="/privacy" prefetch={false}>
           Privacy

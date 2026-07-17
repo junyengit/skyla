@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, MapPin, ShieldCheck, Sparkles } from "@skyla/ui/icons";
 import { siteConfig, ticketPackages } from "@skyla/config";
+import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { MobileNav } from "@/components/mobile-nav";
 import { MotionHero } from "@/components/motion-hero";
 import { publicNavItems } from "@/components/public-page-shell";
@@ -61,6 +62,7 @@ export default async function HomePage() {
 
   return (
     <main>
+      <LocalBusinessJsonLd config={operatingConfig} />
       <a className="skipLink" href="#main-content">
         Skip to content
       </a>
@@ -198,6 +200,15 @@ export default async function HomePage() {
         <span>Sky LA</span>
         <p>{siteConfig.address.full}</p>
         <div className="footerLinks">
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              "6100 Wilshire Blvd, Los Angeles, CA 90048"
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Get Directions
+          </a>
           <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
           <Link href="/privacy" prefetch={false}>Privacy</Link>
           <Link href="/terms" prefetch={false}>Terms</Link>
