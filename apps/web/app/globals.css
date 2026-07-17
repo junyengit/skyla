@@ -3653,7 +3653,9 @@ textarea:focus-visible {
   transform: rotate(-45deg);
 }
 
-.mobileNavMenu {
+/* .publicNav nav is display:none below 820px; win that specificity race. */
+.mobileNavMenu,
+.publicNav .mobileNavMenu {
   position: fixed;
   top: 88px;
   left: 16px;
