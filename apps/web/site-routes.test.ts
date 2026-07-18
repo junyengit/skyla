@@ -58,7 +58,7 @@ describe("App Router route ownership", () => {
 
   it("keeps public content in native pages without legacy browser data paths", () => {
     const checks: Array<[string, string[]]> = [
-      ["app/about/page.tsx", ["Best Space"]],
+      ["app/about/page.tsx", ["The Space"]],
       ["app/cafe/page.tsx", ["listCafeItems", "@skyla/payments"]],
       ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],
@@ -144,7 +144,8 @@ describe("App Router route ownership", () => {
     expect(sitemap()).toEqual(
       sitemapEntries.map(({ path, priority }) => ({
         url: new URL(path, "https://skydeckla.com").toString(),
-        priority
+        priority,
+        lastModified: expect.any(Date)
       }))
     );
     expect(existsSync(join(publicDir, "robots.txt"))).toBe(false);
@@ -168,14 +169,17 @@ describe("App Router route ownership", () => {
   });
 
   it("loads Google Ads config before the tracking helper on conversion pages", () => {
+    const shared = readFileSync(join(webDir, "components/marketing-scripts.tsx"), "utf8");
+    const configIndex = shared.indexOf('src="/ads-config.js"');
+    const helperIndex = shared.indexOf('src="/ads-tracking.js');
+
+    expect(configIndex, "shared config script").toBeGreaterThan(-1);
+    expect(helperIndex, "shared tracking helper").toBeGreaterThan(-1);
+    expect(configIndex, "shared script order").toBeLessThan(helperIndex);
+
     for (const route of ["experiences", "members"]) {
       const contents = readFileSync(join(webDir, `app/${route}/page.tsx`), "utf8");
-      const configIndex = contents.indexOf('src="/ads-config.js"');
-      const helperIndex = contents.indexOf('src="/ads-tracking.js');
-
-      expect(configIndex, `${route} config script`).toBeGreaterThan(-1);
-      expect(helperIndex, `${route} tracking helper`).toBeGreaterThan(-1);
-      expect(configIndex, `${route} script order`).toBeLessThan(helperIndex);
+      expect(contents.includes("<MarketingScripts />"), `${route} marketing scripts`).toBe(true);
     }
   });
 

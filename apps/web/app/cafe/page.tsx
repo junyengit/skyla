@@ -7,7 +7,12 @@ import { ArrowLink, PublicHero, PublicPageShell } from "@/components/public-page
 export const metadata: Metadata = {
   title: "Cafe",
   description:
-    "Sky LA cafe menu with ceremonial matcha, single-origin coffee, light bites, and Deck + Drink ticket upgrade pricing."
+    "Sky LA cafe menu with ceremonial matcha, single-origin coffee, light bites, and Deck + Drink ticket upgrade pricing.",
+  openGraph: {
+    title: "Cafe | Sky LA",
+    description:
+      "Sky LA cafe menu with ceremonial matcha, single-origin coffee, light bites, and Deck + Drink ticket upgrade pricing."
+  }
 };
 
 const descriptions: Record<string, string> = {
@@ -79,7 +84,7 @@ export default function CafePage() {
         eyebrow="Sky LA top floor"
         title={
           <>
-            Sip Above
+            Sip Above{" "}
             <span>the City</span>
           </>
         }

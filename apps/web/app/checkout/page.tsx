@@ -11,7 +11,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Checkout",
   description: "Reserve Sky LA tickets and review your visit details before secure hosted payment.",
-  referrer: "no-referrer"
+  referrer: "no-referrer",
+  openGraph: {
+    title: "Checkout | Sky LA",
+    description: "Reserve Sky LA tickets and review your visit details before secure hosted payment."
+  }
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -71,6 +75,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         stripeStatus={stripeStatus === "success" || stripeStatus === "cancel" ? stripeStatus : undefined}
         returnedCheckoutSessionId={checkoutSessionId}
         operatingHours={operatingConfig?.operatingHours ?? null}
+        initialPackageKey={firstParam(params.package)}
       />
 
       <section className="checkoutTrust" aria-label="Checkout safeguards">

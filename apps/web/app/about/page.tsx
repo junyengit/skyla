@@ -5,9 +5,14 @@ import { siteConfig } from "@skyla/config";
 import { ArrowLink, PublicHero, PublicPageShell } from "@/components/public-page-shell";
 
 export const metadata: Metadata = {
-  title: "Best Space",
+  title: "The Space",
   description:
-    "Explore Sky LA's penthouse observation space, 360-degree views, 20-foot ceilings, floor-to-ceiling glass, and outdoor patios."
+    "Explore Sky LA's penthouse observation space, 360-degree views, 20-foot ceilings, floor-to-ceiling glass, and outdoor patios.",
+  openGraph: {
+    title: "The Space | Sky LA",
+    description:
+      "Explore Sky LA's penthouse observation space, 360-degree views, 20-foot ceilings, floor-to-ceiling glass, and outdoor patios."
+  }
 };
 
 const stats = [
@@ -32,7 +37,7 @@ const features = [
   {
     eyebrow: "Feature 02",
     title: "A penthouse room with real volume",
-    image: "/images/view.png",
+    image: "/images/view.jpg",
     imageAlt: "Sky LA lounge with tall windows and city views",
     body: [
       "The 20-foot penthouse ceiling makes the room feel open before the view even appears.",
@@ -76,7 +81,7 @@ export default function AboutPage() {
     <PublicPageShell active="about">
       <PublicHero
         eyebrow={siteConfig.address.short}
-        title="Best Space"
+        title="The Space"
         copy="An architectural statement above the heart of Los Angeles, designed for people who want more than a view."
         image="/images/hero-lounge.jpg"
         imageAlt="Sky LA lounge above Los Angeles"

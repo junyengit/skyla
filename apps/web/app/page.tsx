@@ -2,7 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, MapPin, ShieldCheck, Sparkles } from "@skyla/ui/icons";
 import { siteConfig, ticketPackages } from "@skyla/config";
+import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
+import { MobileNav } from "@/components/mobile-nav";
 import { MotionHero } from "@/components/motion-hero";
+import { publicNavItems } from "@/components/public-page-shell";
 import {
   formatOperatingDay,
   operatingWeekdays,
@@ -59,19 +62,25 @@ export default async function HomePage() {
 
   return (
     <main>
+      <LocalBusinessJsonLd config={operatingConfig} />
+      <a className="skipLink" href="#main-content">
+        Skip to content
+      </a>
       <nav className="nav" aria-label="Primary navigation">
         <Link className="brand" href="/">
           Sky LA
         </Link>
         <div className="navLinks">
-          <a href="#experience">Experience</a>
-          <Link href="/cafe" prefetch={false}>Cafe</Link>
-          <Link href="/experiences" prefetch={false}>Events</Link>
-          <a href="#visit">Visit</a>
+          {publicNavItems.map((item) => (
+            <Link key={item.key} href={item.href} prefetch={false}>
+              {item.label}
+            </Link>
+          ))}
         </div>
         <Link className="navCta" href="/checkout" prefetch={false}>
           Buy Tickets
         </Link>
+        <MobileNav items={publicNavItems.map((item) => ({ label: item.label, href: item.href }))} />
       </nav>
 
       <section className="hero">
@@ -92,7 +101,7 @@ export default async function HomePage() {
             {siteConfig.address.short}
           </p>
           <h1>
-            Los Angeles
+            Los Angeles{" "}
             <span>Above It All</span>
           </h1>
           <p className="heroCopy">
@@ -112,6 +121,7 @@ export default async function HomePage() {
         </MotionHero>
       </section>
 
+      <div id="main-content" />
       <VisitorOperatingConfig config={operatingConfig} />
 
       <section className="section intro" id="experience">
@@ -173,6 +183,14 @@ export default async function HomePage() {
               <span>{ticket.name}</span>
               <strong>{money(ticket.priceCents)}</strong>
               <p>{ticket.description}</p>
+              <Link
+                className="ticketCardLink"
+                href={`/checkout?package=${ticket.key}`}
+                prefetch={false}
+              >
+                Book {ticket.name}
+                <ArrowRight size={16} />
+              </Link>
             </article>
           ))}
         </div>
@@ -182,6 +200,15 @@ export default async function HomePage() {
         <span>Sky LA</span>
         <p>{siteConfig.address.full}</p>
         <div className="footerLinks">
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              "6100 Wilshire Blvd, Los Angeles, CA 90048"
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Get Directions
+          </a>
           <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
           <Link href="/privacy" prefetch={false}>Privacy</Link>
           <Link href="/terms" prefetch={false}>Terms</Link>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { siteConfig } from "@skyla/config";
 import { ArrowRight } from "@skyla/ui/icons";
+import { MobileNav } from "@/components/mobile-nav";
 
 type NavKey = "about" | "cafe" | "experiences" | "members" | "checkout";
 
@@ -11,8 +12,8 @@ type PublicPageShellProps = {
   children: ReactNode;
 };
 
-const navItems: Array<{ key: NavKey; label: string; href: string }> = [
-  { key: "about", label: "Best Space", href: "/about" },
+export const publicNavItems: Array<{ key: NavKey; label: string; href: string }> = [
+  { key: "about", label: "The Space", href: "/about" },
   { key: "cafe", label: "Cafe", href: "/cafe" },
   { key: "experiences", label: "Experiences", href: "/experiences" },
   { key: "members", label: "Members", href: "/members" },
@@ -22,12 +23,15 @@ const navItems: Array<{ key: NavKey; label: string; href: string }> = [
 export function PublicPageShell({ active, children }: PublicPageShellProps) {
   return (
     <main className="publicPage">
+      <a className="skipLink" href="#main-content">
+        Skip to content
+      </a>
       <header className="publicNav">
         <Link className="brand" href="/">
           Sky LA
         </Link>
         <nav aria-label="Primary navigation">
-          {navItems.map((item) => (
+          {publicNavItems.map((item) => (
             <Link
               key={item.key}
               href={item.href}
@@ -41,14 +45,26 @@ export function PublicPageShell({ active, children }: PublicPageShellProps) {
         <Link className="navCta" href="/checkout" prefetch={false}>
           Buy Tickets
         </Link>
+        <MobileNav
+          items={publicNavItems.map((item) => ({
+            label: item.label,
+            href: item.href,
+            current: active === item.key
+          }))}
+        />
       </header>
 
+      <div id="main-content" />
       {children}
 
       <PublicFooter />
     </main>
   );
 }
+
+const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+  "6100 Wilshire Blvd, Los Angeles, CA 90048"
+)}`;
 
 export function PublicFooter() {
   return (
@@ -59,6 +75,9 @@ export function PublicFooter() {
         <Link href="/checkout" prefetch={false}>
           Tickets
         </Link>
+        <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
+          Get Directions
+        </a>
         <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
         <Link href="/privacy" prefetch={false}>
           Privacy

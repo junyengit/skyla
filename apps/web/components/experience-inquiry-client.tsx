@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { siteConfig } from "@skyla/config";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 
 type InquiryExperience =
@@ -131,7 +132,7 @@ export function ExperienceInquiryClient() {
           response.status >= 500 ||
             data.code === "convex_unconfigured" ||
             data.code === "public_gateway_unconfigured"
-            ? "Experience requests are temporarily unavailable. Please email events@skylalosangeles.com and the team will follow up."
+            ? `Experience requests are temporarily unavailable. Please email ${siteConfig.email} and the team will follow up.`
             : data.error ?? "Could not submit this inquiry"
         );
       }
@@ -282,7 +283,7 @@ export function ExperienceInquiryClient() {
       </button>
 
       <p className="memberFormNote">
-        For immediate help, email <a href="mailto:events@skylalosangeles.com">events@skylalosangeles.com</a>.
+        For immediate help, email <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>.
       </p>
     </form>
   );

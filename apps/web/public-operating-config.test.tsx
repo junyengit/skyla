@@ -42,9 +42,16 @@ describe("public operating config server bridge", () => {
     );
   });
 
-  it("fails closed without Convex and does not attempt a query", async () => {
+  it("serves the building-hours fallback without Convex and does not attempt a query", async () => {
     await expect(loadPublicOperatingConfig()).resolves.toEqual(unavailablePublicOperatingConfig);
-    expect(Object.values(unavailablePublicOperatingConfig.operatingHours).every((day) => day.closed)).toBe(true);
+    expect(unavailablePublicOperatingConfig.announcement?.text).toContain("temporarily unavailable");
+    expect(unavailablePublicOperatingConfig.operatingHours.Monday).toEqual({
+      open: "09:00",
+      close: "18:00",
+      closed: false
+    });
+    expect(unavailablePublicOperatingConfig.operatingHours.Saturday.closed).toBe(true);
+    expect(unavailablePublicOperatingConfig.operatingHours.Sunday.closed).toBe(true);
     expect(fetchQueryMock).not.toHaveBeenCalled();
   });
 
@@ -72,7 +79,7 @@ describe("public operating config server bridge", () => {
 
     fetchQueryMock.mockResolvedValueOnce({ operatingHours: {}, timeZone: "UTC" });
     await expect(loadPublicOperatingConfig()).resolves.toEqual(unavailablePublicOperatingConfig);
-    expect(Object.values(unavailablePublicOperatingConfig.operatingHours).every((day) => day.closed)).toBe(true);
+    expect(unavailablePublicOperatingConfig.announcement?.type).toBe("warning");
   });
 });
 
@@ -95,13 +102,14 @@ describe("guest operating information", () => {
     expect(html).toContain("11:00 AM - 7:00 PM");
   });
 
-  it("renders the conservative service warning when the backend is unavailable", () => {
+  it("renders the service warning with building hours when the backend is unavailable", () => {
     const html = renderToStaticMarkup(
       <VisitorOperatingConfig config={unavailablePublicOperatingConfig} />
     );
 
     expect(html).toContain("Online booking is temporarily unavailable");
     expect(html).toContain("Monday:");
+    expect(html).toContain("9:00 AM - 6:00 PM");
     expect(html).toContain("Closed");
   });
 });
