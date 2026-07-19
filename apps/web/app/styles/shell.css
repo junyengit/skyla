@@ -1,0 +1,155 @@
+/* Skip link, global focus visibility, ticket card links, and mobile navigation */
+.skipLink {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 60;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #15120a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  transform: translateY(-200%);
+}
+
+.skipLink:focus-visible {
+  transform: translateY(0);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--gold-strong);
+  outline-offset: 3px;
+}
+
+.ticketCardLink {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobileNav {
+  display: none;
+  justify-self: end;
+}
+
+.mobileNavToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.mobileNavIcon {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--gold-strong);
+  transition: background 0.2s ease;
+}
+
+.mobileNavIcon::before,
+.mobileNavIcon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--gold-strong);
+  transition: transform 0.2s ease, top 0.2s ease;
+}
+
+.mobileNavIcon::before {
+  top: -6px;
+}
+
+.mobileNavIcon::after {
+  top: 6px;
+}
+
+.mobileNavIconOpen {
+  background: transparent;
+}
+
+.mobileNavIconOpen::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.mobileNavIconOpen::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+/* .publicNav nav is display:none below 820px; win that specificity race. */
+.mobileNavMenu,
+.publicNav .mobileNavMenu {
+  position: fixed;
+  top: 88px;
+  left: 16px;
+  right: 16px;
+  z-index: 40;
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(9, 9, 9, 0.97);
+  backdrop-filter: blur(16px);
+}
+
+.mobileNavMenu a {
+  padding: 12px 10px;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobileNavMenu a[aria-current="page"] {
+  color: var(--gold-strong);
+}
+
+.mobileNavMenu .navCta {
+  margin-top: 8px;
+  justify-content: center;
+}
+
+@media (max-width: 820px) {
+  .mobileNav {
+    display: block;
+  }
+
+  .nav {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .publicNav .mobileNavMenu .navCta {
+    display: inline-flex;
+  }
+}
+
+.notFound {
+  padding-top: 180px;
+  min-height: 70svh;
+}

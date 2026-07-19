@@ -1,0 +1,93 @@
+.ticketPage {
+  min-height: 100vh;
+  background: #050506;
+  color: #ffffff;
+}
+
+.ticketPanel {
+  width: min(560px, calc(100% - 32px));
+  margin: 72px auto;
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: #0c0c0f;
+  text-align: center;
+}
+
+.ticketPanel h1 {
+  margin: 14px 0 4px;
+  font-family: var(--font-display), serif;
+  font-size: 3rem;
+  letter-spacing: 0;
+}
+
+.ticketStatus,
+.ticketNote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ticketStatus {
+  color: var(--gold-strong);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ticketRef {
+  margin: 0 0 24px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ticketQr {
+  display: block;
+  width: min(260px, 100%);
+  height: auto;
+  margin: 0 auto 24px;
+  padding: 10px;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.ticketDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  text-align: left;
+}
+
+.ticketDetails div {
+  min-width: 0;
+  padding: 14px;
+  background: #111116;
+}
+
+.ticketDetails dt {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ticketDetails dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.ticketNote {
+  margin: 24px 0;
+}
+
+.ticketHomeLink {
+  color: var(--gold-strong);
+  font-weight: 700;
+}
+

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { catalogLineMetadata, cafeItems, ticketPackages } from "@skyla/payments";
 
+import { defaultHours } from "./lib/adminConfig";
+import { isCheckoutTimeAvailable } from "./lib/operatingHours";
 import { stripeTerminalIntentIdempotencyKey } from "./lib/stripeTerminal";
 import {
   getCheckoutPaymentSnapshot,
@@ -111,7 +113,16 @@ type CheckoutWebhookResult = {
 
 const orderRef = "ORD260704-ABC123";
 const saleRef = "SALE260704-ABC123";
-const checkoutVisitDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+// The snapshot fixtures use a 14:00 entry time, so the visit date must land on a
+// day the default operating hours keep open or the hours gate rejects it.
+function futureOpenVisitDate(minDaysFromNow: number): string {
+  for (let offset = minDaysFromNow; offset < minDaysFromNow + 14; offset += 1) {
+    const candidate = new Date(Date.now() + offset * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (isCheckoutTimeAvailable(defaultHours, candidate, "14:00")) return candidate;
+  }
+  throw new Error("No default-hours-open visit date found in the search window");
+}
+const checkoutVisitDate = futureOpenVisitDate(7);
 const providerPaymentId = "pi_terminal_123";
 const checkoutProviderPaymentId = "cs_test_123";
 const checkoutPaymentIntentId = "pi_checkout_123";

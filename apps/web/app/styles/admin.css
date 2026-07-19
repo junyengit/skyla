@@ -1,0 +1,968 @@
+.adminOpsPage {
+  min-height: 100svh;
+  background:
+    linear-gradient(180deg, rgba(9, 9, 9, 0.72), #090909 40%),
+    url("/images/checkin-desk.jpg") center top / cover no-repeat fixed;
+  color: #fff;
+  padding: 92px clamp(14px, 3vw, 34px) 34px;
+}
+
+.adminOpsPage input,
+.adminOpsPage textarea,
+.adminOpsPage select,
+.adminOpsPage button {
+  color: #fff;
+  font: inherit;
+}
+
+.adminOpsPage button:disabled {
+  color: #fff;
+}
+
+.adminOpsPage .brand,
+.adminOpsPage h1,
+.adminOpsPage h2,
+.adminOpsPage h3,
+.adminOpsPage h4,
+.adminOpsPage p,
+.adminOpsPage span,
+.adminOpsPage strong,
+.adminOpsPage label,
+.adminOpsPage em,
+.adminOpsPage small,
+.adminOpsPage time {
+  color: #fff;
+}
+
+.adminOpsPage input::placeholder {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.adminOpsPage select option {
+  background: #111216;
+  color: #fff;
+}
+
+.adminOpsPage .primaryAction {
+  border: 1px solid rgba(216, 182, 83, 0.48);
+  background: rgba(216, 182, 83, 0.18);
+  color: #fff;
+}
+
+.adminOpsHeader {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 14px clamp(16px, 3vw, 34px);
+  background: rgba(0, 0, 0, 0.76);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+  backdrop-filter: blur(16px);
+}
+
+.adminOpsHeader nav {
+  justify-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.adminOpsHeader nav a,
+.adminOpsStatus {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 14px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.adminOpsStatus,
+.adminOpsStatus svg {
+  color: #fff;
+}
+
+.adminOpsShell {
+  width: min(1380px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.28fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.staffSignInShell {
+  min-height: calc(100svh - 126px);
+  display: grid;
+  place-items: center;
+  padding: 24px 0;
+}
+
+.staffSignInShell > * {
+  width: min(440px, 100%);
+}
+
+.staffSignInShell .cl-rootBox,
+.staffSignInShell .cl-cardBox {
+  width: 100%;
+}
+
+.adminOpsPanel,
+.adminOpsGrid article {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(12, 13, 16, 0.9);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.adminOpsPanel {
+  padding: clamp(16px, 2vw, 24px);
+}
+
+.adminOpsAccess {
+  position: sticky;
+  top: 92px;
+  display: grid;
+  gap: 18px;
+}
+
+.adminOpsPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adminOpsPanelHeader svg {
+  color: var(--gold-strong);
+  flex: 0 0 auto;
+}
+
+.adminOpsPanelHeader p {
+  margin: 0 0 4px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.adminOpsPanelHeader h1,
+.adminOpsPanelHeader h2 {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1;
+}
+
+.adminOpsAccess label {
+  display: grid;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.adminOpsAccess input {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  padding: 0 14px;
+}
+
+.adminOpsAccess .primaryAction {
+  width: 100%;
+  gap: 8px;
+  border: 0;
+  cursor: pointer;
+}
+
+.adminOpsAccess .primaryAction:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.adminOpsMessage,
+.adminOpsEmpty {
+  margin: 0;
+  color: #fff;
+  line-height: 1.5;
+}
+
+.adminOpsStaff {
+  display: grid;
+  gap: 5px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adminOpsStaff span {
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminOpsStaff strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.adminOpsExports {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adminOpsExports > strong {
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminOpsExportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adminOpsExportGrid button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 10px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsExportGrid button:hover {
+  border-color: var(--gold);
+}
+
+.adminOpsExportGrid button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.adminOpsMain {
+  display: grid;
+  gap: 18px;
+}
+
+.adminOpsGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminOpsGrid article {
+  min-height: 112px;
+  display: grid;
+  align-content: space-between;
+  padding: 18px;
+}
+
+.adminOpsGrid span,
+.adminOpsReadiness span,
+.adminOpsRow span,
+.adminOpsRow time {
+  color: #fff;
+}
+
+.adminOpsGrid span,
+.adminOpsReadiness span {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.adminOpsGrid strong {
+  color: #fff;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 1;
+}
+
+.adminOpsReadiness {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.adminOpsReadiness div {
+  min-height: 72px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 14px;
+}
+
+.adminOpsReadiness div.isReady {
+  border-color: rgba(141, 216, 178, 0.48);
+  background: rgba(141, 216, 178, 0.08);
+}
+
+.adminOpsReadiness strong {
+  color: #fff;
+}
+
+.adminOpsLookup {
+  display: grid;
+  gap: 16px;
+}
+
+.adminOpsLookupForm {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.adminOpsLookupForm label {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsLookupForm input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  padding: 0 12px;
+}
+
+.adminOpsLookupForm .secondaryAction {
+  gap: 8px;
+  min-width: 132px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.adminOpsLookupForm .secondaryAction:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.adminOpsLookupResults {
+  display: grid;
+  gap: 8px;
+}
+
+.adminOpsLookupCard {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) 0.48fr 0.75fr minmax(140px, 0.55fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+}
+
+.adminOpsLookupCard div {
+  min-width: 0;
+}
+
+.adminOpsLookupCard strong,
+.adminOpsLookupCard span,
+.adminOpsLookupCard em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsLookupCard strong {
+  font-size: 1rem;
+}
+
+.adminOpsLookupCard span,
+.adminOpsLookupCard em {
+  font-size: 0.82rem;
+}
+
+.adminOpsLookupCard em {
+  color: rgba(255, 255, 255, 0.82);
+  font-style: normal;
+}
+
+.adminOpsVoucherList {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adminOpsTicketDelivery {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.adminOpsTicketDelivery .adminOpsRowActions a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0 12px;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.adminOpsVoucherHeader,
+.adminOpsVoucherRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(132px, auto);
+  align-items: center;
+  gap: 10px;
+}
+
+.adminOpsVoucherHeader {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.adminOpsVoucherHeader strong,
+.adminOpsVoucherHeader span,
+.adminOpsVoucherRow span,
+.adminOpsVoucherRow em,
+.adminOpsVoucherList p {
+  color: #fff;
+}
+
+.adminOpsVoucherHeader span,
+.adminOpsVoucherRow em {
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsVoucherRow {
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 8px 10px;
+}
+
+.adminOpsVoucherRow.isComplete {
+  border-color: rgba(141, 216, 178, 0.35);
+  background: rgba(141, 216, 178, 0.07);
+}
+
+.adminOpsVoucherRow span,
+.adminOpsVoucherRow em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsVoucherList p {
+  min-height: 42px;
+  display: grid;
+  align-items: center;
+  margin: 0;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 0.84rem;
+}
+
+.adminOpsConfig {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.4fr);
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.adminOpsConfigCard,
+.adminOpsCatalog,
+.adminOpsCatalogWrap {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.adminOpsConfigCard {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px;
+}
+
+.adminOpsCatalogWrap {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+}
+
+.adminOpsHoursCard {
+  grid-row: span 2;
+}
+
+.adminOpsConfigTitle {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.adminOpsConfigTitle strong {
+  font-size: 1rem;
+}
+
+.adminOpsConfigTitle span {
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.adminOpsConfigCard label {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsConfigCard input,
+.adminOpsConfigCard select {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  padding: 0 12px;
+}
+
+.adminOpsConfigCard input:disabled {
+  opacity: 0.78;
+}
+
+.adminOpsInlineToggle {
+  display: flex !important;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.adminOpsInlineToggle input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--gold);
+}
+
+.adminOpsConfigCard .secondaryAction {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.adminOpsCatalogActions .secondaryAction {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.adminOpsConfigCard .secondaryAction:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.adminOpsCatalogActions .secondaryAction:disabled,
+.adminOpsCatalogVersions button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.adminOpsHoursGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.adminOpsHoursRow {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.9fr) repeat(3, minmax(84px, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+
+.adminOpsHoursRow > strong {
+  align-self: center;
+}
+
+.adminOpsCatalog {
+  max-height: 282px;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.adminOpsCatalogActions {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.adminOpsCatalogActions label {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalogActions input {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  padding: 0 12px;
+}
+
+.adminOpsCatalogVersions {
+  display: grid;
+  gap: 8px;
+}
+
+.adminOpsCatalogVersions > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+}
+
+.adminOpsCatalogVersions > div.isActive {
+  border-color: rgba(141, 216, 178, 0.45);
+  background: rgba(141, 216, 178, 0.07);
+}
+
+.adminOpsCatalogVersions div div {
+  min-width: 0;
+}
+
+.adminOpsCatalogVersions strong,
+.adminOpsCatalogVersions span,
+.adminOpsCatalogVersions time {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsCatalogVersions span,
+.adminOpsCatalogVersions time {
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalogVersions button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalogVersions button:hover {
+  border-color: var(--gold);
+}
+
+.adminOpsCatalog div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.adminOpsCatalog div.isInactive {
+  opacity: 0.62;
+}
+
+.adminOpsCatalog span,
+.adminOpsCatalog em {
+  color: #fff;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsCatalog strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.adminOpsTabs button {
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.adminOpsTabs button.isActive {
+  border-color: var(--gold);
+  background: rgba(216, 182, 83, 0.18);
+  color: #fff;
+}
+
+.adminOpsTable {
+  display: grid;
+  gap: 8px;
+}
+
+.adminOpsRow {
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) 0.7fr 0.7fr 0.7fr;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+}
+
+.adminOpsRowWithActions {
+  grid-template-columns: minmax(0, 1.2fr) 0.5fr 0.8fr minmax(180px, 0.8fr);
+}
+
+.adminOpsRow div {
+  min-width: 0;
+}
+
+.adminOpsRow strong,
+.adminOpsRow span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminOpsRow strong {
+  color: #fff;
+}
+
+.adminOpsRow span,
+.adminOpsRow time {
+  font-size: 0.82rem;
+}
+
+.adminOpsRowActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.adminOpsRowActions button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adminOpsRowActions button:hover {
+  border-color: var(--gold);
+}
+
+.adminOpsRowActions button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.adminOpsRowActions button.isDanger {
+  border-color: rgba(224, 112, 112, 0.38);
+  color: #ffb2b2;
+}
+
+.adminOpsEmpty {
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .adminOpsHeader,
+  .adminOpsShell {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsHeader {
+    position: static;
+  }
+
+  .adminOpsHeader nav,
+  .adminOpsStatus {
+    justify-self: start;
+  }
+
+  .adminOpsPage {
+    padding-top: 16px;
+  }
+
+  .adminOpsAccess {
+    position: static;
+  }
+
+  .adminOpsGrid,
+  .adminOpsReadiness {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adminOpsConfig {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsLookupForm,
+  .adminOpsLookupCard,
+  .adminOpsTicketDelivery,
+  .adminOpsVoucherRow {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsLookupForm .secondaryAction {
+    width: 100%;
+  }
+
+  .adminOpsHoursCard {
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .posNextStaffSession {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsGrid,
+  .adminOpsReadiness,
+  .adminOpsRow,
+  .adminOpsRowWithActions {
+    grid-template-columns: 1fr;
+  }
+
+  .adminOpsRowActions {
+    justify-content: flex-start;
+  }
+
+  .adminOpsRow strong,
+  .adminOpsRow span,
+  .adminOpsLookupCard strong,
+  .adminOpsLookupCard span,
+  .adminOpsLookupCard em {
+    white-space: normal;
+  }
+
+  .adminOpsHoursRow,
+  .adminOpsCatalogActions,
+  .adminOpsCatalogVersions > div,
+  .adminOpsCatalog div {
+    grid-template-columns: 1fr;
+  }
+}
+

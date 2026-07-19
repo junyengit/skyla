@@ -1,0 +1,159 @@
+@media (max-width: 820px) {
+  .nav {
+    grid-template-columns: 1fr auto;
+  }
+
+  .navLinks {
+    display: none;
+  }
+
+  .section,
+  .tickets {
+    grid-template-columns: 1fr;
+  }
+
+  .featureGrid,
+  .views {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    flex-direction: column;
+  }
+
+  .footerLinks {
+    justify-content: flex-start;
+  }
+
+  .publicNav {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .publicNav nav {
+    display: none;
+  }
+
+  .publicNav .brand {
+    grid-column: 1;
+  }
+
+  .publicNav .navCta {
+    display: none;
+  }
+
+  .publicHero {
+    min-height: 76svh;
+    padding-inline: 20px;
+  }
+
+  .publicHeroContent h1 {
+    font-size: 4.2rem;
+    line-height: 0.88;
+  }
+
+  .publicHeroContent > p:not(.sectionLabel) {
+    max-width: 100%;
+  }
+
+  .publicStats,
+  .publicIntro,
+  .publicFeatureList,
+  .publicCardBand,
+  .publicCta,
+  .memberStats,
+  .memberTierSection,
+  .memberSpaces,
+  .memberApply,
+  .experienceStats,
+  .experienceSection,
+  .experienceFeature,
+  .experienceInquiry,
+  .experienceAnchorRow,
+  .cafeNativeGallery,
+  .cafeMenuNative {
+    width: min(100% - 32px, 1160px);
+  }
+
+  .publicStats,
+  .memberStats,
+  .experienceStats,
+  .memberTierGrid,
+  .memberTierSelect,
+  .memberFormGrid,
+  .experienceCardGrid,
+  .publicCardGrid,
+  .cafeNativeGallery,
+  .cafeMenuGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .publicStats,
+  .memberStats {
+    transform: none;
+    margin-top: 0;
+  }
+
+  .experienceStats {
+    transform: none;
+    margin-top: 0;
+  }
+
+  .publicIntro,
+  .publicFeature,
+  .publicCta,
+  .memberSpace,
+  .memberSpace.isReverse,
+  .experienceFeature,
+  .experienceRoom,
+  .experienceRoom:nth-child(even) {
+    grid-template-columns: 1fr;
+  }
+
+  .publicFeature:nth-child(even) .publicFeatureMedia,
+  .memberSpace.isReverse .memberSpaceMedia,
+  .experienceRoom:nth-child(even) .experienceRoomMedia {
+    order: 0;
+  }
+
+  .memberTierCard {
+    min-height: 0;
+  }
+
+  .memberSpaceMedia {
+    min-height: 300px;
+  }
+
+  .experienceFeatureMedia,
+  .experienceRoomMedia {
+    min-height: 300px;
+  }
+
+  .publicCta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    white-space: normal;
+  }
+
+  .legalPage {
+    padding-top: 96px;
+  }
+
+  .legalNav {
+    grid-template-columns: 1fr auto;
+  }
+
+  .legalNav nav {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .publicHeroContent h1 {
+    font-size: 3.55rem;
+  }
+}
+

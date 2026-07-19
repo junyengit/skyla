@@ -1,0 +1,324 @@
+.publicPage {
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+.publicNav {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 24px clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.74);
+  backdrop-filter: blur(16px);
+}
+
+.publicNav nav {
+  display: flex;
+  gap: 22px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.publicNav nav a {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.publicNav nav a[aria-current="page"] {
+  color: var(--gold-strong);
+}
+
+.publicNav .navCta {
+  justify-self: end;
+}
+
+.publicHero {
+  position: relative;
+  min-height: 86svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 128px 24px 72px;
+}
+
+.publicHeroMedia,
+.publicHeroShade {
+  position: absolute;
+  inset: 0;
+}
+
+.publicHeroImage {
+  object-fit: cover;
+}
+
+.publicHeroShade {
+  background:
+    radial-gradient(circle at 72% 28%, rgba(216, 182, 83, 0.18), transparent 30%),
+    linear-gradient(90deg, rgba(9, 9, 9, 0.9), rgba(9, 9, 9, 0.62) 52%, rgba(9, 9, 9, 0.88)),
+    linear-gradient(to bottom, rgba(9, 9, 9, 0.32), #090909 96%);
+}
+
+.publicHeroContent {
+  position: relative;
+  z-index: 1;
+  width: min(1020px, 100%);
+  min-width: 0;
+}
+
+.publicHeroContent h1 {
+  max-width: 760px;
+  font-size: clamp(4.2rem, 11vw, 8.8rem);
+  overflow-wrap: break-word;
+}
+
+.publicHeroContent h1 span {
+  display: block;
+  font-style: italic;
+}
+
+.publicHeroContent > p:not(.sectionLabel) {
+  max-width: 680px;
+  margin: 26px 0 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: clamp(1rem, 2vw, 1.18rem);
+  line-height: 1.66;
+  overflow-wrap: break-word;
+}
+
+.publicHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.publicStats,
+.memberStats,
+.publicIntro,
+.publicFeatureList,
+.publicCardBand,
+.publicCta,
+.publicFooter,
+.cafeNativeGallery,
+.cafeMenuNative {
+  width: min(1160px, calc(100vw - 40px));
+  margin: 0 auto;
+}
+
+.publicStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+  transform: translateY(-36px);
+}
+
+.publicStats div {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  align-content: center;
+  padding: 22px;
+  background: #0d0e11;
+}
+
+.publicStats strong {
+  color: var(--gold-strong);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(1.8rem, 4vw, 3.4rem);
+  line-height: 0.94;
+}
+
+.publicStats span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.publicIntro {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  gap: clamp(28px, 6vw, 78px);
+  padding: 60px 0 70px;
+}
+
+.publicIntro h2,
+.publicBandHeader h2,
+.publicCta h2 {
+  font-size: clamp(2.4rem, 5vw, 4.9rem);
+  line-height: 0.98;
+}
+
+.publicIntro > p,
+.publicFeatureCopy p,
+.publicBandHeader p,
+.publicCta p,
+.publicCardGrid p,
+.cafeMenuItem p {
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.65;
+}
+
+.publicFeatureList {
+  display: grid;
+  gap: clamp(28px, 5vw, 64px);
+  padding: 12px 0 88px;
+}
+
+.publicFeature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: clamp(22px, 5vw, 64px);
+  align-items: center;
+}
+
+.publicFeature:nth-child(even) .publicFeatureMedia {
+  order: 2;
+}
+
+.publicFeatureMedia {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+}
+
+.publicFeatureMedia img,
+.cafeNativeGallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.publicFeatureCopy h2 {
+  margin-bottom: 18px;
+  font-size: clamp(2rem, 4.4vw, 4rem);
+  line-height: 1;
+}
+
+.publicPillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 26px;
+}
+
+.publicPillList span {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 9px 12px;
+  text-transform: uppercase;
+}
+
+.publicCardBand {
+  padding: 78px 0;
+  border-top: 1px solid var(--line);
+}
+
+.publicBandHeader {
+  max-width: 820px;
+  margin-bottom: 28px;
+}
+
+.publicCardGrid,
+.cafeMenuGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.publicCardGrid article,
+.cafeMenuItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 22px;
+}
+
+.publicCardGrid p,
+.cafeMenuItem p {
+  margin: 0;
+}
+
+.publicCta {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding: 72px 0 92px;
+  border-top: 1px solid var(--line);
+}
+
+.publicCta > div:first-child {
+  max-width: 680px;
+}
+
+.publicFooter {
+  padding-bottom: 48px;
+}
+
+.cafeIntroNative {
+  padding-bottom: 40px;
+}
+
+.cafeNativeGallery {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr 0.85fr;
+  gap: 12px;
+  padding: 8px 0 80px;
+}
+
+.cafeNativeGallery img {
+  min-height: 300px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cafeMenuNative {
+  display: grid;
+  gap: 68px;
+  padding-bottom: 84px;
+}
+
+.cafeMenuGroup {
+  display: grid;
+  gap: 20px;
+}
+
+.cafeMenuGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cafeMenuItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 136px;
+}
+
+.cafeMenuItem h3 {
+  margin-top: 0;
+}
+
+.cafeMenuItem strong {
+  color: var(--green);
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+

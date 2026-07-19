@@ -1,0 +1,33 @@
+:root {
+  color-scheme: dark;
+  --bg: #090909;
+  --bg-soft: #111216;
+  --surface: rgba(24, 25, 30, 0.86);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #f7f3eb;
+  --muted: rgba(247, 243, 235, 0.7);
+  --gold: #d8b653;
+  --gold-strong: #f0cf73;
+  --green: #8dd8b2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+

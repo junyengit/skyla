@@ -61,6 +61,7 @@ safe for browser code, secret means dashboard/server only.
 | `NEXT_PUBLIC_GOOGLE_ADS_EVENT_LEAD_CONVERSION` | yes | Vercel | Production/Preview | Event inquiry conversion label. | Optional until paid ads are active. |
 | `NEXT_PUBLIC_GOOGLE_ADS_MEMBERSHIP_LEAD_CONVERSION` | yes | Vercel | Production/Preview | Membership lead conversion label. | Optional until paid ads are active. |
 | `NEXT_PUBLIC_GOOGLE_ADS_BEGIN_CHECKOUT_CONVERSION` | yes | Vercel | Production/Preview | Checkout-start conversion label. | Optional until paid ads are active. |
+| `NEXT_PUBLIC_META_PIXEL_ID` | yes | Vercel | Production/Preview | Meta Pixel ID for the conversion pages. | Optional; unset keeps the committed pixel ID, whitespace disables the pixel. Inlined at build time, so changes need a redeploy. |
 
 ## Local Acceptance Harness Variables
 
