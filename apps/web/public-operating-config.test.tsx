@@ -42,7 +42,7 @@ describe("public operating config server bridge", () => {
     );
   });
 
-  it("serves the building-hours fallback without Convex and does not attempt a query", async () => {
+  it("serves the venue-hours fallback without Convex and does not attempt a query", async () => {
     await expect(loadPublicOperatingConfig()).resolves.toEqual(unavailablePublicOperatingConfig);
     expect(unavailablePublicOperatingConfig.announcement?.text).toContain("temporarily unavailable");
     expect(unavailablePublicOperatingConfig.operatingHours.Monday).toEqual({
@@ -50,8 +50,16 @@ describe("public operating config server bridge", () => {
       close: "18:00",
       closed: false
     });
-    expect(unavailablePublicOperatingConfig.operatingHours.Saturday.closed).toBe(true);
-    expect(unavailablePublicOperatingConfig.operatingHours.Sunday.closed).toBe(true);
+    expect(unavailablePublicOperatingConfig.operatingHours.Saturday).toEqual({
+      open: "10:00",
+      close: "22:00",
+      closed: false
+    });
+    expect(unavailablePublicOperatingConfig.operatingHours.Sunday).toEqual({
+      open: "10:00",
+      close: "22:00",
+      closed: false
+    });
     expect(fetchQueryMock).not.toHaveBeenCalled();
   });
 
@@ -102,7 +110,7 @@ describe("guest operating information", () => {
     expect(html).toContain("11:00 AM - 7:00 PM");
   });
 
-  it("renders the service warning with building hours when the backend is unavailable", () => {
+  it("renders the service warning with venue hours when the backend is unavailable", () => {
     const html = renderToStaticMarkup(
       <VisitorOperatingConfig config={unavailablePublicOperatingConfig} />
     );
@@ -110,6 +118,7 @@ describe("guest operating information", () => {
     expect(html).toContain("Online booking is temporarily unavailable");
     expect(html).toContain("Monday:");
     expect(html).toContain("9:00 AM - 6:00 PM");
-    expect(html).toContain("Closed");
+    expect(html).toContain("Saturday:");
+    expect(html).toContain("10:00 AM - 10:00 PM");
   });
 });

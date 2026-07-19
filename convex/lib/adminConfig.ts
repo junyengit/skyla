@@ -26,15 +26,16 @@ export const defaultAnnouncement: SiteAnnouncementConfig = {
   type: "info"
 };
 
-// 6100 Wilshire building hours until staff set real venue hours in /admin.
+// Owner-confirmed venue hours until staff set real venue hours in /admin:
+// weekday building hours plus 10:00-22:00 weekends.
 export const defaultHours: SiteHoursConfig = {
   Monday: { open: "09:00", close: "18:00", closed: false },
   Tuesday: { open: "09:00", close: "18:00", closed: false },
   Wednesday: { open: "09:00", close: "18:00", closed: false },
   Thursday: { open: "09:00", close: "18:00", closed: false },
   Friday: { open: "09:00", close: "18:00", closed: false },
-  Saturday: { open: "00:00", close: "00:00", closed: true },
-  Sunday: { open: "00:00", close: "00:00", closed: true }
+  Saturday: { open: "10:00", close: "22:00", closed: false },
+  Sunday: { open: "10:00", close: "22:00", closed: false }
 };
 
 const maxAnnouncementLength = 180;

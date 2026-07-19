@@ -411,8 +411,8 @@ describe("linked acceptance write flow", () => {
       expect(checkoutDraft.body.visitDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(Date.parse(`${checkoutDraft.body.visitDate}T12:00:00Z`)).toBeGreaterThan(Date.now());
       const visitWeekday = new Date(`${checkoutDraft.body.visitDate}T00:00:00.000Z`).getUTCDay();
-      expect(visitWeekday, "visit date must avoid default-hours closed weekend days").not.toBe(0);
-      expect(visitWeekday, "visit date must avoid default-hours closed weekend days").not.toBe(6);
+      expect(visitWeekday, "acceptance visit date stays on a conservative weekday").not.toBe(0);
+      expect(visitWeekday, "acceptance visit date stays on a conservative weekday").not.toBe(6);
       expect(checkoutDraft.body.entryTime).toBe("14:00");
       expect(inquiry.body.eventDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(Date.parse(`${inquiry.body.eventDate}T12:00:00Z`)).toBeGreaterThan(Date.now());

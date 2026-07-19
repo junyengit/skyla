@@ -327,14 +327,16 @@ const defaultAnnouncement: AnnouncementConfig = {
   type: "info"
 };
 
+// Hours-editor seed shown before the stored config loads. Keep in sync with
+// defaultHours in convex/lib/adminConfig.ts.
 const defaultHours: HoursConfig = {
-  Monday: { open: "09:00", close: "00:00", closed: false },
-  Tuesday: { open: "09:00", close: "00:00", closed: false },
-  Wednesday: { open: "09:00", close: "00:00", closed: false },
-  Thursday: { open: "09:00", close: "00:00", closed: false },
-  Friday: { open: "09:00", close: "00:00", closed: false },
-  Saturday: { open: "09:00", close: "00:00", closed: false },
-  Sunday: { open: "09:00", close: "00:00", closed: false }
+  Monday: { open: "09:00", close: "18:00", closed: false },
+  Tuesday: { open: "09:00", close: "18:00", closed: false },
+  Wednesday: { open: "09:00", close: "18:00", closed: false },
+  Thursday: { open: "09:00", close: "18:00", closed: false },
+  Friday: { open: "09:00", close: "18:00", closed: false },
+  Saturday: { open: "10:00", close: "22:00", closed: false },
+  Sunday: { open: "10:00", close: "22:00", closed: false }
 };
 
 function money(cents: number) {
