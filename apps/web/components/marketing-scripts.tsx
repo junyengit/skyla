@@ -2,7 +2,10 @@ import Script from "next/script";
 
 // The committed ID keeps existing ad tracking working until the Vercel env var
 // is set; setting NEXT_PUBLIC_META_PIXEL_ID to whitespace disables the pixel.
-const META_PIXEL_ID = (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "27223205867364422").trim();
+// The value is interpolated into an inline script, so anything but a numeric
+// Meta pixel ID disables the pixel instead of breaking the page script.
+const configuredPixelId = (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "27223205867364422").trim();
+const META_PIXEL_ID = /^\d+$/.test(configuredPixelId) ? configuredPixelId : "";
 
 export function MarketingScripts() {
   return (

@@ -153,3 +153,9 @@ textarea:focus-visible {
   padding-top: 180px;
   min-height: 70svh;
 }
+
+.notFound button.primaryAction {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}

@@ -14,7 +14,8 @@ function boundedString(value: unknown, max: number): string | null {
 // validation detail or become a probing surface.
 export async function POST(request: Request) {
   try {
-    const raw = await request.text();
+    const declaredBytes = Number(request.headers.get("content-length") ?? "0");
+    const raw = declaredBytes > maxBodyBytes ? "" : await request.text();
     if (raw.length > 0 && raw.length <= maxBodyBytes) {
       const parsed: unknown = JSON.parse(raw);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
