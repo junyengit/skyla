@@ -62,7 +62,7 @@ console.log("- Payment no-write probes kept server-owned totals, catalog provena
 console.log("- Acceptance readiness API stays staff-gated before exposing linked-mode state.");
 console.log("- Saved .html URLs redirect through the shared App Router route registry.");
 console.log("- Native member pages do not expose the legacy localStorage/Supabase submission path.");
-console.log("- Native experiences pages do not expose the legacy localStorage/Supabase inquiry path.");
+console.log("- Retired members/experiences URLs permanently redirect home without legacy write paths.");
 console.log("- Member application no-write probe did not create data.");
 console.log("- Experience inquiry no-write probe did not create data.");
 console.log("- Retired public and staff compatibility assets are not served.");
@@ -224,42 +224,38 @@ async function checkCheckoutPageNoLegacyWrites(origin) {
 }
 
 async function checkMembersPageNoLegacyWrites(origin) {
+  // Retired by the simple-site pivot: both URLs permanently redirect to the
+  // homepage and must not resurrect the legacy localStorage/Supabase paths.
   for (const path of ["/members", "/members.html"]) {
-    const response = await fetch(new URL(path, origin), { redirect: "follow" });
-    const html = await response.text();
-
-    if (response.status !== 200) {
-      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
-      continue;
-    }
-
-    if (html.includes("shared-data.js") || html.includes("SkylaData.addMember")) {
-      failures.push(`${origin}${path}: exposed legacy member localStorage/Supabase write path`);
-    }
-
-    if (path === "/members" && !html.includes("Begin your application")) {
-      failures.push(`${origin}${path}: did not render the native member application page`);
-    }
+    await checkRetiredPageRedirect(origin, path, "SkylaData.addMember");
   }
 }
 
 async function checkExperiencesPageNoLegacyWrites(origin) {
   for (const path of ["/experiences", "/experiences.html"]) {
-    const response = await fetch(new URL(path, origin), { redirect: "follow" });
-    const html = await response.text();
+    await checkRetiredPageRedirect(origin, path, "SkylaData.addInquiry");
+  }
+}
 
-    if (response.status !== 200) {
-      failures.push(`${origin}${path}: expected HTTP 200, got ${response.status}`);
-      continue;
-    }
+async function checkRetiredPageRedirect(origin, path, legacyMarker) {
+  const redirectResponse = await fetch(new URL(path, origin), { redirect: "manual" });
+  if (redirectResponse.status !== 308) {
+    failures.push(`${origin}${path}: expected permanent redirect 308, got ${redirectResponse.status}`);
+    return;
+  }
 
-    if (html.includes("shared-data.js") || html.includes("SkylaData.addInquiry")) {
-      failures.push(`${origin}${path}: exposed legacy inquiry localStorage/Supabase write path`);
-    }
+  const response = await fetch(new URL(path, origin), { redirect: "follow" });
+  const html = await response.text();
 
-    if (path === "/experiences" && !html.includes("Request Event Details")) {
-      failures.push(`${origin}${path}: did not render the native experiences page`);
-    }
+  if (response.status !== 200) {
+    failures.push(`${origin}${path}: expected HTTP 200 after redirect, got ${response.status}`);
+    return;
+  }
+  if (new URL(response.url).pathname !== "/") {
+    failures.push(`${origin}${path}: expected redirect to /, landed on ${new URL(response.url).pathname}`);
+  }
+  if (html.includes("shared-data.js") || html.includes(legacyMarker)) {
+    failures.push(`${origin}${path}: exposed a legacy localStorage/Supabase write path`);
   }
 }
 

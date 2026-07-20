@@ -1,6 +1,7 @@
 import {
   htmlCompatibilityRedirects,
   nativePublicRoutes,
+  retiredRouteRedirects,
   robotsDisallowRoutes,
   sitemapEntries,
   staffRoutes
@@ -13,6 +14,7 @@ const routes = Array.from(new Set([
   ...nativePublicRoutes.map((route) => `/${route}`),
   ...staffRoutes.map((route) => `/${route}`),
   ...htmlCompatibilityRedirects.map(({ source }) => source),
+  ...retiredRouteRedirects.map(({ source }) => source),
   "/robots.txt",
   "/sitemap.xml"
 ]));

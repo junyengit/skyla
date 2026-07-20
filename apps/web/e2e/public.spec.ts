@@ -10,9 +10,10 @@ test("public home leads into an interactive checkout", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Checkout" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Ticket checkout" })).toBeVisible();
 
-  const drinkPackage = page.getByRole("radio", { name: /Deck \+ Drink/ });
-  await drinkPackage.click();
-  await expect(drinkPackage).toBeChecked();
+  const viewPackage = page.getByRole("radio", { name: /The View/ });
+  await viewPackage.click();
+  await expect(viewPackage).toBeChecked();
+  await expect(page.getByRole("radio", { name: /Deck \+ Drink/ })).toHaveCount(0);
 });
 
 test("checkout has no horizontal overflow on mobile", async ({ page }) => {

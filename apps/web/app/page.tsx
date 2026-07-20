@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, MapPin, ShieldCheck, Sparkles } from "@skyla/ui/icons";
 import { siteConfig, ticketPackages } from "@skyla/config";
 import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
-import { MobileNav } from "@/components/mobile-nav";
+import { MarketingScripts } from "@/components/marketing-scripts";
 import { MotionHero } from "@/components/motion-hero";
 import { publicNavItems } from "@/components/public-page-shell";
 import {
@@ -63,6 +63,7 @@ export default async function HomePage() {
   return (
     <main>
       <LocalBusinessJsonLd config={operatingConfig} />
+      <MarketingScripts />
       <a className="skipLink" href="#main-content">
         Skip to content
       </a>
@@ -80,7 +81,6 @@ export default async function HomePage() {
         <Link className="navCta" href="/checkout" prefetch={false}>
           Buy Tickets
         </Link>
-        <MobileNav items={publicNavItems.map((item) => ({ label: item.label, href: item.href }))} />
       </nav>
 
       <section className="hero">
@@ -114,8 +114,8 @@ export default async function HomePage() {
               Buy Tickets
               <ArrowRight size={18} />
             </Link>
-            <Link className="secondaryAction" href="/members" prefetch={false}>
-              Membership
+            <Link className="secondaryAction" href="#visit" prefetch={false}>
+              Plan a Visit
             </Link>
           </div>
         </MotionHero>

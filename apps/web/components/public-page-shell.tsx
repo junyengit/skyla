@@ -3,20 +3,17 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { siteConfig } from "@skyla/config";
 import { ArrowRight } from "@skyla/ui/icons";
-import { MobileNav } from "@/components/mobile-nav";
 
-type NavKey = "about" | "cafe" | "experiences" | "members" | "checkout";
+type NavKey = "checkout";
 
 type PublicPageShellProps = {
   active: NavKey;
   children: ReactNode;
 };
 
+// The simple-site pivot keeps one public destination: tickets. The header is
+// brand + a single Buy CTA, so no hamburger menu is rendered.
 export const publicNavItems: Array<{ key: NavKey; label: string; href: string }> = [
-  { key: "about", label: "The Space", href: "/about" },
-  { key: "cafe", label: "Cafe", href: "/cafe" },
-  { key: "experiences", label: "Experiences", href: "/experiences" },
-  { key: "members", label: "Members", href: "/members" },
   { key: "checkout", label: "Tickets", href: "/checkout" }
 ];
 
@@ -45,13 +42,6 @@ export function PublicPageShell({ active, children }: PublicPageShellProps) {
         <Link className="navCta" href="/checkout" prefetch={false}>
           Buy Tickets
         </Link>
-        <MobileNav
-          items={publicNavItems.map((item) => ({
-            label: item.label,
-            href: item.href,
-            current: active === item.key
-          }))}
-        />
       </header>
 
       <div id="main-content" />
