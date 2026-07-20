@@ -73,7 +73,7 @@ const operationsSnapshot = {
       {
         orderRef: "ORDER-100",
         status: "payment_pending",
-        totalCents: 6090,
+        totalCents: 4000,
         currency: "usd",
         createdAt: 1_782_000_000_000,
         updatedAt: 1_782_000_100_000
@@ -142,7 +142,7 @@ function configureStaffFetch(inquiryListStatus = 200) {
 function renderAdmin() {
   return render(
     createElement(AdminOpsClient, {
-      catalog: [{ key: "general", kind: "ticket", name: "General Admission", priceCents: 6090, active: true }],
+      catalog: [{ key: "general", kind: "ticket", name: "The View", priceCents: 2000, active: true }],
       catalogState: {
         version: "v1",
         source: "code",

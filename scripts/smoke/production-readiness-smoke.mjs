@@ -296,7 +296,7 @@ async function checkPaymentNoWrite(origin) {
     lines: [
       {
         kind: "ticket",
-        packageKey: "drink",
+        packageKey: "general",
         quantity: 2,
         unitAmountCents: 1,
         metadata: { catalogVersion: "browser-spoof" }

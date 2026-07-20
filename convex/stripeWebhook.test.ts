@@ -25,7 +25,7 @@ const paidCheckoutEvent: StripeWebhookEvent = {
       id: "cs_test_123",
       object: "checkout.session",
       client_reference_id: "SKY2607-ABC123",
-      amount_total: 8505,
+      amount_total: 5800,
       currency: "usd",
       payment_status: "paid",
       status: "complete",
@@ -119,7 +119,7 @@ describe("Stripe webhook helpers", () => {
       providerPaymentId: "cs_test_123",
       providerPaymentIntentId: "pi_test_123",
       orderRef: "SKY2607-ABC123",
-      amountCents: 8505,
+      amountCents: 5800,
       currency: "usd"
     });
   });

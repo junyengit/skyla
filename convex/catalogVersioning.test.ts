@@ -11,7 +11,7 @@ import {
 } from "./lib/catalogVersioning";
 
 const seed = {
-  version: "catalog-2026-07-05",
+  version: "catalog-2026-07-20",
   source: "@skyla/payments",
   authority: "code-owned",
   editableInAdmin: false,
@@ -19,8 +19,8 @@ const seed = {
     {
       key: "general",
       kind: "ticket" as const,
-      name: "General Admission",
-      priceCents: 2900,
+      name: "The View",
+      priceCents: 2000,
       active: true
     },
     {
@@ -39,7 +39,7 @@ describe("catalog versioning helpers", () => {
     const first = codeOwnedCatalogSeed(" initial seed ");
     const second = codeOwnedCatalogSeed("initial seed");
 
-    expect(first.version).toBe("skyla-payments-catalog-2026-07-05");
+    expect(first.version).toBe("skyla-payments-catalog-2026-07-20");
     expect(first.source).toBe("@skyla/payments");
     expect(first.authority).toBe("code-owned");
     expect(first.editableInAdmin).toBe(false);
@@ -107,8 +107,8 @@ describe("catalog versioning helpers", () => {
           {
             key: "general",
             kind: "ticket",
-            name: "General Admission",
-            priceCents: 2900,
+            name: "The View",
+            priceCents: 2000,
             active: true,
             metadata: { nested: { bad: true } } as never
           }

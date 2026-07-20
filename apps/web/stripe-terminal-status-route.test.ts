@@ -47,11 +47,11 @@ describe("/api/payments/stripe-terminal/status", () => {
       saleRef: "SALE260713-ABC123",
       status: "paid",
       currency: "usd",
-      subtotalCents: 2900,
+      subtotalCents: 2000,
       feeCents: 0,
-      totalCents: 2900,
+      totalCents: 2000,
       paymentStatus: "paid",
-      lines: [{ kind: "ticket", name: "General Admission", quantity: 1, unitAmountCents: 2900, lineTotalCents: 2900 }],
+      lines: [{ kind: "ticket", name: "The View", quantity: 1, unitAmountCents: 2000, lineTotalCents: 2000 }],
       bookingRef: "SALE260713-ABC123",
       ticketCode: "tkt_0123456789abcdef0123456789abcdef",
       updatedAt: 123
@@ -63,7 +63,7 @@ describe("/api/payments/stripe-terminal/status", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("vary")).toContain("Authorization");
-    expect(body).toMatchObject({ status: "paid", totalCents: 2900, bookingRef: "SALE260713-ABC123" });
+    expect(body).toMatchObject({ status: "paid", totalCents: 2000, bookingRef: "SALE260713-ABC123" });
     expect(fetchQueryMock).toHaveBeenCalledWith(
       expect.anything(),
       { saleRef: "SALE260713-ABC123" },

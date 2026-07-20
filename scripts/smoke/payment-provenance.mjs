@@ -1,13 +1,12 @@
 const expectedCatalogMetadata = {
-  catalogVersion: "skyla-payments-catalog-2026-07-05",
+  catalogVersion: "skyla-payments-catalog-2026-07-20",
   catalogSource: "@skyla/payments",
   catalogAuthority: "code-owned"
 };
 
 const expectedCatalogHashes = {
-  general: "fnv1a32:1f58cd3b:92",
+  general: "fnv1a32:f1249f9b:83",
   matcha: "fnv1a32:ef7db060:95",
-  drink: "fnv1a32:ee2426f7:85",
   b1: "fnv1a32:b86957e2:102"
 };
 
@@ -29,15 +28,15 @@ export function checkoutDraftProvenanceIssues(lines) {
       kind: "ticket",
       productKey: "general",
       quantity: 2,
-      unitAmountCents: 2900,
-      lineTotalCents: 5800
+      unitAmountCents: 2000,
+      lineTotalCents: 4000
     }),
     ...catalogLineIssues("checkout child ticket line", checkoutLines[1], {
       kind: "ticket",
       productKey: "general",
       quantity: 1,
-      unitAmountCents: 1500,
-      lineTotalCents: 1500,
+      unitAmountCents: 1000,
+      lineTotalCents: 1000,
       childDiscountRate: 0.5
     }),
     ...catalogLineIssues("checkout add-on line", checkoutLines[2], {
@@ -59,10 +58,10 @@ export function posDraftProvenanceIssues(lines) {
   issues.push(
     ...catalogLineIssues("POS ticket line", posLines[0], {
       kind: "ticket",
-      productKey: "drink",
+      productKey: "general",
       quantity: 2,
-      unitAmountCents: 3700,
-      lineTotalCents: 7400
+      unitAmountCents: 2000,
+      lineTotalCents: 4000
     }),
     ...catalogLineIssues("POS cafe line", posLines[1], {
       kind: "cafe",

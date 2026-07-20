@@ -153,13 +153,13 @@ describe("payment snapshot provenance gates", () => {
       })
     ).resolves.toMatchObject({
       orderRef,
-      totalCents: 6090,
+      totalCents: 4000,
       lines: [
         {
-          name: "General Admission",
+          name: "The View",
           quantity: 2,
-          unitAmountCents: 2900,
-          lineTotalCents: 5800
+          unitAmountCents: 2000,
+          lineTotalCents: 4000
         }
       ]
     });
@@ -224,7 +224,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd",
       raw: { payment_status: "paid" }
     });
@@ -273,7 +273,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd",
       raw: { payment_status: "paid" }
     });
@@ -283,7 +283,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd",
       raw: { payment_status: "paid" }
     });
@@ -327,7 +327,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid" as const,
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd" as const
     };
     const firstReplay = await runCheckoutWebhook(ctx, replayArgs);
@@ -370,7 +370,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd"
     });
 
@@ -386,7 +386,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd"
     });
     const secondResult = await runCheckoutWebhook(ctx, {
@@ -395,7 +395,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "paid",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd"
     });
 
@@ -442,7 +442,7 @@ describe("Stripe Checkout webhook internals", () => {
       outcome: "canceled",
       providerPaymentId: checkoutProviderPaymentId,
       orderRef,
-      amountCents: 6090,
+      amountCents: 4000,
       currency: "usd",
       raw: { payment_status: "unpaid" }
     });
@@ -495,7 +495,7 @@ describe("Stripe refund webhook internals", () => {
         providerEventId: "evt_refund_2",
         providerRefundId: "re_checkout_2",
         providerEventCreatedAt: 3000,
-        amountCents: 3090
+        amountCents: 1000
       })
     );
 
@@ -512,7 +512,7 @@ describe("Stripe refund webhook internals", () => {
         entityType: "order",
         entityRef: orderRef,
         metadata: expect.objectContaining({
-          cumulativeSucceededRefundedCents: 6090,
+          cumulativeSucceededRefundedCents: 4000,
           entityStatusChanged: true,
           bookingStatusChanged: true
         })
@@ -526,7 +526,7 @@ describe("Stripe refund webhook internals", () => {
         providerEventId: "evt_refund_2",
         providerRefundId: "re_checkout_2",
         providerEventCreatedAt: 3000,
-        amountCents: 3090
+        amountCents: 1000
       })
     );
     const stale = await runRefundWebhook(
@@ -536,7 +536,7 @@ describe("Stripe refund webhook internals", () => {
         providerRefundId: "re_checkout_2",
         refundStatus: "pending",
         providerEventCreatedAt: 2000,
-        amountCents: 3090
+        amountCents: 1000
       })
     );
     expect(replay).toMatchObject({ status: "processed", duplicate: true, orderRef });
@@ -550,7 +550,7 @@ describe("Stripe refund webhook internals", () => {
     const { ctx, state, scheduled } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
     seedCheckoutTicketFulfillment(state);
 
-    await runRefundWebhook(ctx, refundArgs({ amountCents: 6090 }));
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 4000 }));
     Object.assign(state.ticketDeliveries[0], {
       status: "suppressed",
       failureReason: "booking_cancelled",
@@ -562,7 +562,7 @@ describe("Stripe refund webhook internals", () => {
       refundArgs({
         providerEventId: "evt_refund_failed_late",
         refundStatus: "failed",
-        amountCents: 6090,
+        amountCents: 4000,
         failureReason: "declined",
         providerEventCreatedAt: 6000
       })
@@ -604,13 +604,13 @@ describe("Stripe refund webhook internals", () => {
     const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
     seedCheckoutTicketFulfillment(state, { status: "cancelled", cancelledAt: 50, updatedAt: 50 });
 
-    await runRefundWebhook(ctx, refundArgs({ amountCents: 6090 }));
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 4000 }));
     await runRefundWebhook(
       ctx,
       refundArgs({
         providerEventId: "evt_refund_failed_late",
         refundStatus: "failed",
-        amountCents: 6090,
+        amountCents: 4000,
         failureReason: "declined",
         providerEventCreatedAt: 6000
       })
@@ -646,7 +646,7 @@ describe("Stripe refund webhook internals", () => {
 
   it("rejects cumulative successful refunds above the original paid amount", async () => {
     const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
-    await runRefundWebhook(ctx, refundArgs({ amountCents: 5000 }));
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 3000 }));
     const second = await runRefundWebhook(
       ctx,
       refundArgs({
@@ -696,13 +696,13 @@ describe("Stripe refund webhook internals", () => {
   it("allows a succeeded refund to require corrected banking details", async () => {
     const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true });
     seedCheckoutTicketFulfillment(state);
-    await runRefundWebhook(ctx, refundArgs({ amountCents: 6090 }));
+    await runRefundWebhook(ctx, refundArgs({ amountCents: 4000 }));
     const requiresAction = await runRefundWebhook(
       ctx,
       refundArgs({
         providerEventId: "evt_refund_requires_action_late",
         refundStatus: "requires_action",
-        amountCents: 6090,
+        amountCents: 4000,
         providerEventCreatedAt: 6000
       })
     );
@@ -812,7 +812,7 @@ describe("Stripe refund webhook internals", () => {
 
     const result = await runRefundWebhook(
       ctx,
-      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 2900 })
+      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 2000 })
     );
 
     expect(result).toMatchObject({ status: "processed", stale: false, saleRef });
@@ -841,7 +841,7 @@ describe("Stripe refund webhook internals", () => {
 
     await runRefundWebhook(
       ctx,
-      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 2900 })
+      refundArgs({ providerPaymentIntentId: providerPaymentId, amountCents: 2000 })
     );
     Object.assign(state.ticketDeliveries[0], {
       status: "suppressed",
@@ -855,7 +855,7 @@ describe("Stripe refund webhook internals", () => {
         providerEventId: "evt_terminal_refund_failed_late",
         providerPaymentIntentId: providerPaymentId,
         refundStatus: "failed",
-        amountCents: 2900,
+        amountCents: 2000,
         failureReason: "declined",
         providerEventCreatedAt: 6000
       })
@@ -919,7 +919,7 @@ describe("Stripe Terminal webhook internals", () => {
       outcome: "paid",
       providerPaymentId,
       saleRef,
-      amountCents: 2900,
+      amountCents: 2000,
       currency: "usd"
     });
 
@@ -977,7 +977,7 @@ describe("Stripe Terminal webhook internals", () => {
       outcome: "paid" as const,
       providerPaymentId,
       saleRef,
-      amountCents: 2900,
+      amountCents: 2000,
       currency: "usd" as const
     };
     const firstReplay = await runTerminalWebhook(ctx, replayArgs);
@@ -1015,7 +1015,7 @@ describe("Stripe Terminal webhook internals", () => {
       outcome: "paid",
       providerPaymentId,
       saleRef,
-      amountCents: 2900,
+      amountCents: 2000,
       currency: "usd"
     });
 
@@ -1225,9 +1225,9 @@ function createCheckoutSnapshotCtx(
     channel: "online",
     status: "draft",
     currency: "usd",
-    subtotalCents: 5800,
-    feeCents: 290,
-    totalCents: 6090,
+    subtotalCents: 4000,
+    feeCents: 0,
+    totalCents: 4000,
     customerEmailLower: "customerEmailLower" in options ? options.customerEmailLower : "guest@example.com",
     visitDate: "visitDate" in options ? options.visitDate : checkoutVisitDate,
     entryTime: "entryTime" in options ? options.entryTime : "14:00",
@@ -1241,10 +1241,10 @@ function createCheckoutSnapshotCtx(
     orderRef,
     kind: options.lineKind ?? "ticket",
     productKey: "general",
-    name: "General Admission",
+    name: "The View",
     quantity: 2,
-    unitAmountCents: 2900,
-    lineTotalCents: 5800,
+    unitAmountCents: 2000,
+    lineTotalCents: 4000,
     ...(options.lineMetadata === undefined
       ? {}
       : { metadata: options.lineMetadata ?? catalogLineMetadata(ticketPackages.general) })
@@ -1372,9 +1372,9 @@ function createCheckoutWebhookCtx(
     channel: "online",
     status: options.orderStatus ?? "payment_pending",
     currency: "usd",
-    subtotalCents: 6000,
-    feeCents: 90,
-    totalCents: 6090,
+    subtotalCents: 4000,
+    feeCents: 0,
+    totalCents: 4000,
     expectedProvider: "stripe",
     customerEmailLower: "guest@example.com",
     visitDate: checkoutVisitDate,
@@ -1389,10 +1389,10 @@ function createCheckoutWebhookCtx(
     orderRef,
     kind: "ticket",
     productKey: "general",
-    name: "General Admission",
+    name: "The View",
     quantity: 2,
-    unitAmountCents: 2900,
-    lineTotalCents: 5800,
+    unitAmountCents: 2000,
+    lineTotalCents: 4000,
     metadata: catalogLineMetadata(ticketPackages.general)
   });
   state.paymentEvents.push({
@@ -1404,7 +1404,7 @@ function createCheckoutWebhookCtx(
     idempotencyKey: "skyla:checkout-session:ORD260704-ABC123",
     status: "created",
     currency: "usd",
-    amountCents: 6090,
+    amountCents: 4000,
     createdAt: 1
   });
   if (options.includePaidEvent) {
@@ -1418,7 +1418,7 @@ function createCheckoutWebhookCtx(
       idempotencyKey: "skyla:checkout-session:ORD260704-ABC123",
       status: "paid",
       currency: "usd",
-      amountCents: 6090,
+      amountCents: 4000,
       rawEventId: "evt_checkout_paid_original",
       createdAt: 1
     });
@@ -1431,7 +1431,7 @@ function createTerminalWebhookCtx(
   options: { saleStatus?: string; terminalStatus?: string; includeTicket?: boolean } = {}
 ): ReturnType<typeof createMockCtx> {
   const state = createEmptyState();
-  const amountCents = options.includeTicket ? 2900 : 4200;
+  const amountCents = options.includeTicket ? 2000 : 4200;
   state.posSales.push(
       {
         _id: "posSales_1",
@@ -1469,10 +1469,10 @@ function createTerminalWebhookCtx(
       saleRef,
       kind: "ticket",
       productKey: "general",
-      name: "General Admission",
+      name: "The View",
       quantity: 1,
-      unitAmountCents: 2900,
-      lineTotalCents: 2900,
+      unitAmountCents: 2000,
+      lineTotalCents: 2000,
       metadata: catalogLineMetadata(ticketPackages.general)
     });
   } else {

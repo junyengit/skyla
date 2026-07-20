@@ -40,9 +40,9 @@ describe("/api/order-drafts/checkout", () => {
       persisted: false,
       persistenceReason: "idempotencyKey_required",
       draft: {
-        subtotalCents: 8100,
-        feeCents: 405,
-        totalCents: 8505,
+        subtotalCents: 5800,
+        feeCents: 0,
+        totalCents: 5800,
         lines: [
           {
             kind: "ticket",
@@ -93,9 +93,9 @@ describe("/api/order-drafts/checkout", () => {
       persisted: false,
       persistenceReason: "idempotencyKey_required",
       draft: {
-        subtotalCents: 2900,
-        feeCents: 145,
-        totalCents: 3045
+        subtotalCents: 2000,
+        feeCents: 0,
+        totalCents: 2000
       }
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -111,9 +111,9 @@ describe("/api/order-drafts/checkout", () => {
         status: "draft",
         totals: {
           currency: "usd",
-          subtotalCents: 8100,
-          feeCents: 405,
-          totalCents: 8505
+          subtotalCents: 5800,
+          feeCents: 0,
+          totalCents: 5800
         },
         visitDate: "2026-07-18",
         entryTime: "14:00",
@@ -123,10 +123,10 @@ describe("/api/order-drafts/checkout", () => {
           {
             kind: "ticket",
             productKey: "general",
-            name: "General Admission",
+            name: "The View",
             quantity: 2,
-            unitAmountCents: 2900,
-            lineTotalCents: 5800
+            unitAmountCents: 2000,
+            lineTotalCents: 4000
           }
         ]
       }
@@ -152,9 +152,9 @@ describe("/api/order-drafts/checkout", () => {
       orderRef: "SKY2607-ABC123",
       draft: {
         orderRef: "SKY2607-ABC123",
-        subtotalCents: 8100,
-        feeCents: 405,
-        totalCents: 8505,
+        subtotalCents: 5800,
+        feeCents: 0,
+        totalCents: 5800,
         visitDate: "2026-07-18",
         entryTime: "14:00",
         customerEmail: "guest@example.com",

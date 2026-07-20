@@ -11,7 +11,7 @@ export const siteConfig = {
 } as const;
 
 const ticketDescriptions: Record<string, string> = {
-  general: "360-degree observation deck, indoor lounge, and timed entry.",
+  general: "The full 360-degree view, indoor lounge, and timed entry. Ages 12 and under $10.",
   drink: "Observation deck access with one coffee or matcha voucher."
 };
 

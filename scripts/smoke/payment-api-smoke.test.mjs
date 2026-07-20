@@ -9,10 +9,10 @@ const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scriptPath = resolve(repoRoot, "scripts/smoke/payment-api-smoke.mjs");
 
 const catalogMetadata = {
-  catalogVersion: "skyla-payments-catalog-2026-07-05",
+  catalogVersion: "skyla-payments-catalog-2026-07-20",
   catalogSource: "@skyla/payments",
   catalogAuthority: "code-owned",
-  catalogContentHash: "fnv1a32:1f58cd3b:92"
+  catalogContentHash: "fnv1a32:f1249f9b:83"
 };
 
 async function withServer(handler, run) {
@@ -71,27 +71,27 @@ function handler({ omitProvenance = false, wrongHash = false } = {}) {
         persisted: false,
         persistenceReason: "convex_unconfigured",
         draft: {
-          totalCents: 8505,
+          totalCents: 5800,
           lines: [
             {
               kind: "ticket",
               productKey: "general",
               quantity: 2,
-              unitAmountCents: 2900,
-              lineTotalCents: 5800,
-              metadata: omitProvenance ? undefined : { ...catalogMetadata, catalogContentHash: wrongHash ? "fnv1a32:00000000:92" : catalogMetadata.catalogContentHash }
+              unitAmountCents: 2000,
+              lineTotalCents: 4000,
+              metadata: omitProvenance ? undefined : { ...catalogMetadata, catalogContentHash: wrongHash ? "fnv1a32:00000000:83" : catalogMetadata.catalogContentHash }
             },
             {
               kind: "ticket",
               productKey: "general",
               quantity: 1,
-              unitAmountCents: 1500,
-              lineTotalCents: 1500,
+              unitAmountCents: 1000,
+              lineTotalCents: 1000,
               metadata: omitProvenance
                 ? undefined
                 : {
                     ...catalogMetadata,
-                    catalogContentHash: wrongHash ? "fnv1a32:00000000:92" : catalogMetadata.catalogContentHash,
+                    catalogContentHash: wrongHash ? "fnv1a32:00000000:83" : catalogMetadata.catalogContentHash,
                     childDiscountRate: 0.5
                   }
             },
@@ -116,17 +116,17 @@ function handler({ omitProvenance = false, wrongHash = false } = {}) {
         persisted: false,
         persistenceReason: "convex_unconfigured",
         draft: {
-          totalCents: 9700,
+          totalCents: 6300,
           lines: [
             {
               kind: "ticket",
-              productKey: "drink",
+              productKey: "general",
               quantity: 2,
-              unitAmountCents: 3700,
-              lineTotalCents: 7400,
+              unitAmountCents: 2000,
+              lineTotalCents: 4000,
               metadata: omitProvenance
                 ? undefined
-                : { ...catalogMetadata, catalogContentHash: wrongHash ? "fnv1a32:00000000:85" : "fnv1a32:ee2426f7:85" }
+                : { ...catalogMetadata, catalogContentHash: wrongHash ? "fnv1a32:00000000:83" : "fnv1a32:f1249f9b:83" }
             },
             {
               kind: "cafe",
@@ -243,8 +243,8 @@ describe("payment API smoke", () => {
       const result = await runSmoke(baseUrl);
 
       expect(result.status).toBe(1);
-      expect(result.stderr).toContain("expected catalogContentHash fnv1a32:1f58cd3b:92");
-      expect(result.stderr).toContain("expected catalogContentHash fnv1a32:ee2426f7:85");
+      expect(result.stderr).toContain("expected catalogContentHash fnv1a32:f1249f9b:83");
+      expect(result.stderr).toContain("expected catalogContentHash fnv1a32:b86957e2:102");
     });
   }, 10_000);
 });

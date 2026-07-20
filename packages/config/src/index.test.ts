@@ -28,15 +28,9 @@ describe("ticketPackages", () => {
     expect(ticketPackages).toEqual([
       expect.objectContaining({
         key: "general",
-        name: "General Admission",
-        price: 29,
-        priceCents: 2900
-      }),
-      expect.objectContaining({
-        key: "drink",
-        name: "Deck + Drink",
-        price: 37,
-        priceCents: 3700
+        name: "The View",
+        price: 20,
+        priceCents: 2000
       })
     ]);
   });

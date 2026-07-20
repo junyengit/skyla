@@ -10,7 +10,7 @@ const ticketCode = "tkt_0123456789abcdef0123456789abcdef";
 function renderReturnedCheckout() {
   return render(
     <CheckoutClient
-      packages={[{ key: "general", name: "General Admission", priceCents: 6000 }]}
+      packages={[{ key: "general", name: "The View", priceCents: 2000 }]}
       addons={[]}
       stripeStatus="success"
       returnedCheckoutSessionId="cs_test_abc123xyz7890123"

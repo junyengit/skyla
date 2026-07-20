@@ -13,18 +13,18 @@ import {
 const snapshot = {
   saleRef: "POS2607-ABC123",
   currency: "usd" as const,
-  subtotalCents: 8550,
+  subtotalCents: 6750,
   feeCents: 0,
-  totalCents: 8550,
+  totalCents: 6750,
   customerEmailLower: "guest@example.com",
   readerId: "tmr_123",
   terminalLocationId: "tml_123",
   lines: [
     {
-      name: "General Admission",
+      name: "The View",
       quantity: 2,
-      unitAmountCents: 2900,
-      lineTotalCents: 5800
+      unitAmountCents: 2000,
+      lineTotalCents: 4000
     },
     {
       name: "Matcha Set",
@@ -49,7 +49,7 @@ describe("Stripe Terminal helpers", () => {
     expect(request.apiVersion).toBe(stripeApiVersion);
     expect(stripeApiVersion).toBe("2026-02-25.clover");
     expect(request.idempotencyKey).toBe("skyla:terminal-intent:POS2607-ABC123");
-    expect(request.body.get("amount")).toBe("8550");
+    expect(request.body.get("amount")).toBe("6750");
     expect(request.body.get("currency")).toBe("usd");
     expect(request.body.get("payment_method_types[]")).toBe("card_present");
     expect(request.body.get("capture_method")).toBe("automatic");
@@ -82,7 +82,7 @@ describe("Stripe Terminal helpers", () => {
       buildStripeTerminalPaymentIntentRequest({
         ...snapshot,
         feeCents: 405,
-        totalCents: 8955
+        totalCents: 7155
       })
     ).toThrow("Stripe Terminal POS sales do not support booking fees");
   });
@@ -100,7 +100,7 @@ describe("Stripe Terminal helpers", () => {
       paymentIntentId: "pi_test_123",
       readerId: "tmr_test_123",
       processAttempt: 1,
-      amountCents: 8550,
+      amountCents: 6750,
       currency: "usd"
     });
 
@@ -119,7 +119,7 @@ describe("Stripe Terminal helpers", () => {
         paymentIntentId: "pi_test_123",
         readerId: "reader_from_browser",
         processAttempt: 1,
-        amountCents: 8550,
+        amountCents: 6750,
         currency: "usd"
       })
     ).toThrow("Stripe Terminal reader id must look like tmr_");
@@ -130,7 +130,7 @@ describe("Stripe Terminal helpers", () => {
         paymentIntentId: "",
         readerId: "tmr_test_123",
         processAttempt: 1,
-        amountCents: 8550,
+        amountCents: 6750,
         currency: "usd"
       })
     ).toThrow("Stripe Terminal PaymentIntent id is required");

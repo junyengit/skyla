@@ -122,7 +122,7 @@ describe("/api/payments/stripe-checkout", () => {
         provider: "stripe",
         checkoutSessionId: "cs_test_123",
         url: "https://checkout.stripe.com/c/pay/cs_test_123",
-        amountCents: 8505,
+        amountCents: 5800,
         currency: "usd",
         clientSecret: "cs_test_secret_should_not_return",
         client_secret: "cs_test_secret_should_not_return"
@@ -145,7 +145,7 @@ describe("/api/payments/stripe-checkout", () => {
     const body = await response.json();
     expect(body).toMatchObject({
       url: "https://checkout.stripe.com/c/pay/cs_test_123",
-      amountCents: 8505
+      amountCents: 5800
     });
     expect(JSON.stringify(body)).not.toContain("clientSecret");
     expect(JSON.stringify(body)).not.toContain("client_secret");

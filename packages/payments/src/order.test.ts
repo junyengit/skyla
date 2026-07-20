@@ -25,9 +25,9 @@ describe("createCheckoutOrderDraft", () => {
       channel: "online",
       status: "draft",
       currency: "usd",
-      subtotalCents: 8900,
-      feeCents: 445,
-      totalCents: 9345,
+      subtotalCents: 6600,
+      feeCents: 0,
+      totalCents: 6600,
       customerEmail: "guest@example.com"
     });
     expect(draft.lines).toEqual([
@@ -35,14 +35,14 @@ describe("createCheckoutOrderDraft", () => {
         kind: "ticket",
         productKey: "general",
         quantity: 2,
-        unitAmountCents: 2900,
+        unitAmountCents: 2000,
         metadata: catalogLineMetadata(ticketPackages.general)
       }),
       expect.objectContaining({
         kind: "ticket",
         productKey: "general",
         quantity: 1,
-        unitAmountCents: 1500,
+        unitAmountCents: 1000,
         metadata: { ...catalogLineMetadata(ticketPackages.general), childDiscountRate: 0.5 }
       }),
       expect.objectContaining({
@@ -50,26 +50,29 @@ describe("createCheckoutOrderDraft", () => {
         productKey: "matcha",
         quantity: 2,
         unitAmountCents: 800,
-        metadata: expect.objectContaining({ catalogVersion: "skyla-payments-catalog-2026-07-05" })
+        metadata: expect.objectContaining({ catalogVersion: "skyla-payments-catalog-2026-07-20" })
       })
     ]);
   });
 
-  it("ignores browser-supplied totals by only accepting selections", () => {
+  it("charges the advertised price with no online booking fee", () => {
     const draft = createCheckoutOrderDraft({
-      packageKey: "drink",
+      packageKey: "general",
       adults: 1,
       totalCents: 1,
       amountCents: 1
     } as Parameters<typeof createCheckoutOrderDraft>[0] & { totalCents: number; amountCents: number });
 
-    expect(draft.subtotalCents).toBe(3700);
-    expect(draft.feeCents).toBe(185);
-    expect(draft.totalCents).toBe(3885);
+    expect(draft.subtotalCents).toBe(2000);
+    expect(draft.feeCents).toBe(0);
+    expect(draft.totalCents).toBe(2000);
   });
 
-  it("rejects inactive premium packages until they are explicitly made bookable", () => {
+  it("rejects inactive packages until they are explicitly made bookable", () => {
     expect(() => createCheckoutOrderDraft({ packageKey: "champagne-room", adults: 2 })).toThrow(
+      "Ticket package is not bookable"
+    );
+    expect(() => createCheckoutOrderDraft({ packageKey: "drink", adults: 1 })).toThrow(
       "Ticket package is not bookable"
     );
   });
@@ -80,7 +83,7 @@ describe("createPosSaleDraft", () => {
     const sale = createPosSaleDraft({
       actorRole: "pos",
       lines: [
-        { kind: "ticket", packageKey: "drink", quantity: 2 },
+        { kind: "ticket", packageKey: "general", quantity: 2 },
         { kind: "cafe", itemKey: "b1", quantity: 3 },
         { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker", quantity: 1 }
       ]
@@ -89,9 +92,9 @@ describe("createPosSaleDraft", () => {
     expect(sale).toMatchObject({
       channel: "pos",
       currency: "usd",
-      subtotalCents: 9700,
+      subtotalCents: 6300,
       feeCents: 0,
-      totalCents: 9700
+      totalCents: 6300
     });
     expect(sale.lines.map((line) => line.kind)).toEqual(["ticket", "cafe", "custom"]);
   });
@@ -105,9 +108,9 @@ describe("createPosSaleDraft", () => {
       ]
     });
 
-    expect(sale.subtotalCents).toBe(3500);
+    expect(sale.subtotalCents).toBe(2600);
     expect(sale.lines).toEqual([
-      expect.objectContaining({ kind: "ticket", quantity: 1, lineTotalCents: 2900 }),
+      expect.objectContaining({ kind: "ticket", quantity: 1, lineTotalCents: 2000 }),
       expect.objectContaining({ kind: "cafe", quantity: 1, lineTotalCents: 600 })
     ]);
   });
@@ -155,9 +158,9 @@ describe("stored order records", () => {
       orderRef: "SKY2607-ABC123",
       channel: "online",
       status: "draft",
-      subtotalCents: 8100,
-      feeCents: 405,
-      totalCents: 8505,
+      subtotalCents: 5800,
+      feeCents: 0,
+      totalCents: 5800,
       customerEmailLower: "guest@example.com",
       visitDate: "2026-07-04",
       entryTime: "15:00",
@@ -172,7 +175,7 @@ describe("stored order records", () => {
       expect.objectContaining({
         orderRef,
         kind: "ticket",
-        lineTotalCents: 5800,
+        lineTotalCents: 4000,
         metadata: catalogLineMetadata(ticketPackages.general)
       })
     );
@@ -182,7 +185,7 @@ describe("stored order records", () => {
     const draft = createPosSaleDraft({
       actorRole: "pos",
       lines: [
-        { kind: "ticket", packageKey: "drink", quantity: 1 },
+        { kind: "ticket", packageKey: "general", quantity: 1 },
         { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
       ],
       customerEmail: "STAFFSALE@EXAMPLE.COM"
@@ -203,9 +206,9 @@ describe("stored order records", () => {
     expect(record).toMatchObject({
       saleRef: "SALE260704-SALEID",
       status: "draft",
-      subtotalCents: 4200,
+      subtotalCents: 2500,
       feeCents: 0,
-      totalCents: 4200,
+      totalCents: 2500,
       staffUserId: "staff_123",
       customerEmailLower: "staffsale@example.com",
       readerId: "tmr_reader_123",
@@ -219,7 +222,7 @@ describe("stored order records", () => {
       expect.objectContaining({
         saleRef,
         kind: "ticket",
-        lineTotalCents: 3700,
+        lineTotalCents: 2000,
         metadata: expect.objectContaining({ catalogAuthority: "code-owned" })
       }),
       expect.objectContaining({ saleRef, kind: "custom", lineTotalCents: 500, metadata: { reason: "Guest requested locker" } })

@@ -88,7 +88,7 @@ describe("admin export route", () => {
           orderRef: "SKY2607-ABC123",
           channel: "online",
           status: "paid",
-          totalCents: 8505,
+          totalCents: 5800,
           currency: "usd",
           expectedProvider: "stripe",
           customerEmailLower: "guest@example.com",
@@ -114,7 +114,7 @@ describe("admin export route", () => {
     expect(csv.split("\n")[0]).toBe(
       "order_ref,channel,status,total_cents,currency,expected_provider,customer_email,visit_date,entry_time,created_at,updated_at"
     );
-    expect(csv).toContain("SKY2607-ABC123,online,paid,8505,usd,stripe,guest@example.com,2026-07-10,19:00");
+    expect(csv).toContain("SKY2607-ABC123,online,paid,5800,usd,stripe,guest@example.com,2026-07-10,19:00");
     expect(csv).not.toContain("ignored");
     expect(fetchQueryMock).toHaveBeenCalledWith(
       "admin:getAdminExportRows",

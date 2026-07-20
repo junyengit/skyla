@@ -19,7 +19,7 @@ const operatingHours: OperatingHours = {
 function renderCheckout(hours: OperatingHours | null) {
   return render(
     <CheckoutClient
-      packages={[{ key: "general", name: "General Admission", priceCents: 6000 }]}
+      packages={[{ key: "general", name: "The View", priceCents: 2000 }]}
       addons={[]}
       operatingHours={hours}
     />
