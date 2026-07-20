@@ -1,6 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
-import "./globals.css";
+// Import order defines the cascade: tokens/base first, per-surface sheets in
+// the original monolith order, and the shell tail last so its mobile-nav rules
+// keep out-specifying the public-nav defaults.
+import "./styles/base.css";
+import "./styles/home.css";
+import "./styles/public.css";
+import "./styles/members.css";
+import "./styles/experiences.css";
+import "./styles/legal.css";
+import "./styles/tickets.css";
+import "./styles/public-responsive.css";
+import "./styles/checkout.css";
+import "./styles/pos.css";
+import "./styles/admin.css";
+import "./styles/shell.css";
 
 const serif = Playfair_Display({
   subsets: ["latin"],

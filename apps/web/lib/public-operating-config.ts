@@ -17,12 +17,14 @@ function convexDeploymentUrl() {
   return process.env.NEXT_PUBLIC_CONVEX_URL ?? process.env.CONVEX_URL;
 }
 
-// 6100 Wilshire building hours; shown while the Convex-managed config is unreachable.
+// Owner-confirmed venue hours (weekday building hours, 10:00-22:00 weekends);
+// shown while the Convex-managed config is unreachable. Keep in sync with
+// defaultHours in convex/lib/adminConfig.ts.
 const unavailableOperatingHours = Object.fromEntries(
   operatingWeekdays.map((day) => [
     day,
     day === "Saturday" || day === "Sunday"
-      ? { open: "00:00", close: "00:00", closed: true }
+      ? { open: "10:00", close: "22:00", closed: false }
       : { open: "09:00", close: "18:00", closed: false }
   ])
 ) as OperatingHours;

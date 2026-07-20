@@ -6,11 +6,6 @@ const nextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   poweredByHeader: false,
   transpilePackages: ["@skyla/config", "@skyla/payments", "@skyla/ui"],
-  images: {
-    remotePatterns: [
-      new URL("https://api.qrserver.com/**")
-    ]
-  },
   async redirects() {
     return publicHtmlCompatibilityRedirects.map((redirect) => ({
       ...redirect,

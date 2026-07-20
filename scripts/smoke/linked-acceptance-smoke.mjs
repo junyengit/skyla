@@ -72,8 +72,12 @@ const customerEmail = `acceptance+${runId}@example.com`;
 const headers = { authorization: `Bearer ${staffToken}` };
 const checkoutDraftIdempotencyKey = `acc_checkout_${runId}`;
 const posDraftIdempotencyKey = `acc_pos_${runId}`;
-const acceptanceVisitDate = futureLosAngelesDate(14);
-const acceptanceEntryTime = "18:00";
+// The entry time must be one of the shared checkoutEntryTimes slots
+// (packages/payments/src/order.ts) and fall inside the deployment's configured
+// operating hours (defaults in convex/lib/adminConfig.ts). A midday weekday is
+// the most conservative choice because staff can reconfigure hours in /admin.
+const acceptanceVisitDate = futureOpenLosAngelesDate(14);
+const acceptanceEntryTime = "14:00";
 const acceptanceEventDate = futureLosAngelesDate(30);
 
 const readinessUnauthenticated = await getJson("/api/admin/acceptance-readiness");
@@ -475,6 +479,17 @@ function futureLosAngelesDate(daysFromNow) {
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
 
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+function futureOpenLosAngelesDate(minDaysFromNow) {
+  for (let offset = minDaysFromNow; offset < minDaysFromNow + 14; offset += 1) {
+    const candidate = futureLosAngelesDate(offset);
+    const weekday = new Date(`${candidate}T00:00:00.000Z`).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) {
+      return candidate;
+    }
+  }
+  throw new Error("No default-hours-open acceptance visit date found in the search window");
 }
 
 function fail(label, message) {
