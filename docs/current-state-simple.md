@@ -28,6 +28,14 @@ from `apps/web` before an operation that needs the exact newest deployment ID.
 
 ## Simple Summary
 
+Update 2026-07-20: the simple-site pivot shipped. The public site now sells
+one product, "The View", at $20 all-in per adult and $10 for ages 12 and
+under, with no online booking fee. The about, cafe, experiences, and members
+pages are retired and permanently redirect to the homepage; their intake APIs
+stay deployed and fail-closed. The landing page and checkout were redesigned
+for an upscale tourism audience, and public navigation is brand plus one Buy
+Tickets action.
+
 Skyla is now a Next.js app in a Turborepo and is hosted on Vercel. The public
 domain works on Vercel, and the code is set up so checkout and POS prices are
 calculated by trusted server-side code instead of browser-submitted totals.
