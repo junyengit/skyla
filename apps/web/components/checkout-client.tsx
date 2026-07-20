@@ -498,7 +498,7 @@ export function CheckoutClient({
         {draft ? (
           <div className="checkoutLines">
             {draft.draft.lines.map((line) => (
-              <div className="checkoutLine" key={`${line.kind}-${line.productKey ?? line.name}`}>
+              <div className="checkoutLine" key={`${line.kind}-${line.name}`}>
                 <span>{line.name} x {line.quantity}</span>
                 <strong>{money(line.lineTotalCents)}</strong>
               </div>

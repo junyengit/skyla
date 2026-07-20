@@ -23,17 +23,8 @@ export function LegalPage({ title, updated, intro, sections }: LegalPageProps) {
           Sky LA
         </Link>
         <nav aria-label="Legal page navigation">
-          <Link href="/about" prefetch={false}>
-            The Space
-          </Link>
-          <Link href="/cafe" prefetch={false}>
-            Cafe
-          </Link>
-          <Link href="/experiences" prefetch={false}>
-            Experiences
-          </Link>
-          <Link href="/members" prefetch={false}>
-            Members
+          <Link href="/" prefetch={false}>
+            Home
           </Link>
           <Link href="/checkout" prefetch={false}>
             Tickets
