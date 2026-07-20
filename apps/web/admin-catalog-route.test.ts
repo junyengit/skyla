@@ -74,7 +74,7 @@ describe("/api/admin/catalog", () => {
       request(
         undefined,
         { headers: { authorization: "Bearer staff.jwt.token" } },
-        "https://skydeckla.test/api/admin/catalog?version=skyla-payments-catalog-2026-07-05"
+        "https://skydeckla.test/api/admin/catalog?version=skyla-payments-catalog-2026-07-20"
       )
     );
 
@@ -82,7 +82,7 @@ describe("/api/admin/catalog", () => {
     expectStaffApiHeaders(response);
     expect(fetchQueryMock).toHaveBeenCalledWith(
       "catalog:getCatalogSnapshot",
-      { version: "skyla-payments-catalog-2026-07-05" },
+      { version: "skyla-payments-catalog-2026-07-20" },
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }
     );
   });
@@ -111,7 +111,7 @@ describe("/api/admin/catalog", () => {
   it("seeds the code-owned catalog without accepting item payloads", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     fetchMutationMock.mockResolvedValueOnce({
-      version: "skyla-payments-catalog-2026-07-05",
+      version: "skyla-payments-catalog-2026-07-20",
       contentHash: "fnv1a32:abc:100",
       itemCount: 31,
       activeItemCount: 28,
@@ -134,7 +134,7 @@ describe("/api/admin/catalog", () => {
     expectStaffApiHeaders(response);
     await expect(response.json()).resolves.toMatchObject({
       catalog: {
-        version: "skyla-payments-catalog-2026-07-05",
+        version: "skyla-payments-catalog-2026-07-20",
         syncedProducts: 31
       }
     });
@@ -148,7 +148,7 @@ describe("/api/admin/catalog", () => {
   it("activates an existing version for audited rollback", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     fetchMutationMock.mockResolvedValueOnce({
-      version: "skyla-payments-catalog-2026-07-05",
+      version: "skyla-payments-catalog-2026-07-20",
       contentHash: "fnv1a32:abc:100",
       itemCount: 31,
       activeItemCount: 28,
@@ -160,7 +160,7 @@ describe("/api/admin/catalog", () => {
       request(
         {
           action: "activateVersion",
-          version: " skyla-payments-catalog-2026-07-05 ",
+          version: " skyla-payments-catalog-2026-07-20 ",
           note: " rollback "
         },
         { headers: { authorization: "Bearer staff.jwt.token" } }
@@ -172,7 +172,7 @@ describe("/api/admin/catalog", () => {
     expect(fetchMutationMock).toHaveBeenCalledWith(
       "catalog:activateCatalogVersion",
       {
-        version: "skyla-payments-catalog-2026-07-05",
+        version: "skyla-payments-catalog-2026-07-20",
         note: "rollback"
       },
       { url: "https://example.convex.cloud", token: "staff.jwt.token" }

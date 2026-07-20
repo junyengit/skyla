@@ -61,7 +61,7 @@ export type CatalogListOptions = {
   activeOnly?: boolean;
 };
 
-export const catalogVersion = "skyla-payments-catalog-2026-07-05" as const;
+export const catalogVersion = "skyla-payments-catalog-2026-07-20" as const;
 export const catalogProvenance = {
   version: catalogVersion,
   source: "@skyla/payments",
@@ -85,8 +85,8 @@ export const ticketPackages = {
   general: {
     key: "general",
     kind: "ticket",
-    name: "General Admission",
-    priceCents: 2900,
+    name: "The View",
+    priceCents: 2000,
     active: true
   },
   drink: {
@@ -94,7 +94,7 @@ export const ticketPackages = {
     kind: "ticket",
     name: "Deck + Drink",
     priceCents: 3700,
-    active: true
+    active: false
   },
   "date-night": {
     key: "date-night",

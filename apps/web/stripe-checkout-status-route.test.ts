@@ -48,7 +48,7 @@ describe("/api/payments/stripe-checkout/status", () => {
       bookingRef: "SKY2607-ABC123",
       ticketCode: "tkt_0123456789abcdef0123456789abcdef",
       emailLower: "must-not-leak@example.com",
-      totalCents: 8505
+      totalCents: 5800
     });
 
     const response = await POST(request());

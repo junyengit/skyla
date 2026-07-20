@@ -144,7 +144,7 @@ describe("/api/payments/stripe-terminal", () => {
       saleRef: "SALE260704-ABC123",
       provider: "terminal",
       paymentIntentId: "pi_test_123",
-      amountCents: 2900,
+      amountCents: 2000,
       currency: "usd",
       status: "requires_payment_method",
       clientSecret: "pi_test_secret_should_not_return",
@@ -170,7 +170,7 @@ describe("/api/payments/stripe-terminal", () => {
     const body = await response.json();
     expect(body).toMatchObject({
       paymentIntentId: "pi_test_123",
-      amountCents: 2900
+      amountCents: 2000
     });
     expect(body).not.toHaveProperty("clientSecret");
     expect(JSON.stringify(body)).not.toContain("client_secret");
@@ -304,7 +304,7 @@ describe("/api/payments/stripe-terminal/process", () => {
       provider: "terminal",
       paymentIntentId: "pi_test_123",
       readerId: "tmr_stored_123",
-      amountCents: 2900,
+      amountCents: 2000,
       currency: "usd",
       status: "processing",
       readerStatus: "online",
@@ -333,7 +333,7 @@ describe("/api/payments/stripe-terminal/process", () => {
     expect(body).toMatchObject({
       paymentIntentId: "pi_test_123",
       readerId: "tmr_stored_123",
-      amountCents: 2900,
+      amountCents: 2000,
       status: "processing"
     });
     expect(JSON.stringify(body)).not.toContain("clientSecret");

@@ -9,7 +9,7 @@ const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scriptPath = resolve(repoRoot, "scripts/smoke/linked-acceptance-smoke.mjs");
 const staffToken = "staff.jwt.token";
 const catalogMetadata = {
-  catalogVersion: "skyla-payments-catalog-2026-07-05",
+  catalogVersion: "skyla-payments-catalog-2026-07-20",
   catalogSource: "@skyla/payments",
   catalogAuthority: "code-owned"
 };
@@ -242,7 +242,7 @@ describe("linked acceptance write flow", () => {
           persisted: true,
           orderRef: "ORD260706-ACCEPT",
           draft: {
-            totalCents: 8505,
+            totalCents: 5800,
             visitDate: record.body.visitDate,
             entryTime: record.body.entryTime,
             lines: [
@@ -250,17 +250,17 @@ describe("linked acceptance write flow", () => {
                 kind: "ticket",
                 productKey: "general",
                 quantity: 2,
-                unitAmountCents: 2900,
-                lineTotalCents: 5800,
-                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:1f58cd3b:92" }
+                unitAmountCents: 2000,
+                lineTotalCents: 4000,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:f1249f9b:83" }
               },
               {
                 kind: "ticket",
                 productKey: "general",
                 quantity: 1,
-                unitAmountCents: 1500,
-                lineTotalCents: 1500,
-                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:1f58cd3b:92", childDiscountRate: 0.5 }
+                unitAmountCents: 1000,
+                lineTotalCents: 1000,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:f1249f9b:83", childDiscountRate: 0.5 }
               },
               {
                 kind: "addon",
@@ -312,16 +312,16 @@ describe("linked acceptance write flow", () => {
           persisted: true,
           saleRef: "POS260706-ACCEPT",
           draft: {
-            totalCents: 9700,
+            totalCents: 6300,
             terminalLocationId: "tml_lobby",
             lines: [
               {
                 kind: "ticket",
-                productKey: "drink",
+                productKey: "general",
                 quantity: 2,
-                unitAmountCents: 3700,
-                lineTotalCents: 7400,
-                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:ee2426f7:85" }
+                unitAmountCents: 2000,
+                lineTotalCents: 4000,
+                metadata: { ...catalogMetadata, catalogContentHash: "fnv1a32:f1249f9b:83" }
               },
               {
                 kind: "cafe",
@@ -349,7 +349,7 @@ describe("linked acceptance write flow", () => {
           saleRef: record.body.saleRef,
           provider: "terminal",
           paymentIntentId: "pi_terminal_acceptance",
-          amountCents: 9700,
+          amountCents: 6300,
           currency: "usd",
           status: "requires_payment"
         });
@@ -362,7 +362,7 @@ describe("linked acceptance write flow", () => {
           provider: "terminal",
           paymentIntentId: "pi_terminal_acceptance",
           readerId: "tmr_frontdesk",
-          amountCents: 9700,
+          amountCents: 6300,
           currency: "usd",
           status: "processing",
           readerStatus: "online",
@@ -377,7 +377,7 @@ describe("linked acceptance write flow", () => {
           provider: "stripe",
           checkoutSessionId: "cs_test_acceptance",
           url: "https://checkout.stripe.com/c/pay/cs_test_acceptance",
-          amountCents: 8505,
+          amountCents: 5800,
           currency: "usd"
         });
         return;

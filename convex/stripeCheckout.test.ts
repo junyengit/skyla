@@ -12,24 +12,24 @@ import {
 const snapshot = {
   orderRef: "SKY2607-ABC123",
   currency: "usd" as const,
-  subtotalCents: 8100,
-  feeCents: 405,
-  totalCents: 8505,
+  subtotalCents: 5800,
+  feeCents: 0,
+  totalCents: 5800,
   customerEmailLower: "guest@example.com",
   visitDate: "2026-07-04",
   entryTime: "19:00",
   lines: [
     {
-      name: "General Admission",
+      name: "The View",
       quantity: 2,
-      unitAmountCents: 2900,
-      lineTotalCents: 5800
+      unitAmountCents: 2000,
+      lineTotalCents: 4000
     },
     {
-      name: "General Admission Child",
+      name: "The View Child",
       quantity: 1,
-      unitAmountCents: 1500,
-      lineTotalCents: 1500
+      unitAmountCents: 1000,
+      lineTotalCents: 1000
     },
     {
       name: "Ceremonial Matcha Latte",
@@ -58,10 +58,10 @@ describe("Stripe Checkout helpers", () => {
     expect(request.body.get("metadata[source]")).toBe("convex");
     expect(request.body.get("metadata[visit_date]")).toBe("2026-07-04");
     expect(request.body.get("metadata[entry_time]")).toBe("19:00");
-    expect(request.body.get("line_items[0][price_data][unit_amount]")).toBe("2900");
+    expect(request.body.get("line_items[0][price_data][unit_amount]")).toBe("2000");
     expect(request.body.get("line_items[0][quantity]")).toBe("2");
-    expect(request.body.get("line_items[3][price_data][product_data][name]")).toBe("Online booking fee");
-    expect(request.body.get("line_items[3][price_data][unit_amount]")).toBe("405");
+    expect(request.body.get("line_items[3][price_data][product_data][name]")).toBeNull();
+    expect(request.body.get("line_items[3][price_data][unit_amount]")).toBeNull();
   });
 
   it("fails before Stripe if stored lines do not reconcile to the stored order total", () => {

@@ -14,7 +14,7 @@ import {
 
 const now = Date.UTC(2026, 6, 4, 12);
 const catalogMetadata = {
-  catalogVersion: "skyla-payments-catalog-2026-07-05",
+  catalogVersion: "skyla-payments-catalog-2026-07-20",
   catalogSource: "@skyla/payments",
   catalogAuthority: "code-owned",
   catalogContentHash: expect.stringMatching(/^fnv1a32:/)
@@ -37,15 +37,15 @@ describe("Convex order draft persistence helpers", () => {
 
     expect(write.order).toMatchObject({
       orderRef: "SKY2607-ABC123",
-      subtotalCents: 8100,
-      feeCents: 405,
-      totalCents: 8505,
+      subtotalCents: 5800,
+      feeCents: 0,
+      totalCents: 5800,
       customerEmailLower: "guest@example.com",
       idempotencyKey: "checkout_000001",
       source: "convex"
     });
     expect(write.lines).toHaveLength(3);
-    expect(write.lines[0]).toEqual(expect.objectContaining({ orderRef: "SKY2607-ABC123", lineTotalCents: 5800 }));
+    expect(write.lines[0]).toEqual(expect.objectContaining({ orderRef: "SKY2607-ABC123", lineTotalCents: 4000 }));
     expect(write.lines.map((line) => line.metadata)).toEqual([
       catalogLineMetadata(ticketPackages.general),
       {
@@ -82,7 +82,7 @@ describe("Convex order draft persistence helpers", () => {
       { orderRef: "SKY2607-ABC123", now }
     );
     const second = buildCheckoutDraftWrite(
-      { packageKey: "drink", adults: 1, idempotencyKey: "checkout_000003" },
+      { packageKey: "general", adults: 2, idempotencyKey: "checkout_000003" },
       { orderRef: "SKY2607-DEF456", now }
     );
 
@@ -103,10 +103,10 @@ describe("Convex order draft persistence helpers", () => {
     expect(result.lines[0]).toEqual({
       kind: "ticket",
       productKey: "general",
-      name: "General Admission",
+      name: "The View",
       quantity: 1,
-      unitAmountCents: 2900,
-      lineTotalCents: 2900,
+      unitAmountCents: 2000,
+      lineTotalCents: 2000,
       metadata: catalogMetadata
     });
   });
@@ -167,7 +167,7 @@ describe("Convex order draft persistence helpers", () => {
     const write = buildPosSaleDraftWrite(
       {
         lines: [
-          { kind: "ticket", packageKey: "drink", quantity: 1 },
+          { kind: "ticket", packageKey: "general", quantity: 1 },
           { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
         ],
         customerEmail: "STAFFSALE@EXAMPLE.COM",
@@ -180,9 +180,9 @@ describe("Convex order draft persistence helpers", () => {
 
     expect(write.sale).toMatchObject({
       saleRef: "SALE260704-ABC123",
-      subtotalCents: 4200,
+      subtotalCents: 2500,
       feeCents: 0,
-      totalCents: 4200,
+      totalCents: 2500,
       staffUserId: "staff_123",
       customerEmailLower: "staffsale@example.com",
       readerId: "tmr_reader_123",
@@ -191,8 +191,8 @@ describe("Convex order draft persistence helpers", () => {
     expect(write.lines).toEqual([
       expect.objectContaining({
         saleRef: "SALE260704-ABC123",
-        lineTotalCents: 3700,
-        metadata: catalogLineMetadata(ticketPackages.drink)
+        lineTotalCents: 2000,
+        metadata: catalogLineMetadata(ticketPackages.general)
       }),
       expect.objectContaining({ saleRef: "SALE260704-ABC123", lineTotalCents: 500 })
     ]);

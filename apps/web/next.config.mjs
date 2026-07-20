@@ -1,4 +1,4 @@
-import { noindexRoutes, publicHtmlCompatibilityRedirects } from "./site-routes.mjs";
+import { noindexRoutes, publicHtmlCompatibilityRedirects, retiredRouteRedirects } from "./site-routes.mjs";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
@@ -7,7 +7,7 @@ const nextConfig = {
   poweredByHeader: false,
   transpilePackages: ["@skyla/config", "@skyla/payments", "@skyla/ui"],
   async redirects() {
-    return publicHtmlCompatibilityRedirects.map((redirect) => ({
+    return [...publicHtmlCompatibilityRedirects, ...retiredRouteRedirects].map((redirect) => ({
       ...redirect,
       permanent: true
     }));

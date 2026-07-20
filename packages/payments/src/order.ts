@@ -158,7 +158,9 @@ export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrd
   return {
     channel: "online",
     status: "draft",
-    ...totals(lines, true),
+    // Owner decision: the advertised price is the charged price, so online
+    // checkout carries no booking fee (California junk-fee law compliant).
+    ...totals(lines, false),
     lines,
     visitDate: input.visitDate,
     entryTime: input.entryTime,

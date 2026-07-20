@@ -1,33 +1,14 @@
-import { captureFailClosedResponse, expect, goto, renderedContrastRatio, test } from "./support/browser";
+import { expect, goto, renderedContrastRatio, test } from "./support/browser";
 
-test("membership application fails closed when Convex is unavailable", async ({ page }) => {
+test("retired public pages permanently redirect to the simple homepage", async ({ page }) => {
+  for (const retired of ["/members", "/experiences", "/about", "/cafe"]) {
+    const response = await page.request.get(retired, { maxRedirects: 0 });
+    expect(response.status(), `${retired} must be a permanent redirect`).toBe(308);
+    expect(new URL(response.headers().location ?? "", "http://localhost").pathname).toBe("/");
+  }
+
   await goto(page, "/members");
-
-  await page.getByLabel("First name").fill("Browser");
-  await page.getByLabel("Last name").fill("Test");
-  await page.getByLabel("Email").fill("browser.member@example.test");
-
-  const backendStatus = captureFailClosedResponse(page, "/api/members/applications");
-  await page.getByRole("button", { name: /Submit Application/ }).click();
-
-  expect(await backendStatus).toBe(503);
-  await expect(page.getByText(/Membership applications are temporarily unavailable/)).toBeVisible();
-});
-
-test("experience inquiry fails closed when Convex is unavailable", async ({ page }) => {
-  await goto(page, "/experiences");
-
-  await page.getByLabel("First name").fill("Browser");
-  await page.getByLabel("Last name").fill("Test");
-  await page.getByLabel("Email address").fill("browser.experience@example.test");
-  await page.getByRole("combobox", { name: "Experience", exact: true }).selectOption("date-night");
-  await page.getByLabel("Preferred date").fill("2030-07-20");
-
-  const backendStatus = captureFailClosedResponse(page, "/api/experiences/inquiries");
-  await page.getByRole("button", { name: "Request event details" }).click();
-
-  expect(await backendStatus).toBe(503);
-  await expect(page.getByText(/Experience requests are temporarily unavailable/)).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("admin remains unavailable with readable setup guidance", async ({ page }) => {

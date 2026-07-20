@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { checkoutEntryTimes, type AddonKey, type TicketPackageKey } from "@skyla/payments";
-import { ArrowRight, CalendarDays, ShieldCheck } from "@skyla/ui/icons";
+import { useEffect, useState } from "react";
+import { checkoutEntryTimes, childPriceCents, type TicketPackageKey } from "@skyla/payments";
+import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 import {
   formatOperatingDay,
   isCheckoutEntryTimeAvailable,
@@ -18,7 +18,7 @@ type PackageOption = {
 };
 
 type AddonOption = {
-  key: AddonKey;
+  key: string;
   name: string;
   priceCents: number;
 };
@@ -50,14 +50,12 @@ type DraftResponse = {
 
 type CheckoutClientProps = {
   packages: PackageOption[];
-  addons: AddonOption[];
+  addons?: AddonOption[];
   stripeStatus?: "success" | "cancel";
   returnedCheckoutSessionId?: string;
   operatingHours?: OperatingHours | null;
   initialPackageKey?: string;
 };
-
-type AddonQuantities = Partial<Record<AddonKey, number>>;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
@@ -65,7 +63,8 @@ const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
 function money(cents: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD"
+    currency: "USD",
+    maximumFractionDigits: cents % 100 === 0 ? 0 : 2
   }).format(cents / 100);
 }
 
@@ -106,7 +105,6 @@ function normalizeVerifiedTicketCode(value: unknown) {
 
 export function CheckoutClient({
   packages,
-  addons,
   stripeStatus,
   returnedCheckoutSessionId,
   operatingHours = null,
@@ -129,7 +127,6 @@ export function CheckoutClient({
     );
   });
   const [customerEmail, setCustomerEmail] = useState("");
-  const [addonQuantities, setAddonQuantities] = useState<AddonQuantities>({});
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
   const [draft, setDraft] = useState<DraftResponse | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
@@ -159,13 +156,6 @@ export function CheckoutClient({
     !!visitDate &&
     selectedEntryTimeAvailable &&
     emailPattern.test(normalizedEmail);
-  const addonInput = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(addonQuantities).filter(([, quantity]) => Number(quantity) > 0)
-      ) as AddonQuantities,
-    [addonQuantities]
-  );
 
   useEffect(() => {
     if (stripeStatus !== "success" || !returnedCheckoutSessionId) {
@@ -257,11 +247,12 @@ export function CheckoutClient({
     setMessage(null);
   }
 
-  function updateAddon(key: AddonKey, delta: number) {
-    setAddonQuantities((current) => {
-      const next = Math.max(0, (current[key] ?? 0) + delta);
-      return { ...current, [key]: next };
-    });
+  function updateGuests(kind: "adults" | "children", delta: number) {
+    if (kind === "adults") {
+      setAdults((current) => Math.min(20, Math.max(1, current + delta)));
+    } else {
+      setChildren((current) => Math.min(20, Math.max(0, current + delta)));
+    }
     resetDraft();
   }
 
@@ -294,7 +285,7 @@ export function CheckoutClient({
           packageKey,
           adults,
           children,
-          addons: addonInput,
+          addons: {},
           visitDate,
           entryTime,
           customerEmail: normalizedEmail,
@@ -377,11 +368,8 @@ export function CheckoutClient({
       <div className="checkoutForm">
         <div className="checkoutPanel">
           <div className="checkoutPanelHeader">
-            <span>1</span>
-            <div>
-              <h2>Visit</h2>
-              <p>Select the ticket type and arrival window.</p>
-            </div>
+            <p className="checkoutPanelLabel">Your visit</p>
+            <h2>The details</h2>
           </div>
 
           <div className="checkoutPackages" role="radiogroup" aria-label="Ticket package">
@@ -397,39 +385,50 @@ export function CheckoutClient({
                   resetDraft();
                 }}
               >
-                <span>{ticket.name}</span>
+                <span className="checkoutPackageName">{ticket.name}</span>
+                <span className="checkoutPackageDetail">
+                  Observation deck and lounge, timed entry
+                </span>
                 <strong>{money(ticket.priceCents)}</strong>
+                <em>all-in, per adult</em>
               </button>
             ))}
           </div>
 
+          <div className="checkoutGuests">
+            <div className="checkoutCounter">
+              <div className="checkoutCounterLabel">
+                <span>Adults</span>
+                <em>{selectedPackage ? money(selectedPackage.priceCents) : "$20"} each</em>
+              </div>
+              <div className="checkoutStepper">
+                <button type="button" aria-label="Fewer adults" onClick={() => updateGuests("adults", -1)}>
+                  &minus;
+                </button>
+                <span aria-live="polite">{adults}</span>
+                <button type="button" aria-label="More adults" onClick={() => updateGuests("adults", 1)}>
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="checkoutCounter">
+              <div className="checkoutCounterLabel">
+                <span>Ages 12 and under</span>
+                <em>{selectedPackage ? money(childPriceCents(selectedPackage.priceCents)) : "$10"} each</em>
+              </div>
+              <div className="checkoutStepper">
+                <button type="button" aria-label="Fewer children" onClick={() => updateGuests("children", -1)}>
+                  &minus;
+                </button>
+                <span aria-live="polite">{children}</span>
+                <button type="button" aria-label="More children" onClick={() => updateGuests("children", 1)}>
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="checkoutGrid">
-            <label>
-              <span>Adults</span>
-              <input
-                min={1}
-                max={20}
-                type="number"
-                value={adults}
-                onChange={(event) => {
-                  setAdults(Number(event.target.value));
-                  resetDraft();
-                }}
-              />
-            </label>
-            <label>
-              <span>Children</span>
-              <input
-                min={0}
-                max={20}
-                type="number"
-                value={children}
-                onChange={(event) => {
-                  setChildren(Number(event.target.value));
-                  resetDraft();
-                }}
-              />
-            </label>
             <label>
               <span>Date</span>
               <input
@@ -458,7 +457,7 @@ export function CheckoutClient({
           {operatingHours && selectedWeekday ? (
             <p
               aria-live="polite"
-              className={availableEntryTimes.length === 0 ? "checkoutError" : undefined}
+              className={availableEntryTimes.length === 0 ? "checkoutError" : "checkoutHours"}
             >
               {availableEntryTimes.length === 0
                 ? `Sky LA has no checkout arrival times on ${selectedWeekday}. Choose another date.`
@@ -488,72 +487,30 @@ export function CheckoutClient({
             })}
           </div>
         </div>
-
-        <div className="checkoutPanel">
-          <div className="checkoutPanelHeader">
-            <span>2</span>
-            <div>
-              <h2>Add-ons</h2>
-              <p>Optional cafe vouchers for the visit.</p>
-            </div>
-          </div>
-
-          <div className="checkoutAddons">
-            {addons.map((addon) => (
-              <div className="checkoutAddon" key={addon.key}>
-                <div>
-                  <strong>{addon.name}</strong>
-                  <span>{money(addon.priceCents)}</span>
-                </div>
-                <div className="checkoutStepper">
-                  <button type="button" onClick={() => updateAddon(addon.key, -1)} aria-label={`Remove ${addon.name}`}>
-                    -
-                  </button>
-                  <span>{addonQuantities[addon.key] ?? 0}</span>
-                  <button type="button" onClick={() => updateAddon(addon.key, 1)} aria-label={`Add ${addon.name}`}>
-                    +
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <aside className="checkoutSummary" aria-label="Order summary">
         <div className="checkoutPanelHeader">
-          <span>
-            <CalendarDays size={18} />
-          </span>
-          <div>
-            <h2>Order</h2>
-            <p>{selectedPackage ? selectedPackage.name : "Ticket package"}</p>
-          </div>
+          <p className="checkoutPanelLabel">Order</p>
+          <h2>{selectedPackage ? selectedPackage.name : "Ticket package"}</h2>
         </div>
 
         {draft ? (
           <div className="checkoutLines">
             {draft.draft.lines.map((line) => (
-              <div className="checkoutLine" key={`${line.kind}-${line.productKey ?? line.name}`}>
+              <div className="checkoutLine" key={`${line.kind}-${line.name}`}>
                 <span>{line.name} x {line.quantity}</span>
                 <strong>{money(line.lineTotalCents)}</strong>
               </div>
             ))}
-            <div className="checkoutLine">
-              <span>Subtotal</span>
-              <strong>{money(draft.draft.subtotalCents)}</strong>
-            </div>
-            <div className="checkoutLine">
-              <span>Booking fee</span>
-              <strong>{money(draft.draft.feeCents)}</strong>
-            </div>
             <div className="checkoutTotal">
               <span>Total</span>
               <strong>{money(draft.draft.totalCents)}</strong>
             </div>
+            <p className="checkoutAllIn">All-in. No fees added at payment.</p>
           </div>
         ) : (
-          <div className="checkoutEmpty">Review the order to fetch the server total.</div>
+          <div className="checkoutEmpty">Review your order to confirm the exact total.</div>
         )}
 
         {draft?.persisted && draft.orderRef ? (

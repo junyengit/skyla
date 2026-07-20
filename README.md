@@ -112,10 +112,12 @@ As of July 13, 2026:
   smoke probes. See
   [docs/current-state-simple.md](docs/current-state-simple.md) for the latest
   deployment ID and evidence.
-- The Next app serves the homepage, `/about`, `/cafe`, `/experiences`,
-  `/members`, `/privacy`, `/terms`, checkout route, `/admin`, `/pos`, and the
-  older `/pos-next` draft review URL through App Router. Saved public and staff
-  `.html` URLs redirect at the Next.js routing layer to their native routes; no
+- The Next app serves the homepage, checkout route, `/privacy`, `/terms`,
+  ticket pages, `/admin`, `/pos`, and the older `/pos-next` draft review URL
+  through App Router. The 2026-07-20 simple-site pivot retired `/about`,
+  `/cafe`, `/experiences`, and `/members`; those URLs and their `.html` twins
+  permanently redirect to the homepage through the checked route registry.
+  Saved `.html` URLs for live routes still redirect to their native routes; no
   duplicate HTML applications are shipped from `apps/web/public`.
 
 ## Current Bun And Cleanup State
@@ -203,24 +205,17 @@ third, ADR 0032 data migration fourth, and legacy payment retirement last.
   [ADR 0034](docs/decisions/0034-clerk-convex-staff-auth.md).
 - Google Ads conversion tracking is configured through Vercel public environment variables rendered by `/ads-config.js`; `apps/web/public/ads-tracking.js` stays inert when those vars are unset.
 - Google Ads launch materials live in [docs/marketing/google-ads](docs/marketing/google-ads), including CSV templates intentionally allowed by the tracked-artifact guard.
-- Native `/about` is a server-rendered content route. Native `/cafe` renders
-  active menu items from `@skyla/payments`, the same catalog source used by
-  checkout and POS. Their saved `.html` URLs redirect through the shared route
-  registry.
-- Native `/members` is an App Router page with a server-gated application
-  form. It posts to `/api/members/applications` with an idempotency key and
-  only shows success after Convex accepts the mutation. Until Convex/Vercel envs
-  are linked, the form reports a safe temporary-unavailable state instead of
-  saving to browser localStorage or Supabase. The Convex write is internal and
-  can be reached only through the signed, rate-limited Next gateway.
-  `/members.html` redirects to the native page.
-- Native `/experiences` is an App Router page with a server-gated event inquiry
-  form. It posts to `/api/experiences/inquiries` with an idempotency key and
-  only fires lead tracking after the server accepts the inquiry. Until
-  Convex/Vercel envs are linked, the form reports a safe temporary-unavailable
-  state instead of saving to browser localStorage or Supabase. The Convex write
-  is internal and can be reached only through the signed, rate-limited Next
-  gateway. `/experiences.html` redirects to the native page.
+- The 2026-07-20 simple-site pivot sells one product: "The View" at $20
+  all-in per adult and $10 for ages 12 and under, with no online booking fee.
+  The Deck + Drink package is deactivated (drinks remain POS cafe items) and
+  the premium packages stay dormant, with Date Night teased as coming soon
+  through an email inquiry link.
+- `/about`, `/cafe`, `/experiences`, and `/members` are retired: those URLs
+  and their `.html` twins permanently redirect to the homepage via the
+  `retiredRouteRedirects` registry. The `/api/members/applications` and
+  `/api/experiences/inquiries` routes and their Convex mutations remain
+  deployed and fail-closed behind the signed, rate-limited gateway, so the
+  intake flows can return later without backend work.
 - Legacy Stripe Terminal reader registration is retired in repo code. The old
   staff browser assets have been removed from `apps/web/public`, `/pos.html`
   redirects to native `/pos`, and the repo copy of the Supabase Terminal

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listAddons, listTicketPackages } from "@skyla/payments";
+import { listTicketPackages } from "@skyla/payments";
 import { ArrowRight, MapPin, ShieldCheck } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
 import { CheckoutClient } from "@/components/checkout-client";
@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Reserve Sky LA tickets and review your visit details before secure hosted payment.",
+  description: "Reserve The View at Sky LA. $20 all-in per adult, timed entry above Wilshire.",
   referrer: "no-referrer",
   openGraph: {
     title: "Checkout | Sky LA",
-    description: "Reserve Sky LA tickets and review your visit details before secure hosted payment."
+    description: "Reserve The View at Sky LA. $20 all-in per adult, timed entry above Wilshire."
   }
 };
 
@@ -34,12 +34,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
       name: ticket.name,
       priceCents: ticket.priceCents
     }));
-  const addonOptions = listAddons()
-    .map((addon) => ({
-      key: addon.key,
-      name: addon.name,
-      priceCents: addon.priceCents
-    }));
 
   return (
     <main className="checkoutPage" data-native-checkout="true">
@@ -48,9 +42,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
           Sky LA
         </Link>
         <div className="navLinks">
-          <Link href="/cafe" prefetch={false}>Cafe</Link>
-          <Link href="/experiences" prefetch={false}>Events</Link>
-          <Link href="/members" prefetch={false}>Members</Link>
+          <Link href="/checkout" prefetch={false} aria-current="page">
+            Tickets
+          </Link>
         </div>
         <Link className="navCta" href="/">
           Home
@@ -64,14 +58,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         </div>
         <h1>Checkout</h1>
         <p>
-          Choose your visit, review the exact total, and continue to secure
-          hosted card payment.
+          The View, $20 all-in per adult. Choose a date and entry time, then
+          continue to secure hosted card payment.
         </p>
       </section>
 
       <CheckoutClient
         packages={packageOptions}
-        addons={addonOptions}
         stripeStatus={stripeStatus === "success" || stripeStatus === "cancel" ? stripeStatus : undefined}
         returnedCheckoutSessionId={checkoutSessionId}
         operatingHours={operatingConfig?.operatingHours ?? null}

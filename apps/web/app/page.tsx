@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, MapPin, ShieldCheck, Sparkles } from "@skyla/ui/icons";
-import { siteConfig, ticketPackages } from "@skyla/config";
+import { ArrowRight, MapPin } from "@skyla/ui/icons";
+import { siteConfig } from "@skyla/config";
 import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
-import { MobileNav } from "@/components/mobile-nav";
+import { MarketingScripts } from "@/components/marketing-scripts";
 import { MotionHero } from "@/components/motion-hero";
-import { publicNavItems } from "@/components/public-page-shell";
+import { PublicFooter, publicNavItems } from "@/components/public-page-shell";
 import {
   formatOperatingDay,
   operatingWeekdays,
@@ -15,19 +15,9 @@ import { loadPublicOperatingConfig } from "@/lib/public-operating-config";
 
 export const dynamic = "force-dynamic";
 
-const views = [
-  { src: "/images/view-academy.jpg", label: "Academy Museum" },
-  { src: "/images/view-hills.jpg", label: "Hollywood Hills" },
-  { src: "/images/view-westside.jpg", label: "Westside skyline" }
-];
-
-function money(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: cents % 100 === 0 ? 0 : 2
-  }).format(cents / 100);
-}
+const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+  "6100 Wilshire Blvd, Los Angeles, CA 90048"
+)}`;
 
 export function VisitorOperatingConfig({ config }: { config: PublicOperatingConfig | null }) {
   if (!config) return null;
@@ -63,6 +53,7 @@ export default async function HomePage() {
   return (
     <main>
       <LocalBusinessJsonLd config={operatingConfig} />
+      <MarketingScripts />
       <a className="skipLink" href="#main-content">
         Skip to content
       </a>
@@ -80,7 +71,6 @@ export default async function HomePage() {
         <Link className="navCta" href="/checkout" prefetch={false}>
           Buy Tickets
         </Link>
-        <MobileNav items={publicNavItems.map((item) => ({ label: item.label, href: item.href }))} />
       </nav>
 
       <section className="hero">
@@ -101,119 +91,124 @@ export default async function HomePage() {
             {siteConfig.address.short}
           </p>
           <h1>
-            Los Angeles{" "}
-            <span>Above It All</span>
+            Los Angeles <span>above it all</span>
           </h1>
           <p className="heroCopy">
-            Step into a top-floor lounge with 360-degree city views, timed deck
-            access, private rooms, cafe service, and a calmer way to take in Los
-            Angeles from above Wilshire.
+            An observation deck and lounge on the top floor of 6100 Wilshire,
+            timed to the light.
           </p>
+          <div className="heroTicket">
+            <span className="heroPrice">$20</span>
+            <span className="heroPriceMeta">
+              all-in, per adult
+              <em>Ages 12 and under $10</em>
+            </span>
+          </div>
           <div className="heroActions">
             <Link className="primaryAction" href="/checkout" prefetch={false}>
               Buy Tickets
               <ArrowRight size={18} />
-            </Link>
-            <Link className="secondaryAction" href="/members" prefetch={false}>
-              Membership
             </Link>
           </div>
         </MotionHero>
       </section>
 
       <div id="main-content" />
-      <VisitorOperatingConfig config={operatingConfig} />
 
-      <section className="section intro" id="experience">
-        <div>
-          <p className="sectionLabel">Observation lounge</p>
-          <h2>A cinematic room for the city in every direction.</h2>
-        </div>
-        <p>
-          Sky LA pairs open-air skyline moments with an indoor lounge, cafe
-          service, and intimate rooms for dates, families, teams, and private
-          celebrations above Museum Row.
+      <section className="ticketStatement" aria-label="What your ticket includes">
+        <p className="sectionLabel">One ticket. The View.</p>
+        <h2>
+          The whole city, <span>in one quiet room.</span>
+        </h2>
+        <p className="ticketStatementCopy">
+          Your ticket is the top floor: the open observation deck, the indoor
+          lounge behind floor-to-ceiling glass, and a skyline that runs from the
+          Hollywood Hills to the ocean haze. Entry is timed, so the room stays
+          calm and the glass stays yours.
         </p>
+        <ul className="ticketIncludes">
+          <li>
+            <strong>Observation deck</strong>
+            <span>360-degree views above Wilshire, hills to sea</span>
+          </li>
+          <li>
+            <strong>Indoor lounge</strong>
+            <span>Seated comfort behind floor-to-ceiling glass</span>
+          </li>
+          <li>
+            <strong>Timed entry</strong>
+            <span>Choose your date and arrival window</span>
+          </li>
+        </ul>
       </section>
 
-      <section className="featureGrid" id="architecture">
-        <article>
-          <Sparkles size={24} />
-          <h3>Rooftop views</h3>
+      <section className="viewsGallery" aria-label="Views from the deck">
+        <figure className="viewsGalleryLead">
+          <Image
+            src="/images/view-hills.jpg"
+            alt="Hollywood Hills and the westside skyline from the Sky LA deck"
+            fill
+            sizes="(max-width: 820px) 100vw, 62vw"
+          />
+          <figcaption>Hollywood Hills</figcaption>
+        </figure>
+        <figure>
+          <Image
+            src="/images/view-academy.jpg"
+            alt="Academy Museum and Museum Row seen from above"
+            fill
+            sizes="(max-width: 820px) 100vw, 38vw"
+          />
+          <figcaption>Academy Museum</figcaption>
+        </figure>
+        <figure>
+          <Image
+            src="/images/view-westside.jpg"
+            alt="Westside rooftops stretching toward Century City"
+            fill
+            sizes="(max-width: 820px) 100vw, 38vw"
+          />
+          <figcaption>Westside skyline</figcaption>
+        </figure>
+      </section>
+
+      <div className="visitBand" id="visit">
+        <VisitorOperatingConfig config={operatingConfig} />
+
+        <section className="section intro visitLocation" aria-label="Location">
+          <div>
+            <p className="sectionLabel">Find us</p>
+            <h2>On Museum Row.</h2>
+          </div>
           <p>
-            Timed visits include observation deck access, indoor lounge seating,
-            and skyline views from the Hollywood Hills to Downtown.
+            {siteConfig.address.full}
+            <br />
+            <br />
+            <a
+              className="inlineLink"
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Get Directions
+            </a>
           </p>
-        </article>
-        <article>
-          <ShieldCheck size={24} />
-          <h3>Hosted entry</h3>
-          <p>
-            Ticketed arrival windows help keep the room composed, comfortable,
-            and easy for staff to welcome guests with care.
-          </p>
-        </article>
-        <article>
-          <CalendarDays size={24} />
-          <h3>Private moments</h3>
-          <p>
-            Reserve premium experiences, member gatherings, and private rooms
-            when the occasion calls for a quieter corner above the city.
-          </p>
-        </article>
+        </section>
+      </div>
+
+      <section className="dateNight" aria-label="Date Night preview">
+        <p className="sectionLabel">Coming soon</p>
+        <h2>Date Night</h2>
+        <p className="dateNightCopy">
+          A reserved evening for two above the city lights. $98 for two, entry
+          included.
+        </p>
+        <a className="inlineLink" href={`mailto:${siteConfig.email}`}>
+          Inquire at {siteConfig.email}
+        </a>
       </section>
 
-      <section className="views" aria-label="Sky LA views">
-        {views.map((view) => (
-          <figure key={view.src}>
-            <Image src={view.src} alt={view.label} width={520} height={360} />
-            <figcaption>{view.label}</figcaption>
-          </figure>
-        ))}
-      </section>
-
-      <section className="tickets" id="tickets">
-        <div>
-          <p className="sectionLabel">Tickets</p>
-          <h2>Choose the visit that fits the afternoon.</h2>
-        </div>
-        <div className="ticketList">
-          {ticketPackages.map((ticket) => (
-            <article key={ticket.key}>
-              <span>{ticket.name}</span>
-              <strong>{money(ticket.priceCents)}</strong>
-              <p>{ticket.description}</p>
-              <Link
-                className="ticketCardLink"
-                href={`/checkout?package=${ticket.key}`}
-                prefetch={false}
-              >
-                Book {ticket.name}
-                <ArrowRight size={16} />
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <footer className="footer" id="visit">
-        <span>Sky LA</span>
-        <p>{siteConfig.address.full}</p>
-        <div className="footerLinks">
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-              "6100 Wilshire Blvd, Los Angeles, CA 90048"
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Get Directions
-          </a>
-          <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
-          <Link href="/privacy" prefetch={false}>Privacy</Link>
-          <Link href="/terms" prefetch={false}>Terms</Link>
-        </div>
-      </footer>
+      <PublicFooter />
     </main>
   );
 }

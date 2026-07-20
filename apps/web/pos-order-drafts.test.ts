@@ -36,7 +36,7 @@ describe("/api/order-drafts/pos", () => {
         lines: [
           {
             kind: "ticket",
-            packageKey: "drink",
+            packageKey: "general",
             quantity: 2,
             unitAmountCents: 1,
             metadata: { catalogVersion: "browser-spoof" }
@@ -70,19 +70,19 @@ describe("/api/order-drafts/pos", () => {
       persistenceReason: "convex_unconfigured",
       draft: {
         channel: "pos",
-        subtotalCents: 9700,
+        subtotalCents: 6300,
         feeCents: 0,
-        totalCents: 9700,
+        totalCents: 6300,
         customerEmail: "guest@example.com",
         lines: [
           {
             kind: "ticket",
-            productKey: "drink",
-            name: "Deck + Drink",
+            productKey: "general",
+            name: "The View",
             quantity: 2,
-            unitAmountCents: 3700,
-            lineTotalCents: 7400,
-            metadata: catalogLineMetadata(ticketPackages.drink)
+            unitAmountCents: 2000,
+            lineTotalCents: 4000,
+            metadata: catalogLineMetadata(ticketPackages.general)
           },
           {
             kind: "cafe",
@@ -128,9 +128,9 @@ describe("/api/order-drafts/pos", () => {
       persisted: false,
       persistenceReason: "staff_auth_required",
       draft: {
-        subtotalCents: 2900,
+        subtotalCents: 2000,
         feeCents: 0,
-        totalCents: 2900
+        totalCents: 2000
       }
     });
     expect(fetchMutationMock).not.toHaveBeenCalled();
@@ -143,9 +143,9 @@ describe("/api/order-drafts/pos", () => {
       status: "draft",
       totals: {
         currency: "usd",
-        subtotalCents: 2900,
+        subtotalCents: 2000,
         feeCents: 0,
-        totalCents: 2900
+        totalCents: 2000
       },
       customerEmail: "guest@example.com",
       readerId: "tmr_browser_supplied",
@@ -154,10 +154,10 @@ describe("/api/order-drafts/pos", () => {
         {
           kind: "ticket",
           productKey: "general",
-          name: "General Admission",
+          name: "The View",
           quantity: 1,
-          unitAmountCents: 2900,
-          lineTotalCents: 2900
+          unitAmountCents: 2000,
+          lineTotalCents: 2000
         }
       ]
     });
@@ -184,9 +184,9 @@ describe("/api/order-drafts/pos", () => {
         saleRef: "SALE260704-ABC123",
         readerId: "tmr_browser_supplied",
         terminalLocationId: "tml_registry_derived",
-        subtotalCents: 2900,
+        subtotalCents: 2000,
         feeCents: 0,
-        totalCents: 2900
+        totalCents: 2000
       }
     });
     expect(fetchMutationMock).toHaveBeenCalledWith(

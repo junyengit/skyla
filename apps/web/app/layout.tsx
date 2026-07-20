@@ -6,8 +6,6 @@ import { Playfair_Display, Inter } from "next/font/google";
 import "./styles/base.css";
 import "./styles/home.css";
 import "./styles/public.css";
-import "./styles/members.css";
-import "./styles/experiences.css";
 import "./styles/legal.css";
 import "./styles/tickets.css";
 import "./styles/public-responsive.css";

@@ -12,6 +12,8 @@ import {
   nativePublicRoutes,
   noindexRoutes,
   publicHtmlCompatibilityRedirects,
+  retiredPublicRoutes,
+  retiredRouteRedirects,
   robotsDisallowRoutes,
   sitemapEntries,
   staffRoutes
@@ -21,11 +23,11 @@ const webDir = import.meta.dirname;
 const publicDir = join(webDir, "public");
 
 describe("App Router route ownership", () => {
-  it("centralizes saved .html URLs as permanent Next redirects", async () => {
+  it("centralizes saved .html URLs and retired pages as permanent Next redirects", async () => {
     const redirects = await nextConfig.redirects?.();
 
     expect(redirects).toEqual(
-      publicHtmlCompatibilityRedirects.map((redirect) => ({
+      [...publicHtmlCompatibilityRedirects, ...retiredRouteRedirects].map((redirect) => ({
         ...redirect,
         permanent: true
       }))
@@ -37,6 +39,15 @@ describe("App Router route ownership", () => {
     for (const { source } of htmlCompatibilityRedirects) {
       expect(source.endsWith(".html"), source).toBe(true);
       expect(existsSync(join(publicDir, source.slice(1))), source).toBe(false);
+    }
+
+    // Every retired page redirects home with both its clean and .html URLs,
+    // and its App Router page no longer exists.
+    expect(retiredPublicRoutes).toEqual(["about", "cafe", "experiences", "members"]);
+    for (const route of retiredPublicRoutes) {
+      expect(retiredRouteRedirects).toContainEqual({ source: `/${route}`, destination: "/" });
+      expect(retiredRouteRedirects).toContainEqual({ source: `/${route}.html`, destination: "/" });
+      expect(existsSync(join(webDir, `app/${route}/page.tsx`)), route).toBe(false);
     }
   });
 
@@ -58,14 +69,8 @@ describe("App Router route ownership", () => {
 
   it("keeps public content in native pages without legacy browser data paths", () => {
     const checks: Array<[string, string[]]> = [
-      ["app/about/page.tsx", ["The Space"]],
-      ["app/cafe/page.tsx", ["listCafeItems", "@skyla/payments"]],
       ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],
-      ["app/experiences/page.tsx", ["ExperienceInquiryClient"]],
-      ["components/experience-inquiry-client.tsx", ["/api/experiences/inquiries", "idempotencyKey"]],
-      ["app/members/page.tsx", ["MembersApplicationClient"]],
-      ["components/members-application-client.tsx", ["/api/members/applications", "idempotencyKey"]],
       ["app/privacy/page.tsx", ["Convex"]],
       ["app/terms/page.tsx", ["Terms"]]
     ];
@@ -100,12 +105,9 @@ describe("App Router route ownership", () => {
 
   it("keeps internal migration status out of customer-facing copy", () => {
     const customerFacingFiles = [
+      "app/page.tsx",
       "app/checkout/page.tsx",
       "components/checkout-client.tsx",
-      "app/experiences/page.tsx",
-      "components/experience-inquiry-client.tsx",
-      "app/members/page.tsx",
-      "components/members-application-client.tsx",
       "app/privacy/page.tsx"
     ];
     const internalPhrases = [
@@ -177,10 +179,8 @@ describe("App Router route ownership", () => {
     expect(helperIndex, "shared tracking helper").toBeGreaterThan(-1);
     expect(configIndex, "shared script order").toBeLessThan(helperIndex);
 
-    for (const route of ["experiences", "members"]) {
-      const contents = readFileSync(join(webDir, `app/${route}/page.tsx`), "utf8");
-      expect(contents.includes("<MarketingScripts />"), `${route} marketing scripts`).toBe(true);
-    }
+    const homeContents = readFileSync(join(webDir, "app/page.tsx"), "utf8");
+    expect(homeContents.includes("<MarketingScripts />"), "home marketing scripts").toBe(true);
   });
 
   it("keeps legacy Supabase payment functions permanently fail closed", () => {
