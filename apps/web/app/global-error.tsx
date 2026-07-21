@@ -24,8 +24,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           minHeight: "100vh",
           display: "grid",
           placeItems: "center",
-          background: "#090909",
-          color: "#fff",
+          background: "#ffffff",
+          color: "#111111",
           fontFamily: "system-ui, sans-serif",
           textAlign: "center",
           padding: "24px"
@@ -43,10 +43,10 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             style={{
               marginTop: "18px",
               padding: "12px 24px",
-              borderRadius: "999px",
-              border: "1px solid rgba(255, 255, 255, 0.4)",
-              background: "transparent",
-              color: "#fff",
+              borderRadius: "2px",
+              border: "1px solid #111111",
+              background: "#111111",
+              color: "#ffffff",
               cursor: "pointer",
               fontSize: "1rem"
             }}

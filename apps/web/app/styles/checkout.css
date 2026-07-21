@@ -1,16 +1,8 @@
 .checkoutPage {
   min-height: 100svh;
-  background:
-    linear-gradient(180deg, rgba(9, 9, 9, 0.55), #090909 46%),
-    url("/images/lounge-window.webp") center top / cover no-repeat;
+  background: var(--bg);
   color: var(--text);
-  padding: 112px clamp(16px, 4vw, 56px) 72px;
-}
-
-.checkoutNav {
-  background: rgba(6, 5, 3, 0.72);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
+  padding: 136px clamp(16px, 4vw, 56px) 80px;
 }
 
 .checkoutHero,
@@ -21,18 +13,18 @@
 }
 
 .checkoutHero {
-  padding: clamp(28px, 5vw, 64px) 0 clamp(28px, 4vw, 48px);
+  padding: clamp(24px, 4vw, 48px) 0 clamp(28px, 4vw, 48px);
 }
 
 .checkoutHero h1 {
   max-width: 760px;
-  font-size: clamp(3rem, 8vw, 6.4rem);
+  font-size: clamp(2.8rem, 6vw, 4.8rem);
 }
 
 .checkoutHero p {
   max-width: 620px;
-  margin: 22px 0 0;
-  color: rgba(247, 243, 235, 0.78);
+  margin: 20px 0 0;
+  color: var(--muted);
   font-size: clamp(1rem, 2vw, 1.12rem);
   line-height: 1.7;
 }
@@ -42,7 +34,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 18px;
-  color: var(--gold-strong);
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.24em;
@@ -65,10 +57,9 @@
 .checkoutPanel,
 .checkoutSummary,
 .checkoutNotice {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(12, 12, 14, 0.92);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
 }
 
 .checkoutPanel,
@@ -85,11 +76,13 @@
 }
 
 .checkoutNotice.isGood {
-  border-color: rgba(141, 216, 178, 0.45);
+  border-color: rgba(20, 108, 67, 0.45);
+  background: #f2f8f4;
 }
 
 .checkoutNotice.isWarn {
-  border-color: rgba(240, 207, 115, 0.46);
+  border-color: rgba(146, 106, 22, 0.4);
+  background: #fbf7ec;
 }
 
 .checkoutPanelHeader {
@@ -98,7 +91,7 @@
 
 .checkoutPanelLabel {
   margin: 0 0 10px;
-  color: var(--gold-strong);
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.26em;
@@ -133,39 +126,39 @@
   align-items: baseline;
   gap: 8px 20px;
   padding: 22px 24px;
-  border: 1px solid rgba(240, 207, 115, 0.3);
-  border-radius: 10px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(216, 182, 83, 0.14), transparent 55%),
-    rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
   text-align: left;
 }
 
 .checkoutPackageName {
   grid-area: name;
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 1.6rem;
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .checkoutPackageDetail {
   grid-area: detail;
-  color: rgba(247, 243, 235, 0.68);
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
 .checkoutPackage strong {
   grid-area: price;
   justify-self: end;
-  color: var(--gold-strong);
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 1.9rem;
-  font-weight: 500;
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .checkoutPackage em {
   grid-area: meta;
   justify-self: end;
-  color: rgba(247, 243, 235, 0.62);
+  color: var(--muted);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 700;
@@ -173,17 +166,16 @@
   text-transform: uppercase;
 }
 
-.checkoutPackage.isSelected,
-.checkoutTimes button.isSelected {
-  border-color: var(--gold);
-  background: rgba(216, 182, 83, 0.16);
+.checkoutPackage.isSelected {
+  border-color: var(--text);
+  background: #faf9f7;
 }
 
 .checkoutGuests {
   display: grid;
   gap: 0;
   margin-top: 22px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--line);
 }
 
 .checkoutCounter {
@@ -192,7 +184,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--line);
 }
 
 .checkoutCounterLabel {
@@ -205,7 +197,7 @@
 }
 
 .checkoutCounterLabel em {
-  color: rgba(247, 243, 235, 0.62);
+  color: var(--muted);
   font-size: 0.85rem;
   font-style: normal;
 }
@@ -221,17 +213,17 @@
 .checkoutStepper button {
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface);
   font-size: 1.05rem;
   line-height: 1;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .checkoutStepper button:hover {
-  border-color: var(--gold);
-  background: rgba(216, 182, 83, 0.14);
+  border-color: var(--text);
+  background: #f2f1ee;
 }
 
 .checkoutGrid {
@@ -244,7 +236,7 @@
 .checkoutGrid label {
   display: grid;
   gap: 9px;
-  color: rgba(247, 243, 235, 0.72);
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -254,9 +246,9 @@
 .checkoutGrid input {
   min-height: 48px;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
   color: var(--text);
   font: inherit;
   letter-spacing: normal;
@@ -265,7 +257,7 @@
 
 .checkoutHours {
   margin: 18px 0 0;
-  color: rgba(247, 243, 235, 0.68);
+  color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.5;
 }
@@ -279,20 +271,26 @@
 
 .checkoutTimes button {
   min-height: 46px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface);
   font-size: 0.9rem;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .checkoutTimes button:not(:disabled):hover {
-  border-color: var(--gold);
+  border-color: var(--text);
+}
+
+.checkoutTimes button.isSelected {
+  border-color: var(--text);
+  background: var(--text);
+  color: #ffffff;
 }
 
 .checkoutSummary {
   position: sticky;
-  top: 100px;
+  top: 96px;
 }
 
 .checkoutLines {
@@ -310,20 +308,20 @@
 
 .checkoutLine {
   padding: 12px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--line);
 }
 
 .checkoutLine span {
-  color: rgba(247, 243, 235, 0.68);
+  color: var(--muted);
 }
 
 .checkoutEmpty {
   min-height: 120px;
   display: grid;
   place-items: center;
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  color: rgba(247, 243, 235, 0.62);
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--muted);
   text-align: center;
   padding: 18px;
   line-height: 1.6;
@@ -332,20 +330,20 @@
 .checkoutTotal {
   margin-top: 6px;
   padding-top: 18px;
-  border-top: 1px solid rgba(240, 207, 115, 0.36);
+  border-top: 1px solid var(--text);
   font-size: 1.2rem;
 }
 
 .checkoutTotal strong {
-  color: var(--gold-strong);
-  font-family: var(--font-serif), Georgia, serif;
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
   font-size: 1.7rem;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .checkoutAllIn {
   margin: 10px 0 0;
-  color: rgba(247, 243, 235, 0.6);
+  color: var(--muted);
   font-size: 0.82rem;
 }
 
@@ -354,13 +352,13 @@
   align-items: center;
   gap: 8px;
   margin-top: 18px;
-  color: var(--green);
+  color: #146c43;
   font-weight: 700;
 }
 
 .checkoutError {
   margin: 18px 0 0;
-  color: #ffd5d5;
+  color: #b3261e;
   line-height: 1.5;
 }
 
@@ -385,16 +383,20 @@
   border: 1px solid var(--line);
 }
 
+.checkoutActions .secondaryAction:not(:disabled):hover {
+  border-color: var(--text);
+}
+
 .checkoutActions .primaryAction:disabled,
 .checkoutActions .secondaryAction:disabled {
-  opacity: 0.48;
+  opacity: 0.42;
   cursor: not-allowed;
 }
 
 .checkoutTextButton {
   border: 0;
   background: transparent;
-  color: rgba(247, 243, 235, 0.66);
+  color: var(--muted);
   min-height: 38px;
 }
 
@@ -405,8 +407,8 @@
 .checkoutTrust {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 12px 28px;
+  margin-top: 24px;
 }
 
 .checkoutTrust div {
@@ -414,17 +416,13 @@
   align-items: center;
   gap: 10px;
   min-height: 46px;
-  padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.4);
-  color: rgba(247, 243, 235, 0.82);
+  color: var(--muted);
   font-size: 0.85rem;
   font-weight: 700;
 }
 
 .checkoutTrust svg {
-  color: var(--gold-strong);
+  color: var(--text);
 }
 
 @media (max-width: 900px) {

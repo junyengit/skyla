@@ -76,7 +76,7 @@ export default async function HomePage() {
       <section className="hero">
         <div className="heroMedia" aria-hidden="true">
           <Image
-            src="/images/hero-lounge.jpg"
+            src="/images/view.jpg"
             alt=""
             fill
             priority
@@ -90,12 +90,10 @@ export default async function HomePage() {
             <MapPin size={16} />
             {siteConfig.address.short}
           </p>
-          <h1>
-            Los Angeles <span>above it all</span>
-          </h1>
+          <h1>Los Angeles, from the top of Wilshire.</h1>
           <p className="heroCopy">
-            An observation deck and lounge on the top floor of 6100 Wilshire,
-            timed to the light.
+            An observation deck on the top floor of 6100 Wilshire, with
+            360-degree views from the Hollywood Hills to the Westside.
           </p>
           <div className="heroTicket">
             <span className="heroPrice">$20</span>
@@ -116,24 +114,22 @@ export default async function HomePage() {
       <div id="main-content" />
 
       <section className="ticketStatement" aria-label="What your ticket includes">
-        <p className="sectionLabel">One ticket. The View.</p>
-        <h2>
-          The whole city, <span>in one quiet room.</span>
-        </h2>
+        <p className="sectionLabel">One ticket</p>
+        <h2>One ticket, the whole skyline.</h2>
         <p className="ticketStatementCopy">
-          Your ticket is the top floor: the open observation deck, the indoor
-          lounge behind floor-to-ceiling glass, and a skyline that runs from the
-          Hollywood Hills to the ocean haze. Entry is timed, so the room stays
-          calm and the glass stays yours.
+          Admission covers the full top floor: the open observation deck, the
+          indoor lounge behind floor-to-ceiling glass, and views that run from
+          the Hollywood Hills to the ocean. Entry is timed, so the deck stays
+          comfortable.
         </p>
         <ul className="ticketIncludes">
           <li>
             <strong>Observation deck</strong>
-            <span>360-degree views above Wilshire, hills to sea</span>
+            <span>360-degree views above Wilshire, from the hills to the sea</span>
           </li>
           <li>
             <strong>Indoor lounge</strong>
-            <span>Seated comfort behind floor-to-ceiling glass</span>
+            <span>Seating behind floor-to-ceiling glass</span>
           </li>
           <li>
             <strong>Timed entry</strong>
@@ -144,31 +140,37 @@ export default async function HomePage() {
 
       <section className="viewsGallery" aria-label="Views from the deck">
         <figure className="viewsGalleryLead">
-          <Image
-            src="/images/view-hills.jpg"
-            alt="Hollywood Hills and the westside skyline from the Sky LA deck"
-            fill
-            sizes="(max-width: 820px) 100vw, 62vw"
-          />
+          <div className="viewsGalleryFrame">
+            <Image
+              src="/images/view-hills.jpg"
+              alt="Hollywood Hills and the city grid from the Sky LA deck"
+              fill
+              sizes="(max-width: 820px) 100vw, 62vw"
+            />
+          </div>
           <figcaption>Hollywood Hills</figcaption>
         </figure>
         <figure>
-          <Image
-            src="/images/view-academy.jpg"
-            alt="Academy Museum and Museum Row seen from above"
-            fill
-            sizes="(max-width: 820px) 100vw, 38vw"
-          />
+          <div className="viewsGalleryFrame">
+            <Image
+              src="/images/view-academy.jpg"
+              alt="Academy Museum and Museum Row seen from above"
+              fill
+              sizes="(max-width: 820px) 100vw, 38vw"
+            />
+          </div>
           <figcaption>Academy Museum</figcaption>
         </figure>
         <figure>
-          <Image
-            src="/images/view-westside.jpg"
-            alt="Westside rooftops stretching toward Century City"
-            fill
-            sizes="(max-width: 820px) 100vw, 38vw"
-          />
-          <figcaption>Westside skyline</figcaption>
+          <div className="viewsGalleryFrame">
+            <Image
+              src="/images/view-westside.jpg"
+              alt="Westside rooftops stretching toward Century City"
+              fill
+              sizes="(max-width: 820px) 100vw, 38vw"
+            />
+          </div>
+          <figcaption>The Westside</figcaption>
         </figure>
       </section>
 
@@ -180,19 +182,30 @@ export default async function HomePage() {
             <p className="sectionLabel">Find us</p>
             <h2>On Museum Row.</h2>
           </div>
-          <p>
-            {siteConfig.address.full}
-            <br />
-            <br />
-            <a
-              className="inlineLink"
-              href={directionsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Get Directions
-            </a>
-          </p>
+          <div className="visitLocationBody">
+            <p>
+              {siteConfig.address.full}
+              <br />
+              <br />
+              <a
+                className="inlineLink"
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Get Directions
+              </a>
+            </p>
+            <figure className="visitPhoto">
+              <Image
+                src="/images/building.jpg"
+                alt="The dark glass tower at 6100 Wilshire, on Museum Row"
+                width={647}
+                height={588}
+              />
+              <figcaption>6100 Wilshire, Museum Row</figcaption>
+            </figure>
+          </div>
         </section>
       </div>
 
@@ -200,8 +213,7 @@ export default async function HomePage() {
         <p className="sectionLabel">Coming soon</p>
         <h2>Date Night</h2>
         <p className="dateNightCopy">
-          A reserved evening for two above the city lights. $98 for two, entry
-          included.
+          A reserved after-hours visit for two. $98 for two, entry included.
         </p>
         <a className="inlineLink" href={`mailto:${siteConfig.email}`}>
           Inquire at {siteConfig.email}

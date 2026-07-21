@@ -15,10 +15,10 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 24px;
-  padding: 24px clamp(20px, 5vw, 64px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.74);
-  backdrop-filter: blur(16px);
+  min-height: 72px;
+  padding: 0 clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
 }
 
 .publicNav nav {
@@ -30,11 +30,11 @@
 }
 
 .publicNav nav a {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
 }
 
 .publicNav nav a[aria-current="page"] {
-  color: var(--gold-strong);
+  color: var(--text);
 }
 
 .publicNav .navCta {
@@ -61,10 +61,7 @@
 }
 
 .publicHeroShade {
-  background:
-    radial-gradient(circle at 72% 28%, rgba(216, 182, 83, 0.18), transparent 30%),
-    linear-gradient(90deg, rgba(9, 9, 9, 0.9), rgba(9, 9, 9, 0.62) 52%, rgba(9, 9, 9, 0.88)),
-    linear-gradient(to bottom, rgba(9, 9, 9, 0.32), #090909 96%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.12) 55%, transparent 75%);
 }
 
 .publicHeroContent {
@@ -72,6 +69,7 @@
   z-index: 1;
   width: min(1020px, 100%);
   min-width: 0;
+  color: #ffffff;
 }
 
 .publicHeroContent h1 {
@@ -80,18 +78,17 @@
   overflow-wrap: break-word;
 }
 
-.publicHeroContent h1 span {
-  display: block;
-  font-style: italic;
-}
-
 .publicHeroContent > p:not(.sectionLabel) {
   max-width: 680px;
   margin: 26px 0 0;
-  color: rgba(255, 255, 255, 0.76);
+  color: rgba(255, 255, 255, 0.88);
   font-size: clamp(1rem, 2vw, 1.18rem);
   line-height: 1.66;
   overflow-wrap: break-word;
+}
+
+.publicHeroContent .sectionLabel {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .publicHeroActions {
@@ -129,18 +126,19 @@
   min-height: 132px;
   align-content: center;
   padding: 22px;
-  background: #0d0e11;
+  background: var(--surface);
 }
 
 .publicStats strong {
-  color: var(--gold-strong);
-  font-family: var(--font-serif), Georgia, serif;
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
   font-size: clamp(1.8rem, 4vw, 3.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 0.94;
 }
 
 .publicStats span {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -166,7 +164,7 @@
 .publicCta p,
 .publicCardGrid p,
 .cafeMenuItem p {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
   line-height: 1.65;
 }
 
@@ -190,7 +188,6 @@
 .publicFeatureMedia {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
   background: var(--bg-soft);
 }
 
@@ -217,9 +214,9 @@
 }
 
 .publicPillList span {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
   padding: 9px 12px;
@@ -246,7 +243,6 @@
 .publicCardGrid article,
 .cafeMenuItem {
   border: 1px solid var(--line);
-  border-radius: 8px;
   background: var(--surface);
   padding: 22px;
 }
@@ -287,7 +283,6 @@
 .cafeNativeGallery img {
   min-height: 300px;
   border: 1px solid var(--line);
-  border-radius: 8px;
 }
 
 .cafeMenuNative {
@@ -317,8 +312,7 @@
 }
 
 .cafeMenuItem strong {
-  color: var(--green);
+  color: var(--text);
   font-size: 1.15rem;
   white-space: nowrap;
 }
-

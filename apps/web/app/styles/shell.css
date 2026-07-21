@@ -5,9 +5,9 @@
   left: 16px;
   z-index: 60;
   padding: 12px 22px;
-  border-radius: 999px;
-  background: var(--gold);
-  color: #15120a;
+  border-radius: 2px;
+  background: var(--text);
+  color: #ffffff;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -23,7 +23,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--gold-strong);
+  outline: 2px solid var(--text);
   outline-offset: 3px;
 }
 
@@ -32,7 +32,7 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--gold-strong);
+  color: var(--text);
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -49,9 +49,9 @@ textarea:focus-visible {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -61,7 +61,7 @@ textarea:focus-visible {
   width: 18px;
   height: 2px;
   border-radius: 2px;
-  background: var(--gold-strong);
+  background: var(--text);
   transition: background 0.2s ease;
 }
 
@@ -74,7 +74,7 @@ textarea:focus-visible {
   width: 18px;
   height: 2px;
   border-radius: 2px;
-  background: var(--gold-strong);
+  background: var(--text);
   transition: transform 0.2s ease, top 0.2s ease;
 }
 
@@ -111,23 +111,22 @@ textarea:focus-visible {
   display: grid;
   gap: 6px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background: rgba(9, 9, 9, 0.97);
-  backdrop-filter: blur(16px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .mobileNavMenu a {
   padding: 12px 10px;
-  border-radius: 12px;
-  color: rgba(255, 255, 255, 0.86);
+  border-radius: 4px;
+  color: var(--text);
   font-size: 0.9rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .mobileNavMenu a[aria-current="page"] {
-  color: var(--gold-strong);
+  color: var(--muted);
 }
 
 .mobileNavMenu .navCta {
