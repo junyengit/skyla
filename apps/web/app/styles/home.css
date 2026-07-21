@@ -269,25 +269,39 @@ h2 {
 /* One ticket statement */
 
 .ticketStatement {
-  padding: clamp(96px, 14vh, 150px) 0 clamp(56px, 8vh, 90px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(28px, 6vw, 80px);
+  padding: clamp(56px, 9vh, 88px) 0 clamp(36px, 5vh, 56px);
+}
+
+.ticketStatement .sectionLabel {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .ticketStatement h2 {
-  max-width: 780px;
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .ticketStatementCopy {
-  max-width: 620px;
-  margin: 24px 0 0;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  max-width: 560px;
+  margin: 0;
   color: var(--muted);
   line-height: 1.75;
 }
 
 .ticketIncludes {
   display: grid;
+  grid-column: 1 / -1;
+  grid-row: 3;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(18px, 4vw, 44px);
-  margin: clamp(48px, 8vh, 80px) 0 0;
+  margin: clamp(40px, 6vh, 64px) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -317,15 +331,14 @@ h2 {
 
 .viewsGallery {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(230px, 33vh));
-  gap: 26px 14px;
-  padding: clamp(40px, 7vh, 72px) 0 clamp(72px, 10vh, 120px);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 20px;
+  padding: clamp(48px, 7vh, 72px) 0;
 }
 
 .viewsGallery figure {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
   gap: 10px;
   margin: 0;
   min-height: 0;
@@ -333,6 +346,15 @@ h2 {
 
 .viewsGalleryLead {
   grid-row: span 2;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.viewsGallery figure:not(.viewsGalleryLead) {
+  grid-template-rows: auto auto;
+}
+
+.viewsGallery figure:not(.viewsGalleryLead) .viewsGalleryFrame {
+  aspect-ratio: 2 / 1;
 }
 
 .viewsGalleryFrame {
@@ -343,6 +365,20 @@ h2 {
 
 .viewsGalleryFrame img {
   object-fit: cover;
+}
+
+/* All three photos carry a wide empty sky band in the upper half; bias the
+   crop toward the lower frame so the city fills the visible area. */
+.viewsGalleryFrame img[src*="view-hills"] {
+  object-position: 50% 82%;
+}
+
+.viewsGalleryFrame img[src*="view-academy"] {
+  object-position: 50% 68%;
+}
+
+.viewsGalleryFrame img[src*="view-westside"] {
+  object-position: 50% 72%;
 }
 
 .viewsGallery figcaption {
@@ -362,11 +398,17 @@ h2 {
 }
 
 .visitBand .section {
-  padding: clamp(72px, 10vh, 104px) 0 clamp(40px, 6vh, 64px);
+  padding: clamp(56px, 8vh, 80px) 0 clamp(40px, 6vh, 56px);
 }
 
 .visitBand .visitLocation {
-  padding-top: 0;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.72fr) minmax(0, 1fr);
+  column-gap: clamp(24px, 4vw, 56px);
+  padding: 0 0 clamp(56px, 8vh, 80px);
+}
+
+.visitLocationBody {
+  display: contents;
 }
 
 .visitLocationBody p {
@@ -376,7 +418,7 @@ h2 {
 }
 
 .visitPhoto {
-  margin: 32px 0 0;
+  margin: 0;
 }
 
 .visitPhoto img {
@@ -397,7 +439,7 @@ h2 {
 /* Date Night teaser */
 
 .dateNight {
-  padding: clamp(88px, 13vh, 140px) 0;
+  padding: clamp(48px, 7vh, 72px) 0;
   text-align: center;
 }
 
@@ -467,27 +509,47 @@ h2 {
     gap: 16px;
   }
 
+  .ticketStatement {
+    grid-template-columns: 1fr;
+  }
+
+  .ticketStatement .sectionLabel,
+  .ticketStatement h2,
+  .ticketStatementCopy,
+  .ticketIncludes {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .ticketStatementCopy {
+    margin: 20px 0 0;
+  }
+
   .ticketIncludes {
     grid-template-columns: 1fr;
     gap: 22px;
   }
 
+  .visitBand .visitLocation {
+    grid-template-columns: 1fr;
+  }
+
   .viewsGallery {
     grid-template-columns: 1fr;
     grid-template-rows: none;
-    grid-auto-rows: minmax(0, auto);
   }
 
-  .viewsGallery figure {
+  .viewsGallery figure,
+  .viewsGalleryLead {
     grid-template-rows: none;
-  }
-
-  .viewsGalleryFrame {
-    min-height: 240px;
-    height: 36vh;
   }
 
   .viewsGalleryLead {
     grid-row: auto;
+  }
+
+  .viewsGallery .viewsGalleryFrame,
+  .viewsGallery figure:not(.viewsGalleryLead) .viewsGalleryFrame {
+    aspect-ratio: 3 / 2;
   }
 }

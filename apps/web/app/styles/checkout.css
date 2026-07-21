@@ -264,7 +264,7 @@
 
 .checkoutTimes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
 }
@@ -440,9 +440,18 @@
     padding-inline: 14px;
   }
 
-  .checkoutGrid,
-  .checkoutTimes {
+  .checkoutGrid {
     grid-template-columns: 1fr;
+  }
+
+  .checkoutTimes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .checkoutTimes button {
+    min-height: 44px;
+    font-size: 0.85rem;
   }
 
   .checkoutPackage {
