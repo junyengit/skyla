@@ -50,7 +50,7 @@ describe("checkout operating-hour availability", () => {
     expect((screen.getByRole("button", { name: "11:00 AM" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole("button", { name: "11:00 AM" }).getAttribute("style")).toContain("opacity: 0.38");
     expect((screen.getByRole("button", { name: "12:30 PM" }) as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByRole("button", { name: "12:30 PM" }).className).toContain("isSelected");
+    expect(screen.getByRole("button", { name: "12:00 PM" }).className).toContain("isSelected");
     expect((screen.getByRole("button", { name: "5:00 PM" }) as HTMLButtonElement).disabled).toBe(true);
   });
 

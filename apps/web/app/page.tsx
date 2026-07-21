@@ -143,12 +143,12 @@ export default async function HomePage() {
           <div className="viewsGalleryFrame">
             <Image
               src="/images/view-hills.jpg"
-              alt="Hollywood Hills and the city grid from the Sky LA deck"
+              alt="Residential blocks stretching west toward the Century City skyline"
               fill
               sizes="(max-width: 820px) 100vw, 62vw"
             />
           </div>
-          <figcaption>Hollywood Hills</figcaption>
+          <figcaption>Toward Century City</figcaption>
         </figure>
         <figure>
           <div className="viewsGalleryFrame">
@@ -165,12 +165,12 @@ export default async function HomePage() {
           <div className="viewsGalleryFrame">
             <Image
               src="/images/view-westside.jpg"
-              alt="Westside rooftops stretching toward Century City"
+              alt="Rooftops running north to the Hollywood Hills"
               fill
               sizes="(max-width: 820px) 100vw, 38vw"
             />
           </div>
-          <figcaption>The Westside</figcaption>
+          <figcaption>Hollywood Hills</figcaption>
         </figure>
       </section>
 
