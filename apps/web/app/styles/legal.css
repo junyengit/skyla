@@ -1,10 +1,8 @@
 .legalPage {
   min-height: 100svh;
-  background:
-    linear-gradient(180deg, rgba(9, 9, 9, 0.7), #090909 260px),
-    url("/images/hero-lounge.jpg") center top / cover no-repeat fixed;
+  background: var(--bg);
   color: var(--text);
-  padding: 112px clamp(18px, 4vw, 56px) 0;
+  padding: 136px clamp(18px, 4vw, 56px) 0;
 }
 
 .legalNav {
@@ -17,10 +15,10 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 24px;
-  padding: 24px clamp(20px, 5vw, 64px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(16px);
+  min-height: 72px;
+  padding: 0 clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
 }
 
 .legalNav nav {
@@ -32,7 +30,11 @@
 }
 
 .legalNav nav a {
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
+}
+
+.legalNav nav a:hover {
+  color: var(--text);
 }
 
 .legalNav .navCta {
@@ -47,20 +49,20 @@
 
 .legalArticle h1 {
   margin-top: 12px;
-  font-size: clamp(2.8rem, 7vw, 5.6rem);
-  line-height: 0.9;
+  font-size: clamp(2.6rem, 7vw, 5rem);
+  line-height: 0.98;
 }
 
 .legalUpdated {
   margin: 16px 0 42px;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--muted);
   font-size: 0.86rem;
 }
 
 .legalIntro p,
 .legalBody p,
 .legalArticle li {
-  color: rgba(255, 255, 255, 0.74);
+  color: var(--muted);
   font-size: 1rem;
   line-height: 1.75;
 }
@@ -86,10 +88,14 @@
 
 .legalArticle a,
 .legalArticle strong {
-  color: var(--gold-strong);
+  color: var(--text);
+}
+
+.legalArticle a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .legalFooter {
   width: min(1160px, 100%);
 }
-

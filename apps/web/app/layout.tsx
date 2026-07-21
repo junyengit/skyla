@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 // Import order defines the cascade: tokens/base first, per-surface sheets in
 // the original monolith order, and the shell tail last so its mobile-nav rules
 // keep out-specifying the public-nav defaults.
@@ -14,10 +14,10 @@ import "./styles/pos.css";
 import "./styles/admin.css";
 import "./styles/shell.css";
 
-const serif = Playfair_Display({
+const display = Archivo({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-serif"
+  variable: "--font-display"
 });
 
 const sans = Inter({
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: "%s | Sky LA"
   },
   description:
-    "360-degree rooftop views, cafe, private experiences, and ticketed visits above 6100 Wilshire in Los Angeles.",
+    "Timed-entry observation deck on the top floor of 6100 Wilshire, with 360-degree views of Los Angeles. $20 all-in per adult.",
   alternates: {
     canonical: "./"
   },
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     siteName: "Sky LA",
     title: "Sky LA | Los Angeles Above It All",
     description:
-      "Rooftop observation deck, cafe, and lounge above Los Angeles.",
+      "Timed-entry observation deck above Wilshire, with 360-degree views of Los Angeles.",
     images: ["/images/og-image.jpg"]
   }
 };
@@ -57,12 +57,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#090909"
+  themeColor: "#ffffff"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable}`} data-scroll-behavior="smooth">
+    <html lang="en" className={`${display.variable} ${sans.variable}`} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );
