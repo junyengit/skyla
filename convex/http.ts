@@ -1,4 +1,5 @@
 import { httpRouter } from "convex/server";
+import { siteConfig } from "@skyla/config";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
@@ -70,6 +71,20 @@ export const publicGateway = httpAction(async (ctx, request) => {
     }
 
     try {
+      if (
+        !siteConfig.launched &&
+        (payload.operation === "checkout-draft" || payload.operation === "stripe-checkout")
+      ) {
+        return gatewayJson(
+          {
+            ok: false,
+            code: "ticket_sales_not_live",
+            error: siteConfig.launchStatus.message
+          },
+          { status: 503 }
+        );
+      }
+
       const args = {
         ...payload.input,
         gatewayRateLimitKey: payload.rateLimitKey

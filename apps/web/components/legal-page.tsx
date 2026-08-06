@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { siteConfig } from "@skyla/config";
+import { LaunchStatusBanner } from "@/components/launch-status-banner";
 
 type LegalSection = {
   title: string;
@@ -17,7 +18,7 @@ type LegalPageProps = {
 
 export function LegalPage({ title, updated, intro, sections }: LegalPageProps) {
   return (
-    <main className="legalPage">
+    <main className={siteConfig.launched ? "legalPage" : "legalPage prelaunch"}>
       <header className="legalNav">
         <Link className="brand" href="/">
           Sky LA
@@ -30,10 +31,16 @@ export function LegalPage({ title, updated, intro, sections }: LegalPageProps) {
             Tickets
           </Link>
         </nav>
-        <Link className="navCta" href="/checkout" prefetch={false}>
-          Buy Tickets
-        </Link>
+        {siteConfig.launched ? (
+          <Link className="navCta" href="/checkout" prefetch={false}>
+            Buy Tickets
+          </Link>
+        ) : (
+          <span className="navStatus">{siteConfig.launchStatus.label}</span>
+        )}
       </header>
+
+      <LaunchStatusBanner />
 
       <article className="legalArticle">
         <p className="sectionLabel">Legal</p>

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@skyla/config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@skyla/config")>();
+  return { ...original, siteConfig: { ...original.siteConfig, launched: true } };
+});
+
 import { POST } from "./app/api/payments/stripe-checkout/route";
 
 const fetchMock = vi.fn<typeof fetch>();

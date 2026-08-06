@@ -98,7 +98,7 @@ export default async function HomePage() {
             Buy Tickets
           </Link>
         ) : (
-          <span className="navStatus">Coming Soon</span>
+          <span className="navStatus">{siteConfig.launchStatus.label}</span>
         )}
       </nav>
       <LaunchStatusBanner />

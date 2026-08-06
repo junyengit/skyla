@@ -57,6 +57,7 @@
     "vitest": "4.1.10"
   },
   "dependencies": {
+    "@skyla/config": "workspace:*",
     "@skyla/payments": "workspace:*",
     "convex": "^1.42.1"
   }

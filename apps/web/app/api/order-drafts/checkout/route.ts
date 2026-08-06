@@ -4,6 +4,7 @@ import {
   PublicGatewayError,
   publicGatewayErrorResponse
 } from "../../../../lib/public-convex-gateway";
+import { ticketSalesUnavailableResponse } from "../../ticket-sales-gate";
 
 type CheckoutDraftInput = Parameters<typeof createCheckoutOrderDraft>[0] & {
   idempotencyKey?: string;
@@ -50,6 +51,11 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
 }
 
 export async function POST(request: Request) {
+  const unavailable = ticketSalesUnavailableResponse();
+  if (unavailable) {
+    return unavailable;
+  }
+
   try {
     const input = (await request.json()) as CheckoutDraftInput;
     const draft = createCheckoutOrderDraft(input);

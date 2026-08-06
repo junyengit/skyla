@@ -1,19 +1,27 @@
 import Link from "next/link";
 import { ArrowRight } from "@skyla/ui/icons";
+import { siteConfig } from "@skyla/config";
+import { LaunchStatusBanner } from "@/components/launch-status-banner";
 import { PublicFooter } from "@/components/public-page-shell";
 
 export default function NotFound() {
   return (
-    <main className="publicPage">
+    <main className={siteConfig.launched ? "publicPage" : "publicPage prelaunch"}>
       <header className="publicNav">
         <Link className="brand" href="/">
           Sky LA
         </Link>
         <nav aria-label="Primary navigation" />
-        <Link className="navCta" href="/checkout" prefetch={false}>
-          Buy Tickets
-        </Link>
+        {siteConfig.launched ? (
+          <Link className="navCta" href="/checkout" prefetch={false}>
+            Buy Tickets
+          </Link>
+        ) : (
+          <span className="navStatus">{siteConfig.launchStatus.label}</span>
+        )}
       </header>
+
+      <LaunchStatusBanner />
 
       <section className="section intro notFound" aria-labelledby="not-found-title">
         <div>
