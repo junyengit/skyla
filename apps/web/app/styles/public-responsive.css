@@ -7,6 +7,11 @@
     display: none;
   }
 
+  /* The status band wraps to two short lines on narrow screens. */
+  .prelaunch .hero {
+    min-height: calc(100svh - 72px - 72px);
+  }
+
   .section {
     grid-template-columns: 1fr;
   }

@@ -7,9 +7,15 @@
 
 .checkoutHero,
 .checkoutShell,
+.checkoutPrelaunch,
 .checkoutTrust {
   width: min(1120px, 100%);
   margin-inline: auto;
+}
+
+/* The status band renders full-bleed inside the padded checkout page. */
+.checkoutPage .launchBanner {
+  margin-inline: calc(-1 * clamp(16px, 4vw, 56px));
 }
 
 .checkoutHero {
@@ -56,16 +62,29 @@
 
 .checkoutPanel,
 .checkoutSummary,
-.checkoutNotice {
+.checkoutNotice,
+.checkoutPrelaunch {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
 }
 
 .checkoutPanel,
-.checkoutSummary {
+.checkoutSummary,
+.checkoutPrelaunch {
   padding: clamp(22px, 3.4vw, 34px);
   min-width: 0;
+}
+
+.checkoutPrelaunchCopy {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.checkoutPrelaunch .primaryAction {
+  margin-top: 24px;
 }
 
 .checkoutNotice {
@@ -438,6 +457,10 @@
 @media (max-width: 640px) {
   .checkoutPage {
     padding-inline: 14px;
+  }
+
+  .checkoutPage .launchBanner {
+    margin-inline: -14px;
   }
 
   .checkoutGrid {

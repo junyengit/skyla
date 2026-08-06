@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { siteConfig } from "@skyla/config";
 import { ArrowRight } from "@skyla/ui/icons";
+import { LaunchStatusBanner } from "@/components/launch-status-banner";
 
 type NavKey = "checkout";
 
@@ -19,7 +20,7 @@ export const publicNavItems: Array<{ key: NavKey; label: string; href: string }>
 
 export function PublicPageShell({ active, children }: PublicPageShellProps) {
   return (
-    <main className="publicPage">
+    <main className={siteConfig.launched ? "publicPage" : "publicPage prelaunch"}>
       <a className="skipLink" href="#main-content">
         Skip to content
       </a>
@@ -39,10 +40,16 @@ export function PublicPageShell({ active, children }: PublicPageShellProps) {
             </Link>
           ))}
         </nav>
-        <Link className="navCta" href="/checkout" prefetch={false}>
-          Buy Tickets
-        </Link>
+        {siteConfig.launched ? (
+          <Link className="navCta" href="/checkout" prefetch={false}>
+            Buy Tickets
+          </Link>
+        ) : (
+          <span className="navStatus">{siteConfig.launchStatus.label}</span>
+        )}
       </header>
+
+      <LaunchStatusBanner />
 
       <div id="main-content" />
       {children}

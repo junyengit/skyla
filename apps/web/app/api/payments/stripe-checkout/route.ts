@@ -1,4 +1,5 @@
 import { callPublicConvexGateway, PublicGatewayError } from "../../../../lib/public-convex-gateway";
+import { ticketSalesUnavailableResponse } from "../../ticket-sales-gate";
 import { invalidPaymentRequest, paymentJson, paymentProviderUnavailable, paymentServiceUnavailable } from "../_shared";
 
 type StripeCheckoutRequest = {
@@ -60,6 +61,11 @@ function toPublicCheckoutResult(result: StripeCheckoutGatewayResult) {
 }
 
 export async function POST(request: Request) {
+  const unavailable = ticketSalesUnavailableResponse();
+  if (unavailable) {
+    return unavailable;
+  }
+
   try {
     const input = (await request.json()) as StripeCheckoutRequest;
     const orderRef = requiredString(input.orderRef, "orderRef");

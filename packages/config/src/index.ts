@@ -4,6 +4,13 @@ export const siteConfig = {
   name: "Sky LA",
   domain: "skydeckla.com",
   email: "reservations@skydeckla.com",
+  // Pre-launch gate. Widened to boolean because this flips at launch: false
+  // keeps every purchase path disabled, true restores them site-wide.
+  launched: false as boolean,
+  launchStatus: {
+    label: "Coming soon",
+    message: "Sky LA is not open yet. Ticket sales are not live."
+  },
   address: {
     short: "6100 Wilshire Blvd · Los Angeles",
     full: "6100 Wilshire Blvd, Top Floor, Los Angeles, CA 90048"

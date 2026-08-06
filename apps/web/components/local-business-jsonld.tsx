@@ -3,9 +3,11 @@ import { operatingWeekdays, type PublicOperatingConfig } from "@/lib/operating-h
 
 export function LocalBusinessJsonLd({ config }: { config: PublicOperatingConfig | null }) {
   const prices = ticketPackages.map((ticket) => ticket.price);
-  const openDays = config
-    ? operatingWeekdays.filter((day) => !config.operatingHours[day].closed)
-    : [];
+  // Opening hours are only a truthful claim once the venue has launched.
+  const openDays =
+    siteConfig.launched && config
+      ? operatingWeekdays.filter((day) => !config.operatingHours[day].closed)
+      : [];
 
   const data = {
     "@context": "https://schema.org",

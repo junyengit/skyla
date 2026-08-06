@@ -1,6 +1,11 @@
 import { ConvexError } from "convex/values";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@skyla/config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@skyla/config")>();
+  return { ...original, siteConfig: { ...original.siteConfig, launched: true } };
+});
+
 import { publicGateway } from "./http";
 
 declare const process: { env: Record<string, string | undefined> };

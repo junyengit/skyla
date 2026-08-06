@@ -16,9 +16,12 @@
     "unrs-resolver"
   ],
   "overrides": {
+    "brace-expansion": "1.1.18",
+    "js-yaml": "4.3.1",
     "postcss": "8.5.19"
   },
   "scripts": {
+    "validate": "bun run check",
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
@@ -56,6 +59,7 @@
     "vitest": "4.1.10"
   },
   "dependencies": {
+    "@skyla/config": "workspace:*",
     "@skyla/payments": "workspace:*",
     "convex": "^1.42.1"
   }

@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: ["main"]
@@ -11,6 +12,7 @@ permissions:
 jobs:
   quality:
     name: quality
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,6 +49,7 @@ jobs:
 
   browser-test:
     name: browser-test
+    if: github.event_name != 'workflow_dispatch'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -63,7 +66,7 @@ jobs:
         run: bash scripts/setup/vercel-install-bun-canary.sh
 
       - name: Install Chromium
-        run: bun x playwright install --with-deps chromium
+        run: bun run --cwd apps/web test:e2e:install
 
       - name: Browser workflows
         run: bun run --cwd apps/web test:e2e
@@ -81,7 +84,7 @@ jobs:
 
   ci-build:
     name: ci-build
-    if: always()
+    if: always() && github.event_name != 'workflow_dispatch'
     needs: [quality, browser-test]
     runs-on: ubuntu-latest
     steps:
@@ -89,3 +92,43 @@ jobs:
         run: |
           test "${{ needs.quality.result }}" = "success"
           test "${{ needs.browser-test.result }}" = "success"
+
+  release-validation:
+    name: ci-build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install pinned Bun canary and dependencies
+        run: bash scripts/setup/vercel-install-bun-canary.sh
+
+      - name: Validate repository
+        run: bun run check
+
+      - name: Security audit
+        run: bun run security
+
+      - name: Install pinned Chromium
+        run: bun run --cwd apps/web test:e2e:install
+
+      - name: Browser workflows
+        run: bun run --cwd apps/web test:e2e
+        env:
+          PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/skyla-playwright-results
+
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: skyla-release-validation-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/skyla-playwright-results
+          if-no-files-found: ignore
+          retention-days: 7

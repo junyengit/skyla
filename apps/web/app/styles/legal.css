@@ -41,6 +41,11 @@
   justify-self: end;
 }
 
+/* The status band renders full-bleed inside the padded legal page. */
+.legalPage .launchBanner {
+  margin-inline: calc(-1 * clamp(18px, 4vw, 56px));
+}
+
 .legalArticle {
   width: min(820px, 100%);
   margin: 0 auto;

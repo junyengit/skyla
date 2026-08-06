@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { fetchQuery } from "convex/nextjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { VisitorOperatingConfig } from "./app/page";
+import { OperatingHoursPanel, VisitorOperatingConfig } from "./app/page";
 import {
   loadPublicOperatingConfig,
   unavailablePublicOperatingConfig
@@ -94,7 +94,7 @@ describe("public operating config server bridge", () => {
 describe("guest operating information", () => {
   it("renders the active announcement as escaped text with operating hours", () => {
     const html = renderToStaticMarkup(
-      <VisitorOperatingConfig
+      <OperatingHoursPanel
         config={{
           announcement: { text: "<img src=x onerror=alert(1)>", type: "warning" },
           operatingHours,
@@ -112,7 +112,7 @@ describe("guest operating information", () => {
 
   it("renders the service warning with venue hours when the backend is unavailable", () => {
     const html = renderToStaticMarkup(
-      <VisitorOperatingConfig config={unavailablePublicOperatingConfig} />
+      <OperatingHoursPanel config={unavailablePublicOperatingConfig} />
     );
 
     expect(html).toContain("Online booking is temporarily unavailable");
@@ -120,5 +120,22 @@ describe("guest operating information", () => {
     expect(html).toContain("9:00 AM - 6:00 PM");
     expect(html).toContain("Saturday:");
     expect(html).toContain("10:00 AM - 10:00 PM");
+  });
+
+  it("announces pre-launch hours instead of listing weekday operations while unlaunched", () => {
+    const html = renderToStaticMarkup(
+      <VisitorOperatingConfig
+        config={{
+          announcement: { text: "Sunset hours this weekend.", type: "info" },
+          operatingHours,
+          timeZone: "America/Los_Angeles"
+        }}
+      />
+    );
+
+    expect(html).toContain("Opening hours will be announced before launch.");
+    expect(html).toContain("reservations@skydeckla.com");
+    expect(html).not.toContain("Monday:");
+    expect(html).not.toContain("Sunset hours this weekend.");
   });
 });

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { siteConfig } from "@skyla/config";
+import { LaunchStatusBanner } from "@/components/launch-status-banner";
 import { reportClientError } from "@/lib/client-error-reporting";
 
 type ErrorPageProps = {
@@ -18,16 +19,22 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
   }, [error]);
 
   return (
-    <main className="publicPage">
+    <main className={siteConfig.launched ? "publicPage" : "publicPage prelaunch"}>
       <header className="publicNav">
         <Link className="brand" href="/">
           Sky LA
         </Link>
         <nav aria-label="Primary navigation" />
-        <Link className="navCta" href="/checkout" prefetch={false}>
-          Buy Tickets
-        </Link>
+        {siteConfig.launched ? (
+          <Link className="navCta" href="/checkout" prefetch={false}>
+            Buy Tickets
+          </Link>
+        ) : (
+          <span className="navStatus">{siteConfig.launchStatus.label}</span>
+        )}
       </header>
+
+      <LaunchStatusBanner />
 
       <section className="section intro notFound" aria-labelledby="error-title">
         <div>
