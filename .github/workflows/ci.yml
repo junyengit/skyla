@@ -64,7 +64,7 @@ jobs:
         run: bash scripts/setup/vercel-install-bun-canary.sh
 
       - name: Install Chromium
-        run: bun x playwright install --with-deps chromium
+        run: bun run --cwd apps/web test:e2e:install
 
       - name: Browser workflows
         run: bun run --cwd apps/web test:e2e
