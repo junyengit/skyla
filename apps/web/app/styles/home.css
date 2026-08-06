@@ -69,6 +69,64 @@
   background: #333333;
 }
 
+/* Pre-launch status band: pinned under the fixed nav, no motion, not
+   dismissible. In flow so it never overlaps content when copy wraps. */
+
+.navStatus {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 22px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+main.prelaunch {
+  padding-top: 72px;
+}
+
+.launchBanner {
+  position: sticky;
+  top: 72px;
+  z-index: 19;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 16px;
+  padding: 10px clamp(20px, 5vw, 64px);
+  background: var(--text);
+  color: #ffffff;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.launchBannerLabel {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.launchBannerMessage {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.launchBannerEmail {
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .hero {
   position: relative;
   min-height: calc(100svh - 72px);
@@ -76,6 +134,14 @@
   display: grid;
   align-items: end;
   overflow: hidden;
+}
+
+/* With the status band occupying flow below the nav, the hero no longer needs
+   its own nav offset; keep first-paint CTA visibility by subtracting the
+   approximate band height. */
+.prelaunch .hero {
+  min-height: calc(100svh - 72px - 48px);
+  margin-top: 0;
 }
 
 .heroMedia,

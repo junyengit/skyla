@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, MapPin } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
+import { LaunchStatusBanner } from "@/components/launch-status-banner";
 import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { MarketingScripts } from "@/components/marketing-scripts";
 import { MotionHero } from "@/components/motion-hero";
@@ -19,9 +20,7 @@ const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeU
   "6100 Wilshire Blvd, Los Angeles, CA 90048"
 )}`;
 
-export function VisitorOperatingConfig({ config }: { config: PublicOperatingConfig | null }) {
-  if (!config) return null;
-
+export function OperatingHoursPanel({ config }: { config: PublicOperatingConfig }) {
   return (
     <section className="section intro" aria-label="Visitor information">
       <div>
@@ -47,11 +46,37 @@ export function VisitorOperatingConfig({ config }: { config: PublicOperatingConf
   );
 }
 
+export function VisitorOperatingConfig({ config }: { config: PublicOperatingConfig | null }) {
+  if (!config) return null;
+
+  if (!siteConfig.launched) {
+    return (
+      <section className="section intro" aria-label="Visitor information">
+        <div>
+          <p className="sectionLabel">Plan your visit</p>
+          <h2>Hours and updates.</h2>
+        </div>
+        <p>
+          Sky LA is not open yet. Opening hours will be announced before launch.
+          <br />
+          <br />
+          Questions about the opening:{" "}
+          <a className="inlineLink" href={`mailto:${siteConfig.email}`}>
+            {siteConfig.email}
+          </a>
+        </p>
+      </section>
+    );
+  }
+
+  return <OperatingHoursPanel config={config} />;
+}
+
 export default async function HomePage() {
   const operatingConfig = await loadPublicOperatingConfig();
 
   return (
-    <main>
+    <main className={siteConfig.launched ? undefined : "prelaunch"}>
       <LocalBusinessJsonLd config={operatingConfig} />
       <MarketingScripts />
       <a className="skipLink" href="#main-content">
@@ -68,10 +93,15 @@ export default async function HomePage() {
             </Link>
           ))}
         </div>
-        <Link className="navCta" href="/checkout" prefetch={false}>
-          Buy Tickets
-        </Link>
+        {siteConfig.launched ? (
+          <Link className="navCta" href="/checkout" prefetch={false}>
+            Buy Tickets
+          </Link>
+        ) : (
+          <span className="navStatus">Coming Soon</span>
+        )}
       </nav>
+      <LaunchStatusBanner />
 
       <section className="hero">
         <div className="heroMedia" aria-hidden="true">
@@ -98,15 +128,22 @@ export default async function HomePage() {
           <div className="heroTicket">
             <span className="heroPrice">$20</span>
             <span className="heroPriceMeta">
-              all-in, per adult
+              {siteConfig.launched ? "all-in, per adult" : "planned launch pricing, per adult"}
               <em>Ages 12 and under $10</em>
             </span>
           </div>
           <div className="heroActions">
-            <Link className="primaryAction" href="/checkout" prefetch={false}>
-              Buy Tickets
-              <ArrowRight size={18} />
-            </Link>
+            {siteConfig.launched ? (
+              <Link className="primaryAction" href="/checkout" prefetch={false}>
+                Buy Tickets
+                <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <a className="primaryAction" href={`mailto:${siteConfig.email}`}>
+                Ask about opening
+                <ArrowRight size={18} />
+              </a>
+            )}
           </div>
         </MotionHero>
       </section>

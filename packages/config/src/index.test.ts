@@ -10,6 +10,14 @@ describe("siteConfig", () => {
     expect(siteConfig.email).toMatch(/@skydeckla\.com$/);
     expect(siteConfig.address.full).toContain("6100 Wilshire Blvd");
   });
+
+  it("keeps the pre-launch gate and canonical status copy", () => {
+    expect(siteConfig.launched).toBe(false);
+    expect(siteConfig.launchStatus).toEqual({
+      label: "Coming soon",
+      message: "Sky LA is not open yet. Ticket sales are not live."
+    });
+  });
 });
 
 describe("ticketPackages", () => {
