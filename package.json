@@ -19,6 +19,7 @@
     "postcss": "8.5.19"
   },
   "scripts": {
+    "validate": "bun run check",
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
