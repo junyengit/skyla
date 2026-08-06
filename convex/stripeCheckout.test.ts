@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { currentLiabilityWaiverVersion, currentTermsVersion } from "@skyla/payments";
 
 import {
   assertStripeReturnOriginAllowed,
@@ -18,6 +19,8 @@ const snapshot = {
   customerEmailLower: "guest@example.com",
   visitDate: "2026-07-04",
   entryTime: "19:00",
+  termsVersion: currentTermsVersion,
+  liabilityWaiverVersion: currentLiabilityWaiverVersion,
   lines: [
     {
       name: "The View",
@@ -56,6 +59,8 @@ describe("Stripe Checkout helpers", () => {
     expect(request.body.get("customer_email")).toBe("guest@example.com");
     expect(request.body.get("metadata[order_ref]")).toBe("SKY2607-ABC123");
     expect(request.body.get("metadata[source]")).toBe("convex");
+    expect(request.body.get("metadata[terms_version]")).toBe(currentTermsVersion);
+    expect(request.body.get("metadata[liability_waiver_version]")).toBe(currentLiabilityWaiverVersion);
     expect(request.body.get("metadata[visit_date]")).toBe("2026-07-04");
     expect(request.body.get("metadata[entry_time]")).toBe("19:00");
     expect(request.body.get("line_items[0][price_data][unit_amount]")).toBe("2000");

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { catalogLineMetadata, cafeItems, ticketPackages } from "@skyla/payments";
+import {
+  catalogLineMetadata,
+  cafeItems,
+  currentLiabilityWaiverAcceptanceText,
+  currentLiabilityWaiverVersion,
+  currentTermsAcceptanceText,
+  currentTermsVersion,
+  ticketPackages
+} from "@skyla/payments";
 
 import { defaultHours } from "./lib/adminConfig";
 import { isCheckoutTimeAvailable } from "./lib/operatingHours";
@@ -8,6 +16,7 @@ import {
   getCheckoutPaymentSnapshot,
   getPosTerminalPaymentSnapshot,
   getStripeTerminalReaderProcessSnapshot,
+  recordCheckoutLegalAcceptance,
   recordStripeCheckoutWebhook,
   recordStripeRefundWebhook,
   recordStripeTerminalReaderProcess,
@@ -17,6 +26,7 @@ import {
 type TableName =
   | "orders"
   | "orderLineItems"
+  | "checkoutLegalAcceptances"
   | "posSales"
   | "posSaleLines"
   | "paymentEvents"
@@ -154,6 +164,8 @@ describe("payment snapshot provenance gates", () => {
     ).resolves.toMatchObject({
       orderRef,
       totalCents: 4000,
+      termsVersion: currentTermsVersion,
+      liabilityWaiverVersion: currentLiabilityWaiverVersion,
       lines: [
         {
           name: "The View",
@@ -162,6 +174,56 @@ describe("payment snapshot provenance gates", () => {
           lineTotalCents: 4000
         }
       ]
+    });
+  });
+
+  it("rejects Checkout payment snapshots without durable legal acceptance", async () => {
+    const { ctx } = createCheckoutSnapshotCtx({ includeLegalAcceptance: false });
+
+    await expect(
+      runCheckoutPaymentSnapshot(ctx, {
+        orderRef,
+        idempotencyKey: "acc_checkout_test"
+      })
+    ).rejects.toThrow("Terms and liability waiver acceptance are required before payment");
+  });
+
+  it("rejects Checkout payment snapshots with stale legal acceptance", async () => {
+    const { ctx } = createCheckoutSnapshotCtx({ termsVersion: "old" });
+
+    await expect(
+      runCheckoutPaymentSnapshot(ctx, {
+        orderRef,
+        idempotencyKey: "acc_checkout_test"
+      })
+    ).rejects.toThrow("Terms acceptance is out of date");
+  });
+
+  it("records legal acceptance once and reuses the durable record", async () => {
+    const { ctx, state } = createCheckoutSnapshotCtx({ includeLegalAcceptance: false });
+    const args = {
+      orderRef,
+      idempotencyKey: "acc_checkout_test",
+      legalAcceptance: {
+        termsAccepted: true,
+        termsVersion: currentTermsVersion,
+        liabilityWaiverAccepted: true,
+        liabilityWaiverVersion: currentLiabilityWaiverVersion
+      }
+    };
+
+    await expect(runRecordCheckoutLegalAcceptance(ctx, args)).resolves.toMatchObject({ reused: false });
+    await expect(runRecordCheckoutLegalAcceptance(ctx, args)).resolves.toMatchObject({ reused: true });
+    expect(state.checkoutLegalAcceptances).toHaveLength(1);
+    expect(state.checkoutLegalAcceptances[0]).toMatchObject({
+      orderRef,
+      customerEmailLower: "guest@example.com",
+      termsVersion: currentTermsVersion,
+      termsAcceptanceText: currentTermsAcceptanceText,
+      liabilityWaiverVersion: currentLiabilityWaiverVersion,
+      liabilityWaiverAcceptanceText: currentLiabilityWaiverAcceptanceText,
+      source: "web-checkout",
+      acceptedAt: expect.any(Number)
     });
   });
 
@@ -1188,6 +1250,37 @@ async function runCheckoutPaymentSnapshot(
   return query._handler(ctx, args);
 }
 
+async function runRecordCheckoutLegalAcceptance(
+  ctx: MockCtx,
+  args: {
+    orderRef: string;
+    idempotencyKey: string;
+    legalAcceptance: {
+      termsAccepted: boolean;
+      termsVersion: string;
+      liabilityWaiverAccepted: boolean;
+      liabilityWaiverVersion: string;
+    };
+  }
+) {
+  const mutation = recordCheckoutLegalAcceptance as unknown as {
+    _handler: (
+      ctx: MockCtx,
+      mutationArgs: {
+        orderRef: string;
+        idempotencyKey: string;
+        legalAcceptance: {
+          termsAccepted: boolean;
+          termsVersion: string;
+          liabilityWaiverAccepted: boolean;
+          liabilityWaiverVersion: string;
+        };
+      }
+    ) => Promise<unknown>;
+  };
+  return mutation._handler(ctx, args);
+}
+
 async function runTerminalPaymentSnapshot(
   ctx: MockCtx,
   args: { saleRef: string; idempotencyKey: string }
@@ -1215,6 +1308,8 @@ function createCheckoutSnapshotCtx(
     visitDate?: string;
     entryTime?: string;
     lineKind?: string;
+    includeLegalAcceptance?: boolean;
+    termsVersion?: string;
   } = {}
 ): { ctx: MockCtx; state: MockState } {
   const state = createEmptyState();
@@ -1232,6 +1327,7 @@ function createCheckoutSnapshotCtx(
     visitDate: "visitDate" in options ? options.visitDate : checkoutVisitDate,
     entryTime: "entryTime" in options ? options.entryTime : "14:00",
     idempotencyKey: "acc_checkout_test",
+    expiresAt: Date.now() + 30 * 60 * 1000,
     createdAt: 1,
     updatedAt: 1
   });
@@ -1252,6 +1348,22 @@ function createCheckoutSnapshotCtx(
 
   if (!("lineMetadata" in options)) {
     state.orderLineItems[0].metadata = catalogLineMetadata(ticketPackages.general);
+  }
+
+  if (options.includeLegalAcceptance !== false) {
+    state.checkoutLegalAcceptances.push({
+      _id: "checkoutLegalAcceptances_1",
+      _creationTime: 1,
+      orderRef,
+      idempotencyKey: "acc_checkout_test",
+      customerEmailLower: "guest@example.com",
+      termsVersion: options.termsVersion ?? currentTermsVersion,
+      termsAcceptanceText: currentTermsAcceptanceText,
+      liabilityWaiverVersion: currentLiabilityWaiverVersion,
+      liabilityWaiverAcceptanceText: currentLiabilityWaiverAcceptanceText,
+      acceptedAt: 1,
+      source: "web-checkout"
+    });
   }
 
   return createMockCtx(state);
@@ -1554,6 +1666,7 @@ function createEmptyState(): MockState {
   return {
     orders: [],
     orderLineItems: [],
+    checkoutLegalAcceptances: [],
     posSales: [],
     posSaleLines: [],
     paymentEvents: [],
