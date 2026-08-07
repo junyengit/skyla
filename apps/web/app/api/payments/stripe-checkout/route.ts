@@ -1,15 +1,21 @@
 import { callPublicConvexGateway, PublicGatewayError } from "../../../../lib/public-convex-gateway";
+import {
+  assertCurrentCheckoutLegalAcceptance,
+  type CheckoutLegalAcceptanceInput
+} from "@skyla/payments";
 import { ticketSalesUnavailableResponse } from "../../ticket-sales-gate";
 import { invalidPaymentRequest, paymentJson, paymentProviderUnavailable, paymentServiceUnavailable } from "../_shared";
 
 type StripeCheckoutRequest = {
   orderRef?: unknown;
   idempotencyKey?: unknown;
+  legalAcceptance?: unknown;
 };
 
 type StripeCheckoutGatewayInput = {
   orderRef: string;
   idempotencyKey: string;
+  legalAcceptance: CheckoutLegalAcceptanceInput;
   successUrl: string;
   cancelUrl: string;
 };
@@ -28,6 +34,21 @@ function requiredString(value: unknown, label: string) {
     throw new Error(`${label} is required`);
   }
   return value.trim();
+}
+
+function requiredLegalAcceptance(value: unknown): CheckoutLegalAcceptanceInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Terms and liability waiver acceptance are required before payment");
+  }
+  const candidate = value as Record<string, unknown>;
+  const input: CheckoutLegalAcceptanceInput = {
+    termsAccepted: candidate.termsAccepted === true,
+    termsVersion: requiredString(candidate.termsVersion, "termsVersion"),
+    liabilityWaiverAccepted: candidate.liabilityWaiverAccepted === true,
+    liabilityWaiverVersion: requiredString(candidate.liabilityWaiverVersion, "liabilityWaiverVersion")
+  };
+  assertCurrentCheckoutLegalAcceptance(input);
+  return input;
 }
 
 function originFor(request: Request) {
@@ -70,6 +91,7 @@ export async function POST(request: Request) {
     const input = (await request.json()) as StripeCheckoutRequest;
     const orderRef = requiredString(input.orderRef, "orderRef");
     const idempotencyKey = requiredString(input.idempotencyKey, "idempotencyKey");
+    const legalAcceptance = requiredLegalAcceptance(input.legalAcceptance);
     const origin = originFor(request);
 
     const result = await callPublicConvexGateway<StripeCheckoutGatewayResult>(
@@ -78,6 +100,7 @@ export async function POST(request: Request) {
       {
         orderRef,
         idempotencyKey,
+        legalAcceptance,
         successUrl: `${origin}/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}/checkout?stripe=cancel`
       } satisfies StripeCheckoutGatewayInput
@@ -110,7 +133,11 @@ export async function POST(request: Request) {
       );
     }
     const message = error instanceof Error ? error.message : "Could not start Stripe Checkout";
-    const status = message.includes("is required") || message.includes("origin is not allowed")
+    const status =
+      message.includes("is required") ||
+      message.includes("acceptance") ||
+      message.includes("out of date") ||
+      message.includes("origin is not allowed")
       ? 400
       : isServerConfigurationError(message)
         ? 503

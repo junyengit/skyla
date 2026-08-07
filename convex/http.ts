@@ -337,6 +337,8 @@ function publicGatewayFailure(error: unknown) {
     normalized.includes("valid email") ||
     normalized.includes("was not found for this payment attempt") ||
     normalized.includes("cannot create a stripe session") ||
+    normalized.includes("acceptance") ||
+    normalized.includes("out of date") ||
     normalized.includes("origin is not allowed") ||
     normalized.includes("argumentvalidationerror")
   ) {

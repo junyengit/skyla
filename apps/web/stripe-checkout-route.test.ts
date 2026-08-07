@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { currentCheckoutLegalAcceptanceInput } from "@skyla/payments";
 
 vi.mock("@skyla/config", async (importOriginal) => {
   const original = await importOriginal<typeof import("@skyla/config")>();
@@ -10,6 +11,7 @@ import { POST } from "./app/api/payments/stripe-checkout/route";
 const fetchMock = vi.fn<typeof fetch>();
 vi.stubGlobal("fetch", fetchMock);
 const gatewaySecret = "stripe-gateway-test-secret-32-chars";
+const validLegalAcceptance = currentCheckoutLegalAcceptanceInput;
 
 function expectPaymentHeaders(response: Response) {
   expect(response.headers.get("cache-control")).toBe("no-store");
@@ -40,7 +42,8 @@ describe("/api/payments/stripe-checkout", () => {
     const response = await POST(
       request({
         orderRef: "SKY2607-ABC123",
-        idempotencyKey: "checkout_20260704_abc123"
+        idempotencyKey: "checkout_20260704_abc123",
+        legalAcceptance: validLegalAcceptance
       })
     );
 
@@ -78,7 +81,8 @@ describe("/api/payments/stripe-checkout", () => {
     const response = await POST(
       request({
         orderRef: "SKY2607-ABC123",
-        idempotencyKey: "checkout_20260704_abc123"
+        idempotencyKey: "checkout_20260704_abc123",
+        legalAcceptance: validLegalAcceptance
       })
     );
 
@@ -103,7 +107,8 @@ describe("/api/payments/stripe-checkout", () => {
     const response = await POST(
       request({
         orderRef: "SKY2607-ABC123",
-        idempotencyKey: "checkout_20260704_abc123"
+        idempotencyKey: "checkout_20260704_abc123",
+        legalAcceptance: validLegalAcceptance
       })
     );
 
@@ -139,6 +144,7 @@ describe("/api/payments/stripe-checkout", () => {
         {
           orderRef: "SKY2607-ABC123",
           idempotencyKey: "checkout_20260704_abc123",
+          legalAcceptance: validLegalAcceptance,
           amountCents: 1
         },
         { headers: { origin: "https://www.skydeckla.com" } }
@@ -163,6 +169,7 @@ describe("/api/payments/stripe-checkout", () => {
       input: {
         orderRef: "SKY2607-ABC123",
         idempotencyKey: "checkout_20260704_abc123",
+        legalAcceptance: validLegalAcceptance,
         successUrl:
           "https://www.skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}",
         cancelUrl: "https://www.skydeckla.com/checkout?stripe=cancel"
@@ -185,7 +192,8 @@ describe("/api/payments/stripe-checkout", () => {
 
     const response = await POST(request({
       orderRef: "SKY2607-ABC123",
-      idempotencyKey: "checkout_20260704_abc123"
+      idempotencyKey: "checkout_20260704_abc123",
+      legalAcceptance: validLegalAcceptance
     }));
 
     expect(response.status).toBe(429);
@@ -195,5 +203,28 @@ describe("/api/payments/stripe-checkout", () => {
       code: "rate_limited",
       retryAfterSeconds: 120
     });
+  });
+
+  it.each([
+    [undefined, "Terms and liability waiver acceptance are required"],
+    [{ ...validLegalAcceptance, termsAccepted: false }, "Terms acceptance is required"],
+    [{ ...validLegalAcceptance, liabilityWaiverVersion: "old" }, "Liability waiver acceptance is out of date"]
+  ])("rejects missing, declined, or stale legal acceptance before Convex %#", async (legalAcceptance, message) => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+
+    const response = await POST(request({
+      orderRef: "SKY2607-ABC123",
+      idempotencyKey: "checkout_20260704_abc123",
+      legalAcceptance
+    }));
+
+    expect(response.status).toBe(400);
+    expectPaymentHeaders(response);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining(message),
+      code: "invalid_payment_request"
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

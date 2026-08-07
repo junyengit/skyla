@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { checkoutEntryTimes, childPriceCents, type TicketPackageKey } from "@skyla/payments";
+import {
+  checkoutEntryTimes,
+  childPriceCents,
+  currentLiabilityWaiverVersion,
+  currentRefundAndVisitPolicyLabel,
+  currentTermsAgeRepresentationText,
+  currentTermsDocumentLabel,
+  currentTermsVersion,
+  type TicketPackageKey
+} from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 import {
   formatOperatingDay,
@@ -131,6 +140,8 @@ export function CheckoutClient({
   const [draft, setDraft] = useState<DraftResponse | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [liabilityWaiverAccepted, setLiabilityWaiverAccepted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [returnStatus, setReturnStatus] = useState<"checking" | "pending" | "confirmed" | "failed" | "canceled" | "unavailable">(
     stripeStatus === "success" ? "checking" : "pending"
@@ -156,6 +167,9 @@ export function CheckoutClient({
     !!visitDate &&
     selectedEntryTimeAvailable &&
     emailPattern.test(normalizedEmail);
+  const orderPersisted = Boolean(draft?.persisted && draft.orderRef);
+  const legalReady = termsAccepted && liabilityWaiverAccepted;
+  const canPay = orderPersisted && legalReady && !isPaying;
 
   useEffect(() => {
     if (stripeStatus !== "success" || !returnedCheckoutSessionId) {
@@ -242,9 +256,15 @@ export function CheckoutClient({
     return "Returned from Stripe. Waiting for the signed payment webhook.";
   }
 
+  function resetConsent() {
+    setTermsAccepted(false);
+    setLiabilityWaiverAccepted(false);
+  }
+
   function resetDraft() {
     setDraft(null);
     setMessage(null);
+    resetConsent();
   }
 
   function updateGuests(kind: "adults" | "children", delta: number) {
@@ -276,6 +296,7 @@ export function CheckoutClient({
     if (!canReview) return;
     setIsReviewing(true);
     setMessage(null);
+    resetConsent();
 
     try {
       const response = await fetch("/api/order-drafts/checkout", {
@@ -316,6 +337,12 @@ export function CheckoutClient({
       setMessage("Review and save this order before continuing to payment.");
       return;
     }
+    if (!termsAccepted || !liabilityWaiverAccepted) {
+      setMessage(
+        "Before card payment, check both boxes above: agree to the Terms of Use and Ticket Purchase Terms, and accept the Acknowledgment of Risk and Release of Liability for yourself."
+      );
+      return;
+    }
     setIsPaying(true);
     setMessage(null);
 
@@ -325,7 +352,13 @@ export function CheckoutClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderRef: draft.orderRef,
-          idempotencyKey
+          idempotencyKey,
+          legalAcceptance: {
+            termsAccepted,
+            termsVersion: currentTermsVersion,
+            liabilityWaiverAccepted,
+            liabilityWaiverVersion: currentLiabilityWaiverVersion
+          }
         })
       });
       const data = (await response.json()) as { url?: string; error?: string; code?: string };
@@ -344,6 +377,7 @@ export function CheckoutClient({
     setIdempotencyKey(createIdempotencyKey());
     setDraft(null);
     setMessage(null);
+    resetConsent();
   }
 
   return (
@@ -513,11 +547,60 @@ export function CheckoutClient({
           <div className="checkoutEmpty">Review your order to confirm the exact total.</div>
         )}
 
-        {draft?.persisted && draft.orderRef ? (
-          <div className="checkoutPersisted">
-            <ShieldCheck size={18} />
-            <span>Stored as {draft.orderRef}</span>
-          </div>
+        {orderPersisted ? (
+          <>
+            <div className="checkoutPersisted">
+              <ShieldCheck size={18} />
+              <span>Stored as {draft?.orderRef}</span>
+            </div>
+
+            <fieldset className="checkoutConsent">
+              <legend>Before you pay</legend>
+
+              <label className="checkoutConsentOption">
+                <input
+                  checked={termsAccepted}
+                  type="checkbox"
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                />
+                <span>
+                  {currentTermsAgeRepresentationText} and agree to the{" "}
+                  <a href="/terms" rel="noreferrer" target="_blank">
+                    {currentTermsDocumentLabel}
+                    <span className="srOnly"> (opens in a new tab)</span>
+                  </a>{" "}
+                  and the {currentRefundAndVisitPolicyLabel}.
+                </span>
+              </label>
+
+              <label className="checkoutConsentOption">
+                <input
+                  checked={liabilityWaiverAccepted}
+                  type="checkbox"
+                  onChange={(event) => setLiabilityWaiverAccepted(event.target.checked)}
+                />
+                <span>
+                  I have read and voluntarily accept the Sky LA{" "}
+                  <a href="/liability-waiver" rel="noreferrer" target="_blank">
+                    Acknowledgment of Risk and Release of Liability
+                    <span className="srOnly"> (opens in a new tab)</span>
+                  </a>{" "}
+                  for myself.
+                </span>
+              </label>
+
+              <p className="checkoutConsentNote">
+                Every other adult guest, and a parent or legal guardian for every minor guest, must
+                complete a separate waiver before entry.
+              </p>
+
+              <p aria-live="polite" className={legalReady ? "checkoutConsentReady isReady" : "checkoutConsentReady"}>
+                {legalReady
+                  ? "Both acknowledgments are checked. You can continue to card payment."
+                  : "Card payment unlocks after both boxes above are checked."}
+              </p>
+            </fieldset>
+          </>
         ) : null}
 
         {message ? <p className="checkoutError">{message}</p> : null}
@@ -529,7 +612,7 @@ export function CheckoutClient({
           <button
             className="secondaryAction"
             type="button"
-            disabled={!draft?.persisted || isPaying}
+            disabled={!canPay}
             onClick={startPayment}
           >
             {isPaying ? "Starting..." : "Continue to Card Payment"}

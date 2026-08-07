@@ -1,4 +1,4 @@
-export const nativePublicRoutes = ["checkout", "privacy", "terms"];
+export const nativePublicRoutes = ["checkout", "liability-waiver", "privacy", "terms"];
 
 // Pages retired by the 2026-07 simple-site pivot. Saved links and old ads
 // land on the single-product homepage instead of breaking.
@@ -36,6 +36,7 @@ export const robotsDisallowRoutes = ["/admin", "/admin.html", "/pos", "/pos.html
 export const sitemapEntries = [
   { path: "/", priority: 1 },
   { path: "/checkout", priority: 0.8 },
+  { path: "/liability-waiver", priority: 0.3 },
   { path: "/privacy", priority: 0.3 },
   { path: "/terms", priority: 0.3 }
 ];

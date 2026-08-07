@@ -130,6 +130,20 @@ export default defineSchema({
     .index("by_orderRef", ["orderRef"])
     .index("by_productKey", ["productKey"]),
 
+  checkoutLegalAcceptances: defineTable({
+    orderRef: v.string(),
+    idempotencyKey: v.string(),
+    customerEmailLower: v.optional(v.string()),
+    termsVersion: v.string(),
+    termsAcceptanceText: v.string(),
+    liabilityWaiverVersion: v.string(),
+    liabilityWaiverAcceptanceText: v.string(),
+    acceptedAt: v.number(),
+    source: v.string()
+  })
+    .index("by_orderRef", ["orderRef"])
+    .index("by_orderRef_idempotencyKey", ["orderRef", "idempotencyKey"]),
+
   posSales: defineTable({
     saleRef: v.string(),
     orderRef: v.optional(v.string()),

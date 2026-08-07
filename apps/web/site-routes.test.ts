@@ -71,6 +71,7 @@ describe("App Router route ownership", () => {
     const checks: Array<[string, string[]]> = [
       ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],
+      ["app/liability-waiver/page.tsx", ["Liability Waiver", "attorney-review draft"]],
       ["app/privacy/page.tsx", ["Convex"]],
       ["app/terms/page.tsx", ["Terms"]]
     ];
@@ -107,6 +108,7 @@ describe("App Router route ownership", () => {
     const customerFacingFiles = [
       "app/page.tsx",
       "app/checkout/page.tsx",
+      "app/liability-waiver/page.tsx",
       "components/checkout-client.tsx",
       "app/privacy/page.tsx"
     ];
