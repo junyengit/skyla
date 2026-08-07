@@ -80,3 +80,64 @@ test("home renders its primary content without hero motion", async ({ page }) =>
   expect(initialHeroState).toEqual({ opacity: "1", transform: "none", animations: 0 });
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Los Angeles");
 });
+
+test("home builds a descending spiral staircase through native desktop scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await goto(page, "/");
+
+  const story = page.locator(".staircaseStory");
+  const rail = story.locator(".staircaseRailDraw");
+  await expect(story).toHaveAttribute("data-scroll-mode", "descending");
+  await expect(page.getByRole("heading", { level: 2, name: "The view keeps building." })).toBeVisible();
+  await expect(story.locator(".staircaseLevel")).toHaveCount(7);
+
+  const railLength = await rail.evaluate((path) => (path as SVGPathElement).getTotalLength());
+  expect(railLength).toBeGreaterThan(500);
+
+  await page.evaluate(() => {
+    const section = document.querySelector<HTMLElement>(".staircaseStory");
+    if (!section) throw new Error("staircase story missing");
+    window.scrollTo({ top: section.offsetTop + section.offsetHeight * 0.44 });
+  });
+
+  const storyMechanics = await story.evaluate((section) => {
+    const stickyDescendants = [...section.querySelectorAll("*")].filter(
+      (element) => getComputedStyle(element).position === "sticky"
+    ).length;
+    const landingTransforms = [...section.querySelectorAll(".staircaseLanding")].map(
+      (landing) => getComputedStyle(landing).transform
+    );
+    return { stickyDescendants, distinctTransforms: new Set(landingTransforms).size };
+  });
+  expect(storyMechanics.stickyDescendants).toBe(0);
+  expect(storyMechanics.distinctTransforms).toBeGreaterThan(2);
+
+  const overflowPixels = await page.evaluate(() => {
+    const contentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    return contentWidth - document.documentElement.clientWidth;
+  });
+  expect(overflowPixels).toBeLessThanOrEqual(1);
+});
+
+test("spiral staircase becomes a complete linear sequence for reduced motion and mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await goto(page, "/");
+
+  const story = page.locator(".staircaseStory");
+  await expect(story).toHaveAttribute("data-scroll-mode", "static");
+  await expect(story.getByRole("heading", { level: 3, name: "Century City" })).toBeVisible();
+  await expect(story.locator(".staircaseLevelFact").filter({ hasText: "Timed entry" })).toBeVisible();
+
+  const layout = await story.locator(".staircaseLanding").first().evaluate((landing) => {
+    const style = getComputedStyle(landing);
+    return { position: style.position, transform: style.transform, opacity: style.opacity };
+  });
+  expect(layout).toEqual({ position: "relative", transform: "none", opacity: "1" });
+
+  const overflowPixels = await page.evaluate(() => {
+    const contentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    return contentWidth - document.documentElement.clientWidth;
+  });
+  expect(overflowPixels).toBeLessThanOrEqual(1);
+});

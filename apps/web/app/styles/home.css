@@ -619,3 +619,461 @@ h2 {
     aspect-ratio: 3 / 2;
   }
 }
+/* Wilshire Spiral Staircase: the document itself accumulates landings as the
+   visitor moves downward. The base layout is complete without JavaScript. */
+
+.staircaseStory {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background:
+    radial-gradient(circle at 78% 7%, rgba(82, 94, 116, 0.2), transparent 25%),
+    radial-gradient(circle at 18% 52%, rgba(103, 81, 50, 0.12), transparent 28%),
+    #090a0c;
+  color: #ffffff;
+}
+
+.staircaseIntro {
+  width: min(1160px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(110px, 17vh, 180px) 0 clamp(90px, 14vh, 150px);
+  border-bottom: 1px solid rgba(234, 217, 150, 0.2);
+}
+
+.staircaseIntro .sectionLabel {
+  color: #d9c680;
+}
+
+.staircaseIntro h2 {
+  max-width: 9ch;
+  font-size: clamp(4.2rem, 10vw, 9.6rem);
+  line-height: 0.84;
+  letter-spacing: -0.075em;
+}
+
+.staircaseIntro > p:not(.sectionLabel) {
+  max-width: 590px;
+  margin: 38px 0 0 auto;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: clamp(1rem, 1.7vw, 1.18rem);
+  line-height: 1.75;
+}
+
+.staircaseIntro ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 590px;
+  margin: 26px 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.staircaseIntro li {
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.staircaseIntroCue {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 64px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.staircaseIntroCue::before {
+  width: 42px;
+  height: 1px;
+  background: #d9c680;
+  content: "";
+}
+
+.staircaseBuild {
+  position: relative;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 5vh 0 12vh;
+}
+
+.staircaseRail {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.staircaseRail path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.staircaseRailGhost {
+  stroke: rgba(217, 198, 128, 0.16);
+  stroke-width: 1;
+}
+
+.staircaseRailDraw {
+  stroke: #d9c680;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 8px rgba(217, 198, 128, 0.34));
+}
+
+.staircaseLevel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: center;
+  min-height: 92svh;
+  padding: clamp(70px, 9vh, 110px) clamp(24px, 5vw, 76px);
+}
+
+.staircaseLevel::before {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  right: 12%;
+  left: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(217, 198, 128, 0.19), transparent);
+  content: "";
+}
+
+.staircaseStepMarker {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: var(--stair-rail-x);
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(217, 198, 128, 0.84);
+  border-radius: 50%;
+  background: #0b0c0f;
+  color: #e4d59c;
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 10px rgba(9, 10, 12, 0.78);
+}
+
+.staircaseLanding {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #121419;
+  box-shadow: 0 45px 120px rgba(0, 0, 0, 0.44);
+  transform-origin: 50% 100%;
+}
+
+.staircaseStory.isEnhanced .staircaseLanding {
+  will-change: transform;
+}
+
+.staircaseLevel[data-placement="right"] .staircaseLanding {
+  grid-column: 6 / 13;
+}
+
+.staircaseLevel[data-placement="left"] .staircaseLanding {
+  grid-column: 1 / 8;
+}
+
+.staircaseLevel[data-placement="wide"] .staircaseLanding {
+  grid-column: 2 / 12;
+}
+
+.staircaseLevel[data-placement="center"] .staircaseLanding {
+  grid-column: 3 / 11;
+}
+
+.staircaseLanding figure {
+  display: grid;
+  margin: 0;
+}
+
+.staircaseMedia {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #202228;
+}
+
+.staircaseLevel[data-placement="wide"] .staircaseMedia {
+  aspect-ratio: 16 / 8.4;
+}
+
+.staircaseMedia img {
+  object-fit: cover;
+  transform: scale(1.012);
+}
+
+.staircaseMedia > span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, transparent 62%, rgba(3, 4, 6, 0.36)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent 18%);
+  pointer-events: none;
+}
+
+.staircaseLanding figcaption {
+  background: linear-gradient(135deg, #15171c, #0f1115);
+}
+
+.staircaseLandingCopy {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(190px, 0.8fr);
+  column-gap: clamp(28px, 4vw, 64px);
+  align-items: end;
+  padding: clamp(28px, 4vw, 48px);
+}
+
+.staircaseEyebrow {
+  grid-column: 1 / -1;
+  margin-bottom: 18px;
+  color: #d9c680;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.23em;
+  text-transform: uppercase;
+}
+
+.staircaseTitleStack {
+  position: relative;
+  min-width: 0;
+}
+
+.staircaseTitleStack h3,
+.staircaseTitleAccent {
+  display: block;
+  margin: 0;
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(2.6rem, 5.7vw, 5.8rem);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.88;
+  text-wrap: balance;
+}
+
+.staircaseTitleStack h3 {
+  color: rgba(255, 255, 255, 0.23);
+}
+
+.staircaseTitleAccent {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  color: #ffffff;
+  pointer-events: none;
+}
+
+.staircaseTitleAccent i {
+  display: inline-block;
+  width: 1px;
+  height: 0.84em;
+  margin-left: 6px;
+  background: #d9c680;
+  animation: staircase-caret 0.88s steps(1, end) infinite;
+}
+
+.staircaseLandingCopy > p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.staircaseLevelFact .staircaseLanding {
+  border-color: rgba(17, 17, 17, 0.14);
+  background: #f0ede5;
+  color: #111111;
+}
+
+.staircaseFactPanel {
+  position: relative;
+  display: grid;
+  min-height: clamp(390px, 52vh, 520px);
+  align-items: end;
+  overflow: hidden;
+}
+
+.staircaseFactPanel::before,
+.staircaseFactPanel::after {
+  position: absolute;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 50%;
+  content: "";
+}
+
+.staircaseFactPanel::before {
+  top: -18%;
+  right: -6%;
+  width: 230px;
+  height: 230px;
+}
+
+.staircaseFactPanel::after {
+  top: -2%;
+  right: 5%;
+  width: 92px;
+  height: 92px;
+}
+
+.staircaseLevelFact .staircaseEyebrow {
+  color: rgba(17, 17, 17, 0.52);
+}
+
+.staircaseLevelFact .staircaseTitleStack h3 {
+  color: rgba(17, 17, 17, 0.2);
+}
+
+.staircaseLevelFact .staircaseTitleAccent {
+  color: #111111;
+}
+
+.staircaseLevelFact .staircaseTitleAccent i {
+  background: #8b7333;
+}
+
+.staircaseLevelFact .staircaseLandingCopy > p {
+  color: rgba(17, 17, 17, 0.62);
+}
+
+@keyframes staircase-caret {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .staircaseIntro {
+    width: min(100% - 32px, 680px);
+    padding: 92px 0 84px;
+  }
+
+  .staircaseIntro h2 {
+    max-width: 8ch;
+    font-size: clamp(4rem, 20vw, 6.2rem);
+  }
+
+  .staircaseIntro > p:not(.sectionLabel),
+  .staircaseIntro ul {
+    margin-left: 0;
+  }
+
+  .staircaseIntroCue {
+    align-items: flex-start;
+    line-height: 1.6;
+  }
+
+  .staircaseBuild {
+    width: min(100% - 24px, 680px);
+    padding: 24px 0 84px;
+  }
+
+  .staircaseBuild::before {
+    position: absolute;
+    z-index: 0;
+    top: 28px;
+    bottom: 60px;
+    left: 18px;
+    width: 1px;
+    background: linear-gradient(#d9c680, rgba(217, 198, 128, 0.2));
+    content: "";
+  }
+
+  .staircaseRail {
+    display: none;
+  }
+
+  .staircaseLevel {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 44px 0 74px 44px;
+  }
+
+  .staircaseLevel::before {
+    display: none;
+  }
+
+  .staircaseStepMarker {
+    top: 44px;
+    left: 18px;
+    width: 36px;
+    height: 36px;
+    font-size: 0.55rem;
+    transform: translate(-50%, 0);
+    box-shadow: 0 0 0 7px #090a0c;
+  }
+
+  .staircaseLevel[data-placement] .staircaseLanding {
+    grid-column: 1;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .staircaseMedia,
+  .staircaseLevel[data-placement="wide"] .staircaseMedia {
+    aspect-ratio: 4 / 3;
+  }
+
+  .staircaseLandingCopy {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 26px 24px 30px;
+  }
+
+  .staircaseEyebrow {
+    margin-bottom: 0;
+  }
+
+  .staircaseTitleStack h3,
+  .staircaseTitleAccent {
+    font-size: clamp(2.7rem, 15vw, 4.6rem);
+  }
+
+  .staircaseFactPanel {
+    min-height: 340px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staircaseLanding {
+    transform: none !important;
+    will-change: auto !important;
+  }
+
+  .staircaseTitleAccent i {
+    animation: none;
+  }
+
+  .staircaseRailDraw {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
