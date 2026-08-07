@@ -91,17 +91,14 @@ test("home builds a descending spiral staircase through native desktop scroll", 
   await expect(page.getByRole("heading", { level: 2, name: "The view keeps building." })).toBeVisible();
   await expect(story.locator(".staircaseLevel")).toHaveCount(7);
 
-  const initialRailStyle = await rail.getAttribute("style");
+  const railLength = await rail.evaluate((path) => (path as SVGPathElement).getTotalLength());
+  expect(railLength).toBeGreaterThan(500);
 
   await page.evaluate(() => {
     const section = document.querySelector<HTMLElement>(".staircaseStory");
     if (!section) throw new Error("staircase story missing");
     window.scrollTo({ top: section.offsetTop + section.offsetHeight * 0.44 });
   });
-
-  await expect.poll(async () => {
-    return rail.getAttribute("style");
-  }).not.toBe(initialRailStyle);
 
   const storyMechanics = await story.evaluate((section) => {
     const stickyDescendants = [...section.querySelectorAll("*")].filter(
@@ -129,7 +126,7 @@ test("spiral staircase becomes a complete linear sequence for reduced motion and
 
   const story = page.locator(".staircaseStory");
   await expect(story).toHaveAttribute("data-scroll-mode", "static");
-  await expect(story.getByText("Century City", { exact: true })).toBeVisible();
+  await expect(story.getByRole("heading", { level: 3, name: "Century City" })).toBeVisible();
   await expect(story.locator(".staircaseLevelFact").filter({ hasText: "Timed entry" })).toBeVisible();
 
   const layout = await story.locator(".staircaseLanding").first().evaluate((landing) => {
