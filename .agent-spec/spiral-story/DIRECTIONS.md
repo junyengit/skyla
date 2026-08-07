@@ -1,14 +1,14 @@
 # Divergent directions
 
-## A. Wilshire Helix — selected
+## A. Wilshire Spiral Staircase — selected, revised after owner feedback
 
-A layered spatial field behaves like an abstract spiral staircase. Photography and concise fact cards climb through a cylindrical orbit while one calm typographic core stays fixed. A small, non-essential skyline phrase types as the active step changes.
+A long descending document behaves like an abstract spiral staircase under construction. Each new photographic or typographic landing settles into the page around a scroll-drawn rail. Complete headings remain visible in a quiet tone while a brighter duplicate types across them as the level arrives.
 
 - Fit: directly translates height, ascent, and 360-degree views into interaction.
 - Content: five real venue/view photographs plus existing ticket facts.
-- Distinction: orbital depth, a central horizon line, stair-index markers, and changing directional captions.
-- Risks: overlap, motion sickness, GPU cost, and excessive pinned length.
-- Wrong if: mobile is pinned, essential copy is motion-gated, or more than one foreground card competes with the core.
+- Distinction: cumulative levels, a drawn connective rail, alternating landings, stair-index markers, and type that gains emphasis without withholding information.
+- Risks: excessive page length, decorative imbalance, and repetitive alternating layouts.
+- Wrong if: the chapter becomes a pinned carousel, cards orbit one fixed center, or important information is hidden until scroll.
 
 ## B. Horizon Conveyor — rejected
 
@@ -28,4 +28,4 @@ The page becomes a vertical building section. Each scroll stop opens a typograph
 
 ## Selection rationale
 
-Wilshire Helix is the only direction whose mechanics reinforce both the user request and the venue’s core proof. The other directions are retained as evidence, not as fallback templates.
+The revised Wilshire Spiral Staircase is the only direction whose page architecture matches the owner’s clarified request: the page itself builds downward. The other directions are retained as evidence, not as fallback templates.

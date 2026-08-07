@@ -10,7 +10,7 @@ The primary visitor is deciding whether this place feels worth remembering for a
 
 ## Design hypothesis
 
-For prospective Sky LA visitors, a native-scroll helix of real venue photography around a stable, legible narrative core should make the height, panorama, and sense of ascent more memorable than a conventional gallery because the motion models the experience of climbing toward a 360-degree view.
+For prospective Sky LA visitors, a long-form page that visibly accumulates photographic and typographic levels around a descending spiral rail should feel more luxurious and memorable than a conventional gallery because the document itself models a staircase being built beneath the visitor.
 
 ## Constraints
 
@@ -18,7 +18,8 @@ For prospective Sky LA visitors, a native-scroll helix of real venue photography
 - Preserve the coming-soon banner, launch gate, navigation, operating-status truth, legal links, and checkout behavior.
 - No scroll hijacking, new motion dependency, WebGL, generated assets, or hidden essential content.
 - All core information is visible in the server-rendered document.
-- Desktop may use a sticky spatial stage; mobile and reduced-motion modes use a linear editorial sequence.
+- No pinned stage. Every level remains part of the document and builds downward through native scroll.
+- Mobile and reduced-motion modes keep the same staircase content in a calm linear editorial sequence.
 - Motion uses transform and opacity only, with reserved image dimensions and no cumulative layout shift.
 
 ## Content inventory

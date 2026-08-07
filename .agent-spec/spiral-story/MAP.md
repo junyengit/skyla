@@ -1,37 +1,37 @@
-# Wilshire Helix page-physics contract
+# Wilshire Spiral Staircase page-physics contract
 
 ## Topology
 
-The hero remains a full-bleed entry plane. The next chapter is a layered cylindrical field: one stable narrative core, an elliptical stair trace, and five orbiting photo/fact steps. Operational sections return to a linear document after the spatial chapter.
+The hero opens into a long sculptural document. A connective rail descends through seven full-width levels. Each level is a real document section with one photographic or typographic landing positioned around the rail; nothing orbits a fixed center and nothing is held inside a single pinned viewport.
 
 ## Navigation
 
-The existing fixed primary navigation and skip link remain native. Anchors, history, keyboard focus, and browser find are not intercepted.
+The existing fixed primary navigation and skip link remain native. Anchors, history, keyboard focus, browser find, and normal document scrolling are not intercepted.
 
 ## Scroll behavior
 
-Desktop uses native vertical scroll across a bounded long section. Its internal stage is sticky for the chapter only. Scroll progress maps cards along one-and-a-half turns of a helix; there is no smooth-scroll engine, wheel handler, snap point, or forced progress.
+Desktop uses native vertical scroll. Overall story progress draws the rail farther down the document. Each level maps only its local viewport progress to a short settling motion, as if the next stair is being placed. There is no sticky stage, smooth-scroll engine, wheel handler, snap point, or forced progress.
 
 ## Interaction metaphor
 
-The user ascends an abstract spiral staircase around a calm observation point. Cards approach from below and the outer radius, pass a readable foreground position, then recede upward. Step numbering communicates progression without requiring interaction.
+The visitor descends through a spiral staircase being luxuriously assembled: a rail draws down, a landing settles, its bright lettering types across an already-readable title, and the next curve continues below.
 
 ## Motion grammar
 
-- Card motion: translate3d, rotate, scale, and bounded opacity.
-- Ambient structure: slow counter-rotation of an elliptical stair trace.
-- Typed accent: a decorative skyline phrase types when the active step changes; essential heading and explanation remain fully visible.
-- No global reveal preset and no content starts at zero opacity.
-- Hidden-tab resume and fast scrolling derive directly from scroll progress rather than accumulating time.
+- Rail motion: one SVG path-length draw tied directly to whole-story scroll progress.
+- Landing motion: small translate, rotate, and scale changes that settle to rest; opacity stays at 1.
+- Type motion: the complete title is always visible in a quiet base layer while a brighter duplicate types over it character by character.
+- No global reveal preset, no content begins hidden, and no motion is required to understand the page.
+- Hidden-tab resume and fast scrolling derive from scroll progress; typing timers are decorative and self-cleaning.
 
 ## Mobile transformation
 
-At 820px and below, sticky positioning and orbital transforms are disabled. The exact same content becomes a single-column sequence of large photographs and bordered fact cards. The typed accent renders its complete phrase without animation.
+At 820px and below, every landing becomes a single-column sequence, the rail moves to the left edge, and all settlement transforms are disabled. The bright title renders complete without typing.
 
 ## Reduced motion
 
-`prefers-reduced-motion: reduce` uses the same linear sequence at every width, disables typing, and removes transform transitions.
+`prefers-reduced-motion: reduce` keeps the full descending document, renders the complete bright title immediately, displays the entire rail, and removes settlement transforms and caret animation.
 
 ## Structural fingerprint
 
-Full-bleed destination hero → spatial helix chapter with centered observation core → linear hours/location band → restrained date-night closer → footer. Colorless, copyless comparison is unlike the repository’s existing static two-column statement and masonry gallery.
+Full-bleed destination hero → quiet chapter threshold → seven asymmetrical full-page landings connected by a drawn descending rail → linear hours/location band → restrained date-night closer → footer. Colorless and copyless, the silhouette reads as a widening and narrowing stair stack rather than a gallery, carousel, or two-column marketing page.
