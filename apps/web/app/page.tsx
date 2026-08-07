@@ -7,6 +7,7 @@ import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { MarketingScripts } from "@/components/marketing-scripts";
 import { MotionHero } from "@/components/motion-hero";
 import { PublicFooter, publicNavItems } from "@/components/public-page-shell";
+import { SpiralStory } from "@/components/spiral-story";
 import {
   formatOperatingDay,
   operatingWeekdays,
@@ -150,66 +151,7 @@ export default async function HomePage() {
 
       <div id="main-content" />
 
-      <section className="ticketStatement" aria-label="What your ticket includes">
-        <p className="sectionLabel">One ticket</p>
-        <h2>One ticket, the whole skyline.</h2>
-        <p className="ticketStatementCopy">
-          Admission covers the full top floor: the open observation deck, the
-          indoor lounge behind floor-to-ceiling glass, and views that run from
-          the Hollywood Hills to the ocean. Entry is timed, so the deck stays
-          comfortable.
-        </p>
-        <ul className="ticketIncludes">
-          <li>
-            <strong>Observation deck</strong>
-            <span>360-degree views above Wilshire, from the hills to the sea</span>
-          </li>
-          <li>
-            <strong>Indoor lounge</strong>
-            <span>Seating behind floor-to-ceiling glass</span>
-          </li>
-          <li>
-            <strong>Timed entry</strong>
-            <span>Choose your date and arrival window</span>
-          </li>
-        </ul>
-      </section>
-
-      <section className="viewsGallery" aria-label="Views from the deck">
-        <figure className="viewsGalleryLead">
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-hills.jpg"
-              alt="Residential blocks stretching west toward the Century City skyline"
-              fill
-              sizes="(max-width: 820px) 100vw, 62vw"
-            />
-          </div>
-          <figcaption>Toward Century City</figcaption>
-        </figure>
-        <figure>
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-academy.jpg"
-              alt="Academy Museum and Museum Row seen from above"
-              fill
-              sizes="(max-width: 820px) 100vw, 38vw"
-            />
-          </div>
-          <figcaption>Academy Museum</figcaption>
-        </figure>
-        <figure>
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-westside.jpg"
-              alt="Rooftops running north to the Hollywood Hills"
-              fill
-              sizes="(max-width: 820px) 100vw, 38vw"
-            />
-          </div>
-          <figcaption>Hollywood Hills</figcaption>
-        </figure>
-      </section>
+      <SpiralStory />
 
       <div className="visitBand" id="visit">
         <VisitorOperatingConfig config={operatingConfig} />
