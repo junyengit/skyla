@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { checkoutEntryTimes, childPriceCents, type TicketPackageKey } from "@skyla/payments";
+import {
+  checkoutEntryTimes,
+  childPriceCents,
+  currentLiabilityWaiverVersion,
+  currentTermsVersion,
+  type TicketPackageKey
+} from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 import {
   formatOperatingDay,
@@ -132,7 +138,7 @@ export function CheckoutClient({
   const [isReviewing, setIsReviewing] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [liabilityWaiverAccepted, setLiabilityWaiverAccepted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [returnStatus, setReturnStatus] = useState<"checking" | "pending" | "confirmed" | "failed" | "canceled" | "unavailable">(
     stripeStatus === "success" ? "checking" : "pending"
@@ -159,7 +165,7 @@ export function CheckoutClient({
     selectedEntryTimeAvailable &&
     emailPattern.test(normalizedEmail);
   const orderPersisted = Boolean(draft?.persisted && draft.orderRef);
-  const legalReady = termsAccepted && waiverAccepted;
+  const legalReady = termsAccepted && liabilityWaiverAccepted;
   const canPay = orderPersisted && legalReady && !isPaying;
 
   useEffect(() => {
@@ -249,7 +255,7 @@ export function CheckoutClient({
 
   function resetConsent() {
     setTermsAccepted(false);
-    setWaiverAccepted(false);
+    setLiabilityWaiverAccepted(false);
   }
 
   function resetDraft() {
@@ -328,9 +334,9 @@ export function CheckoutClient({
       setMessage("Review and save this order before continuing to payment.");
       return;
     }
-    if (!termsAccepted || !waiverAccepted) {
+    if (!termsAccepted || !liabilityWaiverAccepted) {
       setMessage(
-        "Before card payment, check both boxes above: agree to the Terms of Use and Ticket Purchase Terms, and sign the Acknowledgment of Risk and Release of Liability for yourself."
+        "Before card payment, check both boxes above: agree to the Terms of Use and Ticket Purchase Terms, and accept the Acknowledgment of Risk and Release of Liability for yourself."
       );
       return;
     }
@@ -346,7 +352,9 @@ export function CheckoutClient({
           idempotencyKey,
           legalAcceptance: {
             termsAccepted,
-            liabilityWaiverAccepted: waiverAccepted
+            termsVersion: currentTermsVersion,
+            liabilityWaiverAccepted,
+            liabilityWaiverVersion: currentLiabilityWaiverVersion
           }
         })
       });
@@ -564,12 +572,12 @@ export function CheckoutClient({
 
               <label className="checkoutConsentOption">
                 <input
-                  checked={waiverAccepted}
+                  checked={liabilityWaiverAccepted}
                   type="checkbox"
-                  onChange={(event) => setWaiverAccepted(event.target.checked)}
+                  onChange={(event) => setLiabilityWaiverAccepted(event.target.checked)}
                 />
                 <span>
-                  I have read and voluntarily sign the Sky LA{" "}
+                  I have read and voluntarily accept the Sky LA{" "}
                   <a href="/liability-waiver" rel="noreferrer" target="_blank">
                     Acknowledgment of Risk and Release of Liability
                     <span className="srOnly"> (opens in a new tab)</span>
