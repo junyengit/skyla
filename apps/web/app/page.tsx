@@ -7,7 +7,7 @@ import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { MarketingScripts } from "@/components/marketing-scripts";
 import { MotionHero } from "@/components/motion-hero";
 import { PublicFooter, publicNavItems } from "@/components/public-page-shell";
-import { SpiralStory } from "@/components/spiral-story";
+import { SpiralStaircaseStory } from "@/components/spiral-story";
 import {
   formatOperatingDay,
   operatingWeekdays,
@@ -151,7 +151,7 @@ export default async function HomePage() {
 
       <div id="main-content" />
 
-      <SpiralStory />
+      <SpiralStaircaseStory />
 
       <div className="visitBand" id="visit">
         <VisitorOperatingConfig config={operatingConfig} />

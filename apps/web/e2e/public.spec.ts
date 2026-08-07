@@ -81,26 +81,39 @@ test("home renders its primary content without hero motion", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Los Angeles");
 });
 
-test("home enhances the static story into a native-scroll helix on desktop", async ({ page }) => {
+test("home builds a descending spiral staircase through native desktop scroll", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await goto(page, "/");
 
-  const story = page.locator(".spiralStory");
-  await expect(story).toHaveAttribute("data-scroll-mode", "spiral");
-  await expect(page.getByRole("heading", { level: 2, name: "The city turns around you." })).toBeVisible();
-  await expect(story.locator(".spiralCard")).toHaveCount(7);
+  const story = page.locator(".staircaseStory");
+  const rail = story.locator(".staircaseRailDraw");
+  await expect(story).toHaveAttribute("data-scroll-mode", "descending");
+  await expect(page.getByRole("heading", { level: 2, name: "The view keeps building." })).toBeVisible();
+  await expect(story.locator(".staircaseLevel")).toHaveCount(7);
+
+  const initialRailStyle = await rail.getAttribute("style");
 
   await page.evaluate(() => {
-    const section = document.querySelector<HTMLElement>(".spiralStory");
-    if (!section) throw new Error("spiral story missing");
+    const section = document.querySelector<HTMLElement>(".staircaseStory");
+    if (!section) throw new Error("staircase story missing");
     window.scrollTo({ top: section.offsetTop + section.offsetHeight * 0.44 });
   });
 
   await expect.poll(async () => {
-    return story.locator(".spiralCard").evaluateAll((cards) => {
-      return new Set(cards.map((card) => getComputedStyle(card).transform)).size;
-    });
-  }).toBeGreaterThan(3);
+    return rail.getAttribute("style");
+  }).not.toBe(initialRailStyle);
+
+  const storyMechanics = await story.evaluate((section) => {
+    const stickyDescendants = [...section.querySelectorAll("*")].filter(
+      (element) => getComputedStyle(element).position === "sticky"
+    ).length;
+    const landingTransforms = [...section.querySelectorAll(".staircaseLanding")].map(
+      (landing) => getComputedStyle(landing).transform
+    );
+    return { stickyDescendants, distinctTransforms: new Set(landingTransforms).size };
+  });
+  expect(storyMechanics.stickyDescendants).toBe(0);
+  expect(storyMechanics.distinctTransforms).toBeGreaterThan(2);
 
   const overflowPixels = await page.evaluate(() => {
     const contentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
@@ -109,18 +122,18 @@ test("home enhances the static story into a native-scroll helix on desktop", asy
   expect(overflowPixels).toBeLessThanOrEqual(1);
 });
 
-test("spiral story becomes a complete linear sequence for reduced motion and mobile", async ({ page }) => {
+test("spiral staircase becomes a complete linear sequence for reduced motion and mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await goto(page, "/");
 
-  const story = page.locator(".spiralStory");
+  const story = page.locator(".staircaseStory");
   await expect(story).toHaveAttribute("data-scroll-mode", "static");
   await expect(story.getByText("Century City", { exact: true })).toBeVisible();
-  await expect(story.locator(".spiralCardFact").filter({ hasText: "Timed entry" })).toBeVisible();
+  await expect(story.locator(".staircaseLevelFact").filter({ hasText: "Timed entry" })).toBeVisible();
 
-  const layout = await story.locator(".spiralCard").first().evaluate((card) => {
-    const style = getComputedStyle(card);
+  const layout = await story.locator(".staircaseLanding").first().evaluate((landing) => {
+    const style = getComputedStyle(landing);
     return { position: style.position, transform: style.transform, opacity: style.opacity };
   });
   expect(layout).toEqual({ position: "relative", transform: "none", opacity: "1" });
