@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   currentLiabilityWaiverVersion,
+  currentTermsAcceptanceText,
   currentTermsVersion
 } from "@skyla/payments";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -71,6 +72,13 @@ describe("checkout legal consent", () => {
     expect((terms as HTMLInputElement).checked).toBe(false);
     expect((waiver as HTMLInputElement).checked).toBe(false);
     expect(payment.disabled).toBe(true);
+    expect(
+      terms
+        .closest("label")
+        ?.textContent?.replace(" (opens in a new tab)", "")
+        .replace(/\s+/g, " ")
+        .trim()
+    ).toBe(currentTermsAcceptanceText);
     expect(screen.getByRole("link", { name: /Terms of Use and Ticket Purchase Terms/i }).getAttribute("target")).toBe("_blank");
     expect(screen.getByRole("link", { name: /Acknowledgment of Risk and Release of Liability/i }).getAttribute("target")).toBe("_blank");
 

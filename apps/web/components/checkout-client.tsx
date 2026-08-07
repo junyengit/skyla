@@ -6,6 +6,9 @@ import {
   checkoutEntryTimes,
   childPriceCents,
   currentLiabilityWaiverVersion,
+  currentRefundAndVisitPolicyLabel,
+  currentTermsAgeRepresentationText,
+  currentTermsDocumentLabel,
   currentTermsVersion,
   type TicketPackageKey
 } from "@skyla/payments";
@@ -561,12 +564,12 @@ export function CheckoutClient({
                   onChange={(event) => setTermsAccepted(event.target.checked)}
                 />
                 <span>
-                  I am 18 or older and agree to the{" "}
+                  {currentTermsAgeRepresentationText} and agree to the{" "}
                   <a href="/terms" rel="noreferrer" target="_blank">
-                    Terms of Use and Ticket Purchase Terms
+                    {currentTermsDocumentLabel}
                     <span className="srOnly"> (opens in a new tab)</span>
                   </a>{" "}
-                  and the Refund &amp; Visit Policy.
+                  and the {currentRefundAndVisitPolicyLabel}.
                 </span>
               </label>
 

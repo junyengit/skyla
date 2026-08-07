@@ -11,6 +11,9 @@ import {
 
 describe("checkout legal acceptance", () => {
   it("returns the canonical versions and acceptance language", () => {
+    expect(currentTermsAcceptanceText).toBe(
+      "I am 18 or older and agree to the Terms of Use and Ticket Purchase Terms and the Refund & Visit Policy."
+    );
     expect(assertCurrentCheckoutLegalAcceptance(currentCheckoutLegalAcceptanceInput)).toEqual({
       termsVersion: currentTermsVersion,
       termsAcceptanceText: currentTermsAcceptanceText,

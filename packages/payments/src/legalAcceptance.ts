@@ -1,6 +1,10 @@
 export const currentTermsVersion = "prelaunch-2026-08-06-v1";
 export const currentTermsPath = "/terms";
-export const currentTermsAcceptanceText = "I agree to the Sky LA Terms of Use.";
+export const currentTermsAgeRepresentationText = "I am 18 or older";
+export const currentTermsDocumentLabel = "Terms of Use and Ticket Purchase Terms";
+export const currentRefundAndVisitPolicyLabel = "Refund & Visit Policy";
+export const currentTermsAcceptanceText =
+  `${currentTermsAgeRepresentationText} and agree to the ${currentTermsDocumentLabel} and the ${currentRefundAndVisitPolicyLabel}.`;
 
 export const currentLiabilityWaiverVersion = "prelaunch-2026-08-06-v1";
 export const currentLiabilityWaiverPath = "/liability-waiver";
