@@ -117,7 +117,7 @@ test("spiral story becomes a complete linear sequence for reduced motion and mob
   const story = page.locator(".spiralStory");
   await expect(story).toHaveAttribute("data-scroll-mode", "static");
   await expect(story.getByText("Century City", { exact: true })).toBeVisible();
-  await expect(story.getByText("Timed entry", { exact: true })).toBeVisible();
+  await expect(story.locator(".spiralCardFact").filter({ hasText: "Timed entry" })).toBeVisible();
 
   const layout = await story.locator(".spiralCard").first().evaluate((card) => {
     const style = getComputedStyle(card);
