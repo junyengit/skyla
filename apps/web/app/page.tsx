@@ -10,6 +10,7 @@ import { SkyJourney } from "@/components/sky-journey";
 import { SkyStageFilm } from "@/components/sky-stage-film";
 import {
   formatOperatingDay,
+  operatingWeekdayForInstant,
   operatingWeekdays,
   type PublicOperatingConfig
 } from "@/lib/operating-hours";
@@ -103,9 +104,12 @@ export function VisitorOperatingConfig({ config }: { config: PublicOperatingConf
 
 export default async function HomePage() {
   const operatingConfig = await loadPublicOperatingConfig();
+  const currentWeekday = operatingConfig
+    ? operatingWeekdayForInstant(new Date(), operatingConfig.timeZone)
+    : null;
   const hoursLine =
-    siteConfig.launched && operatingConfig
-      ? formatOperatingDay(operatingConfig.operatingHours[operatingWeekdays[0]])
+    siteConfig.launched && operatingConfig && currentWeekday
+      ? formatOperatingDay(operatingConfig.operatingHours[currentWeekday])
       : null;
 
   return (

@@ -36,6 +36,26 @@ function priorityFramesFor(count: number): number[] {
   ];
 }
 
+export function initialFramesFor(
+  count: number,
+  cacheLimit = MAX_CACHED_BITMAPS
+): number[] {
+  if (count <= 0 || cacheLimit <= 0) return [];
+  const limit = Math.min(count, cacheLimit);
+  const frames: number[] = [];
+  const included = new Set<number>();
+
+  const add = (index: number) => {
+    if (frames.length >= limit || included.has(index)) return;
+    included.add(index);
+    frames.push(index);
+  };
+
+  for (const index of priorityFramesFor(count)) add(index);
+  for (let index = 0; index < count && frames.length < limit; index += 1) add(index);
+  return frames;
+}
+
 export interface JourneyChapter {
   title: string;
   body: string;
@@ -158,11 +178,7 @@ export function SkyJourney({ chapters }: { chapters: JourneyChapter[] }) {
     const queueInitial = () => {
       loadQueue = [];
       queued = new Set();
-      const priority = new Set(priorityFramesFor(frameCount));
-      for (const index of priority) queueFrame(index);
-      for (let index = 0; index < frameCount; index += 1) {
-        if (!priority.has(index)) queueFrame(index);
-      }
+      for (const index of initialFramesFor(frameCount)) queueFrame(index);
       pump();
     };
 
