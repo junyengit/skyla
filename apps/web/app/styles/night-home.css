@@ -2,6 +2,7 @@
    the light scheme. Ported from the approved Skydeck design system. */
 
 .skyNight {
+  overflow-x: clip;
   --night-ink: #0d0b14;
   --dusk-indigo: #171430;
   --champagne: #d2a24c;
@@ -467,4 +468,17 @@
   .skyNight .skyStage__film {
     display: none;
   }
+}
+
+/* Launch banner, night-scoped: solid ink so it never ghosts through the
+   glass nav while scrolling. */
+.skyNight .launchBanner,
+.skyNight [class*="launch"] {
+  border-bottom: 1px solid var(--hairline-ivory);
+  background: var(--night-ink);
+  color: var(--warm-ivory);
+}
+
+.skyNight [class*="launch"] a {
+  color: var(--champagne);
 }
