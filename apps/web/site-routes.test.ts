@@ -28,7 +28,7 @@ describe("App Router route ownership", () => {
     process.env.VERCEL = "1";
 
     try {
-      expect(showcaseHomeOrigin).toBe("https://skydeck-la.vercel.app");
+      expect(showcaseHomeOrigin).toBe("https://skydeck-vercel.vercel.app");
       expect(await nextConfig.rewrites?.()).toEqual({
         beforeFiles: showcaseHomeRewrites,
         afterFiles: [],
@@ -37,7 +37,19 @@ describe("App Router route ownership", () => {
       expect(showcaseHomeRewrites).toEqual([
         {
           source: "/",
-          destination: "https://skydeck-la.vercel.app/"
+          destination: "https://skydeck-vercel.vercel.app/"
+        },
+        {
+          source: "/assets/:path*",
+          destination: "https://skydeck-vercel.vercel.app/assets/:path*"
+        },
+        {
+          source: "/favicon.svg",
+          destination: "https://skydeck-vercel.vercel.app/favicon.svg"
+        },
+        {
+          source: "/api/reserve",
+          destination: "https://skydeck-vercel.vercel.app/api/reserve"
         }
       ]);
     } finally {
