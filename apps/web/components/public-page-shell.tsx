@@ -15,7 +15,7 @@ type PublicPageShellProps = {
 // The simple-site pivot keeps one public destination: tickets. The header is
 // brand + a single Buy CTA, so no hamburger menu is rendered.
 export const publicNavItems: Array<{ key: NavKey; label: string; href: string }> = [
-  { key: "checkout", label: "Tickets", href: "/checkout" }
+  { key: "checkout", label: "Full venue booking", href: "/#book-venue" }
 ];
 
 export function PublicPageShell({ active, children }: PublicPageShellProps) {
@@ -69,8 +69,8 @@ export function PublicFooter() {
       <span>Sky LA</span>
       <p>{siteConfig.address.full}</p>
       <div className="footerLinks">
-        <Link href="/checkout" prefetch={false}>
-          Tickets
+        <Link href="/#book-venue" prefetch={false}>
+          Full venue booking
         </Link>
         <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
           Get Directions
