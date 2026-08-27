@@ -1,82 +1,58 @@
 import { expect, goto, test } from "./support/browser";
 
-test("public home announces the pre-launch status before any price or ticket path", async ({ page }) => {
+test("public home presents the approved showcase and only full-venue booking", async ({ page }) => {
   await goto(page, "/");
 
-  const banner = page.getByRole("status");
-  await expect(banner).toContainText("Coming soon");
-  await expect(banner).toContainText("Sky LA is not open yet. Ticket sales are not live.");
-  await expect(banner.getByRole("link", { name: "reservations@skydeckla.com" })).toBeVisible();
+  await expect(page.locator(".showcaseOverlay").first().getByText("The gallery hall.")).toBeVisible();
+  await expect(page.locator("#book-venue").getByText("Individual tickets are not available.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The full venue. One private booking." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Full venue booking" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Request availability" })).toHaveAttribute(
+    "href",
+    /mailto:reservations@skydeckla\.com/
+  );
 
-  // The status band sits above the first price mention.
-  const bannerBox = await banner.boundingBox();
-  const priceBox = await page.getByText("$20").first().boundingBox();
-  expect(bannerBox).not.toBeNull();
-  expect(priceBox).not.toBeNull();
-  expect(bannerBox!.y).toBeLessThan(priceBox!.y);
-
-  // Purchase paths are replaced with non-link status and an email CTA.
-  await expect(page.getByRole("link", { name: "Buy Tickets" })).toHaveCount(0);
-  const nav = page.getByRole("navigation", { name: "Primary navigation" });
-  await expect(nav.getByText("Coming Soon")).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Coming Soon" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Ask about opening" })).toBeVisible();
-
-  // Prices are framed as planned, and hours are not presented as current.
-  await expect(page.getByText(/planned launch pricing/i)).toBeVisible();
-  await expect(page.getByText(/opening hours will be announced before launch/i)).toBeVisible();
-  await expect(page.getByText(/Monday:/)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /buy tickets/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /date night/i })).toHaveCount(0);
+  await expect(page.locator('a[href="/checkout"]')).toHaveCount(0);
+  await expect(page.getByText(/\$20|\$29|planned launch pricing/i)).toHaveCount(0);
 });
 
-test("checkout is gated while ticket sales are not live", async ({ page }) => {
+test("checkout is gated with the full-venue-only offer", async ({ page }) => {
   await goto(page, "/checkout");
 
   const banner = page.getByRole("status");
-  await expect(banner).toContainText("Coming soon");
-  await expect(banner).toContainText("Sky LA is not open yet. Ticket sales are not live.");
+  await expect(banner).toContainText("Full venue bookings only");
+  await expect(banner).toContainText("Individual tickets are not available");
 
   await expect(page.getByRole("heading", { level: 1, name: "Checkout" })).toBeVisible();
   const statusPanel = page.getByRole("region", { name: "Ticket sales status" });
-  await expect(statusPanel).toBeVisible();
-  await expect(statusPanel).toContainText("Ticket sales are not live.");
-
-  // No interactive ticket form or card-payment path is present.
+  await expect(statusPanel).toContainText("full-venue booking inquiries only");
   await expect(page.getByRole("region", { name: "Ticket checkout" })).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(page.getByRole("button")).toHaveCount(0);
-  await expect(page.getByText(/secure hosted card payment/i)).toHaveCount(0);
-
-  await expect(
-    page.getByRole("link", { name: /reservations@skydeckla\.com/ }).first()
-  ).toBeVisible();
 });
 
-test("checkout has no horizontal overflow on mobile", async ({ page }) => {
+test("public surfaces have no horizontal overflow on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await goto(page, "/checkout");
 
-  const overflowPixels = await page.evaluate(() => {
-    const contentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
-    return contentWidth - document.documentElement.clientWidth;
-  });
-
-  expect(overflowPixels).toBeLessThanOrEqual(1);
+  for (const path of ["/", "/checkout"]) {
+    await goto(page, path);
+    const overflowPixels = await page.evaluate(() => {
+      const contentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+      return contentWidth - document.documentElement.clientWidth;
+    });
+    expect(overflowPixels).toBeLessThanOrEqual(1);
+  }
 });
 
-test("home renders its primary content without hero motion", async ({ page }) => {
+test("reduced motion renders all showcase chapters as a complete static story", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await goto(page, "/");
 
   expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
-  const initialHeroState = await page.locator(".heroContent").evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      opacity: style.opacity,
-      transform: style.transform,
-      animations: element.getAnimations({ subtree: true }).length
-    };
-  });
-
-  expect(initialHeroState).toEqual({ opacity: "1", transform: "none", animations: 0 });
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Los Angeles");
+  await expect(page.locator(".showcaseStatic")).toHaveCount(7);
+  await expect(page.locator("html")).not.toHaveClass(/showcaseScrub/);
+  await expect(page.getByRole("heading", { level: 1, name: "The gallery hall." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Take the whole view." })).toBeVisible();
 });

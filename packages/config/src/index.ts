@@ -8,8 +8,9 @@ export const siteConfig = {
   // keeps every purchase path disabled, true restores them site-wide.
   launched: false as boolean,
   launchStatus: {
-    label: "Coming soon",
-    message: "Sky LA is not open yet. Ticket sales are not live."
+    label: "Full venue bookings only",
+    message:
+      "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
   },
   address: {
     short: "6100 Wilshire Blvd · Los Angeles",
