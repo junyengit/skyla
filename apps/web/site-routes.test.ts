@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 
 import robots from "./app/robots";
 import sitemap from "./app/sitemap";
-import nextConfig from "./next.config.mjs";
+import nextConfig, { showcaseHomeOrigin, showcaseHomeRewrites } from "./next.config.mjs";
 import { proxy } from "./proxy";
 import {
   htmlCompatibilityRedirects,
@@ -23,6 +23,29 @@ const webDir = import.meta.dirname;
 const publicDir = join(webDir, "public");
 
 describe("App Router route ownership", () => {
+  it("serves the exact standalone showcase as the Vercel homepage", async () => {
+    const previousVercel = process.env.VERCEL;
+    process.env.VERCEL = "1";
+
+    try {
+      expect(showcaseHomeOrigin).toBe("https://skydeck-la.vercel.app");
+      expect(await nextConfig.rewrites?.()).toEqual({
+        beforeFiles: showcaseHomeRewrites,
+        afterFiles: [],
+        fallback: []
+      });
+      expect(showcaseHomeRewrites).toEqual([
+        {
+          source: "/",
+          destination: "https://skydeck-la.vercel.app/"
+        }
+      ]);
+    } finally {
+      if (previousVercel === undefined) delete process.env.VERCEL;
+      else process.env.VERCEL = previousVercel;
+    }
+  });
+
   it("centralizes saved .html URLs and retired pages as permanent Next redirects", async () => {
     const redirects = await nextConfig.redirects?.();
 
