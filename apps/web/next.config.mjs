@@ -24,7 +24,9 @@ const nextConfig = {
     // The original standalone project is the authoritative public homepage.
     // Vercel serves it at the main domain without copying or reimplementing
     // the design; local development keeps this app self-contained.
-    return process.env.VERCEL === "1" ? showcaseHomeRewrites : [];
+    return process.env.VERCEL === "1"
+      ? { beforeFiles: showcaseHomeRewrites, afterFiles: [], fallback: [] }
+      : [];
   },
   async headers() {
     const securityHeaders = [

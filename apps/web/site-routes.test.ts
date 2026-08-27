@@ -29,7 +29,11 @@ describe("App Router route ownership", () => {
 
     try {
       expect(showcaseHomeOrigin).toBe("https://skydeck-la.vercel.app");
-      expect(await nextConfig.rewrites?.()).toEqual(showcaseHomeRewrites);
+      expect(await nextConfig.rewrites?.()).toEqual({
+        beforeFiles: showcaseHomeRewrites,
+        afterFiles: [],
+        fallback: []
+      });
       expect(showcaseHomeRewrites).toEqual([
         {
           source: "/",
