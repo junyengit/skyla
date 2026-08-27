@@ -108,6 +108,18 @@ export function operatingWeekdayForDate(visitDate: string): OperatingWeekday | n
   return operatingWeekdays[mondayBasedDay];
 }
 
+export function operatingWeekdayForInstant(
+  instant: Date,
+  timeZone: PublicOperatingConfig["timeZone"]
+): OperatingWeekday | null {
+  if (!Number.isFinite(instant.getTime())) return null;
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    timeZone
+  }).format(instant);
+  return operatingWeekdays.find((day) => day === weekday) ?? null;
+}
+
 function timeMinutes(value: string) {
   if (!timePattern.test(value)) return null;
   const [hour, minute] = value.split(":").map(Number);

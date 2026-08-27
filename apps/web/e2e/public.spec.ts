@@ -68,7 +68,7 @@ test("home renders its primary content without hero motion", async ({ page }) =>
   await goto(page, "/");
 
   expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
-  const initialHeroState = await page.locator(".heroContent").evaluate((element) => {
+  const initialHeroState = await page.locator(".skyJourney__copy").first().evaluate((element) => {
     const style = getComputedStyle(element);
     return {
       opacity: style.opacity,

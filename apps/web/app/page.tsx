@@ -1,14 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, MapPin } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
 import { LaunchStatusBanner } from "@/components/launch-status-banner";
 import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { MarketingScripts } from "@/components/marketing-scripts";
-import { MotionHero } from "@/components/motion-hero";
 import { PublicFooter, publicNavItems } from "@/components/public-page-shell";
+import { SkyFooterSign } from "@/components/sky-footer-sign";
+import { SkyJourney } from "@/components/sky-journey";
+import { SkyStageFilm } from "@/components/sky-stage-film";
 import {
   formatOperatingDay,
+  operatingWeekdayForInstant,
   operatingWeekdays,
   type PublicOperatingConfig
 } from "@/lib/operating-hours";
@@ -19,6 +21,34 @@ export const dynamic = "force-dynamic";
 const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
   "6100 Wilshire Blvd, Los Angeles, CA 90048"
 )}`;
+
+// The journey film is a generated concept visualization of the venue; every
+// claim in the copy below stays within the real offer.
+const journeyChapters = [
+  {
+    title: "Los Angeles, from the top of Wilshire.",
+    body: "An observation deck on the top floor of 6100 Wilshire, with 360-degree views from the Hollywood Hills to the Westside."
+  },
+  {
+    title: "Above Museum Row.",
+    body: "The deck rises over Wilshire's museum corridor, with the whole basin laid out below."
+  },
+  {
+    title: "The top floor.",
+    body: "An open observation deck and an indoor lounge behind floor-to-ceiling glass."
+  }
+];
+
+const reelImages = [
+  { src: "/images/view-hills.jpg", caption: "Toward Century City" },
+  { src: "/images/view-academy.jpg", caption: "Academy Museum" },
+  { src: "/images/view-westside.jpg", caption: "Hollywood Hills" },
+  { src: "/images/hero-lounge.jpg", caption: "The lounge" },
+  { src: "/images/lounge-window.webp", caption: "Behind the glass" },
+  { src: "/images/bar.jpg", caption: "The bar" },
+  { src: "/images/champagne-caviar.jpg", caption: "Champagne service" },
+  { src: "/images/building.jpg", caption: "6100 Wilshire" }
+];
 
 export function OperatingHoursPanel({ config }: { config: PublicOperatingConfig }) {
   return (
@@ -74,9 +104,16 @@ export function VisitorOperatingConfig({ config }: { config: PublicOperatingConf
 
 export default async function HomePage() {
   const operatingConfig = await loadPublicOperatingConfig();
+  const currentWeekday = operatingConfig
+    ? operatingWeekdayForInstant(new Date(), operatingConfig.timeZone)
+    : null;
+  const hoursLine =
+    siteConfig.launched && operatingConfig && currentWeekday
+      ? formatOperatingDay(operatingConfig.operatingHours[currentWeekday])
+      : null;
 
   return (
-    <main className={siteConfig.launched ? undefined : "prelaunch"}>
+    <main className={`skyNight${siteConfig.launched ? "" : " prelaunch"}`}>
       <LocalBusinessJsonLd config={operatingConfig} />
       <MarketingScripts />
       <a className="skipLink" href="#main-content">
@@ -103,52 +140,11 @@ export default async function HomePage() {
       </nav>
       <LaunchStatusBanner />
 
-      <section className="hero">
-        <div className="heroMedia" aria-hidden="true">
-          <Image
-            src="/images/view.jpg"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="heroImage"
-          />
-        </div>
-        <div className="heroScrim" />
-        <MotionHero>
-          <p className="location">
-            <MapPin size={16} />
-            {siteConfig.address.short}
-          </p>
-          <h1>Los Angeles, from the top of Wilshire.</h1>
-          <p className="heroCopy">
-            An observation deck on the top floor of 6100 Wilshire, with
-            360-degree views from the Hollywood Hills to the Westside.
-          </p>
-          <div className="heroTicket">
-            <span className="heroPrice">$20</span>
-            <span className="heroPriceMeta">
-              {siteConfig.launched ? "all-in, per adult" : "planned launch pricing, per adult"}
-              <em>Ages 12 and under $10</em>
-            </span>
-          </div>
-          <div className="heroActions">
-            {siteConfig.launched ? (
-              <Link className="primaryAction" href="/checkout" prefetch={false}>
-                Buy Tickets
-                <ArrowRight size={18} />
-              </Link>
-            ) : (
-              <a className="primaryAction" href={`mailto:${siteConfig.email}`}>
-                Ask about opening
-                <ArrowRight size={18} />
-              </a>
-            )}
-          </div>
-        </MotionHero>
-      </section>
+      <SkyJourney chapters={journeyChapters} />
 
       <div id="main-content" />
+
+      <SkyStageFilm hoursLine={hoursLine} />
 
       <section className="ticketStatement" aria-label="What your ticket includes">
         <p className="sectionLabel">One ticket</p>
@@ -175,40 +171,22 @@ export default async function HomePage() {
         </ul>
       </section>
 
-      <section className="viewsGallery" aria-label="Views from the deck">
-        <figure className="viewsGalleryLead">
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-hills.jpg"
-              alt="Residential blocks stretching west toward the Century City skyline"
-              fill
-              sizes="(max-width: 820px) 100vw, 62vw"
-            />
-          </div>
-          <figcaption>Toward Century City</figcaption>
-        </figure>
-        <figure>
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-academy.jpg"
-              alt="Academy Museum and Museum Row seen from above"
-              fill
-              sizes="(max-width: 820px) 100vw, 38vw"
-            />
-          </div>
-          <figcaption>Academy Museum</figcaption>
-        </figure>
-        <figure>
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-westside.jpg"
-              alt="Rooftops running north to the Hollywood Hills"
-              fill
-              sizes="(max-width: 820px) 100vw, 38vw"
-            />
-          </div>
-          <figcaption>Hollywood Hills</figcaption>
-        </figure>
+      <section className="skyReel" aria-label="Views and spaces">
+        <div className="skyReel__track">
+          {[...reelImages, ...reelImages].map((image, index) => (
+            <figure aria-hidden={index >= reelImages.length} key={`${image.src}-${index}`}>
+              <div className="skyReel__frame">
+                <Image
+                  alt={index < reelImages.length ? image.caption : ""}
+                  fill
+                  sizes="(max-width: 820px) 60vw, 26rem"
+                  src={image.src}
+                />
+              </div>
+              <figcaption>{image.caption}</figcaption>
+            </figure>
+          ))}
+        </div>
       </section>
 
       <div className="visitBand" id="visit">
@@ -257,6 +235,7 @@ export default async function HomePage() {
         </a>
       </section>
 
+      <SkyFooterSign />
       <PublicFooter />
     </main>
   );
