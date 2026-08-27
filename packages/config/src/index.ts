@@ -4,8 +4,9 @@ export const siteConfig = {
   name: "Sky LA",
   domain: "skydeckla.com",
   email: "reservations@skydeckla.com",
-  // Pre-launch gate. Widened to boolean because this flips at launch: false
-  // keeps every purchase path disabled, true restores them site-wide.
+  // Individual-ticket transaction gate. False keeps checkout and purchase APIs
+  // disabled. The public homepage offer changes only through an explicit
+  // product decision; it is currently full-venue bookings only.
   launched: false as boolean,
   launchStatus: {
     label: "Full venue bookings only",

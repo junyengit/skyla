@@ -33,6 +33,17 @@ test("checkout is gated with the full-venue-only offer", async ({ page }) => {
   await expect(page.getByRole("button")).toHaveCount(0);
 });
 
+test("legal pages route visitors to full-venue booking instead of checkout", async ({ page }) => {
+  for (const path of ["/privacy", "/terms"]) {
+    await goto(page, path);
+    await expect(page.getByRole("link", { name: "Full venue booking" })).toHaveAttribute(
+      "href",
+      "/#book-venue"
+    );
+    await expect(page.locator('a[href="/checkout"]')).toHaveCount(0);
+  }
+});
+
 test("public surfaces have no horizontal overflow on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
