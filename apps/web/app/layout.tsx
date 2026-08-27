@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Inter, Marcellus } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 // Import order defines the cascade: tokens/base first, per-surface sheets in
 // the original monolith order, and the shell tail last so its mobile-nav rules
 // keep out-specifying the public-nav defaults.
@@ -13,7 +13,6 @@ import "./styles/checkout.css";
 import "./styles/pos.css";
 import "./styles/admin.css";
 import "./styles/shell.css";
-import "./styles/night-home.css";
 
 const display = Archivo({
   subsets: ["latin"],
@@ -25,13 +24,6 @@ const sans = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans"
-});
-
-const serifDisplay = Marcellus({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-serif-display"
 });
 
 export const metadata: Metadata = {
@@ -70,7 +62,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${serifDisplay.variable}`} data-scroll-behavior="smooth">
+    <html lang="en" className={`${display.variable} ${sans.variable}`} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );
