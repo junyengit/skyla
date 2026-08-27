@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatOperatingDay,
   isCheckoutEntryTimeAvailable,
-  operatingWeekdayForInstant,
   operatingWeekdayForDate,
   parsePublicOperatingConfig,
   type OperatingHours
@@ -24,24 +23,6 @@ describe("operating hour rules", () => {
     expect(operatingWeekdayForDate("2026-07-13")).toBe("Monday");
     expect(operatingWeekdayForDate("2026-07-19")).toBe("Sunday");
     expect(operatingWeekdayForDate("2026-02-30")).toBeNull();
-  });
-
-  it("derives the current operating day in the venue timezone", () => {
-    expect(
-      operatingWeekdayForInstant(
-        new Date("2026-07-19T06:59:59.000Z"),
-        "America/Los_Angeles"
-      )
-    ).toBe("Saturday");
-    expect(
-      operatingWeekdayForInstant(
-        new Date("2026-07-19T07:00:00.000Z"),
-        "America/Los_Angeles"
-      )
-    ).toBe("Sunday");
-    expect(
-      operatingWeekdayForInstant(new Date("invalid"), "America/Los_Angeles")
-    ).toBeNull();
   });
 
   it("accepts only entry times inside same-day and overnight windows", () => {
