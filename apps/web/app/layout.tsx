@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Inter, Italiana, Manrope } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 // Import order defines the cascade: tokens/base first, per-surface sheets in
 // the original monolith order, and the shell tail last so its mobile-nav rules
 // keep out-specifying the public-nav defaults.
 import "./styles/base.css";
 import "./styles/home.css";
-import "./styles/showcase-home.css";
 import "./styles/public.css";
 import "./styles/legal.css";
 import "./styles/tickets.css";
@@ -27,20 +26,6 @@ const sans = Inter({
   variable: "--font-sans"
 });
 
-const showcaseDisplay = Italiana({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-showcase-display"
-});
-
-const showcaseBody = Manrope({
-  weight: ["300", "400", "500", "600"],
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-showcase-body"
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://skydeckla.com"),
   title: {
@@ -48,7 +33,7 @@ export const metadata: Metadata = {
     template: "%s | Sky LA"
   },
   description:
-    "Sky LA is currently available exclusively for full-venue bookings at 6100 Wilshire in Los Angeles.",
+    "Timed-entry observation deck on the top floor of 6100 Wilshire, with 360-degree views of Los Angeles. $20 all-in per adult.",
   alternates: {
     canonical: "./"
   },
@@ -64,7 +49,7 @@ export const metadata: Metadata = {
     siteName: "Sky LA",
     title: "Sky LA | Los Angeles Above It All",
     description:
-      "Exclusive full-venue bookings above Wilshire, with 360-degree views of Los Angeles.",
+      "Timed-entry observation deck above Wilshire, with 360-degree views of Los Angeles.",
     images: ["/images/og-image.jpg"]
   }
 };
@@ -72,16 +57,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0a0a0c"
+  themeColor: "#ffffff"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${display.variable} ${sans.variable} ${showcaseDisplay.variable} ${showcaseBody.variable}`}
-      data-scroll-behavior="smooth"
-    >
+    <html lang="en" className={`${display.variable} ${sans.variable}`} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

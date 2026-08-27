@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const checkoutDescription = siteConfig.launched
   ? "Reserve The View at Sky LA. $20 all-in per adult, timed entry above Wilshire."
-  : "Individual tickets are unavailable. Sky LA is currently accepting full-venue booking inquiries only.";
+  : "Sky LA is coming soon. Ticket sales are not live; planned launch pricing is $20 all-in per adult.";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -37,8 +37,8 @@ function PreLaunchCheckout() {
           Sky LA
         </Link>
         <div className="navLinks">
-          <Link href="/#book-venue" prefetch={false}>
-            Full venue booking
+          <Link href="/checkout" prefetch={false} aria-current="page">
+            Tickets
           </Link>
         </div>
         <Link className="navCta" href="/">
@@ -55,26 +55,24 @@ function PreLaunchCheckout() {
         </div>
         <h1>Checkout</h1>
         <p>
-          Individual tickets are not available. Sky LA is currently accepting
-          inquiries only for exclusive use of the full venue.
+          Sky LA is not open yet, so tickets cannot be purchased today. Planned
+          launch pricing is $20 all-in per adult, with $10 entry for ages 12 and
+          under.
         </p>
       </section>
 
       <section className="checkoutPrelaunch" aria-label="Ticket sales status">
         <div className="checkoutPanelHeader">
           <p className="checkoutPanelLabel">Ticket status</p>
-          <h2>Full-venue bookings only.</h2>
+          <h2>Ticket sales are not live.</h2>
         </div>
         <p className="checkoutPrelaunchCopy">
-          There is no individual admission or payment to make here. Sky LA is
-          accepting full-venue booking inquiries only for the observation deck
-          and indoor lounge together.
+          There is nothing to book and no payment to make right now. Opening
+          dates and entry times will be announced here before launch. For group
+          visits, Date Night, or other questions, email the reservations team.
         </p>
-        <a
-          className="primaryAction"
-          href={`mailto:${siteConfig.email}?subject=${encodeURIComponent("Full venue booking inquiry")}`}
-        >
-          Request full-venue availability
+        <a className="primaryAction" href={`mailto:${siteConfig.email}`}>
+          Email {siteConfig.email}
           <ArrowRight size={18} />
         </a>
       </section>

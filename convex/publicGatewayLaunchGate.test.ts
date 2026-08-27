@@ -48,8 +48,7 @@ describe("Convex public gateway pre-launch gate", () => {
       await expect(response.json()).resolves.toEqual({
         ok: false,
         code: "ticket_sales_not_live",
-        error:
-          "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
+        error: "Sky LA is not open yet. Ticket sales are not live."
       });
       expect(ctx.runMutation).not.toHaveBeenCalled();
       expect(ctx.runAction).not.toHaveBeenCalled();

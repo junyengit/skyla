@@ -4,14 +4,12 @@ export const siteConfig = {
   name: "Sky LA",
   domain: "skydeckla.com",
   email: "reservations@skydeckla.com",
-  // Individual-ticket transaction gate. False keeps checkout and purchase APIs
-  // disabled. The public homepage offer changes only through an explicit
-  // product decision; it is currently full-venue bookings only.
+  // Pre-launch gate. Widened to boolean because this flips at launch: false
+  // keeps every purchase path disabled, true restores them site-wide.
   launched: false as boolean,
   launchStatus: {
-    label: "Full venue bookings only",
-    message:
-      "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
+    label: "Coming soon",
+    message: "Sky LA is not open yet. Ticket sales are not live."
   },
   address: {
     short: "6100 Wilshire Blvd · Los Angeles",
