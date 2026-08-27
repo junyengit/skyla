@@ -1,10 +1,22 @@
 import { noindexRoutes, publicHtmlCompatibilityRedirects, retiredRouteRedirects } from "./site-routes.mjs";
 
-export const showcaseHomeOrigin = "https://skydeck-la.vercel.app";
+export const showcaseHomeOrigin = "https://skydeck-vercel.vercel.app";
 export const showcaseHomeRewrites = [
   {
     source: "/",
     destination: `${showcaseHomeOrigin}/`
+  },
+  {
+    source: "/assets/:path*",
+    destination: `${showcaseHomeOrigin}/assets/:path*`
+  },
+  {
+    source: "/favicon.svg",
+    destination: `${showcaseHomeOrigin}/favicon.svg`
+  },
+  {
+    source: "/api/reserve",
+    destination: `${showcaseHomeOrigin}/api/reserve`
   }
 ];
 
@@ -21,9 +33,10 @@ const nextConfig = {
     }));
   },
   async rewrites() {
-    // The original standalone project is the authoritative public homepage.
+    // The approved standalone project is the authoritative public homepage.
     // Vercel serves it at the main domain without copying or reimplementing
-    // the design; local development keeps this app self-contained.
+    // the design. Its asset and reservation paths follow the same origin while
+    // the native checkout, legal, admin, and POS routes stay in this app.
     return process.env.VERCEL === "1"
       ? { beforeFiles: showcaseHomeRewrites, afterFiles: [], fallback: [] }
       : [];
