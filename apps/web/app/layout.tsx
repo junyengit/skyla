@@ -13,6 +13,7 @@ import "./styles/public-responsive.css";
 import "./styles/checkout.css";
 import "./styles/pos.css";
 import "./styles/admin.css";
+import "./styles/billing.css";
 import "./styles/shell.css";
 
 const display = Archivo({

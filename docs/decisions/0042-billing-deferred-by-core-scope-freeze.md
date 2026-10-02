@@ -1,0 +1,11 @@
+# Billing deferred; core admission release stays separate
+
+On2026-10-02 the owner froze scope to QR → test payment → ticket → staff admission, with additional dashboard work deferred. Preserve the completed read-only Billing work locally; do not expand its tests, add sparse/native fixtures, deploy it or include it in the core admission release.
+
+Core release base is5a4b5c9, containing the accepted local pricing, physical capacity, payment/ticket, staff admission, POS, private-event calendar and accurate online-sales status/full-venue links. The following local checkpoint only parks Billing. An independent core release branch points at that earlier commit; no checkout switch, push, merge, PR or deployment is authorized or performed.
+
+Billing combined check passed on task Bun1.4.0-canary and Node24.21:1732 tests, build, types, lint and tracked-artifact/legacy guards (research/billing-full-check-result.json, completed23:15:35UTC). Final source reviews found no remaining actionable source defect. Eleven actual exported presentation states rendered at320px with no horizontal overflow or controls below44px; these are explicitly synthetic inert SSR, not authenticated/provider proof. Root inspected the final three-age fullpage. Earlier false fixture applicability, source correlation concerns, missing timestamp guard and test-file overwrite were repaired, with prior failure evidence preserved and prior82tests restored byte-exactly before new cases.
+
+The prepared zero-write native Billing runner was not executed. Genuine Clerk, original provider accounts, desktop/390px renders, full interaction proof, native sparse/split staging and the CreativeOS production-promotion gate remain uncompleted for this deferred feature. No Billing acceptance or production-readiness claim follows from the green combined check. Do not treat source-final DTO/read-budget checks as actual native/auth/provider evidence.
+
+Proceed only with the stable exact-size admission QR asset and approved sandbox payment/ticket/admission checks. Real Stripe/Resend/Clerk and original Junyen Enterprises Vercel/Convex linkage remain gates. No production/live charge/purchase/message or public sign installation without its concrete required approval and acceptance evidence. Keep Hermes, the protected live checkouts and BestSpace untouched.

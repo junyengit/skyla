@@ -1,3 +1,8 @@
+import { ConvexError } from "convex/values";
+import {
+  BillingRequestError, billingHttpFailure, normalizeBillingPageRequest,
+  parseBillingBackendReadError, parseBillingExceptionPage, type BillingPageRequest
+} from "@/lib/billing-contract";
 import { fetchQuery } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 import {
@@ -62,8 +67,35 @@ function parseArgs(request: Request): ListArgs {
   };
 }
 
+const listOperationsExceptionsPage = makeFunctionReference<"query", BillingPageRequest, unknown>(
+  "operationsExceptions:listOperationsExceptionsPage"
+);
+
+function pageFailure(code: Parameters<typeof billingHttpFailure>[0]) {
+  const { body, status } = billingHttpFailure(code);
+  return adminJson(body, { status });
+}
+async function getPage(request: Request) {
+  try {
+    const args = normalizeBillingPageRequest(new URL(request.url).searchParams);
+    const token = authToken(request);
+    if (!token) return pageFailure("billing_auth_required");
+    const url = convexUrl();
+    if (!url) return pageFailure("billing_read_unverified");
+    return adminJson(parseBillingExceptionPage(await fetchQuery(listOperationsExceptionsPage, args, { url, token }), args));
+  } catch (error) {
+    if (error instanceof BillingRequestError) return pageFailure("billing_request_rejected");
+    if (error instanceof ConvexError) {
+      try { return pageFailure(parseBillingBackendReadError(error.data).code); }
+      catch { /* Unknown or foreign receipts remain unverified. */ }
+    }
+    return pageFailure("billing_read_unverified");
+  }
+}
+
 /** Read-only staff view of billing, attempt and delivery exceptions. */
 export async function GET(request: Request) {
+  if (new URL(request.url).searchParams.has("page")) return getPage(request);
   try {
     const token = authToken(request);
     if (!token) {

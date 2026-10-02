@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as admissions from "../admissions.js";
 import type * as availability from "../availability.js";
+import type * as billingDetails from "../billingDetails.js";
 import type * as catalog from "../catalog.js";
 import type * as checkoutReconciliation from "../checkoutReconciliation.js";
 import type * as checkoutStatus from "../checkoutStatus.js";
@@ -23,6 +24,7 @@ import type * as lib_adminOperations from "../lib/adminOperations.js";
 import type * as lib_adminVouchers from "../lib/adminVouchers.js";
 import type * as lib_admission from "../lib/admission.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_billingDetails from "../lib/billingDetails.js";
 import type * as lib_capacity from "../lib/capacity.js";
 import type * as lib_catalogVersioning from "../lib/catalogVersioning.js";
 import type * as lib_checkoutAttempts from "../lib/checkoutAttempts.js";
@@ -77,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   admissions: typeof admissions;
   availability: typeof availability;
+  billingDetails: typeof billingDetails;
   catalog: typeof catalog;
   checkoutReconciliation: typeof checkoutReconciliation;
   checkoutStatus: typeof checkoutStatus;
@@ -89,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   "lib/adminVouchers": typeof lib_adminVouchers;
   "lib/admission": typeof lib_admission;
   "lib/auth": typeof lib_auth;
+  "lib/billingDetails": typeof lib_billingDetails;
   "lib/capacity": typeof lib_capacity;
   "lib/catalogVersioning": typeof lib_catalogVersioning;
   "lib/checkoutAttempts": typeof lib_checkoutAttempts;

@@ -12,7 +12,7 @@ export default function CalendarPage() {
   return <StaffAuthProvider enabled={isStaffAuthConfigured()}>
     <main className="adminOpsPage calendarPage">
       <header className="adminOpsHeader"><Link className="brand" href="/">Sky LA</Link>
-        <nav aria-label="Staff navigation"><Link href="/admin" prefetch={false}>Operations</Link><Link href="/admission" prefetch={false}>Admission</Link><Link href="/pos" prefetch={false}>POS</Link></nav>
+        <nav aria-label="Staff navigation"><Link href="/admin" prefetch={false}>Operations</Link><Link href="/admin/billing" prefetch={false}>Billing</Link><Link href="/admission" prefetch={false}>Admission</Link><Link href="/pos" prefetch={false}>POS</Link></nav>
       </header>
       <AdminCalendarClient />
     </main>

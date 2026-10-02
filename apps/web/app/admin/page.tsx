@@ -37,6 +37,7 @@ export default function AdminPage() {
           </div>
           <nav aria-label="Staff navigation">
             <Link href="/admin/calendar" prefetch={false}>Calendar</Link>
+            <Link href="/admin/billing" prefetch={false}>Billing</Link>
             <Link href="/admission" prefetch={false}>Admission</Link>
             <Link href="/pos" prefetch={false}>
               POS

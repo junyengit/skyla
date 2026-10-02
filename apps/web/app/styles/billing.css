@@ -1,0 +1,62 @@
+.billingPage { background: #090909; color-scheme: dark; }
+.billingPage .adminOpsHeader { grid-template-columns: minmax(0, 1fr) auto; }
+.billingPage .adminOpsHeader .brand { display: inline-flex; align-items: center; min-height: 44px; }
+.billingPage .adminOpsHeader nav a { min-height: 44px; text-transform: none; font-size: 1rem; font-weight: 600; }
+.billingDesk { width: min(1280px, 100%); margin: 16px auto 0; font-size: 1rem; line-height: 1.55; }
+.billingDesk > * + * { margin-top: 24px; }
+.billingTitle h1 { font-size: clamp(1.75rem, 4vw, 2.75rem); line-height: 1.15; margin: 0 0 12px; }
+.billingTitle p { max-width: 75ch; margin: 0; }
+.billingDesk p { margin: 0 0 12px; overflow-wrap: anywhere; }
+.billingDesk h2 { font-size: 1.35rem; line-height: 1.3; margin: 0 0 12px; overflow-wrap: anywhere; }
+.billingDesk h3 { font-size: 1.2rem; line-height: 1.3; margin: 24px 0 12px; }
+.billingDesk h4 { font-size: 1rem; margin: 0 0 8px; }
+.billingDesk button, .billingDesk select, .billingSession a {
+  min-height: 44px; min-width: 0; border: 1px solid #77777e; border-radius: 6px;
+  padding: 10px 14px; background: #16161a; color: #fff; font: inherit;
+}
+.billingDesk button { cursor: pointer; font-weight: 600; }
+.billingDesk button:hover:not(:disabled) { border-color: #e0bd60; }
+.billingDesk button:disabled { opacity: .65; cursor: default; }
+.billingDesk select { width: 100%; }
+.billingDesk button:focus-visible, .billingDesk select:focus-visible, .billingDesk a:focus-visible,
+.billingPage .adminOpsHeader a:focus-visible, .billingContext:focus-visible { outline: 3px solid #e0bd60; outline-offset: 3px; }
+.billingContext { min-width: 0; scroll-margin-top: 96px; }
+.billingSession, .billingReadControls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.billingSession p { margin: 0; flex: 1 1 240px; }
+.billingSession strong { overflow-wrap: anywhere; }
+.billingSession a { display: inline-flex; align-items: center; margin-top: 10px; text-decoration: none; }
+.billingReadControls label { display: grid; gap: 6px; min-width: 0; font-size: 1rem; font-weight: 500; text-transform: none; }
+.billingColumns { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 32px; align-items: start; }
+.billingColumns > section { min-width: 0; }
+.billingNotice { padding: 16px; border: 1px solid #77777e; border-radius: 6px; background: #16161a; }
+.billingNotice.isWarning { border-color: #e0bd60; }
+.billingQueue, .billingLineList, .billingHistory ul { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 12px; }
+.billingQueue button { display: grid; gap: 6px; width: 100%; padding: 16px; text-align: left; overflow-wrap: anywhere; }
+.billingQueue button[aria-pressed="true"] { border-color: #e0bd60; background: #242018; }
+.billingQueue strong { font-size: 1.1rem; }
+.billingViewLabel { color: #f0cf73 !important; }
+.billingDetail, .billingLineList li, .billingHistory li, .billingRecoveryRecord { overflow-wrap: anywhere; }
+.billingFacts { display: grid; gap: 12px; margin: 16px 0; }
+.billingFacts > div { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; }
+.billingFacts dt { font-weight: 600; }
+.billingFacts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.billingLineList li, .billingHistory li { padding-block: 12px; border-bottom: 1px solid #4c4c52; }
+.billingLineList span, .billingHistory span { display: block; margin-top: 4px; }
+.billingHistory { display: grid; gap: 24px; }
+.billingHistory ul { margin-top: 8px; }
+.billingRecoveryRecord + .billingRecoveryRecord { margin-top: 24px; }
+.billingDetailLimits { margin-top: 24px !important; }
+@media (max-width: 980px) {
+  .billingPage .adminOpsHeader { grid-template-columns: 1fr; }
+  .billingColumns { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .billingContext { scroll-margin-top: 16px; }
+}
+@media (max-width: 480px) {
+  .billingReadControls > *, .billingSession button { width: 100%; }
+  .billingFacts > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .billingPage .adminOpsHeader nav { gap: 8px; }
+  .billingPage .adminOpsHeader nav a { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.billingPage), .billingPage, .billingPage * { scroll-behavior: auto; }
+}
