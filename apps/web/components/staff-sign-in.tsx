@@ -2,7 +2,7 @@
 
 import { SignIn } from "@clerk/nextjs";
 
-export function StaffSignIn({ returnTo }: { returnTo: "/admin" | "/pos" | "/pos-next" | "/admission" }) {
+export function StaffSignIn({ returnTo }: { returnTo: "/admin" | "/admin/calendar" | "/pos" | "/pos-next" | "/admission" }) {
   return (
     <SignIn
       path="/staff-sign-in"

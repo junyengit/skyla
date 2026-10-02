@@ -531,6 +531,8 @@ export default defineSchema({
     status: privateEventStatus,
     label: v.string(),
     notes: v.optional(v.string()),
+    confirmationSource: v.optional(v.union(v.literal("owner-confirmation"), v.literal("booking-record"))),
+    sourceRef: v.optional(v.string()),
     idempotencyKey: v.string(),
     requestFingerprint: v.string(),
     createdBy: v.id("staffUsers"),
@@ -542,6 +544,7 @@ export default defineSchema({
   })
     .index("by_eventRef", ["eventRef"])
     .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_visitDate", ["visitDate"])
     .index("by_visitDate_status", ["visitDate", "status"]),
 
   ticketDeliveries: defineTable({

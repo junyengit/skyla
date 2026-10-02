@@ -430,7 +430,7 @@ describe("occupancy forecast", () => {
     const draft = await createDraft(harness, { customerEmail: "private-guest@example.com" });
     await harness.call(
       createPrivateEvent,
-      { visitDate: "2026-10-10", label: "Secret Gala Label", idempotencyKey: "private_event_anon_01" },
+      { visitDate: "2026-10-10", label: "Secret Gala Label", confirmationSource: "owner-confirmation", sourceRef: "Fixture owner confirmation", idempotencyKey: "private_event_anon_01" },
       "admin"
     );
 
@@ -538,6 +538,8 @@ describe("confirmed private events", () => {
   const eventArgs = (overrides: Record<string, unknown> = {}) => ({
     visitDate: "2026-10-10",
     label: "Corporate buyout",
+    confirmationSource: "owner-confirmation",
+    sourceRef: "Fixture owner confirmation",
     idempotencyKey: "private_event_0001",
     ...overrides
   });

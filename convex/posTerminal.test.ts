@@ -274,7 +274,7 @@ describe("POS mixed-age admission with a selected visit", () => {
     });
     expect(await placesHeld(h, saturday)).toBe(30);
     await expect(
-      h.call(privateEvents.createPrivateEvent, { visitDate: saturday, label: "Buyout", idempotencyKey: "private_event_race_1" }, "admin")
+      h.call(privateEvents.createPrivateEvent, { visitDate: saturday, label: "Buyout", confirmationSource: "owner-confirmation", sourceRef: "Fixture owner confirmation", idempotencyKey: "private_event_race_1" }, "admin")
     ).rejects.toThrow("held or committed visitor places");
 
     h.seed("privateEvents", {

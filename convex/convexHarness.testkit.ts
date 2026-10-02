@@ -44,7 +44,9 @@ export function createConvexHarness(modules: Record<string, Record<string, unkno
   };
   const find = (id: string) => [...tables.values()].flat().find((row) => row._id === id);
 
-  function results(table: string, filters: Filter[], sortFields: string[], descending: boolean) {
+  // Synthetic native pagination only. Actual Convex cursor/split behavior
+  // still requires linked-backend proof before release.
+  function results(table: string, filters: Filter[], sortFields: string[], descending: boolean, signature = "", postFilters: Filter[] = []) {
     const run = () => {
       const matched = rows(table).filter((row) => filters.every((filter) => filter(row)));
       const sorted = matched.toSorted((left, right) => {
@@ -56,22 +58,88 @@ export function createConvexHarness(modules: Record<string, Record<string, unkno
           if (b === undefined) return 1;
           return (a as number | string) < (b as number | string) ? -1 : 1;
         }
-        return left._creationTime - right._creationTime;
+        return left._creationTime - right._creationTime || (left._id === right._id ? 0 : left._id < right._id ? -1 : 1);
       });
       return descending ? sorted.reverse() : sorted;
     };
+    const visible = () => run().filter(row => postFilters.every(filter => filter(row)));
+    const queryIdentity = `${table}:${signature}:${descending}`;
+    const key = (row: Row) => [...sortFields.map(field => row[field]), row._creationTime, row._id];
+    const compare = (a: unknown[], b: unknown[]) => {
+      for (let index = 0; index < a.length; index++) {
+        if (a[index] === b[index]) continue;
+        const result = (a[index] as number | string) < (b[index] as number | string) ? -1 : 1;
+        return descending ? -result : result;
+      }
+      return 0;
+    };
+    type Position = { query: string; key: unknown[] | null; end: boolean };
+    const encode = (row?: Row): string => JSON.stringify({ query: queryIdentity, key: row ? key(row) : null, end: !row });
+    const decode = (cursor: string): Position => {
+      const position = JSON.parse(cursor) as Position;
+      if (position.query !== queryIdentity || (position.key === null ? !position.end : !Array.isArray(position.key))) {
+        throw new Error("InvalidCursor: query changed");
+      }
+      return position;
+    };
     const api = {
       order(direction: "asc" | "desc") {
-        return results(table, filters, sortFields, direction === "desc");
+        return results(table, filters, sortFields, direction === "desc", signature, postFilters);
       },
-      first: async () => run()[0] ?? null,
+      filter(build: (query: unknown) => unknown) {
+        let predicate: Filter = () => true;
+        let detail = "";
+        const builder = {
+          field: (field: string) => ({ field }),
+          lte(left: { field: string }, right: number) {
+            detail = JSON.stringify([left.field, "lte", right]);
+            predicate = row => (row[left.field] as number) <= right;
+            return predicate;
+          }
+        };
+        build(builder);
+        return results(table, filters, sortFields, descending, `${signature}:filter:${detail}`, [...postFilters, predicate]);
+      },
+      async paginate(options: { numItems: number; cursor: string | null; endCursor?: string | null; maximumRowsRead?: number; maximumBytesRead?: number }) {
+        const start = options.cursor ? decode(options.cursor) : null;
+        const end = options.endCursor ? decode(options.endCursor) : null;
+        const candidates = start?.end ? [] : run().filter(row =>
+          (!start?.key || compare(key(row), start.key) > 0) &&
+          (!end?.key || compare(key(row), end.key) <= 0)
+        );
+        const page: Row[] = [];
+        const scanned: Row[] = [];
+        let bytes = 0;
+        let truncated = false;
+        for (const row of candidates) {
+          const size = new TextEncoder().encode(JSON.stringify(row)).length;
+          if (scanned.length >= (options.maximumRowsRead ?? Infinity) || bytes + size > (options.maximumBytesRead ?? Infinity)) {
+            truncated = true; break;
+          }
+          scanned.push(row); bytes += size;
+          if (postFilters.every(filter => filter(row))) page.push(row);
+          if (!end && page.length >= options.numItems) break;
+        }
+        const scannedAll = scanned.length === candidates.length;
+        const continueCursor = end && (scannedAll || truncated)
+          ? options.endCursor!
+          : scannedAll ? encode() : encode(scanned.at(-1));
+        const splitRow = scanned.length > 1 ? scanned[Math.floor(scanned.length / 2) - 1] : undefined;
+        return {
+          page, continueCursor,
+          isDone: !end && scannedAll,
+          pageStatus: truncated ? "SplitRequired" as const : null,
+          splitCursor: truncated && splitRow ? encode(splitRow) : null
+        };
+      },
+      first: async () => visible()[0] ?? null,
       unique: async () => {
-        const matched = run();
+        const matched = visible();
         if (matched.length > 1) throw new Error(`Expected unique ${table} row`);
         return matched[0] ?? null;
       },
-      collect: async () => run(),
-      take: async (count: number) => run().slice(0, count)
+      collect: async () => visible(),
+      take: async (count: number) => visible().slice(0, count)
     };
     return api;
   }
@@ -82,38 +150,44 @@ export function createConvexHarness(modules: Record<string, Record<string, unkno
         withIndex(_index: string, build?: (query: unknown) => unknown) {
           const filters: Filter[] = [];
           const fields: string[] = [];
+          const terms: Array<[string, string, unknown]> = [];
           const note = (field: string) => {
             if (!fields.includes(field)) fields.push(field);
           };
           const builder = {
             eq(field: string, value: unknown) {
+              terms.push([field, "eq", value]);
               filters.push((row) => row[field] === value);
               note(field);
               return builder;
             },
             gt(field: string, value: number | string) {
+              terms.push([field, "gt", value]);
               filters.push((row) => row[field] !== undefined && (row[field] as number) > (value as number));
               note(field);
               return builder;
             },
             gte(field: string, value: number | string) {
+              terms.push([field, "gte", value]);
               filters.push((row) => row[field] !== undefined && (row[field] as number) >= (value as number));
               note(field);
               return builder;
             },
             lt(field: string, value: number | string) {
+              terms.push([field, "lt", value]);
               filters.push((row) => row[field] !== undefined && (row[field] as number) < (value as number));
               note(field);
               return builder;
             },
             lte(field: string, value: number | string) {
+              terms.push([field, "lte", value]);
               filters.push((row) => row[field] !== undefined && (row[field] as number) <= (value as number));
               note(field);
               return builder;
             }
           };
           build?.(builder);
-          return results(table, filters, fields, false);
+          return results(table, filters, fields, false, JSON.stringify([_index, terms]));
         },
         ...results(table, [], [], false)
       };

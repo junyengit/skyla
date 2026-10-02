@@ -45,7 +45,15 @@ describe("staff authentication UI", () => {
 
   it("restricts post-sign-in navigation to native staff routes", () => {
     expect(signIn).toContain("forceRedirectUrl={returnTo}");
-    expect(signInPage).toContain('new Set(["/admin", "/pos", "/pos-next", "/admission"] as const)');
+    const routeLiteral = signInPage.match(/new Set\((\[[^\]]+\]) as const\)/)?.[1];
+    expect(routeLiteral).toBeDefined();
+    const allowed = new Set<string>(JSON.parse(routeLiteral!));
+    expect([...allowed]).toEqual(["/admin", "/admin/calendar", "/pos", "/pos-next", "/admission"]);
+    for (const unsafe of ["https://other.invalid", "//other.invalid", "/unknown", "/admin/calendar/../pos", "/admin/calendar?returnTo=//other.invalid"]) {
+      expect(allowed.has(unsafe)).toBe(false);
+    }
+    expect(signInPage).toContain("allowedReturnRoutes.has(requestedReturn");
+    expect(signInPage).toContain(': "/admin"');
     expect(signInPage).not.toContain("redirect_url");
   });
 

@@ -1,133 +1,85 @@
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
-import { parseVisitDate } from "@skyla/payments";
+import { ConvexError } from "convex/values";
 
 import {
-  adminFailureStatus,
-  adminJson,
-  authToken,
-  convexUnconfiguredResponse,
-  convexUrl,
-  optionalString,
-  requiredString,
-  staffAuthRequiredResponse
+  CalendarRequestError, CalendarResponseError, calendarCursor, calendarDate, calendarQueryParameters,
+  normalizeCalendarCreateRequest, normalizeCalendarRange, parseCalendarLegacyList,
+  parseCalendarAtomicRejection, parseCalendarMutationResult, parseCalendarRangePage,
+  type CalendarCreateRequest, type CalendarMutationIdentity, type CalendarRangeRequest
+} from "@/lib/calendar-contract";
+import {
+  adminFailureStatus, adminJson, authToken, convexUnconfiguredResponse,
+  convexUrl, staffAuthRequiredResponse
 } from "../_shared";
 
-type PrivateEvent = {
-  eventRef: string;
-  visitDate: string;
-  status: "confirmed" | "cancelled";
-  label: string;
-  notes?: string;
-  createdAt: number;
-  cancelledAt?: number;
-  cancelReason?: string;
-};
-
-type PrivateEventCreateArgs = {
-  visitDate: string;
-  label: string;
-  notes?: string;
-  idempotencyKey: string;
-};
-
-const idempotencyKeyPattern = /^[A-Za-z0-9:_-]{12,96}$/;
-
-const listPrivateEventsQuery = makeFunctionReference<
-  "query",
-  { fromDate?: string; limit?: number },
-  { fromDate: string; events: PrivateEvent[] }
->("privateEvents:listPrivateEvents");
-
-const createPrivateEventMutation = makeFunctionReference<
-  "mutation",
-  PrivateEventCreateArgs,
-  { event: PrivateEvent; reused: boolean }
->("privateEvents:createPrivateEvent");
-
-function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
-}
-
-function visitDateValue(value: unknown, label: string) {
-  const visitDate = parseVisitDate(value);
-  if (!visitDate) {
-    throw new Error(`${label} must be a real YYYY-MM-DD date`);
-  }
-  return visitDate;
-}
+const legacyList = makeFunctionReference<"query", { fromDate?: string; limit?: number }, unknown>("privateEvents:listPrivateEvents");
+const rangeList = makeFunctionReference<"query", CalendarRangeRequest, unknown>("privateEvents:listPrivateEventsRange");
+const create = makeFunctionReference<"mutation", CalendarCreateRequest, unknown>("privateEvents:createPrivateEvent");
 
 function parseLimit(value: string | null) {
   if (value === null) return undefined;
-  if (!/^\d{1,3}$/.test(value) || Number(value) < 1 || Number(value) > 100) {
-    throw new Error("limit must be a whole number from 1 to 100");
-  }
+  if (!/^\d{1,3}$/.test(value) || Number(value) < 1 || Number(value) > 100) throw new Error("limit must be a whole number from 1 to 100");
   return Number(value);
 }
-
-function parseCreateRequest(value: unknown): PrivateEventCreateArgs {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("private event request must be an object");
+function failure(error: unknown, fallback: string) {
+  if (error instanceof CalendarRequestError) return adminJson({ error: error.message, code: "calendar_request_rejected" }, { status: 400 });
+  if (error instanceof CalendarResponseError) {
+    return adminJson({ error: error.message, code: "calendar_response_unverified" }, { status: 502 });
   }
-  const input = value as Record<string, unknown>;
-  const idempotencyKey = requiredString(input.idempotencyKey, "idempotencyKey", 96);
-  if (!idempotencyKeyPattern.test(idempotencyKey)) {
-    throw new Error("idempotencyKey must be 12-96 URL-safe characters");
-  }
-  return withoutUndefined({
-    visitDate: visitDateValue(input.visitDate, "visitDate"),
-    label: requiredString(input.label, "label", 120),
-    notes: optionalString(input.notes, "notes", 500),
-    idempotencyKey
-  });
+  const message = error instanceof Error ? error.message : fallback;
+  return adminJson({ error: message }, { status: adminFailureStatus(message) });
 }
 
-/** Staff calendar read for admins and viewers. */
+/** Range reads are bounded and paginated; no-to reads retain legacy limits. */
 export async function GET(request: Request) {
   try {
     const token = authToken(request);
-    if (!token) {
-      return staffAuthRequiredResponse("private events");
-    }
-    const deploymentUrl = convexUrl();
-    if (!deploymentUrl) {
-      return convexUnconfiguredResponse("private events");
-    }
-
+    if (!token) return staffAuthRequiredResponse("private events");
+    const url = convexUrl();
+    if (!url) return convexUnconfiguredResponse("private events");
     const params = new URL(request.url).searchParams;
-    const from = params.get("from");
-    const result = await fetchQuery(
-      listPrivateEventsQuery,
-      withoutUndefined({
-        fromDate: from === null ? undefined : visitDateValue(from, "from"),
-        limit: parseLimit(params.get("limit"))
-      }),
-      { url: deploymentUrl, token }
-    );
-    return adminJson(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not load private events";
-    return adminJson({ error: message }, { status: adminFailureStatus(message) });
-  }
+    if (params.has("to")) {
+      calendarQueryParameters(params, ["from", "to", "cursor", "endCursor"]);
+      const range = normalizeCalendarRange({ from: params.get("from") as string, to: params.get("to") as string });
+      const cursor = calendarCursor(params.get("cursor"));
+      const endCursor = calendarCursor(params.get("endCursor"), "endCursor");
+      const args = { ...range, ...(cursor ? { cursor } : {}), ...(endCursor ? { endCursor } : {}) };
+      const result = await fetchQuery(rangeList, args, { url, token });
+      return adminJson(parseCalendarRangePage(result, args));
+    }
+    calendarQueryParameters(params, ["from", "limit"]);
+    const from = params.has("from") ? calendarDate(params.get("from"), "from") : undefined;
+    const limit = parseLimit(params.get("limit"));
+    const args = { ...(from ? { fromDate: from } : {}), ...(limit ? { limit } : {}) };
+    const result = await fetchQuery(legacyList, args, { url, token });
+    return adminJson(parseCalendarLegacyList(result, { from, limit }));
+  } catch (error) { return failure(error, "Could not load private events"); }
 }
 
-/** Admin-only: records a confirmed whole-date private event. */
+/** Existing keys reach the backend before new-event date/source rules. */
 export async function POST(request: Request) {
+  let dispatched: CalendarMutationIdentity | null = null;
   try {
     const token = authToken(request);
-    if (!token) {
-      return staffAuthRequiredResponse("private events");
-    }
-    const deploymentUrl = convexUrl();
-    if (!deploymentUrl) {
-      return convexUnconfiguredResponse("private events");
-    }
-
-    const args = parseCreateRequest(await request.json());
-    const result = await fetchMutation(createPrivateEventMutation, args, { url: deploymentUrl, token });
+    if (!token) return staffAuthRequiredResponse("private events");
+    const url = convexUrl();
+    if (!url) return convexUnconfiguredResponse("private events");
+    const args = normalizeCalendarCreateRequest(await request.json());
+    dispatched = { kind: "create", request: args };
+    const result = parseCalendarMutationResult(await fetchMutation(create, args, { url, token }), { kind: "create", request: args });
     return adminJson(result, { status: result.reused ? 200 : 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not record the private event";
-    return adminJson({ error: message }, { status: adminFailureStatus(message) });
+    if (!dispatched) {
+      if (error instanceof SyntaxError) return adminJson({ error: "private event request must be valid JSON", code: "calendar_request_rejected" }, { status: 400 });
+      return failure(error, "Could not verify the private event operation");
+    }
+    if (error instanceof ConvexError) {
+      try {
+        const rejection = parseCalendarAtomicRejection(error.data, dispatched);
+        return adminJson({ error: rejection.message, code: "calendar_mutation_rejected", rejection }, { status: 409 });
+      } catch { /* A malformed or foreign receipt is never no-commit proof. */ }
+    }
+    return adminJson({ error: "Calendar mutation outcome is unknown. Check the same operation before retrying.", code: "calendar_mutation_unknown" }, { status: 502 });
   }
 }
