@@ -6,9 +6,11 @@ import {
   buildStripeCheckoutSessionRequest,
   parseStripeReturnOriginAllowlist,
   stripeApiVersion,
+  stripeCheckoutAttemptIdempotencyKey,
   stripeCheckoutIdempotencyKey,
   stripeCheckoutLineItems
 } from "./lib/stripeCheckout";
+import { checkoutPaymentStateError, parseCheckoutPaymentStateError } from "./lib/checkoutAttempts";
 
 const snapshot = {
   orderRef: "SKY2607-ABC123",
@@ -125,6 +127,36 @@ describe("Stripe Checkout helpers", () => {
         subtotalCents: 9999
       })
     ).toThrow("Stored line items do not match order subtotal");
+  });
+
+  it("freezes a per-attempt key, nonce, card-only method and explicit expiry into the request", () => {
+    const expiresAt = Date.parse("2026-07-04T19:45:00.000Z");
+    const request = buildStripeCheckoutSessionRequest(
+      snapshot,
+      {
+        successUrl: "https://skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}",
+        cancelUrl: "https://skydeckla.com/checkout?stripe=cancel"
+      },
+      { attemptNonce: "0123456789abcdef0123456789abcdef", expiresAt }
+    );
+
+    expect(request.idempotencyKey).toBe("skyla:checkout-session:v2:SKY2607-ABC123:0123456789abcdef0123456789abcdef");
+    expect(request.body.get("expires_at")).toBe(String(expiresAt / 1000));
+    expect(request.body.get("metadata[attempt_nonce]")).toBe("0123456789abcdef0123456789abcdef");
+    expect(request.body.get("payment_method_types[0]")).toBe("card");
+    expect(request.body.getAll("payment_method_types[1]")).toEqual([]);
+    expect(() => stripeCheckoutAttemptIdempotencyKey("SKY2607-ABC123", "Not-A-Nonce")).toThrow("attemptNonce is invalid");
+  });
+
+  it("maps customer-safe payment states to stable codes", () => {
+    expect(parseCheckoutPaymentStateError(checkoutPaymentStateError("payment_in_progress").message)).toEqual({
+      code: "payment_in_progress",
+      message: "Your card payment page is still being prepared. Check again in a moment."
+    });
+    expect(parseCheckoutPaymentStateError("Uncaught Error: Checkout payment state: payment_needs_attention: x")).toMatchObject({
+      code: "payment_needs_attention"
+    });
+    expect(parseCheckoutPaymentStateError("Checkout payment state: made_up: x")).toBeNull();
   });
 
   it("keeps idempotency stable per order reference", () => {

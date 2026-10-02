@@ -1,18 +1,35 @@
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalAction,
   internalMutation,
   internalQuery,
   mutation,
-  query
+  query,
+  type MutationCtx
 } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
+import { openBillingExceptionsForOrder, openOperationsException, resolveOperationsException } from "./lib/operationsExceptions";
 import { normalizeTicketCode } from "./lib/ticketDelivery";
+import { providerConfigurationFingerprint } from "./lib/providerIdentity";
+import { scheduleDeliveryTracking } from "./lib/ticketDeliveryTracking";
 
 declare const process: { env: Record<string, string | undefined> };
+
+type DeliveryDoc = Doc<"ticketDeliveries">;
+
+// Resend keeps idempotency keys for 24 hours. Automatic retries with the same
+// key stop well before that; after it, an unknown outcome needs a person,
+// because a retry could deliver a second email.
+export const resendIdempotencyRetentionMs = 24 * 60 * 60 * 1000;
+export const deliveryAutoRetryWindowMs = 20 * 60 * 60 * 1000;
+export const deliveryMaxAutoRetries = 8;
+const deliveryRetryBackoffMs = [1, 2, 5, 15, 30, 60, 120, 240].map((minutes) => minutes * 60 * 1000);
+const queuedDeliveryGraceMs = 2 * 60 * 1000;
+const retryableFailureReasons = new Set(["email_delivery_outcome_unknown", "email_provider_429"]);
+const sweepBatchSize = 25;
 
 type DeliveryPayload = {
   deliveryId: Id<"ticketDeliveries">;
@@ -28,7 +45,7 @@ type DeliveryPayload = {
 
 const claimDeliveryMutation = makeFunctionReference<
   "mutation",
-  { deliveryId: Id<"ticketDeliveries"> },
+  { deliveryId: Id<"ticketDeliveries">; providerConfigurationFingerprint?: string },
   DeliveryPayload | null
 >("ticketDelivery:claimTicketDelivery");
 const recordDeliverySentMutation = makeFunctionReference<
@@ -56,6 +73,11 @@ const sendTicketConfirmationAction = makeFunctionReference<
   { deliveryId: Id<"ticketDeliveries"> },
   null
 >("ticketDelivery:sendTicketConfirmation");
+const recordDeliveryUnconfiguredMutation = makeFunctionReference<
+  "mutation",
+  { deliveryId: Id<"ticketDeliveries">; reason: string },
+  null
+>("ticketDelivery:recordTicketDeliveryUnconfigured");
 
 const sendingLeaseMs = 5 * 60 * 1000;
 
@@ -75,10 +97,11 @@ export const getTicket = query({
       .unique();
     if (!booking) throw new Error("Ticket was not found");
 
+    const billingBlocked = delivery.orderRef && (await openBillingExceptionsForOrder(ctx, delivery.orderRef)).length > 0;
     return {
       ticketCode: delivery.ticketCode,
       bookingRef: booking.bookingRef,
-      status: booking.status,
+      status: billingBlocked ? "needs-attention" : booking.status,
       visitDate: booking.visitDate,
       entryTime: booking.entryTime,
       partySize: booking.partySize
@@ -128,11 +151,18 @@ export const requestTicketResend = mutation({
     if (activeSend) throw new Error("Ticket delivery is already sending");
 
     // A stale send reuses its provider idempotency key. This recovers an
-    // unknown provider outcome without risking a second customer email.
+    // unknown provider outcome without risking a second customer email, as
+    // long as the provider still remembers that key. After the retention
+    // window the admin's explicit resend uses a new version and is audited.
     const recoveringStaleSend = delivery.status === "sending";
     const recoveringUnknownOutcome =
-      delivery.status === "failed" && delivery.failureReason === "email_delivery_outcome_unknown";
-    const recoveringExistingAttempt = recoveringStaleSend || recoveringUnknownOutcome;
+      delivery.status === "failed" &&
+      (delivery.failureReason === "email_delivery_outcome_unknown" ||
+        delivery.failureReason === "email_delivery_unknown_after_idempotency_window");
+    const keyStillRetained =
+      delivery.providerKeyFirstUsedAt === undefined ||
+      now - delivery.providerKeyFirstUsedAt < deliveryAutoRetryWindowMs;
+    const recoveringExistingAttempt = (recoveringStaleSend || recoveringUnknownOutcome) && keyStillRetained;
     const nextSendVersion = recoveringExistingAttempt ? delivery.sendVersion : delivery.sendVersion + 1;
     const queuedDelivery = {
       ...delivery,
@@ -151,6 +181,17 @@ export const requestTicketResend = mutation({
       providerMessageId: queuedDelivery.providerMessageId,
       lastAttemptAt: queuedDelivery.lastAttemptAt,
       sentAt: queuedDelivery.sentAt,
+      autoRetryAt: undefined,
+      autoRetryCount: 0,
+      ...(recoveringExistingAttempt ? {} : { providerKeyFirstUsedAt: undefined }),
+      ...(recoveringExistingAttempt ? {} : { providerConfigurationFingerprint: undefined }),
+      providerDeliveryStatus: undefined,
+      providerStatusAt: undefined,
+      deliveredAt: undefined,
+      providerTrackingAt: undefined,
+      providerTrackingCount: 0,
+      providerTrackingLease: undefined,
+      providerTrackingLeaseExpiresAt: undefined,
       updatedAt: queuedDelivery.updatedAt
     });
     await ctx.db.insert("auditEvents", {
@@ -168,7 +209,9 @@ export const requestTicketResend = mutation({
                 ? "expired_sending_lease"
                 : "unknown_provider_outcome"
             }
-          : {})
+          : (recoveringStaleSend || recoveringUnknownOutcome)
+            ? { recoveryReason: "idempotency_window_elapsed_new_version" }
+            : {})
       },
       createdAt: now
     });
@@ -178,10 +221,10 @@ export const requestTicketResend = mutation({
 });
 
 export const claimTicketDelivery = internalMutation({
-  args: { deliveryId: v.id("ticketDeliveries") },
+  args: { deliveryId: v.id("ticketDeliveries"), providerConfigurationFingerprint: v.optional(v.string()) },
   handler: async (ctx, args): Promise<DeliveryPayload | null> => {
     const delivery = await ctx.db.get(args.deliveryId);
-    if (!delivery || delivery.status === "sent") return null;
+    if (!delivery || delivery.status === "sent" || delivery.status === "suppressed") return null;
     const now = Date.now();
     if (
       delivery.status === "sending" &&
@@ -190,10 +233,16 @@ export const claimTicketDelivery = internalMutation({
     ) {
       return null;
     }
+    // A failed delivery is only retried when automation scheduled it; staff
+    // requeue it explicitly otherwise.
+    if (delivery.status === "failed" && (delivery.autoRetryAt === undefined || delivery.autoRetryAt > now)) {
+      return null;
+    }
     if (!delivery.emailLower) {
       await ctx.db.patch(delivery._id, {
         status: "suppressed",
         failureReason: "customer_email_missing",
+        autoRetryAt: undefined,
         updatedAt: now
       });
       return null;
@@ -206,6 +255,7 @@ export const claimTicketDelivery = internalMutation({
       await ctx.db.patch(delivery._id, {
         status: "failed",
         failureReason: "booking_missing",
+        autoRetryAt: undefined,
         updatedAt: now
       });
       return null;
@@ -214,8 +264,39 @@ export const claimTicketDelivery = internalMutation({
       await ctx.db.patch(delivery._id, {
         status: "suppressed",
         failureReason: "booking_cancelled",
+        autoRetryAt: undefined,
         updatedAt: now
       });
+      return null;
+    }
+    // Tickets go only to confirmed bookings whose money is recorded as paid.
+    const unpaidReason = await deliveryPaymentBlocker(ctx, delivery, booking);
+    if (unpaidReason) {
+      await ctx.db.patch(delivery._id, {
+        status: "suppressed",
+        failureReason: unpaidReason,
+        autoRetryAt: undefined,
+        updatedAt: now
+      });
+      return null;
+    }
+    if (
+      delivery.providerKeyFirstUsedAt !== undefined &&
+      now - delivery.providerKeyFirstUsedAt >= deliveryAutoRetryWindowMs
+    ) {
+      // The provider may have forgotten this key; sending now could deliver
+      // a second email. A person decides instead.
+      await raiseDeliveryException(ctx, delivery, "email_delivery_unknown_after_idempotency_window", now);
+      return null;
+    }
+
+    if (args.providerConfigurationFingerprint && delivery.providerKeyFirstUsedAt !== undefined &&
+        delivery.providerConfigurationFingerprint !== args.providerConfigurationFingerprint) {
+      await ctx.db.patch(delivery._id, {
+        status: "failed", failureReason: "email_provider_configuration_changed",
+        autoRetryAt: undefined, updatedAt: now
+      });
+      await raiseDeliveryException(ctx, delivery, "email_provider_configuration_changed", now);
       return null;
     }
 
@@ -225,6 +306,9 @@ export const claimTicketDelivery = internalMutation({
       attemptCount,
       lastAttemptAt: now,
       failureReason: undefined,
+      autoRetryAt: undefined,
+      providerKeyFirstUsedAt: delivery.providerKeyFirstUsedAt ?? now,
+      ...(args.providerConfigurationFingerprint ? { providerConfigurationFingerprint: args.providerConfigurationFingerprint } : {}),
       updatedAt: now
     });
     return {
@@ -263,9 +347,21 @@ export const recordTicketDeliverySent = internalMutation({
       status: "sent",
       providerMessageId: requiredText(args.providerMessageId, "providerMessageId", 200),
       failureReason: undefined,
+      autoRetryAt: undefined,
       sentAt: now,
+      providerDeliveryStatus: "accepted",
+      providerStatusAt: now,
+      providerTrackingAt: now + 60_000,
+      providerTrackingCount: 0,
       updatedAt: now
     });
+    await scheduleDeliveryTracking(ctx, delivery._id, now + 60_000);
+    await resolveOperationsException(
+      ctx,
+      deliveryExceptionKey(delivery, "email_provider_unconfigured"),
+      "sent_after_configuration",
+      now
+    );
     await ctx.db.insert("auditEvents", {
       action: "ticket.deliverySent",
       entityType: "ticketDelivery",
@@ -298,10 +394,135 @@ export const recordTicketDeliveryFailure = internalMutation({
     ) {
       return null;
     }
+    await applyDeliveryFailure(ctx, delivery, requiredText(args.failureReason, "failureReason", 240), Date.now());
+    return null;
+  }
+});
+
+/**
+ * Records a failed send and decides, without guessing, whether automation may
+ * retry it: only a retryable outcome, with the same key, while the provider
+ * still retains that key, a bounded number of times. Everything else becomes
+ * a staff-visible exception with no further automatic email.
+ */
+async function applyDeliveryFailure(ctx: MutationCtx, delivery: DeliveryDoc, failureReason: string, now: number) {
+  const retryCount = delivery.autoRetryCount ?? 0;
+  const keyAge = delivery.providerKeyFirstUsedAt === undefined ? 0 : now - delivery.providerKeyFirstUsedAt;
+  const backoff = deliveryRetryBackoffMs[Math.min(retryCount, deliveryRetryBackoffMs.length - 1)];
+  const retryable = retryableFailureReasons.has(failureReason);
+  const canRetry = retryable && retryCount < deliveryMaxAutoRetries && keyAge + backoff < deliveryAutoRetryWindowMs;
+
+  await ctx.db.patch(delivery._id, {
+    status: "failed",
+    failureReason,
+    ...(canRetry ? { autoRetryAt: now + backoff, autoRetryCount: retryCount + 1 } : { autoRetryAt: undefined }),
+    updatedAt: now
+  });
+  await ctx.db.insert("auditEvents", {
+    action: "ticket.deliveryFailed",
+    entityType: "ticketDelivery",
+    entityRef: delivery.bookingRef,
+    metadata: {
+      bookingRef: delivery.bookingRef,
+      attemptCount: delivery.attemptCount,
+      sendVersion: delivery.sendVersion,
+      reason: failureReason,
+      autoRetry: canRetry
+    },
+    createdAt: now
+  });
+  if (canRetry) {
+    await ctx.scheduler.runAfter(backoff, sendTicketConfirmationAction, { deliveryId: delivery._id });
+    return;
+  }
+  await raiseDeliveryException(
+    ctx,
+    { ...delivery, failureReason },
+    retryable ? "email_delivery_unknown_after_idempotency_window" : failureReason,
+    now
+  );
+}
+
+function deliveryExceptionKey(delivery: Pick<DeliveryDoc, "bookingRef" | "sendVersion">, code: string) {
+  return `ticket_delivery:${code}:${delivery.bookingRef}:${delivery.sendVersion}`;
+}
+
+async function raiseDeliveryException(ctx: MutationCtx, delivery: DeliveryDoc, code: string, now: number) {
+  if (code === "email_delivery_unknown_after_idempotency_window") {
+    await ctx.db.patch(delivery._id, { status: "failed", failureReason: code, autoRetryAt: undefined, updatedAt: now });
+  }
+  await openOperationsException(ctx, {
+    category: "ticket_delivery",
+    code,
+    dedupeKey: deliveryExceptionKey(delivery, code),
+    moneyReceived: false,
+    orderRef: delivery.orderRef,
+    saleRef: delivery.saleRef,
+    bookingRef: delivery.bookingRef,
+    evidence: {
+      sendVersion: delivery.sendVersion,
+      attemptCount: delivery.attemptCount,
+      autoRetryCount: delivery.autoRetryCount,
+      lastFailureReason: delivery.failureReason
+    },
+    now
+  });
+}
+
+async function deliveryPaymentBlocker(
+  ctx: MutationCtx,
+  delivery: DeliveryDoc,
+  booking: Doc<"bookings">
+): Promise<string | null> {
+  if (booking.status !== "confirmed" && booking.status !== "checked-in") return "booking_not_confirmed";
+  if (delivery.orderRef) {
+    if ((await openBillingExceptionsForOrder(ctx, delivery.orderRef)).length > 0) return "billing_exception_unresolved";
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (q) => q.eq("orderRef", delivery.orderRef!))
+      .unique();
+    return order?.status === "paid" ? null : "order_not_paid";
+  }
+  if (delivery.saleRef) {
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", delivery.saleRef!))
+      .unique();
+    return sale?.status === "paid" ? null : "sale_not_paid";
+  }
+  return "payment_reference_missing";
+}
+
+/**
+ * Missing email configuration is recorded before any provider request, so it
+ * never consumes the idempotency window. Retries are bounded and backed off,
+ * and the gap is visible to staff immediately.
+ */
+export const recordTicketDeliveryUnconfigured = internalMutation({
+  args: { deliveryId: v.id("ticketDeliveries"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const delivery = await ctx.db.get(args.deliveryId);
+    if (!delivery || delivery.status === "sent" || delivery.status === "suppressed") return null;
     const now = Date.now();
+    if (delivery.status === "sending" && delivery.lastAttemptAt !== undefined && now - delivery.lastAttemptAt < sendingLeaseMs) {
+      return null;
+    }
+    if (delivery.status === "failed" && delivery.autoRetryAt !== undefined && delivery.autoRetryAt > now) {
+      return null;
+    }
+    await raiseDeliveryException(ctx, delivery, "email_provider_unconfigured", now);
+    if (delivery.status === "sending") {
+      // A stale sending lease keeps its outcome-unknown meaning for its key.
+      await applyDeliveryFailure(ctx, delivery, "email_delivery_outcome_unknown", now);
+      return null;
+    }
+    const retryCount = delivery.autoRetryCount ?? 0;
+    const backoff = deliveryRetryBackoffMs[Math.min(retryCount + 3, deliveryRetryBackoffMs.length - 1)];
+    const canRetry = retryCount < deliveryMaxAutoRetries;
     await ctx.db.patch(delivery._id, {
       status: "failed",
-      failureReason: requiredText(args.failureReason, "failureReason", 240),
+      failureReason: "email_provider_unconfigured",
+      ...(canRetry ? { autoRetryAt: now + backoff, autoRetryCount: retryCount + 1 } : { autoRetryAt: undefined }),
       updatedAt: now
     });
     await ctx.db.insert("auditEvents", {
@@ -310,20 +531,79 @@ export const recordTicketDeliveryFailure = internalMutation({
       entityRef: delivery.bookingRef,
       metadata: {
         bookingRef: delivery.bookingRef,
-        attemptCount: delivery.attemptCount,
         sendVersion: delivery.sendVersion,
-        reason: requiredText(args.failureReason, "failureReason", 240)
+        reason: "email_provider_unconfigured",
+        detail: args.reason.slice(0, 120),
+        autoRetry: canRetry
       },
       createdAt: now
     });
+    if (canRetry) {
+      await ctx.scheduler.runAfter(backoff, sendTicketConfirmationAction, { deliveryId: delivery._id });
+    }
     return null;
+  }
+});
+
+/**
+ * Bounded cron repair for deliveries whose scheduled send was lost, whose
+ * sending lease went stale, or whose automatic retry came due.
+ */
+export const sweepTicketDeliveries = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ scheduled: number; recovered: number }> => {
+    const now = Date.now();
+    const [queued, stale, due] = await Promise.all([
+      ctx.db
+        .query("ticketDeliveries")
+        .withIndex("by_status_updatedAt", (q) => q.eq("status", "queued").lt("updatedAt", now - queuedDeliveryGraceMs))
+        .take(sweepBatchSize),
+      ctx.db
+        .query("ticketDeliveries")
+        .withIndex("by_status_updatedAt", (q) => q.eq("status", "sending").lt("updatedAt", now - sendingLeaseMs))
+        .take(sweepBatchSize),
+      ctx.db
+        .query("ticketDeliveries")
+        .withIndex("by_autoRetryAt", (q) => q.gte("autoRetryAt", 0).lte("autoRetryAt", now))
+        .take(sweepBatchSize)
+    ]);
+    let scheduled = 0;
+    for (const delivery of [...queued, ...due]) {
+      await ctx.scheduler.runAfter(0, sendTicketConfirmationAction, { deliveryId: delivery._id });
+      scheduled += 1;
+    }
+    // A sending lease that expired without a recorded result is an unknown
+    // provider outcome for that key, never a fresh send.
+    for (const delivery of stale) {
+      await applyDeliveryFailure(ctx, delivery, "email_delivery_outcome_unknown", now);
+    }
+    return { scheduled, recovered: stale.length };
   }
 });
 
 export const sendTicketConfirmation = internalAction({
   args: { deliveryId: v.id("ticketDeliveries") },
   handler: async (ctx, args) => {
-    const payload = await ctx.runMutation(claimDeliveryMutation, args);
+    // Configuration is checked before the claim, so a missing sender never
+    // starts the provider idempotency window or looks like an unknown send.
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    const from = process.env.SKYLA_TICKET_FROM_EMAIL?.trim();
+    let origin: string;
+    try {
+      if (!apiKey || !from) throw new Error("RESEND_API_KEY and SKYLA_TICKET_FROM_EMAIL must be configured");
+      origin = normalizedPublicOrigin(process.env.SKYLA_PUBLIC_ORIGIN);
+    } catch (error) {
+      await ctx.runMutation(recordDeliveryUnconfiguredMutation, {
+        deliveryId: args.deliveryId,
+        reason: error instanceof Error ? error.message : "email_provider_unconfigured"
+      });
+      return null;
+    }
+
+    const replyTo = process.env.SKYLA_TICKET_REPLY_TO?.trim() || "reservations@skydeckla.com";
+    const payload = await ctx.runMutation(claimDeliveryMutation, {
+      ...args, providerConfigurationFingerprint: await providerConfigurationFingerprint(["resend", apiKey!, from!, origin, replyTo])
+    });
     if (!payload) return null;
 
     const recordFailure = async (failureReason: string) => {
@@ -336,14 +616,6 @@ export const sendTicketConfirmation = internalAction({
     };
 
     try {
-      const apiKey = process.env.RESEND_API_KEY?.trim();
-      const from = process.env.SKYLA_TICKET_FROM_EMAIL?.trim();
-      if (!apiKey || !from) {
-        await recordFailure("email_provider_unconfigured");
-        return null;
-      }
-
-      const origin = normalizedPublicOrigin(process.env.SKYLA_PUBLIC_ORIGIN);
       const ticketUrl = `${origin}/tickets/${encodeURIComponent(payload.ticketCode)}`;
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -356,13 +628,17 @@ export const sendTicketConfirmation = internalAction({
         body: JSON.stringify({
           from,
           to: [payload.emailLower],
-          reply_to: process.env.SKYLA_TICKET_REPLY_TO?.trim() || "reservations@skydeckla.com",
+          reply_to: replyTo,
           subject: `Your Sky LA ticket - ${payload.bookingRef}`,
           html: ticketEmailHtml(payload, ticketUrl)
-        })
+        }),
+        signal: AbortSignal.timeout(20_000)
       });
       const body = (await response.json().catch(() => null)) as { id?: unknown } | null;
       if (!response.ok) {
+        // 409 (key in flight or reused), 5xx and unreadable answers may hide
+        // an accepted email; 429 was not processed. Other 4xx are permanent
+        // (bad sender, recipient or key) and need a person, not a retry.
         const outcomeMayBeUnknown = response.status === 409 || response.status >= 500;
         await recordFailure(
           outcomeMayBeUnknown
@@ -396,18 +672,7 @@ export const getTicketDeliveryInternal = internalQuery({
   handler: async (ctx, args) => ctx.db.get(args.deliveryId)
 });
 
-function projectStaffDelivery(delivery: {
-  bookingRef: string;
-  ticketCode: string;
-  status: "queued" | "sending" | "sent" | "failed" | "suppressed";
-  attemptCount: number;
-  sendVersion: number;
-  providerMessageId?: string;
-  lastAttemptAt?: number;
-  sentAt?: number;
-  failureReason?: string;
-  updatedAt: number;
-}) {
+function projectStaffDelivery(delivery: DeliveryDoc) {
   return {
     bookingRef: delivery.bookingRef,
     ticketCode: delivery.ticketCode,
@@ -416,6 +681,9 @@ function projectStaffDelivery(delivery: {
     sendVersion: delivery.sendVersion,
     lastAttemptAt: delivery.lastAttemptAt,
     sentAt: delivery.sentAt,
+    providerDeliveryStatus: delivery.providerDeliveryStatus,
+    providerStatusAt: delivery.providerStatusAt,
+    deliveredAt: delivery.deliveredAt,
     failureReason: delivery.failureReason,
     updatedAt: delivery.updatedAt
   };

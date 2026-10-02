@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { getCheckoutReturnStatus } from "./checkoutStatus";
 
-type TableName = "paymentEvents" | "orders" | "bookings" | "ticketDeliveries";
+type TableName =
+  | "paymentEvents"
+  | "orders"
+  | "bookings"
+  | "ticketDeliveries"
+  | "checkoutPaymentAttempts"
+  | "operationsExceptions";
 type Doc = Record<string, unknown>;
 type State = Record<TableName, Doc[]>;
 
@@ -37,6 +43,12 @@ function createCtx(state: State) {
               state[table].filter((doc) => filters.every(({ field, value }) => doc[field] === value));
             return {
               collect,
+              async first() {
+                return (await collect())[0] ?? null;
+              },
+              async take(count: number) {
+                return (await collect()).slice(0, count);
+              },
               async unique() {
                 const docs = await collect();
                 if (docs.length > 1) throw new Error("Expected unique result");
@@ -62,7 +74,9 @@ function paidState(): State {
       bookingRef: orderRef,
       ticketCode: "tkt_0123456789abcdef0123456789abcdef",
       emailLower: "must-not-leak@example.com"
-    }]
+    }],
+    checkoutPaymentAttempts: [],
+    operationsExceptions: []
   };
 }
 
@@ -93,6 +107,22 @@ describe("checkout status query", () => {
     state.bookings = [];
 
     await expect(runStatus(state)).resolves.toEqual({ orderRef, status: "pending" });
+  });
+
+  it("reports paid money blocked by a billing exception as needing help, never pending or confirmed", async () => {
+    const state = paidState();
+    state.bookings = [];
+    state.ticketDeliveries = [];
+    state.operationsExceptions.push({
+      dedupeKey: "billing:paid_after_visit_window:x",
+      category: "billing",
+      code: "paid_after_visit_window",
+      status: "open",
+      moneyReceived: true,
+      orderRef
+    });
+
+    await expect(runStatus(state)).resolves.toEqual({ orderRef, status: "needs_attention" });
   });
 
   it("rejects unknown session capabilities generically", async () => {

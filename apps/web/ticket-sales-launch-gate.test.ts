@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { POST as createCheckoutDraft } from "./app/api/order-drafts/checkout/route";
+import { POST as releaseCheckoutDraft } from "./app/api/order-drafts/checkout/release/route";
 import { POST as startStripeCheckout } from "./app/api/payments/stripe-checkout/route";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -22,6 +23,14 @@ describe("pre-launch ticket-sales API gate", () => {
           adults: 1,
           idempotencyKey: "checkout_prelaunch_0001"
         })
+      })
+    ],
+    [
+      "checkout draft release",
+      releaseCheckoutDraft,
+      new Request("https://skydeckla.com/api/order-drafts/checkout/release", {
+        method: "POST",
+        body: JSON.stringify({ orderRef: "SKY2608-PRELAUNCH", idempotencyKey: "checkout_prelaunch_0001" })
       })
     ],
     [

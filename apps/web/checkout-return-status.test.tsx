@@ -38,9 +38,9 @@ describe("checkout Stripe return status", () => {
     renderReturnedCheckout();
 
     await waitFor(() => {
-      expect(screen.getByText(/Payment confirmed\. Booking ORDER-123 was created\./)).toBeTruthy();
+      expect(screen.getByText(/Payment confirmed\. Booking BOOKING-456\./)).toBeTruthy();
     });
-    expect(screen.getByText(/Booking reference BOOKING-456\./)).toBeTruthy();
+    expect(screen.getByText(/Booking BOOKING-456\./)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open ticket" }).getAttribute("href")).toBe(
       `/tickets/${ticketCode}`
     );

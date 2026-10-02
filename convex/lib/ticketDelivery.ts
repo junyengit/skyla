@@ -8,6 +8,11 @@ export type TicketDeliverySeed = {
 
 const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
 
+/** Opaque bearer ticket code; only stored when a paid booking is fulfilled. */
+export function newTicketCode() {
+  return `tkt_${crypto.randomUUID().replaceAll("-", "").toLowerCase()}`;
+}
+
 export function normalizeTicketCode(value: string) {
   const ticketCode = value.trim().toLowerCase();
   if (!ticketCodePattern.test(ticketCode)) throw new Error("ticketCode is invalid");

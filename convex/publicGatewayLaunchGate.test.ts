@@ -13,7 +13,7 @@ afterEach(() => {
   delete process.env.SKYLA_PUBLIC_GATEWAY_SECRET;
 });
 
-function request(operation: "checkout-draft" | "stripe-checkout") {
+function request(operation: "checkout-draft" | "checkout-draft-release" | "stripe-checkout") {
   return new Request("https://example.convex.site/public-gateway", {
     method: "POST",
     headers: {
@@ -25,7 +25,9 @@ function request(operation: "checkout-draft" | "stripe-checkout") {
       rateLimitKey: "a".repeat(64),
       input: operation === "checkout-draft"
         ? { packageKey: "general", adults: 1, idempotencyKey: "checkout_prelaunch_0001" }
-        : {
+        : operation === "checkout-draft-release"
+          ? { orderRef: "SKY2608-PRELAUNCH", idempotencyKey: "checkout_prelaunch_0001" }
+          : {
             orderRef: "SKY2608-PRELAUNCH",
             idempotencyKey: "stripe_prelaunch_0001",
             successUrl: "https://skydeckla.com/checkout?stripe=success",
@@ -36,7 +38,7 @@ function request(operation: "checkout-draft" | "stripe-checkout") {
 }
 
 describe("Convex public gateway pre-launch gate", () => {
-  it.each(["checkout-draft", "stripe-checkout"] as const)(
+  it.each(["checkout-draft", "checkout-draft-release", "stripe-checkout"] as const)(
     "rejects %s before dispatching an internal operation",
     async (operation) => {
       process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;

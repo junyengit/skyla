@@ -28,7 +28,29 @@ const publicGatewayOperation = v.union(
   v.literal("experience-inquiry"),
   v.literal("member-application"),
   v.literal("checkout-draft"),
+  v.literal("checkout-draft-release"),
   v.literal("stripe-checkout")
+);
+
+// One hosted Checkout Session per online order. The provider request is frozen
+// (body, idempotency key, expires_at) and stored before any network call, so a
+// retry replays exactly the same request instead of creating a second Session.
+// creating/creation_unknown: request sent or about to be sent; outcome unknown.
+// open: Session id known and verified. paid/expired/rejected: settled.
+// exception: an operator must reconcile it; the capacity hold is kept.
+const checkoutAttemptStatus = v.union(
+  v.literal("creating"),
+  v.literal("creation_unknown"),
+  v.literal("open"),
+  v.literal("paid"),
+  v.literal("expired"),
+  v.literal("rejected"),
+  v.literal("exception")
+);
+const operationsExceptionCategory = v.union(
+  v.literal("billing"),
+  v.literal("checkout_attempt"),
+  v.literal("ticket_delivery")
 );
 
 // draft: unpaid hold for a draft order, released when the draft expires.
@@ -36,7 +58,8 @@ const publicGatewayOperation = v.union(
 // signed, correlated unpaid provider outcome releases it, never a guessed TTL.
 // paid: hold converted with the paid booking; held through that LA day's closing
 // until a future staff-recorded departure. exception: a paid order that could not
-// be placed within capacity; still counted so the venue never oversells.
+// be fulfilled (no capacity, late, closed or invalid order); still counted so the
+// venue never oversells, and never released by billing alone.
 const capacityReservationStatus = v.union(
   v.literal("draft"),
   v.literal("payment_pending"),
@@ -258,6 +281,81 @@ export default defineSchema({
     .index("by_provider_providerEventId", ["provider", "providerEventId"])
     .index("by_provider_status_processedAt", ["provider", "status", "processedAt"]),
 
+  checkoutPaymentAttempts: defineTable({
+    orderRef: v.string(),
+    attemptNonce: v.string(),
+    providerConfigurationFingerprint: v.optional(v.string()),
+    stripeMode: v.union(v.literal("test"), v.literal("live")),
+    apiVersion: v.string(),
+    endpoint: v.string(),
+    providerIdempotencyKey: v.string(),
+    // Exact form parameters sent to Stripe, in order. Never recomputed.
+    requestParams: v.array(v.object({ name: v.string(), value: v.string() })),
+    amountCents: v.number(),
+    currency,
+    // Stripe Session expires_at, in ms. Frozen with the request.
+    expiresAt: v.number(),
+    termsVersion: v.string(),
+    liabilityWaiverVersion: v.string(),
+    status: checkoutAttemptStatus,
+    providerSessionId: v.optional(v.string()),
+    providerSessionUrl: v.optional(v.string()),
+    providerPaymentIntentId: v.optional(v.string()),
+    providerRequestCount: v.number(),
+    firstProviderRequestAt: v.optional(v.number()),
+    lastProviderRequestAt: v.optional(v.number()),
+    leaseToken: v.optional(v.string()),
+    leaseExpiresAt: v.optional(v.number()),
+    // Bumped on every write so a slow worker's result can be discarded.
+    version: v.number(),
+    // Next autonomous reconciliation time; unset once settled.
+    reconcileAt: v.optional(v.number()),
+    reconcileCount: v.number(),
+    lastReconciledAt: v.optional(v.number()),
+    lastProviderState: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    exceptionReason: v.optional(v.string()),
+    // Adopted from a pre-attempt Session; its request was never frozen.
+    legacy: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    settledAt: v.optional(v.number())
+  })
+    .index("by_orderRef", ["orderRef"])
+    .index("by_providerSessionId", ["providerSessionId"])
+    .index("by_reconcileAt", ["reconcileAt"])
+    .index("by_status_updatedAt", ["status", "updatedAt"]),
+
+  // Staff-visible problems that automation must not resolve by guessing:
+  // paid money that could not be fulfilled, unknown provider outcomes, and
+  // ticket emails that cannot be sent safely. Evidence is written once.
+  operationsExceptions: defineTable({
+    dedupeKey: v.string(),
+    category: operationsExceptionCategory,
+    code: v.string(),
+    status: v.union(v.literal("open"), v.literal("resolved")),
+    moneyReceived: v.boolean(),
+    orderRef: v.optional(v.string()),
+    saleRef: v.optional(v.string()),
+    bookingRef: v.optional(v.string()),
+    providerSessionId: v.optional(v.string()),
+    providerPaymentIntentId: v.optional(v.string()),
+    providerEventId: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(currency),
+    evidence: v.optional(stringRecord),
+    occurrenceCount: v.number(),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    resolution: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  })
+    .index("by_dedupeKey", ["dedupeKey"])
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_orderRef", ["orderRef"]),
+
   publicGatewayRateLimits: defineTable({
     operation: publicGatewayOperation,
     keyHash: v.string(),
@@ -357,6 +455,20 @@ export default defineSchema({
     lastAttemptAt: v.optional(v.number()),
     sentAt: v.optional(v.number()),
     failureReason: v.optional(v.string()),
+    // First provider request made with this sendVersion's idempotency key.
+    // Resend keeps keys for 24 hours; automatic retries stop before that.
+    providerKeyFirstUsedAt: v.optional(v.number()),
+    providerConfigurationFingerprint: v.optional(v.string()),
+    providerDeliveryStatus: v.optional(v.string()),
+    providerStatusAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    providerTrackingAt: v.optional(v.number()),
+    providerTrackingCount: v.optional(v.number()),
+    providerTrackingLease: v.optional(v.string()),
+    providerTrackingLeaseExpiresAt: v.optional(v.number()),
+    autoRetryCount: v.optional(v.number()),
+    // Next automatic recovery time; unset when no automatic retry is safe.
+    autoRetryAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number()
   })
@@ -364,7 +476,9 @@ export default defineSchema({
     .index("by_bookingRef", ["bookingRef"])
     .index("by_orderRef", ["orderRef"])
     .index("by_saleRef", ["saleRef"])
-    .index("by_status_updatedAt", ["status", "updatedAt"]),
+    .index("by_status_updatedAt", ["status", "updatedAt"])
+    .index("by_autoRetryAt", ["autoRetryAt"])
+    .index("by_providerTrackingAt", ["providerTrackingAt"]),
 
   voucherRedemptionEvents: defineTable({
     bookingRef: v.string(),

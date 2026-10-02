@@ -6,6 +6,7 @@ export type PublicGatewayOperation =
   | "experience-inquiry"
   | "member-application"
   | "checkout-draft"
+  | "checkout-draft-release"
   | "stripe-checkout";
 
 export type PublicGatewayRateLimitPolicy = {
@@ -23,6 +24,7 @@ export const publicGatewayRateLimitPolicies: Record<PublicGatewayOperation, Publ
   "experience-inquiry": { limit: 5, windowMs: 60 * 60 * 1000 },
   "member-application": { limit: 3, windowMs: 24 * 60 * 60 * 1000 },
   "checkout-draft": { limit: 20, windowMs: 15 * 60 * 1000 },
+  "checkout-draft-release": { limit: 20, windowMs: 15 * 60 * 1000 },
   "stripe-checkout": { limit: 10, windowMs: 15 * 60 * 1000 }
 };
 
@@ -30,6 +32,7 @@ export const publicGatewayGlobalRateLimitPolicies: Record<PublicGatewayOperation
   "experience-inquiry": { limit: 300, windowMs: 60 * 60 * 1000 },
   "member-application": { limit: 100, windowMs: 24 * 60 * 60 * 1000 },
   "checkout-draft": { limit: 2_000, windowMs: 15 * 60 * 1000 },
+  "checkout-draft-release": { limit: 2_000, windowMs: 15 * 60 * 1000 },
   "stripe-checkout": { limit: 500, windowMs: 15 * 60 * 1000 }
 };
 

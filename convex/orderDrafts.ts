@@ -2,7 +2,8 @@ import { assertBookableVisitSlot, orderRefFromId, saleRefFromId } from "@skyla/p
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
 import {
   assertCheckoutDraftCanStartPayment,
@@ -198,49 +199,100 @@ export const beginCheckoutPaymentAttempt = internalMutation({
     idempotencyKey: v.string()
   },
   handler: async (ctx, args) => {
+    const order = await findCheckoutOrderForPayment(ctx, args);
+    return moveCheckoutOrderToPaymentPending(ctx, order, Date.now());
+  }
+});
+
+export async function findCheckoutOrderForPayment(
+  ctx: MutationCtx,
+  args: { orderRef: string; idempotencyKey: string }
+) {
+  const idempotencyKey = normalizeIdempotencyKey(args.idempotencyKey);
+  const order = await ctx.db
+    .query("orders")
+    .withIndex("by_orderRef", (query) => query.eq("orderRef", args.orderRef))
+    .unique();
+  if (!order || order.channel !== "online" || order.idempotencyKey !== idempotencyKey) {
+    throw new Error("Checkout order was not found for this payment attempt");
+  }
+  return order;
+}
+
+/** Shared by the attempt recorder so the hold moves in the same transaction. */
+export async function moveCheckoutOrderToPaymentPending(ctx: MutationCtx, order: Doc<"orders">, now: number) {
+  assertCheckoutDraftCanStartPayment(order, now);
+
+  const reservation = await findCapacityReservation(ctx, order.orderRef);
+  if (reservation?.status === "payment_pending" && order.status === "payment_pending") {
+    return { status: "payment_pending" as const, reused: true };
+  }
+  if (reservation && reservation.status !== "draft") {
+    throw new Error(`Visit unavailable: the capacity hold for this order is ${reservation.status}`);
+  }
+
+  if (order.status === "draft" || !reservation) {
+    const hours = await loadVenueHours(ctx);
+    assertBookableVisitSlot(hours, order.visitDate, order.entryTime, now);
+    if (!reservation) {
+      const lines = await ctx.db
+        .query("orderLineItems")
+        .withIndex("by_orderRef", (query) => query.eq("orderRef", order.orderRef))
+        .collect();
+      await placeCapacityHold(ctx, {
+        orderRef: order.orderRef,
+        visitDate: order.visitDate!,
+        entryTime: order.entryTime!,
+        partySize: ticketPartySize(lines),
+        status: "payment_pending",
+        hours,
+        now
+      });
+    }
+  }
+  if (reservation) {
+    await ctx.db.patch(reservation._id, { status: "payment_pending", paymentPendingAt: now, updatedAt: now });
+  }
+  await ctx.db.patch(order._id, { status: "payment_pending", expectedProvider: "stripe", updatedAt: now });
+  return { status: "payment_pending" as const, reused: false };
+}
+
+/**
+ * Releases a reviewed draft the guest replaced with a different order. Only a
+ * still-draft order whose idempotency key matches is released; an order that
+ * reached payment_pending may have a payable Session and is never touched.
+ */
+export const releaseCheckoutOrderDraft = internalMutation({
+  args: {
+    gatewayRateLimitKey: v.string(),
+    orderRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await consumePublicGatewayRateLimit(ctx, "checkout-draft-release", args.gatewayRateLimitKey, now);
     const idempotencyKey = normalizeIdempotencyKey(args.idempotencyKey);
     const order = await ctx.db
       .query("orders")
       .withIndex("by_orderRef", (query) => query.eq("orderRef", args.orderRef))
       .unique();
     if (!order || order.channel !== "online" || order.idempotencyKey !== idempotencyKey) {
-      throw new Error("Checkout order was not found for this payment attempt");
+      // Same answer for unknown and mismatched orders; nothing is revealed.
+      return { released: false as const };
     }
-    const now = Date.now();
-    assertCheckoutDraftCanStartPayment(order, now);
-
-    const reservation = await findCapacityReservation(ctx, order.orderRef);
-    if (reservation?.status === "payment_pending" && order.status === "payment_pending") {
-      return { status: "payment_pending" as const, reused: true };
+    if (order.status !== "draft") {
+      return { released: false as const, status: order.status };
     }
-    if (reservation && reservation.status !== "draft") {
-      throw new Error(`Visit unavailable: the capacity hold for this order is ${reservation.status}`);
+    const attempt = await ctx.db
+      .query("checkoutPaymentAttempts")
+      .withIndex("by_orderRef", (query) => query.eq("orderRef", order.orderRef))
+      .first();
+    if (attempt) {
+      return { released: false as const, status: order.status };
     }
-
-    if (order.status === "draft" || !reservation) {
-      const hours = await loadVenueHours(ctx);
-      assertBookableVisitSlot(hours, order.visitDate, order.entryTime, now);
-      if (!reservation) {
-        const lines = await ctx.db
-          .query("orderLineItems")
-          .withIndex("by_orderRef", (query) => query.eq("orderRef", order.orderRef))
-          .collect();
-        await placeCapacityHold(ctx, {
-          orderRef: order.orderRef,
-          visitDate: order.visitDate!,
-          entryTime: order.entryTime!,
-          partySize: ticketPartySize(lines),
-          status: "payment_pending",
-          hours,
-          now
-        });
-      }
-    }
-    if (reservation) {
-      await ctx.db.patch(reservation._id, { status: "payment_pending", paymentPendingAt: now, updatedAt: now });
-    }
-    await ctx.db.patch(order._id, { status: "payment_pending", expectedProvider: "stripe", updatedAt: now });
-    return { status: "payment_pending" as const, reused: false };
+    await ctx.db.patch(order._id, { status: "expired", customerEmailLower: undefined, updatedAt: now });
+    await releaseUnpaidCapacityHold(ctx, order.orderRef, "draft_superseded", now);
+    return { released: true as const };
   }
 });
 

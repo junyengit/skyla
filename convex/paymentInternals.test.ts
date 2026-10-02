@@ -40,7 +40,9 @@ type TableName =
   | "staffUsers"
   | "capacityReservations"
   | "privateEvents"
-  | "legacyMigrationSources";
+  | "legacyMigrationSources"
+  | "checkoutPaymentAttempts"
+  | "operationsExceptions";
 type MockDoc = Record<string, unknown> & { _id: string; _creationTime: number };
 type MockState = Record<TableName, MockDoc[]>;
 type MockCtx = {
@@ -1335,7 +1337,21 @@ describe("Checkout webhook capacity holds", () => {
     expect(result).toEqual({ status: "failed", duplicate: false, orderRef });
     expect(state.bookings).toHaveLength(0);
     expect(state.ticketDeliveries).toHaveLength(0);
-    expect(state.orders[0].status).toBe("payment_pending");
+    // The money is real: the order is paid, the paid ledger entry is durable,
+    // and an open billing exception (not a ticket) asks staff to resolve it.
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.paymentEvents.filter((event) => event.status === "paid")).toEqual([
+      expect.objectContaining({ providerPaymentIntentId: checkoutPaymentIntentId, amountCents: 4000 })
+    ]);
+    expect(state.operationsExceptions).toEqual([
+      expect.objectContaining({
+        category: "billing",
+        code: "paid_order_capacity_exception",
+        status: "open",
+        moneyReceived: true,
+        orderRef
+      })
+    ]);
     expect(state.capacityReservations.find((row) => row.orderRef === orderRef)).toMatchObject({
       status: "exception",
       exceptionReason: "paid_without_capacity:insufficient"
@@ -1898,7 +1914,9 @@ function createEmptyState(): MockState {
     staffUsers: [],
     capacityReservations: [],
     privateEvents: [],
-    legacyMigrationSources: []
+    legacyMigrationSources: [],
+    checkoutPaymentAttempts: [],
+    operationsExceptions: []
   };
 }
 

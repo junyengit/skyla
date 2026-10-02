@@ -177,6 +177,28 @@ describe("/api/payments/stripe-checkout", () => {
     });
   });
 
+  it.each(["payment_in_progress", "payment_already_received", "payment_needs_attention", "payment_session_closed"])(
+    "passes the %s payment state through so the browser never offers a second payment",
+    async (code) => {
+      process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+      process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+      fetchMock.mockResolvedValueOnce(Response.json(
+        { ok: false, code, error: "Customer-safe payment state." },
+        { status: 409 }
+      ));
+
+      const response = await POST(request({
+        orderRef: "SKY2607-ABC123",
+        idempotencyKey: "checkout_20260704_abc123",
+        legalAcceptance: validLegalAcceptance
+      }));
+
+      expect(response.status).toBe(409);
+      expectPaymentHeaders(response);
+      await expect(response.json()).resolves.toEqual({ code, error: "Customer-safe payment state." });
+    }
+  );
+
   it("forwards durable Stripe rate limits with no-store payment headers", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;

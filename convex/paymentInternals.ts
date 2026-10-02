@@ -1,4 +1,3 @@
-import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import {
   assertCurrentCheckoutLegalAcceptance,
@@ -8,13 +7,9 @@ import {
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
-import { releaseUnpaidCapacityHold, settlePaidCapacity } from "./lib/capacity";
 import { assertCheckoutDraftCanStartPayment } from "./lib/checkoutDraftExpiry";
-import {
-  assertCheckoutFulfillmentReady,
-  buildConfirmedCheckoutFulfillment,
-  type ConfirmedCheckoutBooking
-} from "./lib/checkoutFulfillment";
+import { assertCheckoutFulfillmentReady } from "./lib/checkoutFulfillment";
+import { settleCheckoutPaid, settleCheckoutUnpaid } from "./lib/checkoutSettlement";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
 import {
   stripeTerminalIntentIdempotencyKey,
@@ -23,14 +18,13 @@ import {
   type StripeTerminalSnapshot
 } from "./lib/stripeTerminal";
 import {
-  stripeCheckoutOrderStatusAfterUnpaidOutcome,
   stripeTerminalSaleStatusAfterUnpaidOutcome,
   type StripeRefundStatus
 } from "./lib/stripeWebhook";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
 import { assertStoredPaymentLineProvenance } from "./lib/orderDraftPersistence";
 import { buildConfirmedPosFulfillment, type ConfirmedPosBooking } from "./lib/posFulfillment";
-import { buildTicketDeliveryRecord } from "./lib/ticketDelivery";
+import { ensureTicketDelivery, sendTicketConfirmationAction } from "./lib/ticketDeliveryQueue";
 import { assertCheckoutTimeAvailable, safeOperatingHours } from "./lib/operatingHours";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -40,11 +34,6 @@ const finalRefundStatuses = new Set<StripeRefundStatus>(["failed", "canceled"]);
 const refundCorrelationRetryWindowMs = 72 * 60 * 60 * 1000;
 const refundFulfillmentInvalidatedAction = "payment.refund.fulfillmentInvalidated";
 const refundFulfillmentRestoredAction = "payment.refund.fulfillmentRestored";
-const sendTicketConfirmationAction = makeFunctionReference<
-  "action",
-  { deliveryId: Id<"ticketDeliveries"> },
-  null
->("ticketDelivery:sendTicketConfirmation");
 
 export function assertStoredCheckoutLegalAcceptance(
   acceptance: {
@@ -194,69 +183,6 @@ export const getCheckoutPaymentSnapshot = internalQuery({
         lineTotalCents: line.lineTotalCents
       }))
     };
-  }
-});
-
-export const recordStripeCheckoutSession = internalMutation({
-  args: {
-    orderRef: v.string(),
-    providerPaymentId: v.string(),
-    idempotencyKey: v.string(),
-    amountCents: v.number(),
-    currency: v.literal("usd"),
-    raw: v.optional(v.any())
-  },
-  handler: async (ctx, args) => {
-    const existingEvent = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_idempotencyKey", (q) =>
-        q.eq("provider", "stripe").eq("idempotencyKey", args.idempotencyKey)
-      )
-      .first();
-
-    if (existingEvent) {
-      if (
-        existingEvent.orderRef !== args.orderRef ||
-        existingEvent.providerPaymentId !== args.providerPaymentId ||
-        existingEvent.amountCents !== args.amountCents ||
-        existingEvent.currency !== args.currency
-      ) {
-        throw new Error("Stripe checkout idempotency key was reused for a different payment");
-      }
-      return { eventId: existingEvent._id, reused: true };
-    }
-
-    const order = await ctx.db
-      .query("orders")
-      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
-      .unique();
-    if (!order) {
-      throw new Error("Checkout order disappeared before payment recording");
-    }
-    if (order.totalCents !== args.amountCents || order.currency !== args.currency) {
-      throw new Error("Stripe checkout amount does not match the stored order");
-    }
-
-    const now = Date.now();
-    const eventId = await ctx.db.insert("paymentEvents", {
-      orderRef: args.orderRef,
-      provider: "stripe",
-      providerPaymentId: args.providerPaymentId,
-      idempotencyKey: args.idempotencyKey,
-      status: "created",
-      currency: args.currency,
-      amountCents: args.amountCents,
-      raw: args.raw,
-      createdAt: now
-    });
-
-    await ctx.db.patch(order._id, {
-      status: "payment_pending",
-      expectedProvider: "stripe",
-      updatedAt: now
-    });
-
-    return { eventId, reused: false };
   }
 });
 
@@ -1514,6 +1440,13 @@ export const recordStripeCheckoutWebhook = internalMutation({
     ticketCode: v.optional(v.string()),
     amountCents: v.optional(v.number()),
     currency: v.optional(v.literal("usd")),
+    attemptNonce: v.optional(v.string()),
+    sessionMode: v.optional(v.string()),
+    livemode: v.optional(v.boolean()),
+    sessionStatus: v.optional(v.string()),
+    paymentStatus: v.optional(v.string()),
+    // Signed Stripe event creation time (ms): the trusted time of payment.
+    providerEventCreatedAt: v.optional(v.number()),
     raw: v.optional(v.any())
   },
   handler: async (ctx, args) => {
@@ -1554,259 +1487,82 @@ export const recordStripeCheckoutWebhook = internalMutation({
       return { status: "failed", duplicate: false, orderRef: args.orderRef };
     }
 
-    const order = await ctx.db
-      .query("orders")
-      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
-      .unique();
-    if (!order) {
-      await insertWebhookEvent(ctx, {
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        orderRef: args.orderRef,
-        raw: { ...(args.raw ?? {}), reason: "order_not_found" }
-      });
-      return { status: "failed", duplicate: false, orderRef: args.orderRef };
-    }
-
-    const providerEvents = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_providerPaymentId", (q) =>
-        q.eq("provider", "stripe").eq("providerPaymentId", args.providerPaymentId as string)
-      )
-      .collect();
-    const creationEvent = providerEvents.find(
-      (event) => event.orderRef === args.orderRef && event.status === "created"
-    );
-    if (!creationEvent) {
-      await insertWebhookEvent(ctx, {
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        orderRef: args.orderRef,
-        raw: { ...(args.raw ?? {}), reason: "payment_session_not_created_by_convex" }
-      });
-      return { status: "failed", duplicate: false, orderRef: args.orderRef };
-    }
-
-    const amountCents = args.amountCents ?? creationEvent.amountCents;
-    const currency = args.currency ?? creationEvent.currency;
-    if (
-      order.totalCents !== amountCents ||
-      order.currency !== currency ||
-      creationEvent.amountCents !== amountCents ||
-      creationEvent.currency !== currency
-    ) {
-      await insertWebhookEvent(ctx, {
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        orderRef: args.orderRef,
-        raw: { ...(args.raw ?? {}), reason: "amount_or_currency_mismatch" }
-      });
-      return { status: "failed", duplicate: false, orderRef: args.orderRef };
-    }
-    if (order.expectedProvider !== "stripe") {
-      await insertWebhookEvent(ctx, {
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        orderRef: args.orderRef,
-        raw: { ...(args.raw ?? {}), reason: "order_expected_provider_mismatch" }
-      });
-      return { status: "failed", duplicate: false, orderRef: args.orderRef };
-    }
-    if (args.outcome !== "paid" && order.status === "paid") {
-      await insertWebhookEvent(ctx, {
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        orderRef: args.orderRef,
-        raw: { ...(args.raw ?? {}), reason: "order_already_paid" }
-      });
-      return { status: "failed", duplicate: false, orderRef: args.orderRef };
-    }
-    if (order.status !== "payment_pending" && order.status !== "paid") {
-      await insertWebhookEvent(ctx, {
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        orderRef: args.orderRef,
-        raw: { ...(args.raw ?? {}), reason: "order_status_not_payable" }
-      });
-      return { status: "failed", duplicate: false, orderRef: args.orderRef };
-    }
-
+    const now = Date.now();
     if (args.outcome === "paid") {
-      if (!args.providerPaymentIntentId) {
-        await insertWebhookEvent(ctx, {
-          providerEventId: args.providerEventId,
-          eventType: args.eventType,
-          status: "failed",
-          orderRef: args.orderRef,
-          raw: { ...(args.raw ?? {}), reason: "missing_checkout_payment_intent" }
-        });
-        return { status: "failed", duplicate: false, orderRef: args.orderRef };
-      }
-      const now = Date.now();
-      const lines = await ctx.db
-        .query("orderLineItems")
-        .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
-        .collect();
-      assertStoredPaymentLineProvenance(lines, "Checkout webhook");
-      const fulfillment = buildConfirmedCheckoutFulfillment(order, lines, now);
-      const existingBooking = await ctx.db
-        .query("bookings")
-        .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
-        .unique();
-
-      // The hold becomes paid in this same transaction as the booking. An
-      // order with no usable hold either reserves now or becomes a counted,
-      // audited exception without a ticket; it never silently oversells.
-      const capacity = await settlePaidCapacity(ctx, {
+      const result = await settleCheckoutPaid(ctx, {
+        source: "webhook",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        providerSessionId: args.providerPaymentId,
+        providerPaymentIntentId: args.providerPaymentIntentId,
         orderRef: args.orderRef,
-        bookingRef: fulfillment.booking.bookingRef,
-        visitDate: fulfillment.booking.visitDate,
-        entryTime: fulfillment.booking.entryTime,
-        partySize: fulfillment.booking.partySize,
-        alreadyCommitted: Boolean(existingBooking),
-        now
-      });
-      if (capacity.kind === "exception") {
-        await ctx.db.insert("auditEvents", {
-          action: "checkout.capacityException",
-          entityType: "order",
-          entityRef: args.orderRef,
-          metadata: {
-            reason: capacity.reason,
-            visitDate: fulfillment.booking.visitDate,
-            entryTime: fulfillment.booking.entryTime,
-            partySize: fulfillment.booking.partySize,
-            providerPaymentId: args.providerPaymentId,
-            providerPaymentIntentId: args.providerPaymentIntentId,
-            amountCents
-          },
-          createdAt: now
-        });
-        await insertWebhookEvent(ctx, {
-          providerEventId: args.providerEventId,
-          eventType: args.eventType,
-          status: "failed",
-          orderRef: args.orderRef,
-          raw: { ...(args.raw ?? {}), reason: "paid_order_capacity_exception", capacityReason: capacity.reason }
-        });
-        return { status: "failed", duplicate: false, orderRef: args.orderRef };
-      }
-
-      if (existingBooking) {
-        assertMatchingCheckoutBooking(existingBooking, fulfillment.booking);
-      } else {
-        await ctx.db.insert("bookings", fulfillment.booking);
-        await ctx.db.insert("auditEvents", {
-          action: "checkout.bookingFulfilled",
-          entityType: "booking",
-          entityRef: fulfillment.booking.bookingRef,
-          metadata: fulfillment.auditMetadata,
-          createdAt: now
-        });
-      }
-      await ensureTicketDelivery(ctx, {
+        attemptNonce: args.attemptNonce,
+        amountCents: args.amountCents,
+        currency: args.currency,
+        sessionMode: args.sessionMode,
+        livemode: args.livemode,
+        sessionStatus: args.sessionStatus,
+        paymentStatus: args.paymentStatus,
+        paidAt: args.providerEventCreatedAt,
         ticketCode: args.ticketCode,
-        bookingRef: fulfillment.booking.bookingRef,
-        orderRef: args.orderRef,
-        emailLower: fulfillment.booking.emailLower,
-        now
-      });
-
-      const existingPaidEvent = providerEvents.find((event) => event.status === "paid");
-      if (!existingPaidEvent) {
-        await ctx.db.insert("paymentEvents", {
+        raw: args.raw
+      }, now);
+      if (result.kind === "fulfilled") {
+        await insertWebhookEvent(ctx, {
+          providerEventId: args.providerEventId,
+          eventType: args.eventType,
+          status: "processed",
           orderRef: args.orderRef,
-          provider: "stripe",
-          providerPaymentId: args.providerPaymentId,
-          providerPaymentIntentId: args.providerPaymentIntentId,
-          idempotencyKey: creationEvent.idempotencyKey,
-          status: "paid",
-          currency,
-          amountCents,
-          rawEventId: args.providerEventId,
-          raw: args.raw,
-          createdAt: now
+          raw: args.raw
         });
+        return { status: "processed", duplicate: false, orderRef: args.orderRef };
       }
-
-      if (order.status !== "paid") {
-        await ctx.db.patch(order._id, {
-          status: "paid",
-          expectedProvider: "stripe",
-          updatedAt: now
-        });
-      }
-
+      // Paid evidence that cannot become a ticket is durably recorded as a
+      // billing exception; the webhook itself is stored as not fulfilled.
       await insertWebhookEvent(ctx, {
         providerEventId: args.providerEventId,
         eventType: args.eventType,
-        status: "processed",
+        status: "failed",
         orderRef: args.orderRef,
-        raw: args.raw
+        raw: {
+          ...(args.raw ?? {}),
+          reason: result.kind === "exception" ? result.code : result.reason,
+          ...(result.kind === "exception" ? { billingException: true, moneyRecorded: result.moneyRecorded } : {})
+        }
       });
-      return { status: "processed", duplicate: false, orderRef: args.orderRef };
+      return { status: "failed", duplicate: false, orderRef: args.orderRef };
     }
 
-    const providerStatus = args.outcome === "failed" ? "failed" : "canceled";
-    await ctx.db.insert("paymentEvents", {
+    const result = await settleCheckoutUnpaid(ctx, {
+      source: "webhook",
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
+      outcome: args.outcome,
+      providerSessionId: args.providerPaymentId,
       orderRef: args.orderRef,
-      provider: "stripe",
-      providerPaymentId: args.providerPaymentId,
-      idempotencyKey: creationEvent.idempotencyKey,
-      status: providerStatus,
-      currency,
-      amountCents,
-      rawEventId: args.providerEventId,
-      raw: args.raw,
-      createdAt: Date.now()
-    });
-
-    if (order.status !== "paid") {
-      const now = Date.now();
-      await ctx.db.patch(order._id, {
-        status: stripeCheckoutOrderStatusAfterUnpaidOutcome(args.outcome),
-        expectedProvider: "stripe",
-        updatedAt: now
-      });
-      // Signed and correlated to the Convex-created session above; paid and
-      // exception holds are never reopened by a stale unpaid event.
-      await releaseUnpaidCapacityHold(ctx, args.orderRef, `stripe:${args.eventType}`, now);
-    }
-
+      attemptNonce: args.attemptNonce,
+      amountCents: args.amountCents,
+      currency: args.currency,
+      sessionStatus: args.sessionStatus,
+      paymentStatus: args.paymentStatus,
+      sessionMode: args.sessionMode,
+      livemode: args.livemode,
+      raw: args.raw
+    }, now);
     await insertWebhookEvent(ctx, {
       providerEventId: args.providerEventId,
       eventType: args.eventType,
-      status: "processed",
+      status: result.kind === "released" ? "processed" : "failed",
       orderRef: args.orderRef,
-      raw: args.raw
+      raw: result.kind === "released" ? args.raw : { ...(args.raw ?? {}), reason: result.reason }
     });
-    return { status: "processed", duplicate: false, orderRef: args.orderRef };
+    return {
+      status: result.kind === "released" ? "processed" : "failed",
+      duplicate: false,
+      orderRef: args.orderRef
+    };
   }
 });
-
-function assertMatchingCheckoutBooking(
-  existing: {
-    bookingRef: string;
-    orderRef?: string;
-    visitDate?: string;
-    entryTime?: string;
-    partySize?: number;
-    emailLower?: string;
-  },
-  expected: ConfirmedCheckoutBooking
-) {
-  const immutableFields = ["bookingRef", "orderRef", "visitDate", "entryTime", "partySize", "emailLower"] as const;
-  const mismatch = immutableFields.find((field) => existing[field] !== expected[field]);
-  if (mismatch) {
-    throw new Error(`Stored checkout booking does not match paid order fulfillment: ${mismatch}`);
-  }
-}
 
 function assertMatchingPosBooking(
   existing: {
@@ -1907,48 +1663,6 @@ async function repairDuplicatePaidTerminalDelivery(
     emailLower: booking.emailLower,
     now: Date.now()
   });
-}
-
-async function ensureTicketDelivery(
-  ctx: MutationCtx,
-  args: {
-    ticketCode?: string;
-    bookingRef: string;
-    orderRef?: string;
-    saleRef?: string;
-    emailLower?: string;
-    now: number;
-  }
-) {
-  const existing = await ctx.db
-    .query("ticketDeliveries")
-    .withIndex("by_bookingRef", (q) => q.eq("bookingRef", args.bookingRef))
-    .unique();
-  if (existing) {
-    const mismatch =
-      existing.orderRef !== args.orderRef ||
-      existing.saleRef !== args.saleRef ||
-      existing.emailLower !== args.emailLower;
-    if (mismatch) {
-      throw new Error("Stored ticket delivery does not match paid booking fulfillment");
-    }
-    return existing._id;
-  }
-  if (!args.ticketCode) {
-    throw new Error("ticketCode is required for paid ticket fulfillment");
-  }
-  const delivery = buildTicketDeliveryRecord(args as {
-    ticketCode: string;
-    bookingRef: string;
-    orderRef?: string;
-    saleRef?: string;
-    emailLower?: string;
-  }, args.now);
-  const deliveryId = await ctx.db.insert("ticketDeliveries", delivery);
-  if (delivery.status === "queued") {
-    await ctx.scheduler.runAfter(0, sendTicketConfirmationAction, { deliveryId });
-  }
-  return deliveryId;
 }
 
 async function insertWebhookEvent(

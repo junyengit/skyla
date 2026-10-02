@@ -2,18 +2,22 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { action, internalAction, internalMutation } from "./_generated/server";
+import { action, internalAction, internalMutation, type ActionCtx } from "./_generated/server";
+import { replayFrozenCreate, type CheckoutAttemptView } from "./checkoutReconciliation";
+import {
+  checkoutPaymentStateError,
+  checkoutResumeMinRemainingMs,
+  checkoutSessionLifetimeMs
+} from "./lib/checkoutAttempts";
 import { consumePublicGatewayRateLimit } from "./lib/publicGateway";
 import {
   assertStripeReturnOriginAllowed,
   buildStripeCheckoutSessionRequest,
   parseStripeReturnOriginAllowlist,
-  sanitizeStripeCheckoutSession,
   stripeApiBaseUrl,
-  stripeSessionErrorMessage,
-  type StripeCheckoutSessionResponse,
   type StripeCheckoutSnapshot
 } from "./lib/stripeCheckout";
+import { configuredStripeSecret } from "./lib/stripeHttp";
 import {
   assertStripeTerminalReaderProcessResult,
   buildStripeTerminalPaymentIntentRequest,
@@ -29,6 +33,7 @@ import {
   type StripeTerminalSnapshot
 } from "./lib/stripeTerminal";
 import { assertStripeSecretMode, parseStripeMode } from "./lib/stripeMode";
+import { providerConfigurationFingerprint } from "./lib/providerIdentity";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -52,10 +57,33 @@ export const createStripeCheckoutSession = internalAction({
     successUrl: v.string(),
     cancelUrl: v.string()
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<StripeCheckoutStartResult> => {
     await ctx.runMutation(internal.payments.consumeStripeCheckoutRateLimit, {
       gatewayRateLimitKey: args.gatewayRateLimitKey
     });
+    const context = await ctx.runQuery(internal.checkoutReconciliation.getCheckoutAttemptContext, {
+      orderRef: args.orderRef,
+      idempotencyKey: args.idempotencyKey
+    });
+    // One Session per order: a retry, double click or return visit resumes
+    // the stored attempt instead of asking Stripe for another Session.
+    if (context.kind === "attempt") {
+      return resumeCheckoutAttempt(ctx, context.attempt);
+    }
+    if (context.kind === "legacy_pending") {
+      const adopted = await ctx.runMutation(internal.checkoutReconciliation.adoptLegacyCheckoutSession, {
+        orderRef: args.orderRef,
+        idempotencyKey: args.idempotencyKey
+      });
+      if (adopted.kind === "exception") throw checkoutPaymentStateError("payment_needs_attention");
+      return resumeCheckoutAttempt(ctx, adopted.attempt);
+    }
+    if (context.kind === "closed") {
+      throw checkoutPaymentStateError(
+        context.status === "paid" ? "payment_already_received" : "payment_session_closed"
+      );
+    }
+
     await ctx.runQuery(internal.orderDrafts.assertCheckoutOrderDraftActive, {
       orderRef: args.orderRef,
       idempotencyKey: args.idempotencyKey
@@ -68,7 +96,7 @@ export const createStripeCheckoutSession = internalAction({
     // Provider credentials, return origins, and the stored snapshot are all
     // checked before the order leaves draft, so a configuration failure never
     // strands a payment_pending hold without a Stripe attempt.
-    const secretKey = stripeSecretKey();
+    const { secretKey, mode } = configuredStripeSecret();
     const allowedReturnOrigins = parseStripeReturnOriginAllowlist(process.env.SKYLA_PAYMENT_RETURN_ORIGINS);
     const successUrl = assertStripeReturnOriginAllowed(args.successUrl, "successUrl", allowedReturnOrigins);
     const cancelUrl = assertStripeReturnOriginAllowed(args.cancelUrl, "cancelUrl", allowedReturnOrigins);
@@ -77,55 +105,135 @@ export const createStripeCheckoutSession = internalAction({
       orderRef: args.orderRef,
       idempotencyKey: args.idempotencyKey
     });
-    const request = buildStripeCheckoutSessionRequest(snapshot, { successUrl, cancelUrl });
+    const attemptNonce = crypto.randomUUID().replaceAll("-", "").toLowerCase();
+    const request = buildStripeCheckoutSessionRequest(snapshot, { successUrl, cancelUrl }, {
+      attemptNonce,
+      expiresAt: Date.now() + checkoutSessionLifetimeMs
+    });
+    const leaseToken = crypto.randomUUID();
 
-    // The hold becomes payment_pending before the network call. If the call
-    // fails or its result is unknown, the hold stays; only a signed, correlated
-    // unpaid outcome releases it (uncertainty reconciliation is the next
-    // payment milestone).
-    await ctx.runMutation(internal.orderDrafts.beginCheckoutPaymentAttempt, {
+    // The exact request, key and expiry are stored, and the hold becomes
+    // payment_pending, before the network call. An unknown result keeps the
+    // hold; only a correlated provider outcome settles it.
+    const opened = await ctx.runMutation(internal.checkoutReconciliation.openCheckoutSessionAttempt, {
       orderRef: args.orderRef,
-      idempotencyKey: args.idempotencyKey
+      idempotencyKey: args.idempotencyKey,
+      attemptNonce,
+      leaseToken,
+      stripeMode: mode,
+      providerConfigurationFingerprint: await providerConfigurationFingerprint(["stripe", secretKey]),
+      request: {
+        endpoint: request.endpoint,
+        apiVersion: request.apiVersion,
+        providerIdempotencyKey: request.idempotencyKey,
+        requestParams: [...request.body.entries()].map(([name, value]) => ({ name, value })),
+        amountCents: snapshot.totalCents,
+        currency: snapshot.currency,
+        expiresAt: Number(request.body.get("expires_at")) * 1000,
+        termsVersion: snapshot.termsVersion,
+        liabilityWaiverVersion: snapshot.liabilityWaiverVersion
+      }
     });
-
-    const session = await stripeFormPost<StripeCheckoutSessionResponse>(request.endpoint, {
-      secretKey,
-      apiVersion: request.apiVersion,
-      idempotencyKey: request.idempotencyKey,
-      body: request.body,
-      errorMessage: stripeSessionErrorMessage
-    });
-    const sessionId = session.id;
-    const sessionUrl = session.url;
-    if (typeof sessionId !== "string" || !sessionId || typeof sessionUrl !== "string" || !sessionUrl) {
-      throw new Error("Stripe did not return a checkout session URL");
+    if (opened.kind === "existing") {
+      return resumeCheckoutAttempt(ctx, opened.attempt);
     }
-    if (session.amount_total !== undefined && session.amount_total !== snapshot.totalCents) {
-      throw new Error("Stripe returned a checkout session for the wrong amount");
-    }
-    if (session.currency !== undefined && session.currency !== snapshot.currency) {
-      throw new Error("Stripe returned a checkout session for the wrong currency");
-    }
-
-    await ctx.runMutation(internal.paymentInternals.recordStripeCheckoutSession, {
-      orderRef: snapshot.orderRef,
-      providerPaymentId: sessionId,
-      idempotencyKey: request.idempotencyKey,
-      amountCents: snapshot.totalCents,
-      currency: snapshot.currency,
-      raw: sanitizeStripeCheckoutSession(session)
-    });
-
-    return {
-      orderRef: snapshot.orderRef,
-      provider: "stripe" as const,
-      checkoutSessionId: sessionId,
-      url: sessionUrl,
-      amountCents: snapshot.totalCents,
-      currency: snapshot.currency
-    };
+    return createFrozenCheckoutSession(ctx, opened.attempt, leaseToken, secretKey);
   }
 });
+
+export type StripeCheckoutStartResult = {
+  orderRef: string;
+  provider: "stripe";
+  checkoutSessionId: string;
+  url: string;
+  amountCents: number;
+  currency: "usd";
+  expiresAt: number;
+};
+
+function checkoutStartResult(attempt: CheckoutAttemptView, sessionId: string, url: string): StripeCheckoutStartResult {
+  return {
+    orderRef: attempt.orderRef,
+    provider: "stripe",
+    checkoutSessionId: sessionId,
+    url,
+    amountCents: attempt.amountCents,
+    currency: attempt.currency,
+    expiresAt: attempt.expiresAt
+  };
+}
+
+async function resumeCheckoutAttempt(ctx: ActionCtx, attempt: CheckoutAttemptView): Promise<StripeCheckoutStartResult> {
+  const now = Date.now();
+  switch (attempt.status) {
+    case "open":
+      if (attempt.providerSessionId && attempt.providerSessionUrl && attempt.expiresAt - now > checkoutResumeMinRemainingMs) {
+        return checkoutStartResult(attempt, attempt.providerSessionId, attempt.providerSessionUrl);
+      }
+      throw checkoutPaymentStateError("payment_session_expiring");
+    case "paid":
+      throw checkoutPaymentStateError("payment_already_received");
+    case "expired":
+    case "rejected":
+      throw checkoutPaymentStateError("payment_session_closed");
+    case "exception":
+      throw checkoutPaymentStateError("payment_needs_attention");
+    case "creating":
+    case "creation_unknown": {
+      if (attempt.leaseExpiresAt !== undefined && attempt.leaseExpiresAt > now) {
+        throw checkoutPaymentStateError("payment_in_progress");
+      }
+      const { secretKey, mode } = configuredStripeSecret();
+      if (mode !== attempt.stripeMode) {
+        throw new Error("SKYLA_STRIPE_MODE does not match the stored checkout attempt");
+      }
+      const leaseToken = crypto.randomUUID();
+      const claim = await ctx.runMutation(internal.checkoutReconciliation.claimCheckoutAttemptForCreate, {
+        attemptId: attempt.attemptId,
+        leaseToken
+      });
+      if (claim.kind === "claimed") return createFrozenCheckoutSession(ctx, claim.attempt, leaseToken, secretKey);
+      if (claim.kind === "window_closed") throw checkoutPaymentStateError("payment_needs_attention");
+      throw checkoutPaymentStateError("payment_in_progress");
+    }
+  }
+}
+
+/** Sends the stored request with its stored key; never builds a new one. */
+async function createFrozenCheckoutSession(
+  ctx: ActionCtx,
+  attempt: CheckoutAttemptView,
+  leaseToken: string,
+  secretKey: string
+): Promise<StripeCheckoutStartResult> {
+  const result = await replayFrozenCreate(attempt, secretKey);
+  if (result.state === "created") {
+    const recorded = await ctx.runMutation(internal.checkoutReconciliation.recordCheckoutSessionCreateOutcome, {
+      attemptId: attempt.attemptId,
+      leaseToken,
+      outcome: { kind: "created", providerSessionId: result.providerSessionId, url: result.url, raw: result.raw }
+    });
+    if (recorded.status === "open") {
+      return checkoutStartResult(attempt, result.providerSessionId, result.url);
+    }
+    if (recorded.status === "paid") throw checkoutPaymentStateError("payment_already_received");
+    throw checkoutPaymentStateError("payment_needs_attention");
+  }
+  const recorded = await ctx.runMutation(internal.checkoutReconciliation.recordCheckoutSessionCreateOutcome, {
+    attemptId: attempt.attemptId,
+    leaseToken,
+    outcome: { kind: result.kind, reason: result.reason }
+  });
+  if (result.kind === "unknown") {
+    // Stripe may have created a payable Session. The hold stays and the same
+    // request is replayed with the same key; the guest must not pay twice.
+    throw new Error("Stripe Checkout did not confirm the payment page; the order stays held");
+  }
+  if (recorded.status === "rejected") {
+    throw new Error("Stripe Checkout rejected the payment request");
+  }
+  throw checkoutPaymentStateError("payment_needs_attention");
+}
 
 export const createStripeTerminalPaymentIntent = action({
   args: {

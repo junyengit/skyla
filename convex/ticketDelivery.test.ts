@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { buildTicketDeliveryRecord, normalizeTicketCode } from "./lib/ticketDelivery";
 import {
@@ -12,7 +12,14 @@ import {
 
 declare const process: { env: Record<string, string | undefined> };
 
-type TableName = "staffUsers" | "ticketDeliveries" | "bookings" | "auditEvents";
+type TableName =
+  | "staffUsers"
+  | "ticketDeliveries"
+  | "bookings"
+  | "auditEvents"
+  | "orders"
+  | "posSales"
+  | "operationsExceptions";
 type Doc = Record<string, unknown> & { _id: string };
 
 function handler<TArgs, TResult>(value: unknown) {
@@ -24,6 +31,7 @@ function createCtx(options: {
   delivery?: Partial<Doc>;
   booking?: Partial<Doc>;
   includeBooking?: boolean;
+  orderStatus?: string;
 } = {}) {
   const subject = "staff_subject_123";
   const state: Record<TableName, Doc[]> = {
@@ -68,7 +76,10 @@ function createCtx(options: {
               ...options.booking
             }
           ],
-    auditEvents: []
+    auditEvents: [],
+    orders: [{ _id: "orders_1", orderRef: "ORDER-1", channel: "online", status: options.orderStatus ?? "paid" }],
+    posSales: [],
+    operationsExceptions: []
   };
   const scheduled: Array<{ delayMs: number; args: Record<string, unknown> }> = [];
 
@@ -94,6 +105,9 @@ function createCtx(options: {
             };
             build?.(query);
             return {
+              async take(count: number) {
+                return state[table].filter((doc) => filters.every(({ field, value }) => doc[field] === value)).slice(0, count);
+              },
               async unique() {
                 const matches = state[table].filter((doc) =>
                   filters.every(({ field, value }) => doc[field] === value)
@@ -124,6 +138,9 @@ function createCtx(options: {
       }
     },
     scheduler: {
+      async runAt(at: number, _reference: unknown, args: Record<string, unknown>) {
+        scheduled.push({ delayMs: at - Date.now(), args });
+      },
       async runAfter(delayMs: number, _reference: unknown, args: Record<string, unknown>) {
         scheduled.push({ delayMs, args });
       }
@@ -433,7 +450,11 @@ describe("ticket delivery lifecycle", () => {
     };
     process.env.RESEND_API_KEY = "re_test";
     process.env.SKYLA_TICKET_FROM_EMAIL = "tickets@example.com";
-    delete process.env.SKYLA_PUBLIC_ORIGIN;
+    process.env.SKYLA_PUBLIC_ORIGIN = "https://skydeckla.com";
+    // The provider may have accepted the email before the connection dropped.
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("connection reset");
+    }));
 
     const calls: Array<Record<string, unknown>> = [];
     const payload = {
@@ -464,7 +485,7 @@ describe("ticket delivery lifecycle", () => {
 
       expect(result).toBeNull();
       expect(calls).toEqual([
-        { deliveryId: "ticketDeliveries_1" },
+        { deliveryId: "ticketDeliveries_1", providerConfigurationFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/) },
         {
           deliveryId: "ticketDeliveries_1",
           failureReason: "email_delivery_outcome_unknown",
@@ -473,6 +494,7 @@ describe("ticket delivery lifecycle", () => {
         }
       ]);
     } finally {
+      vi.unstubAllGlobals();
       restoreEnv("RESEND_API_KEY", original.apiKey);
       restoreEnv("SKYLA_TICKET_FROM_EMAIL", original.from);
       restoreEnv("SKYLA_PUBLIC_ORIGIN", original.origin);
