@@ -23,13 +23,13 @@ const snapshot = {
   liabilityWaiverVersion: currentLiabilityWaiverVersion,
   lines: [
     {
-      name: "The View",
+      name: "The View · Adult 18+",
       quantity: 2,
       unitAmountCents: 2000,
       lineTotalCents: 4000
     },
     {
-      name: "The View Child",
+      name: "The View · Youth 8–17",
       quantity: 1,
       unitAmountCents: 1000,
       lineTotalCents: 1000
@@ -67,6 +67,48 @@ describe("Stripe Checkout helpers", () => {
     expect(request.body.get("line_items[0][quantity]")).toBe("2");
     expect(request.body.get("line_items[3][price_data][product_data][name]")).toBeNull();
     expect(request.body.get("line_items[3][price_data][unit_amount]")).toBeNull();
+  });
+
+  it("keeps free child lines off the Stripe session while totals still reconcile", () => {
+    const freeChildSnapshot = {
+      ...snapshot,
+      subtotalCents: 4000,
+      totalCents: 4000,
+      lines: [
+        { name: "The View · Adult 18+", quantity: 1, unitAmountCents: 2000, lineTotalCents: 2000 },
+        { name: "The View · Youth 8–17", quantity: 2, unitAmountCents: 1000, lineTotalCents: 2000 },
+        { name: "The View · Child 0–7", quantity: 3, unitAmountCents: 0, lineTotalCents: 0 }
+      ]
+    };
+
+    expect(stripeCheckoutLineItems(freeChildSnapshot)).toEqual([
+      { name: "The View · Adult 18+", quantity: 1, unitAmountCents: 2000 },
+      { name: "The View · Youth 8–17", quantity: 2, unitAmountCents: 1000 }
+    ]);
+    const request = buildStripeCheckoutSessionRequest(freeChildSnapshot, {
+      successUrl: "https://skydeckla.com/checkout?stripe=success&session_id={CHECKOUT_SESSION_ID}",
+      cancelUrl: "https://skydeckla.com/checkout?stripe=cancel"
+    });
+    expect(request.body.get("line_items[1][price_data][unit_amount]")).toBe("1000");
+    expect(request.body.get("line_items[2][quantity]")).toBeNull();
+    expect([...request.body.values()].join(" ")).not.toContain("Child 0–7");
+  });
+
+  it("still rejects stored line prices between free and the Stripe minimum", () => {
+    expect(() =>
+      stripeCheckoutLineItems({
+        ...snapshot,
+        subtotalCents: 5803,
+        totalCents: 5803,
+        lines: [...snapshot.lines, { name: "Odd line", quantity: 3, unitAmountCents: 1, lineTotalCents: 3 }]
+      })
+    ).toThrow("Stripe checkout line unit amount must be free or at least 50 cents");
+    expect(() =>
+      stripeCheckoutLineItems({
+        ...snapshot,
+        lines: [...snapshot.lines, { name: "Bad free line", quantity: 0, unitAmountCents: 0, lineTotalCents: 0 }]
+      })
+    ).toThrow("Stripe checkout line quantity must be a positive integer");
   });
 
   it("fails before Stripe if stored lines do not reconcile to the stored order total", () => {

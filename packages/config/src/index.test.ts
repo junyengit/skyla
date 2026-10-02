@@ -44,6 +44,12 @@ describe("ticketPackages", () => {
     ]);
   });
 
+  it("describes the owner-confirmed admission ages", () => {
+    expect(ticketPackages.find((ticketPackage) => ticketPackage.key === "general")?.description).toBe(
+      "The full 360-degree view, indoor lounge, and timed entry. Adults 18+ $20, ages 8–17 $10, ages 0–7 free."
+    );
+  });
+
   it("derives public ticket prices from the payment catalog", () => {
     expect(
       ticketPackages.map((ticketPackage) => ({

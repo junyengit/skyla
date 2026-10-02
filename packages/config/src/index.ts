@@ -20,7 +20,8 @@ export const siteConfig = {
 } as const;
 
 const ticketDescriptions: Record<string, string> = {
-  general: "The full 360-degree view, indoor lounge, and timed entry. Ages 12 and under $10.",
+  general:
+    "The full 360-degree view, indoor lounge, and timed entry. Adults 18+ $20, ages 8–17 $10, ages 0–7 free.",
   drink: "Observation deck access with one coffee or matcha voucher."
 };
 

@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  admissionAgeCategories,
+  admissionMaxPartySize,
+  admissionMinAdults,
   checkoutEntryTimes,
-  childPriceCents,
   currentLiabilityWaiverVersion,
   currentRefundAndVisitPolicyLabel,
   currentTermsAgeRepresentationText,
   currentTermsDocumentLabel,
   currentTermsVersion,
+  type AdmissionPartyField,
   type TicketPackageKey
 } from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
@@ -67,6 +70,11 @@ type CheckoutClientProps = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const visitorCounters = [
+  { field: "adults", category: admissionAgeCategories.adult, fewer: "Fewer adults", more: "More adults" },
+  { field: "children", category: admissionAgeCategories.youth, fewer: "Fewer youths", more: "More youths" },
+  { field: "freeChildren", category: admissionAgeCategories.child, fewer: "Fewer children", more: "More children" }
+] as const;
 const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
 
 function money(cents: number) {
@@ -124,8 +132,12 @@ export function CheckoutClient({
     () =>
       packages.find((item) => item.key === initialPackageKey)?.key ?? packages[0]?.key ?? "general"
   );
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
+  const [party, setParty] = useState<Record<AdmissionPartyField, number>>({
+    adults: 2,
+    children: 0,
+    freeChildren: 0
+  });
+  const [partyLimitNotice, setPartyLimitNotice] = useState<string | null>(null);
   const [visitDate, setVisitDate] = useState(initialVisitDate);
   const [entryTime, setEntryTime] = useState<string>(() => {
     if (!operatingHours) return checkoutEntryTimes[0].value;
@@ -151,6 +163,17 @@ export function CheckoutClient({
   const [verifiedTicketCode, setVerifiedTicketCode] = useState<string | null>(null);
 
   const selectedPackage = packages.find((item) => item.key === packageKey) ?? packages[0];
+  const partySize = party.adults + party.children + party.freeChildren;
+  const partyFull = partySize >= admissionMaxPartySize;
+  const counterPriceCents: Record<AdmissionPartyField, number> = {
+    adults: selectedPackage?.priceCents ?? admissionAgeCategories.adult.priceCents,
+    children: admissionAgeCategories.youth.priceCents,
+    freeChildren: admissionAgeCategories.child.priceCents
+  };
+  const estimatedTotalCents = visitorCounters.reduce(
+    (sum, counter) => sum + party[counter.field] * counterPriceCents[counter.field],
+    0
+  );
   const normalizedEmail = customerEmail.trim().toLowerCase();
   const selectedWeekday = operatingWeekdayForDate(visitDate);
   const availableEntryTimes = operatingHours
@@ -163,7 +186,8 @@ export function CheckoutClient({
     : Boolean(entryTime);
   const canReview =
     !!selectedPackage &&
-    adults > 0 &&
+    party.adults >= admissionMinAdults &&
+    partySize <= admissionMaxPartySize &&
     !!visitDate &&
     selectedEntryTimeAvailable &&
     emailPattern.test(normalizedEmail);
@@ -267,12 +291,25 @@ export function CheckoutClient({
     resetConsent();
   }
 
-  function updateGuests(kind: "adults" | "children", delta: number) {
-    if (kind === "adults") {
-      setAdults((current) => Math.min(20, Math.max(1, current + delta)));
-    } else {
-      setChildren((current) => Math.min(20, Math.max(0, current + delta)));
+  function counterMinimum(field: AdmissionPartyField) {
+    return field === "adults" ? admissionMinAdults : 0;
+  }
+
+  function updateGuests(field: AdmissionPartyField, delta: 1 | -1) {
+    if (delta > 0 && partyFull) {
+      setPartyLimitNotice(`An order can include up to ${admissionMaxPartySize} visitors, including children.`);
+      return;
     }
+    if (delta < 0 && party[field] <= counterMinimum(field)) {
+      setPartyLimitNotice(
+        field === "adults"
+          ? `Each order needs at least ${admissionMinAdults} ${admissionAgeCategories.adult.label}.`
+          : null
+      );
+      return;
+    }
+    setParty((current) => ({ ...current, [field]: current[field] + delta }));
+    setPartyLimitNotice(null);
     resetDraft();
   }
 
@@ -304,8 +341,9 @@ export function CheckoutClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packageKey,
-          adults,
-          children,
+          adults: party.adults,
+          children: party.children,
+          freeChildren: party.freeChildren,
           addons: {},
           visitDate,
           entryTime,
@@ -401,11 +439,6 @@ export function CheckoutClient({
 
       <div className="checkoutForm">
         <div className="checkoutPanel">
-          <div className="checkoutPanelHeader">
-            <p className="checkoutPanelLabel">Your visit</p>
-            <h2>The details</h2>
-          </div>
-
           <div className="checkoutPackages" role="radiogroup" aria-label="Ticket package">
             {packages.map((ticket) => (
               <button
@@ -423,44 +456,71 @@ export function CheckoutClient({
                 <span className="checkoutPackageDetail">
                   Observation deck and lounge, timed entry
                 </span>
-                <strong>{money(ticket.priceCents)}</strong>
-                <em>all-in, per adult</em>
+                <strong>
+                  {money(ticket.priceCents)} <small>per adult</small>
+                </strong>
               </button>
             ))}
           </div>
 
-          <div className="checkoutGuests">
-            <div className="checkoutCounter">
-              <div className="checkoutCounterLabel">
-                <span>Adults</span>
-                <em>{selectedPackage ? money(selectedPackage.priceCents) : "$20"} each</em>
+          <fieldset className="checkoutGuests" aria-describedby="checkout-party-rules">
+            <legend>Visitors</legend>
+            {visitorCounters.map((counter) => {
+              const count = party[counter.field];
+              const atMinimum = count <= counterMinimum(counter.field);
+              const priceCents = counterPriceCents[counter.field];
+              const labelId = `checkout-${counter.field}-label`;
+              return (
+                <div className="checkoutCounter" key={counter.field} role="group" aria-labelledby={labelId}>
+                  <div className="checkoutCounterLabel">
+                    <span id={labelId}>{counter.category.label}</span>
+                    <em>{priceCents === 0 ? "Free" : `${money(priceCents)} each`}</em>
+                  </div>
+                  <div className="checkoutStepper">
+                    <button
+                      type="button"
+                      aria-label={counter.fewer}
+                      aria-disabled={atMinimum}
+                      onClick={() => updateGuests(counter.field, -1)}
+                    >
+                      &minus;
+                    </button>
+                    <span aria-live="polite" aria-atomic="true">
+                      <span className="srOnly">{counter.category.label}: </span>
+                      {count}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={counter.more}
+                      aria-disabled={partyFull}
+                      onClick={() => updateGuests(counter.field, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            <dl className="checkoutPartyTotals" aria-live="polite" aria-atomic="true">
+              <div>
+                <dt>Total visitors</dt>
+                <dd>{partySize}</dd>
               </div>
-              <div className="checkoutStepper">
-                <button type="button" aria-label="Fewer adults" onClick={() => updateGuests("adults", -1)}>
-                  &minus;
-                </button>
-                <span aria-live="polite">{adults}</span>
-                <button type="button" aria-label="More adults" onClick={() => updateGuests("adults", 1)}>
-                  +
-                </button>
+              <div>
+                <dt>Estimated total</dt>
+                <dd>{money(estimatedTotalCents)}</dd>
               </div>
-            </div>
-            <div className="checkoutCounter">
-              <div className="checkoutCounterLabel">
-                <span>Ages 12 and under</span>
-                <em>{selectedPackage ? money(childPriceCents(selectedPackage.priceCents)) : "$10"} each</em>
-              </div>
-              <div className="checkoutStepper">
-                <button type="button" aria-label="Fewer children" onClick={() => updateGuests("children", -1)}>
-                  &minus;
-                </button>
-                <span aria-live="polite">{children}</span>
-                <button type="button" aria-label="More children" onClick={() => updateGuests("children", 1)}>
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
+            </dl>
+            <p className="checkoutHours" id="checkout-party-rules">
+              Each order needs at least {admissionMinAdults} {admissionAgeCategories.adult.label}. Up to{" "}
+              {admissionMaxPartySize} visitors per order, children included. Review Order confirms the exact total.
+            </p>
+            {partyLimitNotice ? (
+              <p className="checkoutError" role="status">
+                {partyLimitNotice}
+              </p>
+            ) : null}
+          </fieldset>
 
           <div className="checkoutGrid">
             <label>
@@ -523,18 +583,17 @@ export function CheckoutClient({
         </div>
       </div>
 
-      <aside className="checkoutSummary" aria-label="Order summary">
-        <div className="checkoutPanelHeader">
-          <p className="checkoutPanelLabel">Order</p>
-          <h2>{selectedPackage ? selectedPackage.name : "Ticket package"}</h2>
-        </div>
+      <aside className="checkoutSummary" aria-labelledby="checkout-summary-title">
+        <h2 className="checkoutSummaryTitle" id="checkout-summary-title">
+          Order summary
+        </h2>
 
         {draft ? (
           <div className="checkoutLines">
             {draft.draft.lines.map((line) => (
               <div className="checkoutLine" key={`${line.kind}-${line.name}`}>
                 <span>{line.name} x {line.quantity}</span>
-                <strong>{money(line.lineTotalCents)}</strong>
+                <strong>{line.lineTotalCents === 0 ? "Free" : money(line.lineTotalCents)}</strong>
               </div>
             ))}
             <div className="checkoutTotal">

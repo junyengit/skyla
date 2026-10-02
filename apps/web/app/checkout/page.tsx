@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listTicketPackages } from "@skyla/payments";
+import { admissionAgeCategories, admissionMaxPartySize, listTicketPackages } from "@skyla/payments";
 import { ArrowRight, MapPin, ShieldCheck } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
 import { CheckoutClient } from "@/components/checkout-client";
 import { LaunchStatusBanner } from "@/components/launch-status-banner";
+import { localAdmissionPreviewEnabled } from "@/lib/local-admission-preview";
 import { loadPublicOperatingConfig } from "@/lib/public-operating-config";
 
 export const dynamic = "force-dynamic";
 
+const fullVenueBookingHref = "/#venue-booking";
+const admissionRateSummary = Object.values(admissionAgeCategories)
+  .map((category) => `${category.label} ${category.priceCents ? `$${category.priceCents / 100}` : "free"}`)
+  .join(", ");
+
 const checkoutDescription = siteConfig.launched
-  ? "Reserve The View at Sky LA. $20 all-in per adult, timed entry above Wilshire."
+  ? "Reserve The View at Sky LA. Adults 18+ $20, ages 8–17 $10, ages 0–7 free. Timed entry above Wilshire."
   : "Individual tickets are unavailable. Sky LA is currently accepting full-venue booking inquiries only.";
 
 export const metadata: Metadata = {
@@ -37,7 +43,7 @@ function PreLaunchCheckout() {
           Sky LA
         </Link>
         <div className="navLinks">
-          <Link href="/#book-venue" prefetch={false}>
+          <Link href={fullVenueBookingHref} prefetch={false}>
             Full venue booking
           </Link>
         </div>
@@ -82,8 +88,17 @@ function PreLaunchCheckout() {
   );
 }
 
+function LocalAdmissionPreviewNotice() {
+  return (
+    <p className="checkoutPreviewNotice" role="note">
+      Local preview only. Ticket sales are off, so no order or payment can be created.
+    </p>
+  );
+}
+
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
-  if (!siteConfig.launched) {
+  const localPreview = !siteConfig.launched && localAdmissionPreviewEnabled();
+  if (!siteConfig.launched && !localPreview) {
     return <PreLaunchCheckout />;
   }
 
@@ -99,13 +114,16 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
 
   return (
     <main className="checkoutPage" data-native-checkout="true">
-      <nav className="nav checkoutNav" aria-label="Primary navigation">
+      <nav className="nav checkoutNav checkoutNavWithLinks" aria-label="Primary navigation">
         <Link className="brand" href="/">
           Sky LA
         </Link>
-        <div className="navLinks">
-          <Link href="/checkout" prefetch={false} aria-current="page">
+        <div className="navLinks checkoutNavLinks">
+          <Link className="checkoutNavCurrent" href="/checkout" prefetch={false} aria-current="page">
             Tickets
+          </Link>
+          <Link href={fullVenueBookingHref} prefetch={false}>
+            Full venue booking
           </Link>
         </div>
         <Link className="navCta" href="/">
@@ -113,15 +131,17 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         </Link>
       </nav>
 
+      {localPreview ? <LocalAdmissionPreviewNotice /> : null}
+
       <section className="checkoutHero">
-        <div className="checkoutEyebrow">
-          <MapPin size={16} />
-          {siteConfig.address.short}
-        </div>
         <h1>Checkout</h1>
         <p>
-          The View, $20 all-in per adult. Choose a date and entry time, then
-          continue to secure hosted card payment.
+          {admissionRateSummary}. Up to {admissionMaxPartySize} visitors per
+          order. No fees added at payment.
+        </p>
+        <p className="checkoutAddress">
+          <MapPin size={16} />
+          {siteConfig.address.short}
         </p>
       </section>
 

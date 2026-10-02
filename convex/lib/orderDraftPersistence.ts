@@ -1,9 +1,12 @@
 import {
   addons,
+  admissionAgeCategories,
+  admissionLineMetadata,
+  admissionLineName,
+  admissionPartyCounts,
+  admissionUnitAmountCents,
   cafeItems,
   catalogLineMetadata,
-  childDiscountRate,
-  childPriceCents,
   checkoutOrderLineRecords,
   checkoutOrderRecord,
   createCheckoutOrderDraft,
@@ -13,6 +16,7 @@ import {
   ticketPackages,
   type CatalogPricedItem,
   type AddonKey,
+  type AdmissionAgeCategoryKey,
   type CafeItemKey,
   type CheckoutOrderDraft,
   type PosSaleDraft,
@@ -29,6 +33,7 @@ export type CheckoutDraftArgs = {
   packageKey: TicketPackageKey;
   adults: number;
   children?: number;
+  freeChildren?: number;
   addons?: Partial<Record<AddonKey, number>>;
   visitDate?: string;
   entryTime?: string;
@@ -186,14 +191,13 @@ export function normalizeCheckoutDraftArgs(args: CheckoutDraftArgs): NormalizedC
   if (!(args.packageKey in ticketPackages)) {
     throw new Error("packageKey is not recognized");
   }
-  assertIntegerRange(args.adults, "adults", 1, 20);
-  const children = args.children ?? 0;
-  assertIntegerRange(children, "children", 0, 20);
+  const party = admissionPartyCounts(args);
 
   return withoutUndefined({
     packageKey: args.packageKey,
-    adults: args.adults,
-    children: children > 0 ? children : undefined,
+    adults: party.adults,
+    children: party.children > 0 ? party.children : undefined,
+    freeChildren: party.freeChildren > 0 ? party.freeChildren : undefined,
     addons: normalizeCheckoutAddons(args.addons),
     visitDate: normalizeVisitDate(args.visitDate),
     entryTime: normalizeEntryTime(args.entryTime),
@@ -276,6 +280,7 @@ export function checkoutDraftFingerprint(input: NormalizedCheckoutDraftArgs) {
     packageKey: input.packageKey,
     adults: input.adults,
     children: input.children,
+    freeChildren: input.freeChildren,
     addons: input.addons,
     visitDate: input.visitDate,
     entryTime: input.entryTime,
@@ -457,13 +462,26 @@ function assertCatalogLineAmount(
   metadata: Record<string, string | number | boolean>,
   lineLabel: string
 ) {
-  const isChildTicket = line.kind === "ticket" && metadata.childDiscountRate === childDiscountRate;
-  if (line.kind !== "ticket" && metadata.childDiscountRate !== undefined) {
-    throw new Error(`${lineLabel} has child pricing metadata on a non-ticket line`);
+  if (metadata.childDiscountRate !== undefined) {
+    throw new Error(`${lineLabel} has retired child discount metadata`);
   }
 
-  const expectedName = isChildTicket ? `${item.name} Child` : item.name;
-  const expectedUnitAmountCents = isChildTicket ? childPriceCents(item.priceCents) : item.priceCents;
+  let expectedName = item.name;
+  let expectedUnitAmountCents = item.priceCents;
+  if (metadata.ageCategory !== undefined || metadata.admissionPolicyVersion !== undefined) {
+    if (item.kind !== "ticket") {
+      throw new Error(`${lineLabel} has admission age metadata on a non-ticket line`);
+    }
+    const category = admissionCategoryForMetadata(metadata.ageCategory, lineLabel);
+    const expectedMetadata = admissionLineMetadata(item, category);
+    for (const [key, value] of Object.entries(expectedMetadata)) {
+      if (metadata[key] !== value) {
+        throw new Error(`${lineLabel} has mismatched admission age metadata: ${key}`);
+      }
+    }
+    expectedName = admissionLineName(item, category);
+    expectedUnitAmountCents = admissionUnitAmountCents(item, category);
+  }
 
   if (line.name !== expectedName) {
     throw new Error(`${lineLabel} name does not match the code-owned catalog`);
@@ -474,6 +492,13 @@ function assertCatalogLineAmount(
   if (line.quantity * line.unitAmountCents !== line.lineTotalCents) {
     throw new Error(`${lineLabel} total is inconsistent with quantity and unit price`);
   }
+}
+
+function admissionCategoryForMetadata(value: unknown, lineLabel: string) {
+  if (typeof value !== "string" || !Object.hasOwn(admissionAgeCategories, value)) {
+    throw new Error(`${lineLabel} has an unknown admission age category`);
+  }
+  return admissionAgeCategories[value as AdmissionAgeCategoryKey];
 }
 
 function assertCustomLineMetadata(line: DraftResultLine, lineLabel: string) {

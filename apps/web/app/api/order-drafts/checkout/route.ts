@@ -69,6 +69,7 @@ export async function POST(request: Request) {
             packageKey: input.packageKey,
             adults: input.adults,
             children: input.children,
+            freeChildren: input.freeChildren,
             addons: input.addons,
             visitDate: input.visitDate,
             entryTime: input.entryTime,

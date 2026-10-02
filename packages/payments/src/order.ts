@@ -1,11 +1,17 @@
 import {
   addons,
+  admissionAgeCategories,
+  admissionLineName,
+  admissionMaxPartySize,
+  admissionMinAdults,
+  admissionPolicyVersion,
   bookingFeeCents,
   cafeItems,
   catalogLineMetadata,
-  childPriceCents,
   type AddonKey,
+  type AdmissionAgeCategory,
   type CafeItemKey,
+  type TicketPackage,
   type TicketPackageKey,
   ticketPackages
 } from "./catalog";
@@ -53,8 +59,12 @@ export type OrderLine = {
 
 export type CheckoutOrderInput = {
   packageKey: TicketPackageKey;
+  /** Adults 18+, at the package price. */
   adults: number;
+  /** Paid youths 8-17. Kept as `children` for API compatibility. */
   children?: number;
+  /** Children 0-7, admitted free as a zero-priced ticket line. */
+  freeChildren?: number;
   addons?: Partial<Record<AddonKey, number>>;
   visitDate?: string;
   entryTime?: string;
@@ -100,10 +110,46 @@ function assertPositiveInteger(value: number, label: string) {
   }
 }
 
-function assertNonNegativeInteger(value: number, label: string) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`${label} must be a non-negative integer`);
+export type AdmissionPartyCounts = {
+  adults: number;
+  children: number;
+  freeChildren: number;
+  partySize: number;
+};
+
+function assertAdmissionCount(value: unknown, label: string, min: number) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < min || value > admissionMaxPartySize) {
+    throw new Error(`${label} must be a whole number from ${min} to ${admissionMaxPartySize}`);
   }
+  return value;
+}
+
+export function admissionPartyCounts(input: {
+  adults: unknown;
+  children?: unknown;
+  freeChildren?: unknown;
+}): AdmissionPartyCounts {
+  const adults = assertAdmissionCount(input.adults, "adults", admissionMinAdults);
+  const children = assertAdmissionCount(input.children ?? 0, "children", 0);
+  const freeChildren = assertAdmissionCount(input.freeChildren ?? 0, "freeChildren", 0);
+  const partySize = adults + children + freeChildren;
+  if (partySize > admissionMaxPartySize) {
+    throw new Error(`party size must be ${admissionMaxPartySize} visitors or fewer`);
+  }
+  return { adults, children, freeChildren, partySize };
+}
+
+export function admissionLineMetadata(ticket: TicketPackage, category: AdmissionAgeCategory) {
+  return {
+    ...catalogLineMetadata(ticket),
+    admissionPolicyVersion,
+    ageCategory: category.key,
+    ageRange: category.ageRange
+  };
+}
+
+export function admissionUnitAmountCents(ticket: Pick<TicketPackage, "priceCents">, category: AdmissionAgeCategory) {
+  return category.key === "adult" ? ticket.priceCents : category.priceCents;
 }
 
 function addLine(lines: OrderLine[], line: Omit<OrderLine, "lineTotalCents">) {
@@ -125,34 +171,27 @@ function totals(lines: OrderLine[], includeBookingFee: boolean): DraftTotals {
 }
 
 export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrderDraft {
-  const adults = input.adults;
-  const children = input.children ?? 0;
-  assertPositiveInteger(adults, "adults");
-  assertNonNegativeInteger(children, "children");
+  const party = admissionPartyCounts(input);
 
-  const ticket = ticketPackages[input.packageKey];
+  const ticket: TicketPackage | undefined = ticketPackages[input.packageKey];
   if (!ticket || !ticket.active) {
     throw new Error("Ticket package is not bookable");
   }
+  if (ticket.admissionPolicyVersion !== admissionPolicyVersion) {
+    throw new Error("Ticket package has no confirmed admission age policy");
+  }
 
   const lines: OrderLine[] = [];
-  addLine(lines, {
-    kind: "ticket",
-    productKey: ticket.key,
-    name: ticket.name,
-    quantity: adults,
-    unitAmountCents: ticket.priceCents,
-    metadata: catalogLineMetadata(ticket)
-  });
-
-  if (children > 0) {
+  for (const category of Object.values(admissionAgeCategories)) {
+    const quantity = party[category.partyField];
+    if (quantity === 0) continue;
     addLine(lines, {
       kind: "ticket",
       productKey: ticket.key,
-      name: `${ticket.name} Child`,
-      quantity: children,
-      unitAmountCents: childPriceCents(ticket.priceCents),
-      metadata: { ...catalogLineMetadata(ticket), childDiscountRate: 0.5 }
+      name: admissionLineName(ticket, category),
+      quantity,
+      unitAmountCents: admissionUnitAmountCents(ticket, category),
+      metadata: admissionLineMetadata(ticket, category)
     });
   }
 

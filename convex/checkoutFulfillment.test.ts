@@ -55,6 +55,19 @@ describe("checkout fulfillment helpers", () => {
     );
   });
 
+  it("counts zero-priced free child ticket lines in the confirmed party size", () => {
+    const admissionLines = [
+      { kind: "ticket" as const, quantity: 1, unitAmountCents: 2000 },
+      { kind: "ticket" as const, quantity: 2, unitAmountCents: 1000 },
+      { kind: "ticket" as const, quantity: 3, unitAmountCents: 0 },
+      { kind: "addon" as const, quantity: 1, unitAmountCents: 800 }
+    ];
+    const result = buildConfirmedCheckoutFulfillment(order, admissionLines, now);
+
+    expect(result.booking.partySize).toBe(6);
+    expect(result.auditMetadata.ticketQuantity).toBe(6);
+  });
+
   it.each([undefined, "   "])("rejects missing customerEmailLower (%s)", (customerEmailLower) => {
     expect(() => assertCheckoutFulfillmentReady({ ...order, customerEmailLower }, lines, now)).toThrow(
       "customerEmailLower is required for checkout fulfillment"

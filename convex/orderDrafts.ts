@@ -92,6 +92,7 @@ export const createCheckoutOrderDraft = internalMutation({
     packageKey: ticketPackageKey,
     adults: v.number(),
     children: v.optional(v.number()),
+    freeChildren: v.optional(v.number()),
     addons: addonQuantities,
     visitDate: v.optional(v.string()),
     entryTime: v.optional(v.string()),

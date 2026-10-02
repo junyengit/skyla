@@ -125,7 +125,11 @@ export function stripeCheckoutLineItems(snapshot: StripeCheckoutSnapshot) {
     throw new Error("Stored line items do not match order subtotal");
   }
 
-  const checkoutLines = storedLines.map(({ lineTotalCents: _lineTotalCents, ...line }) => line);
+  // Free admission lines (children 0-7) stay on the stored order and booking
+  // party size; Stripe only receives lines that carry a charge.
+  const checkoutLines = storedLines
+    .filter((line) => line.unitAmountCents > 0)
+    .map(({ lineTotalCents: _lineTotalCents, ...line }) => line);
   if (snapshot.feeCents > 0) {
     checkoutLines.push({
       name: "Online booking fee",
@@ -217,8 +221,8 @@ function normalizeLine(line: StripeCheckoutLine) {
   if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
     throw new Error("Stripe checkout line quantity must be a positive integer");
   }
-  if (!Number.isInteger(line.unitAmountCents) || line.unitAmountCents < 50) {
-    throw new Error("Stripe checkout line unit amount must be at least 50 cents");
+  if (!Number.isInteger(line.unitAmountCents) || (line.unitAmountCents !== 0 && line.unitAmountCents < 50)) {
+    throw new Error("Stripe checkout line unit amount must be free or at least 50 cents");
   }
   if (line.quantity * line.unitAmountCents !== line.lineTotalCents) {
     throw new Error("Stripe checkout line total is inconsistent");
