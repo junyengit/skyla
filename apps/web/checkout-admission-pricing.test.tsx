@@ -129,7 +129,7 @@ describe("local admission preview gate", () => {
     vi.stubEnv("SKYLA_LOCAL_ADMISSION_PREVIEW", "1");
 
     const html = await renderPage();
-    expect(html).toContain("Individual tickets are not available.");
+    expect(html).toContain("Online ticket purchasing is not enabled here yet.");
     expect(html).not.toContain("Visitors");
     expect(html).not.toContain("Local preview only");
   });

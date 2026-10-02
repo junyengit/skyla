@@ -18,6 +18,20 @@
   margin-inline: calc(-1 * clamp(16px, 4vw, 56px));
 }
 
+/* Keep contact and home targets usable while online purchasing is gated. */
+.checkoutPage.prelaunch .brand,
+.checkoutPage.prelaunch .launchBannerEmail {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.checkoutPage) {
+    scroll-behavior: auto;
+  }
+}
+
 .checkoutHero {
   padding: clamp(24px, 4vw, 48px) 0 clamp(28px, 4vw, 48px);
 }

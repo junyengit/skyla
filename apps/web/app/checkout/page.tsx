@@ -17,7 +17,7 @@ const admissionRateSummary = Object.values(admissionAgeCategories)
 
 const checkoutDescription = siteConfig.launched
   ? "Reserve The View at Sky LA. Adults 18+ $20, ages 8–17 $10, ages 0–7 free. Timed entry above Wilshire."
-  : "Individual tickets are unavailable. Sky LA is currently accepting full-venue booking inquiries only.";
+  : "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings.";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -61,20 +61,17 @@ function PreLaunchCheckout() {
         </div>
         <h1>Checkout</h1>
         <p>
-          Individual tickets are not available. Sky LA is currently accepting
-          inquiries only for exclusive use of the full venue.
+          Plan a normal visit or book the full venue.
         </p>
       </section>
 
       <section className="checkoutPrelaunch" aria-label="Ticket sales status">
         <div className="checkoutPanelHeader">
-          <p className="checkoutPanelLabel">Ticket status</p>
-          <h2>Full-venue bookings only.</h2>
+          <h2>Contact Sky LA</h2>
         </div>
         <p className="checkoutPrelaunchCopy">
-          There is no individual admission or payment to make here. Sky LA is
-          accepting full-venue booking inquiries only for the observation deck
-          and indoor lounge together.
+          Contact the Sky LA team about normal visits. For exclusive use of the
+          observation deck and indoor lounge, request full-venue availability.
         </p>
         <a
           className="primaryAction"

@@ -14,9 +14,9 @@ describe("siteConfig", () => {
   it("keeps the pre-launch gate and canonical status copy", () => {
     expect(siteConfig.launched).toBe(false);
     expect(siteConfig.launchStatus).toEqual({
-      label: "Full venue bookings only",
+      label: "Online tickets pending",
       message:
-        "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
+        "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings."
     });
   });
 });

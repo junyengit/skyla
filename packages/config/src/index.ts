@@ -5,13 +5,12 @@ export const siteConfig = {
   domain: "skydeckla.com",
   email: "reservations@skydeckla.com",
   // Individual-ticket transaction gate. False keeps checkout and purchase APIs
-  // disabled. The public homepage offer changes only through an explicit
-  // product decision; it is currently full-venue bookings only.
+  // disabled. This gate describes online purchasing, not venue operations.
   launched: false as boolean,
   launchStatus: {
-    label: "Full venue bookings only",
+    label: "Online tickets pending",
     message:
-      "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
+      "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings."
   },
   address: {
     short: "6100 Wilshire Blvd · Los Angeles",

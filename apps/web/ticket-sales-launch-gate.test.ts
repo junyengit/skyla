@@ -51,7 +51,7 @@ describe("pre-launch ticket-sales API gate", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       error:
-        "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only.",
+        "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings.",
       code: "ticket_sales_not_live"
     });
     expect(fetchMock).not.toHaveBeenCalled();

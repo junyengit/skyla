@@ -51,7 +51,7 @@ describe("Convex public gateway pre-launch gate", () => {
         ok: false,
         code: "ticket_sales_not_live",
         error:
-          "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
+          "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings."
       });
       expect(ctx.runMutation).not.toHaveBeenCalled();
       expect(ctx.runAction).not.toHaveBeenCalled();
