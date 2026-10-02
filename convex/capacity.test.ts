@@ -64,13 +64,17 @@ function createHarness() {
               sortField ??= field;
               return builder;
             },
-            gte(field: string, value: string) {
-              filters.push((row) => typeof row[field] === "string" && (row[field] as string) >= value);
+            gte(field: string, value: string | number) {
+              filters.push((row) => row[field] !== undefined && (row[field] as string | number) >= value);
               sortField ??= field;
               return builder;
             },
-            lt(field: string, value: number) {
-              filters.push((row) => typeof row[field] === "number" && (row[field] as number) < value);
+            gt(field: string, value: string | number) {
+              filters.push((row) => row[field] !== undefined && (row[field] as string | number) > value);
+              return builder;
+            },
+            lt(field: string, value: string | number) {
+              filters.push((row) => row[field] !== undefined && (row[field] as string | number) < value);
               return builder;
             }
           };
@@ -337,7 +341,9 @@ describe("occupancy forecast", () => {
     const availability = await availabilityFor(harness, 4);
     expect(slot(availability, "14:00")).toMatchObject({ status: "available", remaining: 30 });
     const occupancy = await loadDateOccupancy(harness.ctx as never, visitDate, defaultHours);
-    expect(peakOccupancy(occupancy.intervals, 12 * 60, 22 * 60)).toBe(30);
+    // Availability reads active unresolved presence, rather than replaying
+    // immutable historical occupancy after this party has fully departed.
+    expect(peakOccupancy(occupancy.intervals, 12 * 60, 22 * 60)).toBe(0);
     expect(peakOccupancy(occupancy.intervals, 13 * 60, 22 * 60)).toBe(0);
   });
 
@@ -352,7 +358,7 @@ describe("occupancy forecast", () => {
     expect((await availabilityFor(harness, 10)).dayStatus).toBe("open");
   });
 
-  it("counts committed bookings that have no reservation row, once", async () => {
+  it("fails closed for old check-in occupancy while retaining committed booking spans", async () => {
     const harness = createHarness();
     harness.rows("bookings").push(
       { _id: "bookings|pos", _creationTime: 1, bookingRef: "SALE-1", saleRef: "SALE-1", visitDate, partySize: 5, status: "confirmed", createdAt: 1 },
@@ -373,7 +379,7 @@ describe("occupancy forecast", () => {
     });
 
     const availability = await availabilityFor(harness, 1);
-    expect(slot(availability, "14:00")).toMatchObject({ status: "available", remaining: 18 });
+    expect(slot(availability, "14:00")).toMatchObject({ status: "unverified", remaining: 0 });
   });
 
   it.each([

@@ -36,6 +36,7 @@ export default function AdminPage() {
             <span>Staff ops</span>
           </div>
           <nav aria-label="Staff navigation">
+            <Link href="/admission" prefetch={false}>Admission</Link>
             <Link href="/pos" prefetch={false}>
               POS
             </Link>

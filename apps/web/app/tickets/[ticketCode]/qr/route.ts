@@ -40,7 +40,7 @@ export async function GET(request: Request, context: TicketQrRouteContext) {
     const svg = await QRCode.toString(ticketUrl, {
       type: "svg",
       errorCorrectionLevel: "M",
-      margin: 2,
+      margin: 4,
       width: 260,
       color: { dark: "#09090b", light: "#ffffff" }
     });

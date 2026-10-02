@@ -38,6 +38,7 @@ export function proxy(request: NextRequest, event?: NextFetchEvent) {
 
 export const config = {
   matcher: [
+    "/admission/:path*",
     "/admin/:path*",
     "/pos/:path*",
     "/pos-next/:path*",

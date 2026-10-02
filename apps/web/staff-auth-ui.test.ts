@@ -45,7 +45,7 @@ describe("staff authentication UI", () => {
 
   it("restricts post-sign-in navigation to native staff routes", () => {
     expect(signIn).toContain("forceRedirectUrl={returnTo}");
-    expect(signInPage).toContain('new Set(["/admin", "/pos", "/pos-next"] as const)');
+    expect(signInPage).toContain('new Set(["/admin", "/pos", "/pos-next", "/admission"] as const)');
     expect(signInPage).not.toContain("redirect_url");
   });
 

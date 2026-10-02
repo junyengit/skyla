@@ -995,6 +995,7 @@ export function CheckoutClient({
             <p className="checkoutHours" id="checkout-party-rules">
               Each order needs at least {admissionMinAdults} {admissionAgeCategories.adult.label}. Up to{" "}
               {admissionMaxPartySize} visitors per order, children included. Review Order confirms the exact total.
+              {" "}Valid on the selected Los Angeles date, from entry time until closing. One admission for the booked party; no re-entry.
             </p>
             {partyLimitNotice ? (
               <p className="checkoutError" role="status">

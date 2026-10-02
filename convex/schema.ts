@@ -353,6 +353,7 @@ export default defineSchema({
     updatedAt: v.number()
   })
     .index("by_dedupeKey", ["dedupeKey"])
+    .index("by_saleRef", ["saleRef"])
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_orderRef", ["orderRef"]),
 
@@ -377,7 +378,13 @@ export default defineSchema({
     status: v.string(),
     emailLower: v.optional(v.string()),
     checkedInAt: v.optional(v.number()),
+    // True only when an immutable bookingAdmissions ledger owns this check-in.
+    admissionTracked: v.optional(v.literal(true)),
+    admittedPartySize: v.optional(v.number()),
+    departedPartySize: v.optional(v.number()),
+    departedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
+    refundCancellationOwner: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     legacyId: v.optional(v.string()),
@@ -389,9 +396,26 @@ export default defineSchema({
     .index("by_orderRef", ["orderRef"])
     .index("by_saleRef", ["saleRef"])
     .index("by_visitDate_status", ["visitDate", "status"])
+    .index("by_visitDate_status_departedAt", ["visitDate", "status", "departedAt"])
+    .index("by_admissionTracked_checkedInAt", ["admissionTracked", "checkedInAt"])
+    .index("by_admissionTracked_status", ["admissionTracked", "status"])
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
     .index("by_legacyId", ["legacyId"])
     .index("by_createdAt", ["createdAt"]),
+
+  bookingAdmissions: defineTable({
+    bookingRef: v.string(),
+    visitDate: v.string(),
+    partySize: v.number(),
+    admittedAt: v.number(),
+    admittedBy: v.id("staffUsers"),
+    departedCount: v.number(),
+    inside: v.boolean(),
+    departedAt: v.optional(v.number()),
+    updatedAt: v.number()
+  })
+    .index("by_bookingRef", ["bookingRef"])
+    .index("by_inside", ["inside"]),
 
   capacityReservations: defineTable({
     orderRef: v.string(),
@@ -409,13 +433,15 @@ export default defineSchema({
     releasedAt: v.optional(v.number()),
     releaseReason: v.optional(v.string()),
     exceptionReason: v.optional(v.string()),
-    // Future staff admission milestone: a recorded departure ends the span.
+    // Only audited physical departures release paid visit capacity.
     departedAt: v.optional(v.number()),
+    departedCount: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number()
   })
     .index("by_orderRef", ["orderRef"])
-    .index("by_visitDate_status", ["visitDate", "status"]),
+    .index("by_visitDate_status", ["visitDate", "status"])
+    .index("by_visitDate_status_departedAt", ["visitDate", "status", "departedAt"]),
 
   privateEvents: defineTable({
     eventRef: v.string(),

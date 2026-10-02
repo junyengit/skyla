@@ -1235,6 +1235,7 @@ function refundStatusTransitionAllowed(from: StripeRefundStatus, to: StripeRefun
 
 type RefundFulfillmentEntityType = "order" | "posSale";
 type RefundFulfillmentInvalidation = {
+  auditEventId: Id<"auditEvents">;
   createdAt: number;
   metadata?: Record<string, string | number | boolean>;
 };
@@ -1255,7 +1256,7 @@ async function findActiveRefundFulfillmentInvalidation(
   for (const event of events.toSorted((left, right) => left.createdAt - right.createdAt)) {
     if (event.metadata?.providerPaymentIntentId !== args.providerPaymentIntentId) continue;
     if (event.action === refundFulfillmentInvalidatedAction) {
-      active = { createdAt: event.createdAt, metadata: event.metadata };
+      active = { auditEventId: event._id, createdAt: event.createdAt, metadata: event.metadata };
     } else if (event.action === refundFulfillmentRestoredAction) {
       active = undefined;
     }
@@ -1311,18 +1312,7 @@ async function reconcileRefundFulfillment(
     const bookingPreviousStatus = booking?.status;
     const bookingPreviousCheckedInAt = booking?.checkedInAt;
     const bookingPreviousCancelledAt = booking?.cancelledAt;
-    if (entityStatusChanged) {
-      await ctx.db.patch(entity._id, { status: "canceled", updatedAt: args.now });
-    }
-    if (booking && bookingStatusChanged) {
-      await ctx.db.patch(booking._id, {
-        status: "cancelled",
-        cancelledAt: args.now,
-        updatedAt: args.now
-      });
-    }
-
-    await ctx.db.insert("auditEvents", {
+    const invalidationId = await ctx.db.insert("auditEvents", {
       action: refundFulfillmentInvalidatedAction,
       entityType,
       entityRef,
@@ -1340,6 +1330,19 @@ async function reconcileRefundFulfillment(
       }),
       createdAt: args.now
     });
+    if (entityStatusChanged) {
+      await ctx.db.patch(entity._id, { status: "canceled", updatedAt: args.now });
+    }
+    if (booking && bookingStatusChanged) {
+      // Status ownership belongs to this immutable audit record. Physical
+      // departure updates can change updatedAt without changing this owner.
+      await ctx.db.patch(booking._id, {
+        status: "cancelled",
+        cancelledAt: args.now,
+        refundCancellationOwner: invalidationId,
+        updatedAt: args.now
+      });
+    }
     return;
   }
 
@@ -1356,7 +1359,6 @@ async function reconcileRefundFulfillment(
     await ctx.db.patch(entity._id, { status: "paid", updatedAt: args.now });
   }
 
-  const expectedBookingUpdatedAt = numericMetadata(metadata.bookingUpdatedAt);
   const previousBookingStatus = stringMetadata(metadata.bookingPreviousStatus);
   const bookingRestored = Boolean(
     booking &&
@@ -1365,15 +1367,15 @@ async function reconcileRefundFulfillment(
       booking.bookingRef === metadata.bookingRef &&
       previousBookingStatus &&
       previousBookingStatus !== "cancelled" &&
-      expectedBookingUpdatedAt !== undefined &&
-      booking.updatedAt === expectedBookingUpdatedAt
+      booking.refundCancellationOwner === activeInvalidation.auditEventId
   );
   let ticketDeliveryRequeued = false;
   if (booking && bookingRestored) {
     await ctx.db.patch(booking._id, {
       status: previousBookingStatus!,
-      checkedInAt: numericMetadata(metadata.bookingPreviousCheckedInAt),
+      checkedInAt: booking.checkedInAt ?? numericMetadata(metadata.bookingPreviousCheckedInAt),
       cancelledAt: numericMetadata(metadata.bookingPreviousCancelledAt),
+      refundCancellationOwner: undefined,
       updatedAt: args.now
     });
     const ticketDelivery = await ctx.db

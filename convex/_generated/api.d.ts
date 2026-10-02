@@ -9,6 +9,7 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as admissions from "../admissions.js";
 import type * as availability from "../availability.js";
 import type * as catalog from "../catalog.js";
 import type * as checkoutReconciliation from "../checkoutReconciliation.js";
@@ -20,6 +21,7 @@ import type * as legacyMigration from "../legacyMigration.js";
 import type * as lib_adminConfig from "../lib/adminConfig.js";
 import type * as lib_adminOperations from "../lib/adminOperations.js";
 import type * as lib_adminVouchers from "../lib/adminVouchers.js";
+import type * as lib_admission from "../lib/admission.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_capacity from "../lib/capacity.js";
 import type * as lib_catalogVersioning from "../lib/catalogVersioning.js";
@@ -31,6 +33,7 @@ import type * as lib_checkoutSettlement from "../lib/checkoutSettlement.js";
 import type * as lib_inquiries from "../lib/inquiries.js";
 import type * as lib_legacyMigration from "../lib/legacyMigration.js";
 import type * as lib_memberApplications from "../lib/memberApplications.js";
+import type * as lib_occupancy from "../lib/occupancy.js";
 import type * as lib_operatingHours from "../lib/operatingHours.js";
 import type * as lib_operationsExceptions from "../lib/operationsExceptions.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
@@ -68,6 +71,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  admissions: typeof admissions;
   availability: typeof availability;
   catalog: typeof catalog;
   checkoutReconciliation: typeof checkoutReconciliation;
@@ -79,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "lib/adminConfig": typeof lib_adminConfig;
   "lib/adminOperations": typeof lib_adminOperations;
   "lib/adminVouchers": typeof lib_adminVouchers;
+  "lib/admission": typeof lib_admission;
   "lib/auth": typeof lib_auth;
   "lib/capacity": typeof lib_capacity;
   "lib/catalogVersioning": typeof lib_catalogVersioning;
@@ -90,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   "lib/inquiries": typeof lib_inquiries;
   "lib/legacyMigration": typeof lib_legacyMigration;
   "lib/memberApplications": typeof lib_memberApplications;
+  "lib/occupancy": typeof lib_occupancy;
   "lib/operatingHours": typeof lib_operatingHours;
   "lib/operationsExceptions": typeof lib_operationsExceptions;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;

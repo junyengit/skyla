@@ -1,4 +1,4 @@
-export const currentTermsVersion = "prelaunch-2026-08-06-v1";
+export const currentTermsVersion = "prelaunch-admission-2026-10-02-v1";
 export const currentTermsPath = "/terms";
 export const currentTermsAgeRepresentationText = "I am 18 or older";
 export const currentTermsDocumentLabel = "Terms of Use and Ticket Purchase Terms";

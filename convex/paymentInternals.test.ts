@@ -34,6 +34,7 @@ type TableName =
   | "refunds"
   | "webhookEvents"
   | "bookings"
+  | "bookingAdmissions"
   | "ticketDeliveries"
   | "config"
   | "auditEvents"
@@ -1908,6 +1909,7 @@ function createEmptyState(): MockState {
     refunds: [],
     webhookEvents: [],
     bookings: [],
+    bookingAdmissions: [],
     ticketDeliveries: [],
     config: [],
     auditEvents: [],
@@ -1938,16 +1940,33 @@ function createMockCtx(state: MockState): {
       query(table) {
         return {
           withIndex(_indexName, buildQuery) {
-            const filters: Array<{ field: string; value: unknown }> = [];
+            const filters: Array<{ field: string; value: unknown; gte?: boolean; gt?: boolean; lt?: boolean }> = [];
             const query = {
               eq(field: string, value: unknown) {
                 filters.push({ field, value });
+                return query;
+              },
+              gte(field: string, value: number) {
+                filters.push({ field, value, gte: true });
+                return query;
+              },
+              gt(field: string, value: string) {
+                filters.push({ field, value, gt: true });
+                return query;
+              },
+              lt(field: string, value: string) {
+                filters.push({ field, value, lt: true });
                 return query;
               }
             };
             buildQuery(query);
             const collect = async () =>
-              state[table].filter((doc) => filters.every((filter) => doc[filter.field] === filter.value));
+              state[table].filter((doc) => filters.every((filter) => {
+                if (filter.gte) return typeof doc[filter.field] === "number" && Number(doc[filter.field]) >= Number(filter.value);
+                if (filter.gt) return typeof doc[filter.field] === "string" && String(doc[filter.field]) > String(filter.value);
+                if (filter.lt) return typeof doc[filter.field] === "string" && String(doc[filter.field]) < String(filter.value);
+                return doc[filter.field] === filter.value;
+              }));
             return {
               async first() {
                 const results = await collect();

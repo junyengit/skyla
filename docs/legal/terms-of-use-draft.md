@@ -37,7 +37,7 @@ Payment is processed through Stripe or another identified payment provider. Sky 
 
 ## 5. Tickets, arrival, and transfer
 
-Tickets are valid only for the date, entry time, ticket types, and quantities shown in the confirmation. Guests should arrive within **[ARRIVAL GRACE — recommended: 30 minutes]** of the selected time. Entry outside that window depends on capacity and is not guaranteed.
+Tickets are valid only on the selected America/Los_Angeles calendar date, from the selected entry time until closing, for the booked party and quantities shown in the confirmation. One admission exhausts the ticket. Re-entry is not allowed. Adults ages 18+ pay $20, ages 8–17 pay $10, and ages 0–7 are free. Every person counts toward the maximum of 30 physically inside at once.
 
 A ticket or QR code may be used only once. Copying, counterfeiting, reselling in violation of law, or using a ticket after a refund is prohibited.
 

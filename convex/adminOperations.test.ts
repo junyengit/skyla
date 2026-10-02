@@ -11,7 +11,7 @@ import {
 const now = Date.UTC(2026, 6, 4, 12);
 
 describe("admin operation helpers", () => {
-  it("builds reversible booking status patches", () => {
+  it("preserves redemption history when changing booking billing status", () => {
     expect(bookingStatusPatch("checked-in", now)).toEqual({
       status: "checked-in",
       updatedAt: now,
@@ -28,7 +28,6 @@ describe("admin operation helpers", () => {
     expect(bookingStatusPatch("confirmed", now)).toEqual({
       status: "confirmed",
       updatedAt: now,
-      checkedInAt: undefined,
       cancelledAt: undefined
     });
   });

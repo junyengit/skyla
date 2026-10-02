@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-const allowedReturnRoutes = new Set(["/admin", "/pos", "/pos-next"] as const);
+const allowedReturnRoutes = new Set(["/admin", "/pos", "/pos-next", "/admission"] as const);
 
 export default async function StaffSignInPage({
   searchParams
@@ -20,8 +20,8 @@ export default async function StaffSignInPage({
 }) {
   const configured = isStaffAuthConfigured();
   const requestedReturn = (await searchParams).returnTo;
-  const returnTo = allowedReturnRoutes.has(requestedReturn as "/admin" | "/pos" | "/pos-next")
-    ? (requestedReturn as "/admin" | "/pos" | "/pos-next")
+  const returnTo = allowedReturnRoutes.has(requestedReturn as "/admin" | "/pos" | "/pos-next" | "/admission")
+    ? (requestedReturn as "/admin" | "/pos" | "/pos-next" | "/admission")
     : "/admin";
 
   return (

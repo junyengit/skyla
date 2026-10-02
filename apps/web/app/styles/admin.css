@@ -965,4 +965,20 @@
     grid-template-columns: 1fr;
   }
 }
-
+.admissionDesk {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+.admissionDesk p { line-height: 1.6; }
+.admissionDesk h1 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; margin: 20px 0; }
+.admissionDesk form { display: grid; gap: 12px; margin: 24px 0; }
+.admissionDesk input { width: 100%; min-width: 0; min-height: 48px; padding: 12px; font: inherit; background: #16161a; color: #fff; border: 1px solid #8b8b90; }
+.admissionDesk input:focus-visible, .admissionDesk button:focus-visible, .admissionActions button:focus-visible { outline: 3px solid #e0bd60; outline-offset: 3px; }
+.admissionDesk .secondaryAction { background: #16161a; border: 1px solid #8b8b90; color: #fff; }
+.admissionDesk button, .admissionActions button { min-height: 44px; padding: 10px 16px; font-size: 1rem; font-weight: 600; text-transform: none; letter-spacing: normal; }
+.admissionDesk button:disabled, .admissionActions button:disabled { opacity: .6; }
+.admissionBooking { padding: 16px 0; overflow-wrap: anywhere; }
+.admissionActions { flex-wrap: wrap; gap: 12px; }
+.admissionActions span { flex-basis: 100%; }
+.adminOpsPage .admissionActions button { min-height: 44px; padding: 10px 16px; font-size: 1rem; font-weight: 600; text-transform: none; }

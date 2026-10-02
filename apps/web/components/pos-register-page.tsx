@@ -37,6 +37,7 @@ export function PosRegisterPage({ variant }: PosRegisterPageProps) {
           <span>{variant === "primary" ? "Server-priced POS" : "Server-priced draft"}</span>
         </div>
         <nav aria-label="Staff navigation">
+          <Link href="/admission" prefetch={false}>Admission</Link>
           <Link href="/admin" prefetch={false}>
             Admin
           </Link>

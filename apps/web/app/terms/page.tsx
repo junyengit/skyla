@@ -13,7 +13,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Use"
-      updated="August 6, 2026"
+      updated="October 2, 2026"
       intro={
         <>
           <p>
@@ -33,7 +33,7 @@ export default function TermsPage() {
         {
           title: "Tickets And Bookings",
           items: [
-            "All tickets are for a specific date and timed entry. Please arrive within 30 minutes of your selected entry window.",
+            "Tickets are valid on the selected Los Angeles date, from the selected entry time until closing. One admission for the booked party; no re-entry. Adults 18+ pay $20, ages 8–17 pay $10, and ages 0–7 are free. All ages count toward venue capacity.",
             "Your booking confirmation and check-in QR code are sent to the email address you provide. Present them on your phone or printed at the front desk.",
             "Prices are listed in U.S. dollars. The total displayed before purchase includes all mandatory charges imposed by Sky LA; Sky LA currently adds no mandatory booking fee.",
             "Premium experiences and private rooms may carry additional terms, minimums, or fees disclosed at the time of booking."
@@ -52,7 +52,7 @@ export default function TermsPage() {
         {
           title: "Refunds And Changes",
           items: [
-            "Tickets are valid only for the date and time booked. If you need to change your visit, contact us in advance and we will accommodate where possible.",
+            "Tickets are valid only on the selected Los Angeles date during operating hours, from the selected entry time until closing. If you need to change your visit, contact us in advance and we will accommodate where possible.",
             "Refund eligibility, including for weather or closures, is handled on a case-by-case basis. Please reach out to us directly."
           ]
         },

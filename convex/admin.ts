@@ -22,6 +22,7 @@ import {
 } from "./lib/adminOperations";
 import { buildAdminBookingVouchers, type AdminBookingVouchers } from "./lib/adminVouchers";
 import { requireStaffUser } from "./lib/auth";
+import { admitBooking } from "./lib/admission";
 import { listTerminalReaderRegistry } from "./lib/terminalReaderRegistry";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -210,6 +211,9 @@ function publicBooking(booking: {
   lastName?: string;
   partySize?: number;
   checkedInAt?: number;
+  admittedPartySize?: number;
+  departedPartySize?: number;
+  departedAt?: number;
   cancelledAt?: number;
   createdAt: number;
   updatedAt?: number;
@@ -222,6 +226,9 @@ function publicBooking(booking: {
   sendVersion: number;
   lastAttemptAt?: number;
   sentAt?: number;
+  providerDeliveryStatus?: string;
+  providerStatusAt?: number;
+  deliveredAt?: number;
   failureReason?: string;
   updatedAt: number;
 }) {
@@ -240,6 +247,9 @@ function publicBooking(booking: {
     lastName,
     partySize,
     checkedInAt: booking.checkedInAt,
+    admittedPartySize: booking.admittedPartySize,
+    departedPartySize: booking.departedPartySize,
+    departedAt: booking.departedAt,
     cancelledAt: booking.cancelledAt,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
@@ -516,6 +526,9 @@ async function publicBookingWithVouchers(
           sendVersion: ticketDelivery.sendVersion,
           lastAttemptAt: ticketDelivery.lastAttemptAt,
           sentAt: ticketDelivery.sentAt,
+          providerDeliveryStatus: ticketDelivery.providerDeliveryStatus,
+          providerStatusAt: ticketDelivery.providerStatusAt,
+          deliveredAt: ticketDelivery.deliveredAt,
           failureReason: ticketDelivery.failureReason,
           updatedAt: ticketDelivery.updatedAt
         }
@@ -882,9 +895,16 @@ export const lookupBookingForCheckIn = query({
     const limit = Math.max(1, Math.min(args.limit ?? 6, 8));
     const normalizedRef = queryText.toUpperCase();
 
+    let ticketRef: string | undefined;
+    const opaqueCode = queryText.toLowerCase().match(/^tkt_[a-f0-9]{32}$/)?.[0]
+      ?? queryText.match(/^https:\/\/skydeckla\.com\/tickets\/(tkt_[a-f0-9]{32})\/?$/i)?.[1]?.toLowerCase();
+    if (opaqueCode) {
+      const delivery = await ctx.db.query("ticketDeliveries").withIndex("by_ticketCode", q => q.eq("ticketCode", opaqueCode)).unique();
+      ticketRef = delivery?.bookingRef;
+    }
     const booking = await ctx.db
       .query("bookings")
-      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", normalizedRef))
+      .withIndex("by_bookingRef", (q) => q.eq("bookingRef", ticketRef ?? normalizedRef))
       .unique();
     if (booking) {
       return {
@@ -893,7 +913,7 @@ export const lookupBookingForCheckIn = query({
           role: staffUser.role
         },
         query: queryText,
-        matchType: "bookingRef" as const,
+        matchType: opaqueCode ? "ticketCode" as const : "bookingRef" as const,
         matches: [await publicBookingWithVouchers(ctx, booking)]
       };
     }
@@ -1028,11 +1048,16 @@ export const updateBookingStatus = mutation({
     if (!booking) {
       throw new Error("Booking was not found");
     }
-    if (booking.status === args.status) {
-      return publicBooking(booking);
+    if (args.status === "checked-in") {
+      const result = await admitBooking(ctx, booking, staffUser, Date.now());
+      const updated = await ctx.db.get(booking._id);
+      return { ...publicBooking(updated!), admissionOutcome: result.outcome };
     }
-    if (booking.status === "cancelled" && args.status === "checked-in") {
-      throw new Error("Cancelled bookings cannot be checked in");
+    if (args.status === "confirmed" && (booking.checkedInAt !== undefined || booking.status === "checked-in")) {
+      throw new Error("Admission blocked: admission cannot be undone; record departure without re-entry");
+    }
+    if (booking.status === args.status && !booking.refundCancellationOwner) {
+      return publicBooking(booking);
     }
     if (booking.status === "cancelled" && args.status !== "cancelled" && staffUser.role !== "admin") {
       throw new Error("Only admin staff can restore cancelled bookings");
@@ -1040,7 +1065,7 @@ export const updateBookingStatus = mutation({
 
     const note = normalizeAdminNote(args.note);
     const now = Date.now();
-    const patch = bookingStatusPatch(args.status, now);
+    const patch = { ...bookingStatusPatch(args.status, now), refundCancellationOwner: undefined };
 
     await ctx.db.patch(booking._id, patch);
     await ctx.db.insert("auditEvents", {

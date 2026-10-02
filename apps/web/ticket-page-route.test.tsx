@@ -56,7 +56,7 @@ describe("public ticket page", () => {
     const html = renderToStaticMarkup(await TicketPage(pageProps()));
 
     expect(html).toContain("Confirmed ticket");
-    expect(html).toContain("Present this code at the front desk.");
+    expect(html).toContain("Present this ticket at the front desk.");
     expect(html).toContain(`/tickets/${ticketCode}/qr`);
   });
 
@@ -71,8 +71,20 @@ describe("public ticket page", () => {
     expect(html).toContain("Cancelled ticket");
     expect(html).toContain("cannot be used for check-in");
     expect(html).not.toContain("Confirmed ticket");
-    expect(html).not.toContain("Present this code at the front desk.");
+    expect(html).not.toContain("Present this ticket at the front desk.");
     expect(html).not.toContain(`/tickets/${ticketCode}/qr`);
+  });
+
+  it.each(["checked-in", "expired", "needs-attention"])("withholds both the image and QR endpoint for %s entitlement", async status => {
+    ticketMocks.fetchPublicTicket.mockResolvedValue({ ...confirmedTicket, status });
+    const html = renderToStaticMarkup(await TicketPage(pageProps()));
+    expect(html).not.toContain(`/tickets/${ticketCode}/qr`);
+    expect(html).not.toContain("Present this ticket at the front desk.");
+    if (status === "checked-in") expect(html).toContain("already been used. No re-entry.");
+    if (status === "expired") expect(html).toContain("expired at closing on its Los Angeles visit date");
+    const response = await qrRequest();
+    expect(response.status).toBe(410);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("uses the temporary-unavailable state for backend failures", async () => {

@@ -18,6 +18,7 @@ import {
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { safeOperatingHours } from "./operatingHours";
+import { bookingAdmission, loadPhysicalOccupancy, remainingAdmissionParty } from "./occupancy";
 
 export const activeCapacityStatuses = ["draft", "payment_pending", "paid", "exception"] as const;
 export type ActiveCapacityStatus = (typeof activeCapacityStatuses)[number];
@@ -25,7 +26,7 @@ export type ActiveCapacityStatus = (typeof activeCapacityStatuses)[number];
 // means the data cannot be trusted, so availability fails closed.
 export const capacityReadLimit = 500;
 const legacySourceReadLimit = 50;
-const countedBookingStatuses = new Set(["confirmed", "checked-in"]);
+const countedBookingStatuses = ["confirmed", "checked-in"] as const;
 export const legacyUnreconciledReason = "legacy_bookings_unreconciled";
 
 export type OccupancyInterval = { startMinutes: number; endMinutes: number; partySize: number };
@@ -67,7 +68,7 @@ export function remainingPlaces(intervals: readonly OccupancyInterval[], window:
 
 /** A held/paid party's span, shortened only by a recorded departure. */
 export function reservationInterval(
-  reservation: Pick<ReservationDoc, "visitDate" | "startMinutes" | "endMinutes" | "partySize" | "departedAt">
+  reservation: Pick<ReservationDoc, "visitDate" | "startMinutes" | "endMinutes" | "partySize" | "departedAt" | "departedCount">
 ): OccupancyInterval | null {
   let endMinutes = reservation.endMinutes;
   if (reservation.departedAt !== undefined) {
@@ -75,8 +76,10 @@ export function reservationInterval(
     if (departure.date < reservation.visitDate) endMinutes = reservation.startMinutes;
     else if (departure.date === reservation.visitDate) endMinutes = Math.min(endMinutes, departure.minutes);
   }
-  if (endMinutes <= reservation.startMinutes) return null;
-  return { startMinutes: reservation.startMinutes, endMinutes, partySize: reservation.partySize };
+  const partySize = reservation.partySize - (reservation.departedCount ?? 0);
+  if (!Number.isSafeInteger(partySize) || partySize < 0 || partySize > reservation.partySize) throw new Error("Stored capacity departure needs reconciliation");
+  if (endMinutes <= reservation.startMinutes || partySize === 0) return null;
+  return { startMinutes: reservation.startMinutes, endMinutes, partySize };
 }
 
 /**
@@ -117,7 +120,7 @@ export async function loadVenueHours(ctx: CapacityCtx): Promise<VisitHours> {
  * that hits the bound mark the date unverified instead of offering space.
  */
 export async function loadDateOccupancy(ctx: CapacityCtx, visitDate: string, hours: VisitHours): Promise<DateOccupancy> {
-  const [privateEvent, reservationGroups, bookings, undatedConfirmed, undatedCheckedIn, legacySources] =
+  const [privateEvent, reservationGroups, bookingGroups, unknownStatuses, undatedConfirmed, undatedCheckedIn, legacySources] =
     await Promise.all([
       ctx.db
         .query("privateEvents")
@@ -127,21 +130,28 @@ export async function loadDateOccupancy(ctx: CapacityCtx, visitDate: string, hou
         activeCapacityStatuses.map((status) =>
           ctx.db
             .query("capacityReservations")
-            .withIndex("by_visitDate_status", (q) => q.eq("visitDate", visitDate).eq("status", status))
+            .withIndex("by_visitDate_status_departedAt", (q) => q.eq("visitDate", visitDate).eq("status", status).eq("departedAt", undefined))
             .take(capacityReadLimit + 1)
         )
       ),
+      Promise.all(countedBookingStatuses.map(status => ctx.db.query("bookings")
+        .withIndex("by_visitDate_status_departedAt", q => q.eq("visitDate", visitDate).eq("status", status).eq("departedAt", undefined))
+        .take(capacityReadLimit + 1))),
+      // Unknown free-text legacy statuses cannot imply a safe departure.
+      // Four index ranges skip known history without an unbounded filter scan.
+      Promise.all([
+        ctx.db.query("bookings").withIndex("by_visitDate_status", q => q.eq("visitDate", visitDate).lt("status", "cancelled")).first(),
+        ctx.db.query("bookings").withIndex("by_visitDate_status", q => q.eq("visitDate", visitDate).gt("status", "cancelled").lt("status", "checked-in")).first(),
+        ctx.db.query("bookings").withIndex("by_visitDate_status", q => q.eq("visitDate", visitDate).gt("status", "checked-in").lt("status", "confirmed")).first(),
+        ctx.db.query("bookings").withIndex("by_visitDate_status", q => q.eq("visitDate", visitDate).gt("status", "confirmed")).first()
+      ]),
       ctx.db
         .query("bookings")
-        .withIndex("by_visitDate_status", (q) => q.eq("visitDate", visitDate))
-        .take(capacityReadLimit + 1),
-      ctx.db
-        .query("bookings")
-        .withIndex("by_visitDate_status", (q) => q.eq("visitDate", undefined).eq("status", "confirmed"))
+        .withIndex("by_visitDate_status_departedAt", (q) => q.eq("visitDate", undefined).eq("status", "confirmed").eq("departedAt", undefined))
         .first(),
       ctx.db
         .query("bookings")
-        .withIndex("by_visitDate_status", (q) => q.eq("visitDate", undefined).eq("status", "checked-in"))
+        .withIndex("by_visitDate_status_departedAt", (q) => q.eq("visitDate", undefined).eq("status", "checked-in").eq("departedAt", undefined))
         .first(),
       ctx.db.query("legacyMigrationSources").take(legacySourceReadLimit + 1)
     ]);
@@ -153,9 +163,11 @@ export async function loadDateOccupancy(ctx: CapacityCtx, visitDate: string, hou
     occupancy.unverifiedReason ??= reason;
   };
 
-  if (reservationGroups.some((group) => group.length > capacityReadLimit) || bookings.length > capacityReadLimit) {
+  const bookings = bookingGroups.flat();
+  if (reservationGroups.some((group) => group.length > capacityReadLimit) || bookingGroups.some(group => group.length > capacityReadLimit)) {
     markUnverified("read_bound_exceeded");
   }
+  if (unknownStatuses.some(Boolean)) markUnverified("unknown_booking_status");
   if (undatedConfirmed || undatedCheckedIn) {
     markUnverified("undated_committed_booking");
   }
@@ -166,26 +178,48 @@ export async function loadDateOccupancy(ctx: CapacityCtx, visitDate: string, hou
     markUnverified(legacyUnreconciledReason);
   }
 
+  const physical = await loadPhysicalOccupancy(ctx);
+  if (physical.unverifiedReason) markUnverified(physical.unverifiedReason);
+  const physicalOrderRefs = new Set<string>();
+  for (const admission of physical.admissions) {
+    if (admission.visitDate > visitDate) continue;
+    const booking = await ctx.db.query("bookings").withIndex("by_bookingRef", q => q.eq("bookingRef", admission.bookingRef)).unique();
+    if (booking?.orderRef) physicalOrderRefs.add(booking.orderRef);
+  }
+
   const reservedOrderRefs = new Set<string>();
   for (const reservation of reservationGroups.flat()) {
     reservedOrderRefs.add(reservation.orderRef);
+    // An admitted party is counted from physical presence below, even after
+    // cancellation or a closing break. Its paid hold is the same party.
+    if (physicalOrderRefs.has(reservation.orderRef)) continue;
     const interval = reservationInterval(reservation);
     if (interval) occupancy.intervals.push(interval);
   }
 
   for (const booking of bookings) {
-    if (booking.status === "cancelled") continue;
-    if (!countedBookingStatuses.has(booking.status)) {
-      markUnverified("unknown_booking_status");
+    if (booking.orderRef && reservedOrderRefs.has(booking.orderRef)) continue;
+    const admission = await bookingAdmission(ctx, booking.bookingRef);
+    if (admission) {
+      try { remainingAdmissionParty(admission); }
+      catch { markUnverified("invalid_admission_record"); }
       continue;
     }
-    if (booking.orderRef && reservedOrderRefs.has(booking.orderRef)) continue;
     const interval = legacyBookingInterval(booking, hours);
     if (!interval) {
       markUnverified("unknown_party_size");
       continue;
     }
     occupancy.intervals.push(interval);
+  }
+
+  // A previous-day guest still inside does not disappear at midnight. A
+  // cancelled/refunded same-day party also remains in physical occupancy.
+  for (const admission of physical.admissions) {
+    if (admission.visitDate <= visitDate) {
+      try { occupancy.intervals.push({ startMinutes: 0, endMinutes: venueDayMinutes, partySize: remainingAdmissionParty(admission) }); }
+      catch { markUnverified("invalid_admission_record"); }
+    }
   }
 
   return occupancy;

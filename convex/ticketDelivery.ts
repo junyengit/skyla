@@ -1,5 +1,6 @@
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
+import { venueClock, visitEntitlementWindow } from "@skyla/payments";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import {
@@ -11,6 +12,9 @@ import {
   type MutationCtx
 } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
+import { assertBookingPaid } from "./lib/admission";
+import { loadVenueHours } from "./lib/capacity";
+import { bookingAdmission } from "./lib/occupancy";
 import { openBillingExceptionsForOrder, openOperationsException, resolveOperationsException } from "./lib/operationsExceptions";
 import { normalizeTicketCode } from "./lib/ticketDelivery";
 import { providerConfigurationFingerprint } from "./lib/providerIdentity";
@@ -98,10 +102,25 @@ export const getTicket = query({
     if (!booking) throw new Error("Ticket was not found");
 
     const billingBlocked = delivery.orderRef && (await openBillingExceptionsForOrder(ctx, delivery.orderRef)).length > 0;
+    let status = billingBlocked ? "needs-attention" : booking.status;
+    if (status === "confirmed") {
+      const redeemed = booking.checkedInAt !== undefined || await bookingAdmission(ctx, booking.bookingRef);
+      if (redeemed) status = "checked-in";
+      else {
+        try {
+          await assertBookingPaid(ctx, booking);
+          const now = venueClock(Date.now());
+          const hours = await loadVenueHours(ctx);
+          const window = booking.visitDate && booking.entryTime ? visitEntitlementWindow(hours, booking.visitDate, booking.entryTime) : null;
+          if (!window || !booking.visitDate) status = "needs-attention";
+          else if (now.date > booking.visitDate || (now.date === booking.visitDate && now.minutes >= window.endMinutes)) status = "expired";
+        } catch { status = "needs-attention"; }
+      }
+    }
     return {
       ticketCode: delivery.ticketCode,
       bookingRef: booking.bookingRef,
-      status: billingBlocked ? "needs-attention" : booking.status,
+      status,
       visitDate: booking.visitDate,
       entryTime: booking.entryTime,
       partySize: booking.partySize
@@ -718,7 +737,7 @@ function ticketEmailHtml(payload: DeliveryPayload, ticketUrl: string) {
     payload.entryTime ? `<li>Entry time: ${escapeHtml(payload.entryTime)}</li>` : "",
     payload.partySize ? `<li>Guests: ${payload.partySize}</li>` : ""
   ].join("");
-  return `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#111"><h1>Sky LA ticket</h1><p>Payment confirmed. Keep this ticket for check-in.</p><ul><li>Booking: ${escapeHtml(payload.bookingRef)}</li>${details}</ul><p><a href="${escapeHtml(ticketUrl)}">Open your ticket</a></p><p><img src="${escapeHtml(`${ticketUrl}/qr`)}" width="240" height="240" alt="Check-in QR code"></p><p>Questions? Reply to this email or contact reservations@skydeckla.com.</p></body></html>`;
+  return `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#111"><h1>Sky LA ticket</h1><p>Payment confirmed. Keep this ticket for check-in.</p><p>Valid on the selected Los Angeles date, from your entry time until closing. One admission for the booked party. No re-entry.</p><ul><li>Booking: ${escapeHtml(payload.bookingRef)}</li>${details}</ul><p><a href="${escapeHtml(ticketUrl)}">Open your ticket</a></p><p><img src="${escapeHtml(`${ticketUrl}/qr`)}" width="240" height="240" alt="Check-in QR code"></p><p>Questions? Reply to this email or contact reservations@skydeckla.com.</p></body></html>`;
 }
 
 function escapeHtml(value: string) {
