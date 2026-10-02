@@ -67,6 +67,14 @@ export type StripeTerminalWebhookOutcome =
       saleRef: string;
       amountCents: number;
       currency: "usd";
+      /** Facts Convex verifies against the frozen attempt. */
+      attemptNonce?: string;
+      intentSource?: string;
+      amountReceivedCents?: number;
+      livemode?: boolean;
+      intentStatus?: string;
+      /** Signed event creation time in ms. */
+      providerEventCreatedAt?: number;
       raw: Record<string, unknown>;
     }
   | {
@@ -134,8 +142,10 @@ type StripeTerminalPaymentIntentObject = {
   id?: unknown;
   object?: unknown;
   amount?: unknown;
+  amount_received?: unknown;
   currency?: unknown;
   status?: unknown;
+  livemode?: unknown;
   metadata?: unknown;
   latest_charge?: unknown;
 };
@@ -291,6 +301,22 @@ export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhook
   if (!providerPaymentId || !saleRef || amountCents === undefined || !currency) {
     return terminalIgnored(providerEventId, eventType, saleRef, "missing_terminal_payment_fields", event, intent);
   }
+  const created = integerValue(event.created);
+  const facts = withoutUndefined({
+    attemptNonce: stringValue(terminalMetadata(intent).attempt_nonce),
+    intentSource: terminalMetadataSource(intent),
+    amountReceivedCents: integerValue(intent.amount_received),
+    // The event livemode was already checked against configuration; the
+    // intent's own flag is then checked against the attempt's frozen mode.
+    livemode:
+      typeof intent.livemode === "boolean"
+        ? intent.livemode
+        : typeof event.livemode === "boolean"
+          ? event.livemode
+          : undefined,
+    intentStatus: stringValue(intent.status),
+    providerEventCreatedAt: created !== undefined && created > 0 ? created * 1000 : undefined
+  });
 
   if (eventType === "payment_intent.succeeded") {
     const status = stringValue(intent.status);
@@ -305,6 +331,7 @@ export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhook
       saleRef,
       amountCents,
       currency,
+      ...facts,
       raw: terminalSanitizedRaw(event, intent, "paid")
     };
   }
@@ -317,6 +344,7 @@ export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhook
     saleRef,
     amountCents,
     currency,
+    ...facts,
     raw: terminalSanitizedRaw(event, intent, eventType === "payment_intent.canceled" ? "canceled" : "payment_failed")
   };
 }
@@ -576,8 +604,10 @@ function terminalSanitizedRaw(
           id: stringValue(intent.id),
           object: stringValue(intent.object),
           amount: numberValue(intent.amount),
+          amount_received: numberValue(intent.amount_received),
           currency: stringValue(intent.currency),
           status: stringValue(intent.status),
+          livemode: typeof intent.livemode === "boolean" ? intent.livemode : undefined,
           latest_charge: stringValue(intent.latest_charge),
           metadata: terminalMetadataSummary(intent.metadata)
         })
@@ -630,6 +660,10 @@ function terminalMetadataSummary(value: unknown) {
   return withoutUndefined({
     sale_ref: stringValue(metadata.sale_ref),
     source: stringValue(metadata.source),
+    attempt_nonce: stringValue(metadata.attempt_nonce),
+    visit_date: stringValue(metadata.visit_date),
+    entry_time: stringValue(metadata.entry_time),
+    party_size: stringValue(metadata.party_size),
     line_count: stringValue(metadata.line_count),
     reader_id: stringValue(metadata.reader_id),
     terminal_location_id: stringValue(metadata.terminal_location_id)

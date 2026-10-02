@@ -12,10 +12,15 @@ import {
   type MutationCtx
 } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
-import { assertBookingPaid } from "./lib/admission";
+import { assertBookingPaid, bookingPaidProof } from "./lib/admission";
 import { loadVenueHours } from "./lib/capacity";
-import { bookingAdmission } from "./lib/occupancy";
-import { openBillingExceptionsForOrder, openOperationsException, resolveOperationsException } from "./lib/operationsExceptions";
+import { lookupBookingAdmission } from "./lib/occupancy";
+import {
+  hasOpenBillingExceptionForOrder,
+  hasOpenBillingExceptionForSale,
+  openOperationsException,
+  resolveOperationsException
+} from "./lib/operationsExceptions";
 import { normalizeTicketCode } from "./lib/ticketDelivery";
 import { providerConfigurationFingerprint } from "./lib/providerIdentity";
 import { scheduleDeliveryTracking } from "./lib/ticketDeliveryTracking";
@@ -101,11 +106,15 @@ export const getTicket = query({
       .unique();
     if (!booking) throw new Error("Ticket was not found");
 
-    const billingBlocked = delivery.orderRef && (await openBillingExceptionsForOrder(ctx, delivery.orderRef)).length > 0;
+    const billingBlocked =
+      (delivery.orderRef && (await hasOpenBillingExceptionForOrder(ctx, delivery.orderRef))) ||
+      (delivery.saleRef && (await hasOpenBillingExceptionForSale(ctx, delivery.saleRef)));
     let status = billingBlocked ? "needs-attention" : booking.status;
     if (status === "confirmed") {
-      const redeemed = booking.checkedInAt !== undefined || await bookingAdmission(ctx, booking.bookingRef);
-      if (redeemed) status = "checked-in";
+      const admission = await lookupBookingAdmission(ctx, booking.bookingRef);
+      // A duplicated admission ledger is used history that needs staff, never a fresh ticket.
+      if (admission.kind === "duplicate") status = "needs-attention";
+      else if (booking.checkedInAt !== undefined || admission.kind === "one") status = "checked-in";
       else {
         try {
           await assertBookingPaid(ctx, booking);
@@ -266,10 +275,21 @@ export const claimTicketDelivery = internalMutation({
       });
       return null;
     }
-    const booking = await ctx.db
+    const bookings = await ctx.db
       .query("bookings")
       .withIndex("by_bookingRef", (q) => q.eq("bookingRef", delivery.bookingRef))
-      .unique();
+      .take(2);
+    if (bookings.length > 1) {
+      // Which party this ticket belongs to is unknown: stop, never choose.
+      await ctx.db.patch(delivery._id, {
+        status: "suppressed",
+        failureReason: "booking_ambiguous",
+        autoRetryAt: undefined,
+        updatedAt: now
+      });
+      return null;
+    }
+    const booking = bookings[0];
     if (!booking) {
       await ctx.db.patch(delivery._id, {
         status: "failed",
@@ -494,22 +514,32 @@ async function deliveryPaymentBlocker(
   booking: Doc<"bookings">
 ): Promise<string | null> {
   if (booking.status !== "confirmed" && booking.status !== "checked-in") return "booking_not_confirmed";
+  if (!delivery.orderRef && !delivery.saleRef) return "payment_reference_missing";
   if (delivery.orderRef) {
-    if ((await openBillingExceptionsForOrder(ctx, delivery.orderRef)).length > 0) return "billing_exception_unresolved";
-    const order = await ctx.db
+    if (await hasOpenBillingExceptionForOrder(ctx, delivery.orderRef)) return "billing_exception_unresolved";
+    const orders = await ctx.db
       .query("orders")
       .withIndex("by_orderRef", (q) => q.eq("orderRef", delivery.orderRef!))
-      .unique();
-    return order?.status === "paid" ? null : "order_not_paid";
-  }
-  if (delivery.saleRef) {
-    const sale = await ctx.db
+      .take(2);
+    if (orders.length !== 1 || orders[0].status !== "paid") return "order_not_paid";
+  } else {
+    if (await hasOpenBillingExceptionForSale(ctx, delivery.saleRef!)) return "billing_exception_unresolved";
+    const sales = await ctx.db
       .query("posSales")
       .withIndex("by_saleRef", (q) => q.eq("saleRef", delivery.saleRef!))
-      .unique();
-    return sale?.status === "paid" ? null : "sale_not_paid";
+      .take(2);
+    if (sales.length !== 1 || sales[0].status !== "paid") return "sale_not_paid";
   }
-  return "payment_reference_missing";
+  // The outbox row must belong to exactly this booking's owner, and the
+  // booking must pass the same canonical money proof as the door and ticket
+  // view (unique paid identity, ownership, refunds, provenance). Only
+  // classified proof failures stop the send; unexpected errors still throw.
+  if (delivery.bookingRef !== booking.bookingRef ||
+      delivery.orderRef !== booking.orderRef || delivery.saleRef !== booking.saleRef) {
+    return "delivery_owner_mismatch";
+  }
+  const proof = await bookingPaidProof(ctx, booking);
+  return proof.ok ? null : "payment_proof_invalid";
 }
 
 /**

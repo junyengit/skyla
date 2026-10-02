@@ -15,6 +15,11 @@ const sweepTicketDeliveries = makeFunctionReference<
 const crons = cronJobs();
 
 crons.interval("reconcile due checkout attempts", { minutes: 5 }, sweepCheckoutAttempts, {});
+crons.interval("reconcile due terminal attempts", { minutes: 5 }, makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  { scheduled: number }
+>("terminalReconciliation:sweepTerminalAttempts"), {});
 crons.interval("repair ticket delivery", { minutes: 5 }, sweepTicketDeliveries, {});
 crons.interval("track accepted ticket emails", { minutes: 5 }, makeFunctionReference<"mutation", Record<string, never>, { scheduled: number }>(
   "ticketDeliveryTracking:sweepTicketDeliveryTracking"

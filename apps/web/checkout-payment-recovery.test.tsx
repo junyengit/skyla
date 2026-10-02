@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { routeCheckoutFetch } from "./checkout-test-support";
+import { installCheckoutBrowserPlatform, routeCheckoutFetch } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 
 const storageKey = "skyla.checkout.paymentIntent.v1";
@@ -63,15 +63,19 @@ function paymentBodies(router: ReturnType<typeof routeCheckoutFetch>) {
   return router.paymentCalls().map(([, init]) => JSON.parse(String(init?.body)));
 }
 
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-02T19:00:00.000Z"));
+  platform = installCheckoutBrowserPlatform();
   window.localStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  platform.restore();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();

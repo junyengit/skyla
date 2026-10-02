@@ -22,6 +22,20 @@ import {
 } from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 import {
+  checkoutLockRefusalMessage,
+  clearCheckoutIntent,
+  clearCheckoutIntentLocked,
+  parseCheckoutIntentSnapshot,
+  readCheckoutIntentSlot,
+  readCheckoutIntentSnapshot,
+  sameCheckoutIntent,
+  storeCheckoutIntent,
+  subscribeToCheckoutIntent,
+  withCheckoutLock,
+  type CheckoutIntentRecord,
+  type ClearCheckoutIntentResult
+} from "@/lib/checkout-recovery";
+import {
   formatOperatingDay,
   operatingWeekdayForDate,
   type OperatingHours
@@ -84,84 +98,75 @@ const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
 const entryTimeLabels = new Map<string, string>(checkoutEntryTimes.map((time) => [time.value, time.label]));
 // Party-count clicks settle before one live read is sent.
 const availabilityDebounceMs = 150;
-// One started card payment per browser. Only opaque order identity is kept;
-// no name, email or ticket code.
-const paymentIntentStorageKey = "skyla.checkout.paymentIntent.v1";
-const storedIdempotencyKeyPattern = /^[A-Za-z0-9_-]{12,96}$/;
 const supportEmail = "reservations@skydeckla.com";
+const claimRefusalMessage = {
+  occupied: "Another payment is already being checked. Finish checking it before starting this order.",
+  corrupt: `This browser has saved payment progress it can't read, so no payment was started. Please email ${supportEmail} before paying again.`,
+  failed:
+    "We couldn't save your payment progress. No payment was started. Please allow this site to save data, or contact our team for help.",
+  settled: "That card payment was already settled in another tab. No payment was started."
+} as const;
 
-type PaymentIntentRecord = {
-  version: 1;
+// One started card payment per browser, kept as opaque order identity only.
+type PaymentIntentRecord = CheckoutIntentRecord;
+
+type IntentStatus =
+  | "none"
+  | "checking"
+  | "awaiting_payment"
+  | "pending"
+  | "needs_attention"
+  | "unknown"
+  // Settled on the server, but this browser could not clear its pointer.
+  | "unsettled"
+  // The stored pointer cannot be read, so it may still name a payable order.
+  | "unreadable";
+
+type IntentCheck = {
   orderRef: string;
   idempotencyKey: string;
-};
-
-type IntentStatus = "none" | "checking" | "awaiting_payment" | "pending" | "needs_attention" | "unknown";
-
-type AttemptStatusResponse = {
-  orderRef?: string;
-  status?: "not_started" | "awaiting_payment" | "pending" | "confirmed" | "needs_attention" | "failed" | "canceled";
-  bookingRef?: string;
-  ticketCode?: string;
+  status: IntentStatus;
   expiresAt?: number;
 };
 
-const paymentIntentChangeEvent = "skyla:checkout-payment-intent";
+// A settled payment whose pointer this browser could not verifiably clear.
+// It keeps checkout locked even if storage now reads empty, until a later
+// locked check verifies the slot no longer holds this order and key.
+type UnverifiedClear = PaymentIntentRecord & { outcome: "ended" | "confirmed"; ticketCode: string | null };
 
-function readStoredPaymentIntentRaw() {
-  try {
-    return window.localStorage.getItem(paymentIntentStorageKey);
-  } catch {
-    // Unavailable storage means there is nothing to recover.
-    return null;
-  }
-}
+const attemptStatuses = [
+  "not_started",
+  "awaiting_payment",
+  "pending",
+  "confirmed",
+  "needs_attention",
+  "failed",
+  "canceled"
+] as const;
+const returnSessionStatuses = ["pending", "confirmed", "failed", "canceled", "needs_attention"] as const;
 
-function parseStoredPaymentIntent(raw: string | null): PaymentIntentRecord | null {
-  try {
-    const parsed = JSON.parse(raw ?? "null") as Partial<PaymentIntentRecord> | null;
-    if (
-      parsed?.version === 1 &&
-      typeof parsed.orderRef === "string" &&
-      parsed.orderRef.length > 0 &&
-      parsed.orderRef.length <= 80 &&
-      typeof parsed.idempotencyKey === "string" &&
-      storedIdempotencyKeyPattern.test(parsed.idempotencyKey)
-    ) {
-      return { version: 1, orderRef: parsed.orderRef, idempotencyKey: parsed.idempotencyKey };
-    }
-  } catch {
-    // Corrupt storage means there is nothing to recover.
-  }
-  return null;
-}
+type StatusReply<S extends string> = {
+  orderRef: string;
+  status: S;
+  bookingRef?: unknown;
+  ticketCode?: unknown;
+  expiresAt?: unknown;
+};
 
-function subscribeToStoredPaymentIntent(onChange: () => void) {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(paymentIntentChangeEvent, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(paymentIntentChangeEvent, onChange);
-  };
-}
-
-function writeStoredPaymentIntent(record: PaymentIntentRecord | null) {
-  try {
-    const raw = record ? JSON.stringify(record) : null;
-    if (raw) window.localStorage.setItem(paymentIntentStorageKey, raw);
-    else window.localStorage.removeItem(paymentIntentStorageKey);
-    if (window.localStorage.getItem(paymentIntentStorageKey) !== raw) return false;
-  } catch {
-    // A payment must not start if its private recovery identity cannot survive
-    // a reload. One Session per order alone cannot protect a new order.
-    return false;
-  }
-  window.dispatchEvent(new Event(paymentIntentChangeEvent));
-  return true;
+/**
+ * A status reply only when it names an order and a status this page knows.
+ * Anything else is unrecognized and never settles, releases or clears.
+ */
+function parseStatusReply<S extends string>(data: unknown, known: readonly S[]): StatusReply<S> | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const reply = data as Record<string, unknown>;
+  if (typeof reply.orderRef !== "string" || !reply.orderRef.trim()) return null;
+  if (!known.includes(reply.status as S)) return null;
+  return reply as StatusReply<S>;
 }
 
 type IntentCheckResult =
-  | { kind: "clear" | "ended" }
+  | { kind: "ended" }
   | { kind: "confirmed"; ticketCode: string | null }
   | { kind: "status"; status: IntentStatus; expiresAt?: number };
 
@@ -173,8 +178,8 @@ async function fetchPaymentIntentStatus(record: PaymentIntentRecord): Promise<In
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ orderRef: record.orderRef, idempotencyKey: record.idempotencyKey })
     });
-    const data = (await response.json().catch(() => ({}))) as AttemptStatusResponse;
-    if (!response.ok || !data.status || data.orderRef !== record.orderRef) return { kind: "status", status: "unknown" };
+    const data = response.ok ? parseStatusReply(await response.json().catch(() => null), attemptStatuses) : null;
+    if (!data || data.orderRef !== record.orderRef) return { kind: "status", status: "unknown" };
     switch (data.status) {
       case "not_started": {
         // A delayed original request may still be about to begin payment.
@@ -199,7 +204,8 @@ async function fetchPaymentIntentStatus(record: PaymentIntentRecord): Promise<In
           status: "awaiting_payment",
           ...(typeof data.expiresAt === "number" ? { expiresAt: data.expiresAt } : {})
         };
-      default:
+      case "pending":
+      case "needs_attention":
         return { kind: "status", status: data.status };
     }
   } catch {
@@ -300,21 +306,36 @@ export function CheckoutClient({
   const [verifiedOrderRef, setVerifiedOrderRef] = useState<string | null>(null);
   const [verifiedBookingRef, setVerifiedBookingRef] = useState<string | null>(null);
   const [verifiedTicketCode, setVerifiedTicketCode] = useState<string | null>(null);
+  // Set when a settled Stripe return could not clear this browser's pointer.
+  const [returnClearBlocked, setReturnClearBlocked] = useState(false);
   // A card payment this browser started and has not seen settle, read from
-  // storage so every tab of this browser sees it. While it is unresolved, no
-  // second payment can be started.
-  const storedIntentRaw = useSyncExternalStore(subscribeToStoredPaymentIntent, readStoredPaymentIntentRaw, () => null);
-  const paymentIntent = useMemo(() => parseStoredPaymentIntent(storedIntentRaw), [storedIntentRaw]);
-  const [intentCheck, setIntentCheck] = useState<{ orderRef: string; status: IntentStatus; expiresAt?: number } | null>(null);
+  // storage so every tab of this browser sees it. While it is unresolved, or
+  // the stored value cannot be read, no second payment can be started.
+  const storedIntentRaw = useSyncExternalStore(subscribeToCheckoutIntent, readCheckoutIntentSnapshot, () => null);
+  const intentSlot = useMemo(() => parseCheckoutIntentSnapshot(storedIntentRaw), [storedIntentRaw]);
+  const paymentIntent = intentSlot.kind === "intent" ? intentSlot.record : null;
+  const [intentCheck, setIntentCheck] = useState<IntentCheck | null>(null);
+  const [unverifiedClear, setUnverifiedClear] = useState<UnverifiedClear | null>(null);
   const [confirmedIntent, setConfirmedIntent] = useState<{ orderRef: string; ticketCode: string | null } | null>(null);
   const paymentInFlight = useRef(false);
   const intentCheckSequence = useRef(0);
   const returnedFromStripeSuccess = stripeStatus === "success" && Boolean(returnedCheckoutSessionId);
-  const currentIntentCheck = paymentIntent && intentCheck?.orderRef === paymentIntent.orderRef ? intentCheck : null;
+  // Another stored payment takes precedence; otherwise an unverified clear
+  // stays authoritative even when storage now reads empty.
+  const pendingClear = unverifiedClear && (!paymentIntent || sameCheckoutIntent(unverifiedClear, paymentIntent))
+    ? unverifiedClear
+    : null;
+  const recoveryIntent = paymentIntent ?? pendingClear;
+  const currentIntentCheck = recoveryIntent && intentCheck && sameCheckoutIntent(intentCheck, recoveryIntent) ? intentCheck : null;
   // A Stripe success return is confirmed by its own Session poll below.
-  const intentStatus: IntentStatus = !paymentIntent
-    ? "none"
-    : currentIntentCheck?.status ?? (returnedFromStripeSuccess ? "pending" : "checking");
+  const intentStatus: IntentStatus = intentSlot.kind === "corrupt" || intentSlot.kind === "unreadable"
+    ? "unreadable"
+    : pendingClear
+      // Settled on the server: never resumable, whatever a later read says.
+      ? currentIntentCheck?.status === "checking" ? "checking" : "unsettled"
+      : !paymentIntent
+        ? "none"
+        : currentIntentCheck?.status ?? (returnedFromStripeSuccess ? "pending" : "checking");
   const intentExpiresAt = currentIntentCheck?.expiresAt ?? null;
 
   const selectedPackage = packages.find((item) => item.key === packageKey) ?? packages[0];
@@ -361,55 +382,82 @@ export function CheckoutClient({
     emailPattern.test(normalizedEmail);
   const orderPersisted = Boolean(draft?.persisted && draft.orderRef);
   const legalReady = termsAccepted && liabilityWaiverAccepted;
-  const returnUnresolved = stripeStatus === "success" &&
-    returnStatus !== "confirmed" && returnStatus !== "failed" && returnStatus !== "canceled";
+  const returnUnresolved = stripeStatus === "success" && (returnClearBlocked ||
+    (returnStatus !== "confirmed" && returnStatus !== "failed" && returnStatus !== "canceled"));
   const paymentLocked = intentStatus !== "none" || returnUnresolved;
   const canPay = orderPersisted && legalReady && !isPaying && !paymentLocked;
 
-  function clearPaymentIntent(expected?: PaymentIntentRecord) {
-    const current = parseStoredPaymentIntent(readStoredPaymentIntentRaw());
-    if (expected && (current?.orderRef !== expected.orderRef || current.idempotencyKey !== expected.idempotencyKey)) return;
-    if (!writeStoredPaymentIntent(null)) return;
-    setIntentCheck(null);
-  }
-
-  /** Reads the stored attempt for this browser's order; never trusts the browser's amount. */
-  async function checkPaymentIntent(record: PaymentIntentRecord) {
+  /**
+   * Reads the stored attempt for this browser's order; never trusts the
+   * browser's amount. `lockHeld` is true only inside startPayment's critical
+   * section, which already holds the checkout lock.
+   */
+  async function checkPaymentIntent(record: PaymentIntentRecord, lockHeld = false) {
     const sequence = ++intentCheckSequence.current;
     const result = await fetchPaymentIntentStatus(record);
-    if (sequence === intentCheckSequence.current) applyIntentCheckResult(record, result);
+    if (sequence === intentCheckSequence.current) await settleIntentCheck(record, result, lockHeld);
   }
 
-  function applyIntentCheckResult(record: PaymentIntentRecord, result: IntentCheckResult) {
-    switch (result.kind) {
-      case "clear":
-        clearPaymentIntent(record);
-        return;
-      case "ended":
-        clearPaymentIntent(record);
-        // The atomically abandoned draft cannot be paid again with its old key.
-        if (draft?.orderRef === record.orderRef) startNewOrder();
-        setMessage(`The card payment for order ${record.orderRef} ended without payment. You can review a new order.`);
-        return;
-      case "confirmed":
-        clearPaymentIntent(record);
-        setConfirmedIntent({ orderRef: record.orderRef, ticketCode: result.ticketCode });
-        return;
-      case "status":
-        setIntentCheck({ orderRef: record.orderRef, status: result.status, expiresAt: result.expiresAt });
+  /**
+   * Applies a server status. A settled outcome clears only this exact order
+   * and key, under the checkout lock; the page unlocks only once that clear
+   * is verified, never merely because it was attempted.
+   */
+  async function settleIntentCheck(record: PaymentIntentRecord, result: IntentCheckResult, lockHeld: boolean) {
+    if (result.kind === "status") {
+      // Never unlocks: an unverified clear stays until a locked read verifies it.
+      setIntentCheck({ ...record, status: result.status, expiresAt: result.expiresAt });
+      return;
+    }
+    const cleared = lockHeld ? clearCheckoutIntent(record) : await clearCheckoutIntentLocked(record);
+    applySettledIntent(record, result, cleared);
+  }
+
+  function applySettledIntent(
+    record: PaymentIntentRecord,
+    result: Exclude<IntentCheckResult, { kind: "status" }>,
+    cleared: ClearCheckoutIntentResult | "busy" | "unavailable"
+  ) {
+    if (cleared !== "cleared" && cleared !== "already_empty" && cleared !== "different") {
+      // Attempting the clear proves nothing: stay locked until a later locked
+      // read shows this order and key are gone.
+      setUnverifiedClear({
+        ...record,
+        outcome: result.kind,
+        ticketCode: result.kind === "confirmed" ? result.ticketCode : null
+      });
+      setIntentCheck({ ...record, status: "unsettled" });
+      return;
+    }
+    // A locked read showed this exact pointer is no longer stored.
+    setUnverifiedClear((current) => (current && sameCheckoutIntent(current, record) ? null : current));
+    setIntentCheck(null);
+    if (cleared === "different") {
+      // Another tab already settled this order and stored a different one,
+      // which keeps its own lock and status.
+      return;
+    }
+    if (result.kind === "ended") {
+      // The atomically abandoned draft cannot be paid again with its old key.
+      if (draft?.orderRef === record.orderRef) startNewOrder();
+      setMessage(`The card payment for order ${record.orderRef} ended without payment. You can review a new order.`);
+    } else {
+      setConfirmedIntent({ orderRef: record.orderRef, ticketCode: result.ticketCode });
     }
   }
 
   function recheckPaymentIntent(record: PaymentIntentRecord) {
-    setIntentCheck({ orderRef: record.orderRef, status: "checking" });
+    setIntentCheck({ ...record, status: "checking" });
     void checkPaymentIntent(record);
   }
 
   // A payment found in storage (after a reload, a Stripe return or another
   // tab) is checked once against the server; this tab's own start is not.
-  const intentAlreadyKnown = useEffectEvent((record: PaymentIntentRecord) => intentCheck?.orderRef === record.orderRef);
+  const intentAlreadyKnown = useEffectEvent(
+    (record: PaymentIntentRecord) => Boolean(intentCheck && sameCheckoutIntent(intentCheck, record))
+  );
   const onStoredIntentChecked = useEffectEvent((record: PaymentIntentRecord, result: IntentCheckResult) =>
-    applyIntentCheckResult(record, result)
+    void settleIntentCheck(record, result, false)
   );
   useEffect(() => {
     if (!paymentIntent || returnedFromStripeSuccess || intentAlreadyKnown(paymentIntent)) return;
@@ -456,6 +504,9 @@ export function CheckoutClient({
       return;
     }
     const checkoutSessionId = returnedCheckoutSessionId;
+    // The exact pointer this page returned with. A settled Session may clear
+    // only this order and key, never whatever another tab stores later.
+    const returnedWith = readCheckoutIntentSlot();
 
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -463,6 +514,18 @@ export function CheckoutClient({
 
     function scheduleNext(callback: () => void, delay: number) {
       timer = setTimeout(callback, delay);
+    }
+
+    /** Whether this browser no longer stores the returned order's payment. */
+    async function releaseReturnedIntent(orderRef: string) {
+      // A return without a saved pointer has nothing to clear.
+      if (returnedWith.kind === "empty") return true;
+      // An unreadable pointer may name this or another payable order.
+      if (returnedWith.kind !== "intent") return false;
+      // A pointer for another order is that order's to settle.
+      if (returnedWith.record.orderRef !== orderRef) return true;
+      const cleared = await clearCheckoutIntentLocked(returnedWith.record);
+      return cleared === "cleared" || cleared === "already_empty" || cleared === "different";
     }
 
     async function checkStatus() {
@@ -474,13 +537,10 @@ export function CheckoutClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ checkoutSessionId })
         });
-        const data = (await response.json()) as {
-          orderRef?: string;
-          status?: "pending" | "confirmed" | "failed" | "canceled" | "needs_attention";
-          bookingRef?: string;
-          ticketCode?: string;
-        };
-        if (!response.ok || !data.status || !data.orderRef) {
+        const body: unknown = await response.json();
+        // An unrecognized reply keeps the pointer and return URL and is retried.
+        const data = response.ok ? parseStatusReply(body, returnSessionStatuses) : null;
+        if (!data) {
           if (response.status === 400 || response.status === 404) {
             if (!disposed) setReturnStatus("unavailable");
             return;
@@ -498,14 +558,21 @@ export function CheckoutClient({
           } else {
             setReturnStatus("unavailable");
           }
+        } else if (data.status === "needs_attention") {
+          // A payment that needs staff help keeps the page from starting another
+          // one. The return URL stays: it may be this browser's only record of
+          // the Session, so a reload rechecks it until it settles.
+          if (returnedWith.kind === "intent" && returnedWith.record.orderRef === data.orderRef) {
+            setIntentCheck({ ...returnedWith.record, status: "needs_attention" });
+          }
         } else {
-          clearStripeReturnIdentity();
-          // A settled outcome ends this browser's payment intent; a payment
-          // that needs staff help keeps the page from starting another one.
-          if (data.status === "needs_attention") {
-            setIntentCheck({ orderRef: data.orderRef, status: "needs_attention" });
-          } else if (parseStoredPaymentIntent(readStoredPaymentIntentRaw())?.orderRef === data.orderRef) {
-            writeStoredPaymentIntent(null);
+          // A settled outcome ends this browser's payment intent. If its
+          // pointer cannot be cleared, the page stays locked and keeps the
+          // return URL so a reload can finish the job.
+          if (await releaseReturnedIntent(data.orderRef)) {
+            if (!disposed) clearStripeReturnIdentity();
+          } else if (!disposed) {
+            setReturnClearBlocked(true);
           }
         }
       } catch {
@@ -530,14 +597,25 @@ export function CheckoutClient({
     if (!returnedCheckoutSessionId) {
       return "Returned from Stripe, but the confirmation identity is incomplete. Please contact support before trying another payment.";
     }
+    const settled = settledReturnNotice();
+    return returnClearBlocked && settled
+      ? `${settled} This browser couldn't update its saved payment progress, so new orders stay locked here. Reload this page to finish.`
+      : settled ?? pendingReturnNotice();
+  }
+
+  function settledReturnNotice() {
     if (returnStatus === "confirmed") {
       return `Payment confirmed. Booking ${verifiedBookingRef ?? verifiedOrderRef}.${verifiedTicketCode ? " Your ticket is ready." : " Keep this reference for admission."}`;
     }
+    if (returnStatus === "failed") return "Stripe reported that the payment failed. No booking was confirmed.";
+    if (returnStatus === "canceled") return "The payment expired or was canceled. No booking was confirmed.";
+    return null;
+  }
+
+  function pendingReturnNotice() {
     if (returnStatus === "needs_attention") {
       return `Your payment for order ${verifiedOrderRef} reached us, but the booking needs help from our team before a ticket can be issued. Please don't pay again; email ${supportEmail} with this order reference.`;
     }
-    if (returnStatus === "failed") return "Stripe reported that the payment failed. No booking was confirmed.";
-    if (returnStatus === "canceled") return "The payment expired or was canceled. No booking was confirmed.";
     if (returnStatus === "unavailable") {
       return `Returned from Stripe, but confirmation is taking longer than expected.${verifiedOrderRef ? ` Keep order reference ${verifiedOrderRef}.` : ""} Please contact support before trying another payment.`;
     }
@@ -731,6 +809,9 @@ export function CheckoutClient({
    * Starts card payment for the reviewed order, or returns to the payment
    * this browser already started. The server keeps one Session per order, so
    * a retry after a lost response reopens that Session instead of a new one.
+   * The checkout lock is held from claiming the stored pointer through the
+   * payment request and its immediate status check, so no other tab can start
+   * a second payment or clear this one meanwhile.
    */
   async function startPayment(resume?: PaymentIntentRecord) {
     // A ref, not state, so two clicks in the same frame cannot both pass.
@@ -751,23 +832,44 @@ export function CheckoutClient({
       orderRef: draft!.orderRef!,
       idempotencyKey
     };
-    const current = parseStoredPaymentIntent(readStoredPaymentIntentRaw());
-    if (current && (current.orderRef !== record.orderRef || current.idempotencyKey !== record.idempotencyKey)) {
-      setMessage("Another payment is already being checked. Finish checking it before starting this order.");
-      return;
-    }
-    if (!writeStoredPaymentIntent(record)) {
-      setMessage("We couldn't save your payment progress. No payment was started. Please allow this site to save data, or contact our team for help.");
-      return;
-    }
     paymentInFlight.current = true;
     setIsPaying(true);
     setMessage(null);
+    try {
+      const outcome = await withCheckoutLock(() => payWhileLocked(record, Boolean(resume)));
+      if (outcome.status !== "held") {
+        setMessage(checkoutLockRefusalMessage[outcome.status]);
+      } else if (outcome.value !== "started") {
+        setMessage(claimRefusalMessage[outcome.value]);
+      }
+    } finally {
+      paymentInFlight.current = false;
+      setIsPaying(false);
+    }
+  }
+
+  /** Claims the stored pointer, then requests payment. Runs holding the checkout lock. */
+  async function payWhileLocked(
+    record: PaymentIntentRecord,
+    resuming: boolean
+  ): Promise<"started" | keyof typeof claimRefusalMessage> {
     // Stored before the request, so a reload or lost response still knows a
-    // payment may have started for this order. Any older status read for it
-    // is discarded.
+    // payment may have started for this order. A resume reuses the stored
+    // pointer and never writes one. Marked pending first so storing it does
+    // not trigger this tab's own recovery check.
+    setIntentCheck({ ...record, status: "pending" });
+    const current = readCheckoutIntentSlot();
+    if (resuming) {
+      if (current.kind === "corrupt") return "corrupt";
+      if (current.kind === "unreadable") return "failed";
+      if (current.kind === "empty") return "settled";
+      if (!sameCheckoutIntent(current.record, record)) return "occupied";
+    } else {
+      const stored = storeCheckoutIntent(record);
+      if (stored !== "stored") return stored;
+    }
+    // Any older status read for this order is discarded.
     intentCheckSequence.current += 1;
-    setIntentCheck({ orderRef: record.orderRef, status: "pending" });
     setConfirmedIntent(null);
 
     try {
@@ -790,28 +892,28 @@ export function CheckoutClient({
       const data = (await response.json().catch(() => ({}))) as { url?: string; error?: string; code?: string };
       if (response.ok && data.url) {
         window.location.assign(data.url);
-        return;
+        return "started";
       }
-      setMessage(
-        data.code === "payment_session_closed"
-          ? `The payment page for order ${record.orderRef} has closed without payment. Review your order again to start a new one.`
-          : data.error ?? "Card payment could not be opened."
-      );
       if (data.code === "payment_session_closed") {
-        clearPaymentIntent(record);
-        startNewOrder();
-        return;
+        const cleared = clearCheckoutIntent(record);
+        if (cleared === "cleared" || cleared === "already_empty") {
+          setIntentCheck(null);
+          setMessage(`The payment page for order ${record.orderRef} has closed without payment. Review your order again to start a new one.`);
+          startNewOrder();
+        } else {
+          applySettledIntent(record, { kind: "ended" }, cleared);
+        }
+        return "started";
       }
-      await checkPaymentIntent(record);
+      setMessage(data.error ?? "Card payment could not be opened.");
+      await checkPaymentIntent(record, true);
     } catch {
       setMessage(
         "We couldn't confirm that the payment page opened. Your order is held: use Return to payment, which reopens the same payment instead of starting another."
       );
-      await checkPaymentIntent(record);
-    } finally {
-      paymentInFlight.current = false;
-      setIsPaying(false);
+      await checkPaymentIntent(record, true);
     }
+    return "started";
   }
 
   function startNewOrder() {
@@ -825,12 +927,18 @@ export function CheckoutClient({
   }
 
   function intentNotice(): { text: string; tone: "isGood" | "isWarn" } | null {
-    if (!paymentIntent || intentStatus === "none") {
+    if (intentStatus === "unreadable") {
+      return {
+        text: `This browser has saved card payment progress it can't read, so a new payment can't start here. Please don't pay again until you email ${supportEmail}.`,
+        tone: "isWarn"
+      };
+    }
+    if (!recoveryIntent || intentStatus === "none") {
       return confirmedIntent
         ? { text: `Payment confirmed for order ${confirmedIntent.orderRef}. Your ticket is ready.`, tone: "isGood" }
         : null;
     }
-    const orderRef = paymentIntent.orderRef;
+    const orderRef = recoveryIntent.orderRef;
     switch (intentStatus) {
       case "checking":
         return { text: `Checking the card payment started for order ${orderRef}…`, tone: "isWarn" };
@@ -851,6 +959,15 @@ export function CheckoutClient({
           text: `We couldn't check the card payment for order ${orderRef}. Check again before starting another order.`,
           tone: "isWarn"
         };
+      case "unsettled":
+        return {
+          text: `${
+            pendingClear?.outcome === "confirmed"
+              ? `Payment confirmed for order ${orderRef}.`
+              : `The card payment for order ${orderRef} ended without payment.`
+          } This browser couldn't update its saved payment progress yet, so new orders stay locked. Check payment status to try again.`,
+          tone: "isWarn"
+        };
       default:
         return {
           text: `A card payment for order ${orderRef} is still being confirmed. Please don't start another payment yet.`,
@@ -864,6 +981,10 @@ export function CheckoutClient({
   const recovery = returnedFromStripeSuccess ? null : intentNotice();
   const canResumePayment =
     intentStatus === "awaiting_payment" || intentStatus === "pending" || intentStatus === "unknown";
+  // A confirmed ticket is shown even while its pointer could not be cleared.
+  const recoveryTicketCode = intentStatus === "unsettled"
+    ? pendingClear?.ticketCode
+    : !paymentIntent ? confirmedIntent?.ticketCode : null;
 
   return (
     <section className="checkoutShell" aria-label="Ticket checkout">
@@ -871,8 +992,8 @@ export function CheckoutClient({
         <div aria-live="polite" className={`checkoutNotice ${recovery.tone}`} role="status">
           {recovery.text}
           <div className="checkoutActions">
-            {!paymentIntent && confirmedIntent?.ticketCode ? (
-              <Link className="secondaryAction" href={`/tickets/${encodeURIComponent(confirmedIntent.ticketCode)}`}>
+            {recoveryTicketCode ? (
+              <Link className="secondaryAction" href={`/tickets/${encodeURIComponent(recoveryTicketCode)}`}>
                 Open ticket
                 <ArrowRight size={18} />
               </Link>
@@ -888,11 +1009,11 @@ export function CheckoutClient({
                 <ArrowRight size={18} />
               </button>
             ) : null}
-            {paymentIntent && intentStatus !== "checking" ? (
+            {recoveryIntent && intentStatus !== "checking" ? (
               <button
                 className="checkoutTextButton"
                 type="button"
-                onClick={() => recheckPaymentIntent(paymentIntent)}
+                onClick={() => recheckPaymentIntent(recoveryIntent)}
               >
                 Check payment status
               </button>

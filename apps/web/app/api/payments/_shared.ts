@@ -52,6 +52,22 @@ export function paymentStateConflict(label: string) {
   };
 }
 
+const terminalPaymentStatePattern = /Terminal payment state:\s*([a-z_]+):\s*([^\n]+)/;
+const visitUnavailablePattern = /Visit unavailable:\s*([^\n]+)/;
+
+/**
+ * Staff-safe Terminal conflicts from Convex (payment already received,
+ * outcome unknown, reader busy, ...) and calendar refusals keep their code and
+ * fixed message; anything else stays a generic error.
+ */
+export function terminalStateFailure(message: string) {
+  const state = terminalPaymentStatePattern.exec(message);
+  if (state) return { error: state[2].trim(), code: state[1] };
+  const visit = visitUnavailablePattern.exec(message);
+  if (visit) return { error: `Visit unavailable: ${visit[1].trim()}`, code: "visit_unavailable" };
+  return null;
+}
+
 export function paymentProviderUnavailable(label: string) {
   return {
     error: `${label} could not be reached right now`,

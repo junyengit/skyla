@@ -197,20 +197,73 @@ export type StripeCreateFailure =
   | { kind: "conflict"; reason: string }
   | { kind: "unknown"; reason: string };
 
+// Stripe's documented error types. Any other type is unrecognized and is never
+// echoed into a stored reason.
+const stripeErrorTypes = new Set([
+  "api_error",
+  "card_error",
+  "idempotency_error",
+  "invalid_request_error",
+  "authentication_error",
+  "permission_error",
+  "rate_limit_error"
+]);
+
+// Stripe validates parameters before executing a request and stores no
+// idempotent result for such failures, so a 400 invalid_request_error with no
+// code or one of these codes proves no Session was created.
+const checkoutCreateValidationCodes = new Set([
+  "parameter_invalid_empty",
+  "parameter_invalid_integer",
+  "parameter_invalid_string_empty",
+  "parameter_missing",
+  "parameter_unknown",
+  "amount_too_small",
+  "amount_too_large",
+  "url_invalid"
+]);
+
+const safeStripeCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
+
+function stripeCreateErrorShape(body: unknown): { type: string; code?: string } | undefined {
+  if (!body || typeof body !== "object" || !("error" in body)) return undefined;
+  const error = (body as { error?: unknown }).error;
+  if (!error || typeof error !== "object") return undefined;
+  const { type, code } = error as { type?: unknown; code?: unknown };
+  if (typeof type !== "string" || !type) return undefined;
+  // A blank code is malformed, not an omitted one, so it never proves rejection.
+  if (code !== undefined && code !== null && (typeof code !== "string" || !code)) return undefined;
+  return { type, ...(typeof code === "string" ? { code } : {}) };
+}
+
 /**
- * A timeout, 409, 429, 5xx or unreadable body leaves the outcome unknown:
- * Stripe may have created a payable Session. Only a structured 4xx validation
- * or authorization error proves that this request created nothing.
+ * A timeout, 404, 409, 429, 5xx, card or provider error, unrecognized type or
+ * code, or unreadable body leaves the outcome unknown: Stripe may have created
+ * a payable Session. Only an exact Stripe validation or authentication shape
+ * proves that this request created nothing.
  */
 export function classifyStripeCreateFailure(status: number, body: unknown): StripeCreateFailure {
-  const error =
-    body && typeof body === "object" && "error" in body && body.error && typeof body.error === "object"
-      ? (body.error as { type?: unknown })
-      : undefined;
-  const type = typeof error?.type === "string" ? error.type : undefined;
-  if (type === "idempotency_error") return { kind: "conflict", reason: "stripe_idempotency_conflict" };
-  if (status >= 400 && status <= 404 && type && type !== "api_error") {
-    return { kind: "rejected", reason: `stripe_${status}_${type}` };
+  const httpStatus = Number.isInteger(status) && status >= 100 && status <= 599 ? status : 0;
+  const error = stripeCreateErrorShape(body);
+  if (!error) return { kind: "unknown", reason: `stripe_http_${httpStatus}_malformed` };
+  if (!stripeErrorTypes.has(error.type)) {
+    return { kind: "unknown", reason: `stripe_http_${httpStatus}_unrecognized_type` };
   }
-  return { kind: "unknown", reason: `stripe_http_${status}` };
+  if (error.type === "idempotency_error") return { kind: "conflict", reason: "stripe_idempotency_conflict" };
+  const code = error.code === undefined ? "" : safeStripeCodePattern.test(error.code) ? `_${error.code}` : "_unrecognized_code";
+  if (
+    httpStatus === 400 &&
+    error.type === "invalid_request_error" &&
+    (error.code === undefined || checkoutCreateValidationCodes.has(error.code))
+  ) {
+    return { kind: "rejected", reason: `stripe_${httpStatus}_${error.type}${code}` };
+  }
+  if (
+    error.code === undefined &&
+    ((httpStatus === 401 && (error.type === "authentication_error" || error.type === "invalid_request_error")) ||
+      (httpStatus === 403 && (error.type === "permission_error" || error.type === "invalid_request_error")))
+  ) {
+    return { kind: "rejected", reason: `stripe_${httpStatus}_${error.type}` };
+  }
+  return { kind: "unknown", reason: `stripe_http_${httpStatus}_${error.type}${code}` };
 }

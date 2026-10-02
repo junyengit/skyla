@@ -6,7 +6,8 @@ import {
   paymentJson,
   paymentProviderUnavailable,
   paymentServiceUnavailable,
-  paymentStateConflict
+  paymentStateConflict,
+  terminalStateFailure
 } from "../../_shared";
 
 type StripeTerminalProcessRequest = {
@@ -179,6 +180,8 @@ export async function POST(request: Request) {
     return paymentJson(toPublicTerminalProcessResult(result), {}, { varyAuthorization: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not process Stripe Terminal payment";
+    const state = terminalStateFailure(message);
+    if (state) return paymentJson(state, { status: 409 }, { varyAuthorization: true });
     const status = paymentFailureStatus(message);
     return paymentJson(publicPaymentFailureBody(status, message), { status }, { varyAuthorization: true });
   }

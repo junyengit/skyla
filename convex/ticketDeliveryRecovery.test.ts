@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createConvexHarness, createFakeResend, type ConvexHarness } from "./convexHarness.testkit";
 import * as ticketDelivery from "./ticketDelivery";
+import { buildCheckoutDraftWrite } from "./lib/orderDraftPersistence";
 import { providerConfigurationFingerprint } from "./lib/providerIdentity";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -18,13 +19,26 @@ function setup(options: { orderStatus?: string; bookingStatus?: string; delivery
   const resend = createFakeResend();
   const fetchMock = vi.fn(resend.fetch);
   vi.stubGlobal("fetch", fetchMock);
-  harness.seed("orders", { orderRef: "ORDER-1", channel: "online", status: options.orderStatus ?? "paid" });
+  // A paid status alone is never send authority: seed the stored age-priced
+  // draft and its one globally owned settlement, including the free child.
+  const built = buildCheckoutDraftWrite({
+    packageKey: "general", adults: 1, children: 1, freeChildren: 1,
+    visitDate: "2026-10-03", entryTime: "14:00", customerEmail: "guest@example.com",
+    idempotencyKey: "ticket_recovery_fixture"
+  }, { orderRef: "ORDER-1", now: now0 });
+  harness.seed("orders", { ...built.order, status: options.orderStatus ?? "paid" });
+  built.lines.forEach(line => harness.seed("orderLineItems", line));
+  harness.seed("paymentEvents", {
+    orderRef: "ORDER-1", provider: "stripe", providerPaymentId: "cs_test_ticket_recovery_fixture",
+    providerPaymentIntentId: "pi_ticket_recovery_fixture", status: "paid",
+    amountCents: built.order.totalCents, currency: "usd", createdAt: now0
+  });
   harness.seed("bookings", {
     bookingRef: "ORDER-1",
     orderRef: "ORDER-1",
     visitDate: "2026-10-03",
     entryTime: "14:00",
-    partySize: 2,
+    partySize: 3,
     status: options.bookingStatus ?? "confirmed",
     emailLower: "guest@example.com",
     createdAt: now0
@@ -224,6 +238,89 @@ describe("ticket delivery recovery", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(delivery(harness)).toMatchObject({ status: "suppressed", failureReason: reason });
+  });
+
+  it.each([
+    "missing settlement", "wrong settlement amount", "wrong settlement currency",
+    "noncanonical youth price", "missing free-child provenance", "wrong party count",
+    "wrong visit date", "wrong entry time", "duplicate paid intent",
+    "duplicate provider payment ID", "foreign pending intent owner", "full refund",
+    "corrupt refund"
+  ])("never sends or retries a paid-status ticket with %s", async corruption => {
+    const { harness, resend, fetchMock, deliveryId } = setup();
+    const order = harness.rows("orders")[0]!;
+    const payment = harness.rows("paymentEvents")[0]!;
+    const booking = harness.rows("bookings")[0]!;
+    const youth = harness.rows("orderLineItems").find(line =>
+      (line.metadata as { ageCategory?: string }).ageCategory === "youth")!;
+    const child = harness.rows("orderLineItems").find(line => line.unitAmountCents === 0)!;
+    const refund = {
+      orderRef: "ORDER-1", paymentProvider: "stripe", providerPaymentIntentId: payment.providerPaymentIntentId,
+      status: "succeeded", currency: "usd", amountCents: order.totalCents, createdAt: now0
+    };
+    if (corruption === "missing settlement") harness.rows("paymentEvents").length = 0;
+    if (corruption === "wrong settlement amount") await harness.ctx.db.patch(payment._id, { amountCents: 1 });
+    if (corruption === "wrong settlement currency") await harness.ctx.db.patch(payment._id, { currency: "eur" });
+    if (corruption === "noncanonical youth price") {
+      await harness.ctx.db.patch(youth._id, { unitAmountCents: 500, lineTotalCents: 500 });
+      await harness.ctx.db.patch(order._id, { subtotalCents: 2500, totalCents: 2500 });
+      await harness.ctx.db.patch(payment._id, { amountCents: 2500 });
+    }
+    if (corruption === "missing free-child provenance") await harness.ctx.db.patch(child._id, { metadata: undefined });
+    if (corruption === "wrong party count") await harness.ctx.db.patch(booking._id, { partySize: 2 });
+    if (corruption === "wrong visit date") await harness.ctx.db.patch(order._id, { visitDate: "2026-10-04" });
+    if (corruption === "wrong entry time") await harness.ctx.db.patch(order._id, { entryTime: "15:00" });
+    if (corruption === "duplicate paid intent") harness.seed("paymentEvents", {
+      ...payment, orderRef: "ORDER-OTHER", providerPaymentId: "cs_test_other_ticket"
+    });
+    if (corruption === "duplicate provider payment ID") harness.seed("paymentEvents", {
+      ...payment, orderRef: "ORDER-OTHER", providerPaymentIntentId: "pi_other_ticket"
+    });
+    if (corruption === "foreign pending intent owner") harness.seed("paymentEvents", {
+      ...payment, orderRef: "ORDER-OTHER", providerPaymentId: "cs_test_other_ticket", status: "processing"
+    });
+    if (corruption === "full refund") harness.seed("refunds", refund);
+    if (corruption === "corrupt refund") harness.seed("refunds", { ...refund, orderRef: "ORDER-OTHER" });
+
+    await send(harness, deliveryId);
+    vi.setSystemTime(now0 + 3 * minute);
+    await harness.call(ticketDelivery.sweepTicketDeliveries, {});
+    await sendJobs(harness);
+    await send(harness, deliveryId);
+
+    expect(order.status).toBe("paid");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(resend.calls).toHaveLength(0);
+    expect(resend.deliveredCount()).toBe(0);
+    expect(delivery(harness)).toMatchObject({ status: "suppressed", failureReason: "payment_proof_invalid", attemptCount: 0 });
+    expect(delivery(harness).providerKeyFirstUsedAt).toBeUndefined();
+    expect(delivery(harness).autoRetryAt).toBeUndefined();
+  });
+
+  it("never sends a delivery that points to a different booking owner", async () => {
+    const { harness, resend, fetchMock, deliveryId } = setup();
+    await harness.ctx.db.patch(harness.rows("bookings")[0]!._id, { orderRef: "ORDER-OTHER" });
+
+    await send(harness, deliveryId);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(resend.deliveredCount()).toBe(0);
+    expect(delivery(harness)).toMatchObject({ status: "suppressed", failureReason: "delivery_owner_mismatch", attemptCount: 0 });
+  });
+
+  it("sends the three-person age-priced party after a valid partial refund", async () => {
+    const { harness, resend, deliveryId } = setup();
+    harness.seed("refunds", {
+      orderRef: "ORDER-1", paymentProvider: "stripe", providerPaymentIntentId: "pi_ticket_recovery_fixture",
+      status: "succeeded", currency: "usd", amountCents: 1000, createdAt: now0
+    });
+
+    await send(harness, deliveryId);
+
+    expect(harness.rows("orderLineItems").map(line => line.unitAmountCents)).toEqual([2000, 1000, 0]);
+    expect(harness.rows("bookings")[0]!.partySize).toBe(3);
+    expect(resend.deliveredCount()).toBe(1);
+    expect(delivery(harness)).toMatchObject({ status: "sent", providerDeliveryStatus: "accepted", attemptCount: 1 });
   });
 
   it("makes missing email configuration visible without starting the key window, then sends once configured", async () => {

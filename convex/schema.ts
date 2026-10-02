@@ -47,9 +47,25 @@ const checkoutAttemptStatus = v.union(
   v.literal("rejected"),
   v.literal("exception")
 );
+// One Stripe Terminal PaymentIntent per POS sale, frozen like checkout
+// attempts. creating/creation_unknown: request sent or about to be sent;
+// outcome unknown. open: PaymentIntent id known and verified; the same intent
+// is reused after declines and reader failures. paid/canceled: provider-
+// verified. rejected: Stripe refused the only create request. exception: an
+// operator must reconcile it; the capacity hold is kept.
+const terminalAttemptStatus = v.union(
+  v.literal("creating"),
+  v.literal("creation_unknown"),
+  v.literal("open"),
+  v.literal("paid"),
+  v.literal("canceled"),
+  v.literal("rejected"),
+  v.literal("exception")
+);
 const operationsExceptionCategory = v.union(
   v.literal("billing"),
   v.literal("checkout_attempt"),
+  v.literal("terminal_attempt"),
   v.literal("ticket_delivery")
 );
 
@@ -192,10 +208,16 @@ export default defineSchema({
     totalCents: v.number(),
     staffUserId: v.optional(v.id("staffUsers")),
     customerEmailLower: v.optional(v.string()),
+    // Selected LA visit for admission lines; immutable once stored. Absent for
+    // cafe/custom-only sales and for sales stored before visit selection.
+    visitDate: v.optional(v.string()),
+    entryTime: v.optional(v.string()),
     readerId: v.optional(v.string()),
     terminalLocationId: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
     draftFingerprint: v.optional(v.string()),
+    // An untouched draft (no Terminal attempt) expires and releases its hold.
+    expiresAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number()
   })
@@ -236,7 +258,14 @@ export default defineSchema({
     .index("by_saleRef", ["saleRef"])
     .index("by_createdAt", ["createdAt"])
     .index("by_provider_providerPaymentId", ["provider", "providerPaymentId"])
+    // Exact provider payment identity per status (Session or Terminal intent),
+    // independent of any owner's history; legacy rows lack an intent id.
+    .index("by_provider_providerPaymentId_status", ["provider", "providerPaymentId", "status"])
     .index("by_providerPaymentIntentId", ["providerPaymentIntentId"])
+    // Status subsets: decline/failure history can never hide paid evidence.
+    .index("by_providerPaymentIntentId_status", ["providerPaymentIntentId", "status"])
+    .index("by_saleRef_status", ["saleRef", "status"])
+    .index("by_orderRef_status", ["orderRef", "status"])
     .index("by_provider_idempotencyKey", ["provider", "idempotencyKey"])
     .index("by_provider_status_createdAt", ["provider", "status", "createdAt"]),
 
@@ -264,6 +293,7 @@ export default defineSchema({
   })
     .index("by_providerRefundId", ["providerRefundId"])
     .index("by_providerPaymentIntentId", ["providerPaymentIntentId"])
+    .index("by_providerPaymentIntentId_status", ["providerPaymentIntentId", "status"])
     .index("by_orderRef_updatedAt", ["orderRef", "updatedAt"])
     .index("by_saleRef_updatedAt", ["saleRef", "updatedAt"])
     .index("by_updatedAt", ["updatedAt"]),
@@ -326,6 +356,51 @@ export default defineSchema({
     .index("by_reconcileAt", ["reconcileAt"])
     .index("by_status_updatedAt", ["status", "updatedAt"]),
 
+  terminalPaymentAttempts: defineTable({
+    saleRef: v.string(),
+    attemptNonce: v.string(),
+    // SHA-256 of the exact configured credential; never the credential.
+    providerConfigurationFingerprint: v.string(),
+    stripeMode: v.union(v.literal("test"), v.literal("live")),
+    apiVersion: v.string(),
+    endpoint: v.literal("/payment_intents"),
+    providerIdempotencyKey: v.string(),
+    // Exact form parameters sent to Stripe, in order. Never recomputed.
+    requestParams: v.array(v.object({ name: v.string(), value: v.string() })),
+    amountCents: v.number(),
+    currency,
+    readerId: v.string(),
+    terminalLocationId: v.optional(v.string()),
+    startedBy: v.id("staffUsers"),
+    status: terminalAttemptStatus,
+    providerPaymentIntentId: v.optional(v.string()),
+    providerRequestCount: v.number(),
+    firstProviderRequestAt: v.number(),
+    lastProviderRequestAt: v.number(),
+    leaseToken: v.optional(v.string()),
+    leaseExpiresAt: v.optional(v.number()),
+    // Bumped on every settlement-relevant write so a slow worker's result can
+    // be discarded. Reader handoff bookkeeping does not bump it.
+    version: v.number(),
+    reconcileAt: v.optional(v.number()),
+    reconcileCount: v.number(),
+    lastReconciledAt: v.optional(v.number()),
+    lastProviderState: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    exceptionReason: v.optional(v.string()),
+    // Reader handoffs of the same PaymentIntent; each uses its own key.
+    readerProcessCount: v.number(),
+    readerProcessLeaseExpiresAt: v.optional(v.number()),
+    lastReaderProcessAt: v.optional(v.number()),
+    lastReaderStatus: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    settledAt: v.optional(v.number())
+  })
+    .index("by_saleRef", ["saleRef"])
+    .index("by_providerPaymentIntentId", ["providerPaymentIntentId"])
+    .index("by_reconcileAt", ["reconcileAt"]),
+
   // Staff-visible problems that automation must not resolve by guessing:
   // paid money that could not be fulfilled, unknown provider outcomes, and
   // ticket emails that cannot be sent safely. Evidence is written once.
@@ -355,7 +430,11 @@ export default defineSchema({
     .index("by_dedupeKey", ["dedupeKey"])
     .index("by_saleRef", ["saleRef"])
     .index("by_status_createdAt", ["status", "createdAt"])
-    .index("by_orderRef", ["orderRef"]),
+    .index("by_orderRef", ["orderRef"])
+    // Active-subset reads: resolved or non-billing history never hides an
+    // open billing exception.
+    .index("by_saleRef_status_category", ["saleRef", "status", "category"])
+    .index("by_orderRef_status_category", ["orderRef", "status", "category"]),
 
   publicGatewayRateLimits: defineTable({
     operation: publicGatewayOperation,
@@ -418,7 +497,9 @@ export default defineSchema({
     .index("by_inside", ["inside"]),
 
   capacityReservations: defineTable({
-    orderRef: v.string(),
+    // Exactly one owner: an online order or a POS sale.
+    orderRef: v.optional(v.string()),
+    saleRef: v.optional(v.string()),
     visitDate: v.string(),
     entryTime: v.string(),
     // LA wall-clock minutes on visitDate: entry through the closing of the
@@ -440,6 +521,7 @@ export default defineSchema({
     updatedAt: v.number()
   })
     .index("by_orderRef", ["orderRef"])
+    .index("by_saleRef", ["saleRef"])
     .index("by_visitDate_status", ["visitDate", "status"])
     .index("by_visitDate_status_departedAt", ["visitDate", "status", "departedAt"]),
 
@@ -647,4 +729,7 @@ export default defineSchema({
   })
     .index("by_actor_createdAt", ["actorStaffUserId", "createdAt"])
     .index("by_entity", ["entityType", "entityRef"])
+    // Bounded reads of one action's history for an entity (refund
+    // invalidation/restoration ownership) without unrelated audit rows.
+    .index("by_entity_action", ["entityType", "entityRef", "action"])
 });

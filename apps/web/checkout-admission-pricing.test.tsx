@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { siteConfig } from "@skyla/config";
 
 import CheckoutPage from "./app/checkout/page";
-import { routeCheckoutFetch } from "./checkout-test-support";
+import { installCheckoutBrowserPlatform, routeCheckoutFetch } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 import { localAdmissionPreviewEnabled } from "./lib/local-admission-preview";
 
@@ -30,14 +30,17 @@ function click(name: string, times = 1) {
 }
 
 let router: ReturnType<typeof routeCheckoutFetch>;
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
 
 beforeEach(() => {
   router = routeCheckoutFetch();
   vi.stubGlobal("fetch", router.fetchMock);
+  platform = installCheckoutBrowserPlatform();
 });
 
 afterEach(() => {
   cleanup();
+  platform.restore();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });

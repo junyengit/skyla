@@ -159,11 +159,13 @@ describe("createCheckoutOrderDraft", () => {
 });
 
 describe("createPosSaleDraft", () => {
-  it("reprices ticket, cafe, and custom POS lines server-side", () => {
+  const admission = { packageKey: "general" as const, visitDate: "2026-10-03", entryTime: "14:00" };
+
+  it("prices mixed-age admission at 20/10/free and keeps cafe and custom lines unchanged", () => {
     const sale = createPosSaleDraft({
       actorRole: "pos",
+      admission: { ...admission, adults: 2, children: 1, freeChildren: 2 },
       lines: [
-        { kind: "ticket", packageKey: "general", quantity: 2 },
         { kind: "cafe", itemKey: "b1", quantity: 3 },
         { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker", quantity: 1 }
       ]
@@ -172,34 +174,68 @@ describe("createPosSaleDraft", () => {
     expect(sale).toMatchObject({
       channel: "pos",
       currency: "usd",
-      subtotalCents: 6300,
+      subtotalCents: 7300,
       feeCents: 0,
-      totalCents: 6300
+      totalCents: 7300,
+      visitDate: "2026-10-03",
+      entryTime: "14:00"
     });
-    expect(sale.lines.map((line) => line.kind)).toEqual(["ticket", "cafe", "custom"]);
+    expect(sale.lines).toEqual([
+      expect.objectContaining({ kind: "ticket", quantity: 2, unitAmountCents: 2000, lineTotalCents: 4000,
+        metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.adult) }),
+      expect.objectContaining({ kind: "ticket", quantity: 1, unitAmountCents: 1000, lineTotalCents: 1000,
+        metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.youth) }),
+      expect.objectContaining({ kind: "ticket", quantity: 2, unitAmountCents: 0, lineTotalCents: 0,
+        metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.child) }),
+      expect.objectContaining({ kind: "cafe", productKey: "b1", quantity: 3, unitAmountCents: 600, lineTotalCents: 1800 }),
+      expect.objectContaining({ kind: "custom", unitAmountCents: 500, lineTotalCents: 500 })
+    ]);
   });
 
-  it("defaults omitted POS line quantities to one before calculating totals", () => {
+  it("keeps cafe-only sales free of any visit", () => {
     const sale = createPosSaleDraft({
       actorRole: "admin",
-      lines: [
-        { kind: "ticket", packageKey: "general" },
-        { kind: "cafe", itemKey: "b1" }
-      ]
+      lines: [{ kind: "cafe", itemKey: "b1" }]
     });
 
-    expect(sale.subtotalCents).toBe(2600);
-    expect(sale.lines).toEqual([
-      expect.objectContaining({ kind: "ticket", quantity: 1, lineTotalCents: 2000 }),
-      expect.objectContaining({ kind: "cafe", quantity: 1, lineTotalCents: 600 })
-    ]);
+    expect(sale.subtotalCents).toBe(600);
+    expect(sale).not.toHaveProperty("visitDate");
+    expect(sale).not.toHaveProperty("entryTime");
+  });
+
+  it("requires one adult, at most 30 people and a selected visit for admission", () => {
+    expect(() => createPosSaleDraft({ actorRole: "pos", admission: { ...admission, adults: 0, freeChildren: 1 }, lines: [] }))
+      .toThrow("adults must be a whole number from 1 to 30");
+    expect(() => createPosSaleDraft({ actorRole: "pos", admission: { ...admission, adults: 20, freeChildren: 11 }, lines: [] }))
+      .toThrow("party size must be 30 visitors or fewer");
+    expect(() => createPosSaleDraft({ actorRole: "pos", admission: { ...admission, adults: 1.5 }, lines: [] }))
+      .toThrow("adults must be a whole number");
+    expect(() => createPosSaleDraft({ actorRole: "pos", admission: { ...admission, adults: 1, visitDate: "" }, lines: [] }))
+      .toThrow("visitDate must use YYYY-MM-DD");
+    expect(() => createPosSaleDraft({ actorRole: "pos", admission: { ...admission, adults: 1, entryTime: "2pm" }, lines: [] }))
+      .toThrow("entryTime must use HH:mm");
+  });
+
+  it("rejects undated ticket lines and corrupt quantities or cents", () => {
+    expect(() =>
+      createPosSaleDraft({
+        actorRole: "pos",
+        lines: [{ kind: "ticket", packageKey: "general", quantity: 1 } as never]
+      })
+    ).toThrow("Admission requires a selected visit date, entry time and age counts");
+    expect(() =>
+      createPosSaleDraft({ actorRole: "pos", lines: [{ kind: "cafe", itemKey: "b1", quantity: Number.MAX_SAFE_INTEGER + 1 }] })
+    ).toThrow("line quantity must be a positive integer");
+    expect(() =>
+      createPosSaleDraft({ actorRole: "pos", lines: [{ kind: "custom", name: "Fee", amountCents: 50.5, reason: "x" }] })
+    ).toThrow("custom amountCents must be a positive integer");
   });
 
   it("rejects viewer role and custom charges without reasons", () => {
     expect(() =>
       createPosSaleDraft({
         actorRole: "viewer",
-        lines: [{ kind: "ticket", packageKey: "general", quantity: 1 }]
+        lines: [{ kind: "cafe", itemKey: "b1", quantity: 1 }]
       })
     ).toThrow("POS sale requires a pos or admin role");
 
@@ -284,10 +320,8 @@ describe("stored order records", () => {
   it("maps POS drafts into staff-attributed sale and line records", () => {
     const draft = createPosSaleDraft({
       actorRole: "pos",
-      lines: [
-        { kind: "ticket", packageKey: "general", quantity: 1 },
-        { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
-      ],
+      admission: { packageKey: "general", adults: 1, visitDate: "2026-07-04", entryTime: "15:00" },
+      lines: [{ kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }],
       customerEmail: "STAFFSALE@EXAMPLE.COM"
     });
     const now = Date.UTC(2026, 6, 4, 12);
@@ -311,6 +345,8 @@ describe("stored order records", () => {
       totalCents: 2500,
       staffUserId: "staff_123",
       customerEmailLower: "staffsale@example.com",
+      visitDate: "2026-07-04",
+      entryTime: "15:00",
       readerId: "tmr_reader_123",
       terminalLocationId: "tml_location_123",
       idempotencyKey: "idem_pos_12345",
@@ -322,9 +358,9 @@ describe("stored order records", () => {
       expect.objectContaining({
         saleRef,
         kind: "ticket",
-        name: "The View",
+        name: "The View · Adult 18+",
         lineTotalCents: 2000,
-        metadata: catalogLineMetadata(ticketPackages.general)
+        metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.adult)
       }),
       expect.objectContaining({ saleRef, kind: "custom", lineTotalCents: 500, metadata: { reason: "Guest requested locker" } })
     ]);

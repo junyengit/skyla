@@ -182,11 +182,19 @@ http.route({
           saleRef: outcome.saleRef,
           ticketCode: outcome.outcome === "paid" ? newTicketCode() : undefined,
           amountCents: "amountCents" in outcome ? outcome.amountCents : undefined,
+          amountReceivedCents: "amountReceivedCents" in outcome ? outcome.amountReceivedCents : undefined,
           currency: "currency" in outcome ? outcome.currency : undefined,
+          attemptNonce: "attemptNonce" in outcome ? outcome.attemptNonce : undefined,
+          intentSource: "intentSource" in outcome ? outcome.intentSource : undefined,
+          livemode: "livemode" in outcome ? outcome.livemode : undefined,
+          intentStatus: "intentStatus" in outcome ? outcome.intentStatus : undefined,
+          providerEventCreatedAt: "providerEventCreatedAt" in outcome ? outcome.providerEventCreatedAt : undefined,
           raw: outcome.raw
         })
       );
 
+      // Paid money that cannot become a ticket is durably recorded as a
+      // billing exception, so Stripe gets a 2xx and need not redeliver it.
       return json({
         ok: result.status !== "failed",
         status: result.status,

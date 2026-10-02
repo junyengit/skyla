@@ -65,6 +65,45 @@ describe("checkout return status", () => {
     })).toBe("needs_attention");
   });
 
+  it("lets an open exception win over a booking and over a not-started draft", () => {
+    expect(projectCheckoutReturnStatus({
+      orderStatus: "paid",
+      paymentStatuses: ["created", "paid"],
+      bookingExists: true,
+      needsAttention: true
+    })).toBe("needs_attention");
+    expect(projectCheckoutAttemptStatus({
+      orderStatus: "paid",
+      attempt: { status: "exception", expiresAt: 10_000 },
+      paymentStatuses: ["created", "paid"],
+      bookingExists: true,
+      needsAttention: false,
+      now: 1_000
+    })).toBe("needs_attention");
+    expect(projectCheckoutAttemptStatus({
+      orderStatus: "paid",
+      attempt: { status: "paid", expiresAt: 10_000 },
+      paymentStatuses: ["created", "paid"],
+      bookingExists: true,
+      needsAttention: true,
+      now: 1_000
+    })).toBe("needs_attention");
+    expect(projectCheckoutAttemptStatus({
+      orderStatus: "draft",
+      paymentStatuses: [],
+      bookingExists: false,
+      needsAttention: true,
+      now: 1_000
+    })).toBe("needs_attention");
+    expect(projectCheckoutAttemptStatus({
+      orderStatus: "draft",
+      paymentStatuses: [],
+      bookingExists: false,
+      needsAttention: false,
+      now: 1_000
+    })).toBe("not_started");
+  });
+
   it("projects terminal failures without treating the browser return as authority", () => {
     expect(projectCheckoutReturnStatus({ orderStatus: "payment_pending", paymentStatuses: ["created", "failed"], bookingExists: false }))
       .toBe("failed");

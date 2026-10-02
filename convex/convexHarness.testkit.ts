@@ -193,15 +193,23 @@ export function createConvexHarness(modules: Record<string, Record<string, unkno
     return result;
   }
 
-  const actionCtx = {
-    runQuery: (reference: FunctionReference<"query">, args: Record<string, unknown>) => call(reference, args),
-    runMutation: (reference: FunctionReference<"mutation">, args: Record<string, unknown>) => call(reference, args),
-    runAction: (reference: FunctionReference<"action">, args: Record<string, unknown>) => runAction(reference, args),
-    scheduler
-  };
+  // As in Convex, an action's caller identity flows into its runQuery and
+  // runMutation calls; scheduled actions run without one.
+  const makeActionCtx = (as?: string) => ({
+    runQuery: (reference: FunctionReference<"query">, args: Record<string, unknown>) => call(reference, args, as),
+    runMutation: (reference: FunctionReference<"mutation">, args: Record<string, unknown>) => call(reference, args, as),
+    runAction: (reference: FunctionReference<"action">, args: Record<string, unknown>) => runAction(reference, args, as),
+    scheduler,
+    auth: { getUserIdentity: async () => (as ? { subject: as } : null) }
+  });
+  const actionCtx = makeActionCtx();
 
-  function runAction<Result = unknown>(reference: FunctionReference<"action"> | unknown, args: Record<string, unknown>) {
-    return resolve(reference as Registered)._handler(actionCtx, structuredClone(args)) as Promise<Result>;
+  function runAction<Result = unknown>(
+    reference: FunctionReference<"action"> | unknown,
+    args: Record<string, unknown>,
+    as?: string
+  ) {
+    return resolve(reference as Registered)._handler(makeActionCtx(as), structuredClone(args)) as Promise<Result>;
   }
 
   /** Runs due scheduled jobs (optionally only those whose name matches). */
@@ -359,6 +367,152 @@ export function createFakeStripe(options: { livemode?: boolean } = {}) {
     },
     session(sessionId: string) {
       return sessions.get(sessionId)!;
+    }
+  };
+}
+
+type TerminalFault =
+  // Placeholder so a later fault lands on the intended request.
+  | "none"
+  | "network_before_send"
+  | "network_after_create"
+  | "stored_500"
+  | "invalid_request"
+  | "server_error"
+  | "reader_timeout"
+  | "reader_busy";
+
+/**
+ * Local Stripe Terminal stand-in with real idempotency semantics for
+ * PaymentIntent creation and reader handoff: the same key and body return
+ * the stored result, a changed body is an idempotency_error, and validation
+ * failures are not stored. Declines keep the same intent payable, as Stripe
+ * does. No network is used.
+ */
+export function createFakeStripeTerminal(options: { livemode?: boolean } = {}) {
+  const intents = new Map<string, Record<string, unknown>>();
+  const idempotency = new Map<string, { body: string; status: number; response: unknown }>();
+  const calls: Array<{ method: string; path: string; idempotencyKey?: string; body?: string; authorization?: string }> = [];
+  const faults: TerminalFault[] = [];
+  const livemode = options.livemode ?? false;
+  let counter = 0;
+  let beforeRequest: ((call: { method: string; path: string }) => void) | undefined;
+
+  async function fetch(input: string | URL, init: RequestInit = {}) {
+    const url = new URL(String(input));
+    if (url.origin !== "https://api.stripe.com") throw new Error(`Fake Stripe got ${url.origin}`);
+    const path = url.pathname.replace(/^\/v1/, "");
+    const headers = init.headers as Record<string, string>;
+    const method = init.method ?? "GET";
+    const body = init.body ? String(init.body) : undefined;
+    calls.push({ method, path, idempotencyKey: headers["Idempotency-Key"], body, authorization: headers.Authorization });
+    beforeRequest?.({ method, path });
+    const fault = faults.shift();
+    if (fault === "network_before_send") throw new TypeError("network unreachable");
+
+    const stored = (key: string | undefined) => (key ? idempotency.get(key) : undefined);
+    if (method === "POST" && path === "/payment_intents") {
+      const key = headers["Idempotency-Key"];
+      const existing = stored(key);
+      if (existing) {
+        if (existing.body !== body) return Response.json({ error: { type: "idempotency_error" } }, { status: 400 });
+        if (fault === "network_after_create") throw new TypeError("connection reset");
+        return Response.json(existing.response, { status: existing.status });
+      }
+      if (fault === "invalid_request") return Response.json({ error: { type: "invalid_request_error" } }, { status: 400 });
+      if (fault === "stored_500") {
+        idempotency.set(key, { body: body!, status: 500, response: { error: { type: "api_error" } } });
+        return Response.json({ error: { type: "api_error" } }, { status: 500 });
+      }
+      const params = new URLSearchParams(body);
+      const metadata: Record<string, string> = {};
+      for (const [name, value] of params) {
+        const match = /^metadata\[(.+)\]$/.exec(name);
+        if (match) metadata[match[1]] = value;
+      }
+      counter += 1;
+      const id = `pi_fake${String(counter).padStart(12, "0")}`;
+      const intent = {
+        id,
+        object: "payment_intent",
+        livemode,
+        amount: Number(params.get("amount")),
+        amount_received: 0,
+        currency: params.get("currency"),
+        status: "requires_payment_method",
+        capture_method: params.get("capture_method"),
+        payment_method_types: params.getAll("payment_method_types[]"),
+        client_secret: `${id}_secret_fake`,
+        metadata
+      };
+      intents.set(id, intent);
+      idempotency.set(key, { body: body!, status: 200, response: structuredClone(intent) });
+      if (fault === "network_after_create") throw new TypeError("connection reset");
+      return Response.json(intent);
+    }
+
+    if (method === "GET" && path.startsWith("/payment_intents/")) {
+      if (fault === "server_error") return Response.json({ error: { type: "api_error" } }, { status: 500 });
+      const intent = intents.get(decodeURIComponent(path.slice("/payment_intents/".length)));
+      if (!intent) return Response.json({ error: { type: "invalid_request_error" } }, { status: 404 });
+      return Response.json(structuredClone(intent));
+    }
+
+    const reader = /^\/terminal\/readers\/([^/]+)\/process_payment_intent$/.exec(path);
+    if (method === "POST" && reader) {
+      if (fault === "reader_timeout") throw new TypeError("reader request timed out");
+      if (fault === "reader_busy") {
+        return Response.json({ error: { type: "invalid_request_error", code: "terminal_reader_busy" } }, { status: 400 });
+      }
+      const key = headers["Idempotency-Key"];
+      const existing = stored(key);
+      if (existing) return Response.json(existing.response, { status: existing.status });
+      const paymentIntentId = new URLSearchParams(body).get("payment_intent")!;
+      const response = {
+        id: decodeURIComponent(reader[1]),
+        object: "terminal.reader",
+        status: "online",
+        action: {
+          type: "process_payment_intent",
+          status: "in_progress",
+          process_payment_intent: { payment_intent: paymentIntentId, process_config: { enable_customer_cancellation: true } }
+        }
+      };
+      idempotency.set(key, { body: body!, status: 200, response });
+      return Response.json(response);
+    }
+    throw new Error(`Fake Stripe Terminal does not handle ${method} ${path}`);
+  }
+
+  return {
+    fetch,
+    intents,
+    calls,
+    createCalls: () => calls.filter((call) => call.method === "POST" && call.path === "/payment_intents"),
+    retrieveCalls: () => calls.filter((call) => call.method === "GET"),
+    readerCalls: () => calls.filter((call) => call.path.startsWith("/terminal/readers/")),
+    fail(...next: TerminalFault[]) {
+      faults.push(...next);
+    },
+    onRequest(observer: ((call: { method: string; path: string }) => void) | undefined) {
+      beforeRequest = observer;
+    },
+    pay(id: string) {
+      const intent = intents.get(id)!;
+      Object.assign(intent, { status: "succeeded", amount_received: intent.amount, latest_charge: `ch_${id.slice(3)}` });
+      return intent;
+    },
+    decline(id: string) {
+      return Object.assign(intents.get(id)!, {
+        status: "requires_payment_method",
+        last_payment_error: { code: "card_declined", decline_code: "generic_decline" }
+      });
+    },
+    cancel(id: string) {
+      return Object.assign(intents.get(id)!, { status: "canceled" });
+    },
+    intent(id: string) {
+      return intents.get(id)!;
     }
   };
 }

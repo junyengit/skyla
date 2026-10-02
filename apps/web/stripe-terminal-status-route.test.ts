@@ -1,11 +1,12 @@
-import { fetchQuery } from "convex/nextjs";
+import { fetchAction, fetchQuery } from "convex/nextjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "./app/api/payments/stripe-terminal/status/route";
 
-vi.mock("convex/nextjs", () => ({ fetchQuery: vi.fn() }));
+vi.mock("convex/nextjs", () => ({ fetchQuery: vi.fn(), fetchAction: vi.fn() }));
 
 const fetchQueryMock = vi.mocked(fetchQuery);
+const fetchActionMock = vi.mocked(fetchAction);
 
 function request(body: unknown = { saleRef: "SALE260713-ABC123" }, token = "staff.jwt") {
   return new Request("https://skydeckla.com/api/payments/stripe-terminal/status", {
@@ -22,6 +23,7 @@ afterEach(() => {
   delete process.env.NEXT_PUBLIC_CONVEX_URL;
   delete process.env.CONVEX_URL;
   fetchQueryMock.mockReset();
+  fetchActionMock.mockReset();
 });
 
 describe("/api/payments/stripe-terminal/status", () => {
@@ -65,6 +67,26 @@ describe("/api/payments/stripe-terminal/status", () => {
     expect(response.headers.get("vary")).toContain("Authorization");
     expect(body).toMatchObject({ status: "paid", totalCents: 2000, bookingRef: "SALE260713-ABC123" });
     expect(fetchQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { saleRef: "SALE260713-ABC123" },
+      { url: "https://example.convex.cloud", token: "staff.jwt" }
+    );
+  });
+
+  it("polls stored state only, and runs the bounded provider read only for an explicit refresh", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    fetchQueryMock.mockResolvedValueOnce({ saleRef: "SALE260713-ABC123", paymentState: "awaiting_payment" });
+    fetchActionMock.mockResolvedValueOnce({ saleRef: "SALE260713-ABC123", paymentState: "paid", refreshed: true });
+
+    const polled = await POST(request({ saleRef: "SALE260713-ABC123", refresh: "true" }));
+    expect(await polled.json()).toMatchObject({ paymentState: "awaiting_payment" });
+    expect(fetchActionMock).not.toHaveBeenCalled();
+
+    const refreshed = await POST(request({ saleRef: "SALE260713-ABC123", refresh: true }));
+    expect(refreshed.status).toBe(200);
+    expect(refreshed.headers.get("vary")).toContain("Authorization");
+    expect(await refreshed.json()).toMatchObject({ paymentState: "paid", refreshed: true });
+    expect(fetchActionMock).toHaveBeenCalledWith(
       expect.anything(),
       { saleRef: "SALE260713-ABC123" },
       { url: "https://example.convex.cloud", token: "staff.jwt" }

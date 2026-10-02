@@ -38,6 +38,9 @@ export type StoredPosSaleRecord<StaffUserId extends string = string> = {
   totalCents: number;
   staffUserId?: StaffUserId;
   customerEmailLower?: string;
+  /** The selected LA visit; present only when the sale includes admission. */
+  visitDate?: string;
+  entryTime?: string;
   readerId?: string;
   terminalLocationId?: string;
   idempotencyKey?: string;
@@ -136,6 +139,8 @@ export function posSaleRecord<StaffUserId extends string>(
     totalCents: draft.totalCents,
     staffUserId: options.staffUserId,
     customerEmailLower: draft.customerEmail,
+    visitDate: draft.visitDate,
+    entryTime: draft.entryTime,
     readerId: options.readerId,
     terminalLocationId: options.terminalLocationId,
     idempotencyKey: options.idempotencyKey,

@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { availabilityPayload, routeCheckoutFetch } from "./checkout-test-support";
+import { availabilityPayload, installCheckoutBrowserPlatform, routeCheckoutFetch } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 import type { OperatingHours } from "./lib/operating-hours";
 
@@ -65,13 +65,17 @@ const draftResponse = (orderRef: string, visitDate: string) => ({
   persisted: true
 });
 
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-02T19:00:00.000Z"));
+  platform = installCheckoutBrowserPlatform();
 });
 
 afterEach(() => {
   cleanup();
+  platform.restore();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });

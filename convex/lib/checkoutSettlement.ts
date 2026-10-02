@@ -2,10 +2,26 @@ import { venueClock, venueDayMinutes, visitEntitlementWindow } from "@skyla/paym
 
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { findCapacityReservation, loadVenueHours, releaseUnpaidCapacityHold, settlePaidCapacity } from "./capacity";
+import { bookingPaidProof } from "./admission";
+import {
+  holdPaidExceptionCapacity,
+  loadVenueHours,
+  lookupCapacityReservation,
+  releaseUnpaidCapacityHold,
+  settlePaidCapacity,
+  VenueHoursIntegrityError
+} from "./capacity";
 import { buildConfirmedCheckoutFulfillment, type ConfirmedCheckoutBooking } from "./checkoutFulfillment";
 import { openBillingExceptionsForOrder, openOperationsException } from "./operationsExceptions";
 import { assertStoredPaymentLineProvenance } from "./orderDraftPersistence";
+import {
+  checkIntentOwnership,
+  identityRows,
+  paidIdentityForIntent,
+  paidIdentityForProviderPayment,
+  paidSummaryForOrder,
+  samePaidRecord
+} from "./paymentEvidence";
 import { stripeCheckoutOrderStatusAfterUnpaidOutcome } from "./stripeWebhook";
 import { assertTicketDeliveryReady, ensureTicketDelivery } from "./ticketDeliveryQueue";
 
@@ -56,6 +72,11 @@ export type CheckoutUnpaidEvidence = {
 };
 
 export type CheckoutUnpaidResult = { kind: "released" } | { kind: "rejected"; reason: string };
+
+// Online orders store a handful of lines; more than this is not a valid snapshot.
+const storedLineReadLimit = 100;
+// One order creates one Session per attempt; more is unverifiable history.
+const creationReadLimit = 50;
 
 /** Fields that must stay identical when a paid notification repeats. */
 const immutableBookingFields = ["bookingRef", "orderRef", "visitDate", "entryTime", "partySize", "emailLower"] as const;
@@ -112,15 +133,16 @@ export async function correlateCheckoutSession(
     conflict = args.attemptNonce === undefined ? "attempt_nonce_missing" : "attempt_nonce_mismatch";
   }
 
-  const providerEvents = await ctx.db
+  // The order's own `created` subset: payment history for the Session can
+  // never push its creation record out of a bounded read.
+  const created = await ctx.db
     .query("paymentEvents")
-    .withIndex("by_provider_providerPaymentId", (q) =>
-      q.eq("provider", "stripe").eq("providerPaymentId", args.providerSessionId)
-    )
-    .collect();
-  const creationEvent = providerEvents.find(
-    (event) => event.orderRef === args.orderRef && event.status === "created"
+    .withIndex("by_orderRef_status", (q) => q.eq("orderRef", args.orderRef).eq("status", "created"))
+    .take(creationReadLimit + 1);
+  const creationEvent = created.find(
+    (event) => event.provider === "stripe" && event.providerPaymentId === args.providerSessionId
   );
+  if (!conflict && !creationEvent && created.length > creationReadLimit) conflict = "session_creation_unverified";
   return { attempt, creationEvent, conflict, sessionLearned };
 }
 
@@ -166,10 +188,11 @@ export async function settleCheckoutPaid(
   evidence: CheckoutPaidEvidence,
   now: number
 ): Promise<CheckoutPaidResult> {
-  const order = await ctx.db
+  const orders = await ctx.db
     .query("orders")
     .withIndex("by_orderRef", (q) => q.eq("orderRef", evidence.orderRef))
-    .unique();
+    .take(2);
+  const order = orders.length === 1 ? orders[0] : null;
   const correlation = await correlateCheckoutSession(ctx, evidence);
   let attempt =
     correlation.attempt && correlation.attempt.orderRef === evidence.orderRef ? correlation.attempt : undefined;
@@ -215,6 +238,7 @@ export async function settleCheckoutPaid(
     return { kind: "exception", code, moneyRecorded };
   };
 
+  if (orders.length > 1) return raise("order_duplicate", false);
   if (!order || order.channel !== "online") return raise("order_not_found", false);
   if (correlation.conflict) return raise(correlation.conflict, false);
   if (!attempt && !correlation.creationEvent) return raise("payment_session_not_created_by_convex", false);
@@ -243,36 +267,53 @@ export async function settleCheckoutPaid(
   if (order.expectedProvider !== "stripe") return raise("order_expected_provider_mismatch", false);
   if (!evidence.providerPaymentIntentId) return raise("missing_checkout_payment_intent", false);
 
-  const globallyPaid = (await ctx.db.query("paymentEvents")
-    .withIndex("by_providerPaymentIntentId", (q) => q.eq("providerPaymentIntentId", evidence.providerPaymentIntentId!))
-    .collect()).filter((event) => event.status === "paid");
-  if (globallyPaid.some((event) => event.orderRef !== evidence.orderRef ||
-      event.provider !== "stripe" || event.providerPaymentId !== evidence.providerSessionId)) {
+  // One PaymentIntent can pay for exactly one checkout order or POS sale.
+  // Every ledger row of the intent, pending or settled, must be this order's
+  // own Stripe row for this Session; a visible foreign owner (a Terminal
+  // sale or another order) keeps its record and blocks reuse.
+  const ownsOrderRow = (event: Doc<"paymentEvents">) =>
+    event.provider === "stripe" && event.orderRef === evidence.orderRef && event.saleRef === undefined;
+  const ownership = await checkIntentOwnership(
+    ctx,
+    evidence.providerPaymentIntentId,
+    (event) => ownsOrderRow(event) && event.providerPaymentId === evidence.providerSessionId
+  );
+  // Reuse records no money here (the real owner keeps its record), but this
+  // correlated order's single hold stays counted instead of becoming releasable.
+  const reused = async () => {
+    if (order.status === "payment_pending") {
+      await holdPaidExceptionCapacity(ctx, { orderRef: evidence.orderRef }, "paid_unfulfilled:paid_payment_identity_reused", now);
+    }
     return raise("paid_payment_identity_reused", true);
-  }
+  };
+  if (ownership.kind === "conflict") return reused();
+
+  // The current payment's paid record, by intent id and by exact Session id
+  // (take 2 each), independent of the order's history. The Session read also
+  // finds a legacy paid row that never stored the intent id. Another owner's
+  // record of the same real payment is kept as it is, never copied.
+  const [byIntent, bySession] = await Promise.all([
+    paidIdentityForIntent(ctx, evidence.providerPaymentIntentId),
+    paidIdentityForProviderPayment(ctx, "stripe", evidence.providerSessionId)
+  ]);
+  const intentRows = identityRows(byIntent);
+  const sessionRows = identityRows(bySession);
+  if ([...intentRows, ...sessionRows].some((event) => !ownsOrderRow(event))) return reused();
 
   if (attempt && correlation.sessionLearned) {
     attempt = await recordLearnedSession(ctx, attempt, Boolean(correlation.creationEvent), evidence.providerSessionId, now);
   }
 
   // Money ledger: one paid event per PaymentIntent, whatever the event id.
-  const orderPayments = await ctx.db
-    .query("paymentEvents")
-    .withIndex("by_orderRef", (q) => q.eq("orderRef", evidence.orderRef))
-    .collect();
-  const paidEvents = orderPayments.filter((event) => event.provider === "stripe" && event.status === "paid");
-  const samePayment = paidEvents.find(
-    (event) =>
-      event.providerPaymentIntentId === evidence.providerPaymentIntentId ||
-      event.providerPaymentId === evidence.providerSessionId
-  );
-  if (
-    samePayment &&
-    (samePayment.providerPaymentIntentId !== evidence.providerPaymentIntentId ||
-      samePayment.providerPaymentId !== evidence.providerSessionId)
-  ) {
-    return raise("paid_payment_identity_conflict", true);
-  }
+  // The order's paid history is bounded; an overflow never proves no other
+  // payment and never hides the current one, which the identity reads found.
+  const ownerPaid = await paidSummaryForOrder(ctx, evidence.orderRef);
+  const samePayment = intentRows[0] ?? sessionRows[0];
+  const otherPaid =
+    ownerPaid.overflow ||
+    ownerPaid.rows.some(
+      (event) => event.providerPaymentIntentId !== evidence.providerPaymentIntentId && event.providerPaymentId !== evidence.providerSessionId
+    );
   if (!samePayment) {
     await ctx.db.insert("paymentEvents", {
       orderRef: evidence.orderRef,
@@ -287,12 +328,37 @@ export async function settleCheckoutPaid(
       raw: evidence.raw,
       createdAt: now
     });
-    if (paidEvents.length > 0) {
-      // A second, distinct payment for one order: record the money, keep the
-      // single booking, and let staff decide on a refund.
-      return raise("duplicate_payment_for_order", true);
-    }
   }
+
+  // The current money is now recorded exactly once. What cannot be proven
+  // stays a visible exception with its places held; an order already closed
+  // (for example by a refund) is never reopened.
+  const retain = (code: string) =>
+    order.status === "payment_pending" ? blockPaidFulfillment(code, {}) : raise(code, true);
+  // Correlated to this order's Session, but the intent's other rows exceed
+  // the bound: money kept exactly once, ownership left for staff.
+  if (ownership.kind === "unverified") return retain("paid_payment_identity_unverified");
+  if (byIntent.kind === "duplicate" || bySession.kind === "duplicate") return retain("paid_payment_ledger_duplicate");
+  if (samePayment) {
+    const facts = {
+      providerPaymentId: evidence.providerSessionId,
+      providerPaymentIntentId: evidence.providerPaymentIntentId,
+      amountCents: evidence.amountCents,
+      currency: evidence.currency
+    };
+    // A Session paid under another intent, or a legacy row without one, is
+    // kept as stored (never rewritten or backfilled); the current facts
+    // become the exception.
+    if (samePayment.providerPaymentIntentId !== facts.providerPaymentIntentId ||
+        samePayment.providerPaymentId !== facts.providerPaymentId ||
+        intentRows[0]?._id !== sessionRows[0]?._id) {
+      return retain("paid_payment_identity_conflict");
+    }
+    if (!samePaidRecord(intentRows[0], sessionRows[0], facts)) return retain("paid_payment_record_mismatch");
+  }
+  // A second, distinct payment for one order: record the money, keep the
+  // single booking, and let staff decide on a refund.
+  if (!samePayment && otherPaid) return retain("duplicate_payment_for_order");
 
   const markAttemptPaid = async () => {
     if (attempt && attempt.status !== "paid") {
@@ -308,15 +374,25 @@ export async function settleCheckoutPaid(
   };
 
   if (order.status === "paid") {
-    const booking = await ctx.db
-      .query("bookings")
-      .withIndex("by_orderRef", (q) => q.eq("orderRef", evidence.orderRef))
-      .unique();
+    const bookings = await orderBookings(ctx, evidence.orderRef);
     await markAttemptPaid();
+    if (bookings.length > 1) return raise("paid_booking_duplicate", true);
+    // Paid earlier but blocked, or a later exception: keep the original
+    // exception; a repeat never queues a ticket or re-fulfills.
+    const open = await openBillingExceptionsForOrder(ctx, evidence.orderRef);
+    if (open.length > 0) return { kind: "exception", code: open[0].code, moneyRecorded: true };
+    // Another distinct paid record, or a paid history too long to read: the
+    // current money stays recorded, but nothing is re-delivered.
+    if (otherPaid) return raise("paid_owner_payment_ambiguous", true);
+    const booking = bookings[0];
     if (booking) {
       // Repeated notification for a fulfilled order: reuse the one booking and
       // its delivery; only a missing delivery for a confirmed booking is queued.
       if (booking.status === "confirmed") {
+        // The same canonical proof the door and ticket view use, before any
+        // delivery is queued; only classified proof failures are caught.
+        const proof = await bookingPaidProof(ctx, booking);
+        if (!proof.ok) return raise("paid_booking_proof_invalid", true, { proofReason: proof.reason });
         try {
           await assertTicketDeliveryReady(ctx, {
             ticketCode: evidence.ticketCode, bookingRef: booking.bookingRef,
@@ -335,10 +411,6 @@ export async function settleCheckoutPaid(
       }
       return { kind: "fulfilled", bookingRef: booking.bookingRef, repeated: true };
     }
-    // Paid earlier but blocked: keep the original exception; never retry
-    // fulfillment from a repeated notification.
-    const open = await openBillingExceptionsForOrder(ctx, evidence.orderRef);
-    if (open.length > 0) return { kind: "exception", code: open[0].code, moneyRecorded: true };
     return raise("paid_order_without_booking", true);
   }
 
@@ -353,13 +425,15 @@ export async function settleCheckoutPaid(
       { orderStatus: order.status }
     );
   }
+  if (ownerPaid.overflow) return blockPaidFulfillment("paid_owner_history_unverified", {});
 
   const lines = await ctx.db
     .query("orderLineItems")
     .withIndex("by_orderRef", (q) => q.eq("orderRef", evidence.orderRef))
-    .collect();
+    .take(storedLineReadLimit + 1);
   let fulfillment: ReturnType<typeof buildConfirmedCheckoutFulfillment>;
   try {
+    if (lines.length > storedLineReadLimit) throw new Error("too many stored lines");
     assertStoredPaymentLineProvenance(lines, "Checkout webhook");
     fulfillment = buildConfirmedCheckoutFulfillment(order, lines, now);
   } catch (error) {
@@ -372,12 +446,28 @@ export async function settleCheckoutPaid(
   // selected LA date. Neither the signed payment time nor this processing
   // time may fall after it; no admission moves to another day.
   const booking = fulfillment.booking;
-  const reservation = await findCapacityReservation(ctx, evidence.orderRef);
+  // Known ledger corruption is classified, never thrown, so it cannot roll
+  // back the paid row above; the order's places stay held.
+  const reservationLookup = await lookupCapacityReservation(ctx, evidence.orderRef);
+  if (reservationLookup.kind === "inconsistent") {
+    return blockPaidFulfillment("paid_capacity_reservation_inconsistent", { integrity: reservationLookup.code });
+  }
+  const reservation = reservationLookup.reservation;
+  const existingBookings = await orderBookings(ctx, evidence.orderRef);
+  if (existingBookings.length > 1) return blockPaidFulfillment("paid_booking_duplicate", {});
+  let hours: Awaited<ReturnType<typeof loadVenueHours>>;
+  try {
+    hours = await loadVenueHours(ctx);
+  } catch (error) {
+    // Untrusted stored hours never authorize a ticket; the exception path
+    // below does not read hours again.
+    if (!(error instanceof VenueHoursIntegrityError)) throw error;
+    return blockPaidFulfillment("paid_venue_hours_unverified", { integrity: error.code });
+  }
   const windowEnd =
     reservation && reservation.visitDate === booking.visitDate && reservation.entryTime === booking.entryTime
       ? reservation.endMinutes
-      : visitEntitlementWindow(await loadVenueHours(ctx), booking.visitDate, booking.entryTime)?.endMinutes ??
-        venueDayMinutes;
+      : visitEntitlementWindow(hours, booking.visitDate, booking.entryTime)?.endMinutes ?? venueDayMinutes;
   const paidAt = evidence.paidAt ?? now;
   if (!instantBeforeVisitWindowEnd(paidAt, booking.visitDate, windowEnd)) {
     return blockPaidFulfillment("paid_after_visit_window", { paidAt, windowEndMinutes: windowEnd });
@@ -386,10 +476,7 @@ export async function settleCheckoutPaid(
     return blockPaidFulfillment("paid_fulfillment_after_visit_window", { paidAt, windowEndMinutes: windowEnd });
   }
 
-  const existingBooking = await ctx.db
-    .query("bookings")
-    .withIndex("by_orderRef", (q) => q.eq("orderRef", evidence.orderRef))
-    .unique();
+  const existingBooking = existingBookings[0];
   if (existingBooking && bookingMismatch(existingBooking, booking)) {
     return blockPaidFulfillment("paid_booking_mismatch", { field: bookingMismatch(existingBooking, booking) });
   }
@@ -413,6 +500,7 @@ export async function settleCheckoutPaid(
     entryTime: booking.entryTime,
     partySize: booking.partySize,
     alreadyCommitted: Boolean(existingBooking),
+    hours,
     now
   });
   if (capacity.kind === "exception") {
@@ -462,16 +550,9 @@ export async function settleCheckoutPaid(
     // The money is real: the order is paid, the places stay counted, and no
     // ticket or confirmation is issued until staff resolve the exception.
     await ctx.db.patch((order as OrderDoc)._id, { status: "paid", expectedProvider: "stripe", updatedAt: now });
-    const reservation = await findCapacityReservation(ctx, evidence.orderRef);
-    if (reservation && reservation.status !== "paid" && reservation.status !== "exception") {
-      await ctx.db.patch(reservation._id, {
-        status: "exception",
-        exceptionReason: `paid_unfulfilled:${code}`,
-        releasedAt: undefined,
-        releaseReason: undefined,
-        updatedAt: now
-      });
-    }
+    // The order's single hold becomes a counted exception; ambiguous holds
+    // are left as stored (still counted, never released).
+    await holdPaidExceptionCapacity(ctx, { orderRef: evidence.orderRef }, `paid_unfulfilled:${code}`, now);
     return raise(code, true, extra);
   }
 }
@@ -565,6 +646,14 @@ export async function settleCheckoutUnpaid(
     }, now);
   }
   return { kind: "released" };
+}
+
+/** Bookings for an order; more than one is a corrupt ledger the caller reports. */
+async function orderBookings(ctx: MutationCtx, orderRef: string) {
+  return ctx.db
+    .query("bookings")
+    .withIndex("by_orderRef", (q) => q.eq("orderRef", orderRef))
+    .take(2);
 }
 
 function bookingMismatch(

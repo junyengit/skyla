@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { createConvexHarness } from "./convexHarness.testkit";
+import { buildCheckoutDraftWrite } from "./lib/orderDraftPersistence";
 import { buildTicketDeliveryRecord, normalizeTicketCode } from "./lib/ticketDelivery";
 import {
   claimTicketDelivery,
@@ -18,6 +20,9 @@ type TableName =
   | "bookings"
   | "auditEvents"
   | "orders"
+  | "orderLineItems"
+  | "paymentEvents"
+  | "refunds"
   | "posSales"
   | "operationsExceptions";
 type Doc = Record<string, unknown> & { _id: string };
@@ -34,6 +39,11 @@ function createCtx(options: {
   orderStatus?: string;
 } = {}) {
   const subject = "staff_subject_123";
+  const built = buildCheckoutDraftWrite({
+    packageKey: "general", adults: 1, children: 1, freeChildren: 1,
+    visitDate: "2026-08-14", entryTime: "19:00", customerEmail: "guest@example.com",
+    idempotencyKey: "ticket_delivery_fixture"
+  }, { orderRef: "ORDER-1", now: 10 });
   const state: Record<TableName, Doc[]> = {
     staffUsers: [
       {
@@ -68,20 +78,35 @@ function createCtx(options: {
             {
               _id: "bookings_1",
               bookingRef: "BOOKING-1",
+              orderRef: "ORDER-1",
               status: "confirmed",
               visitDate: "2026-08-14",
               entryTime: "19:00",
-              partySize: 2,
+              partySize: 3,
               createdAt: 10,
               ...options.booking
             }
           ],
     auditEvents: [],
-    orders: [{ _id: "orders_1", orderRef: "ORDER-1", channel: "online", status: options.orderStatus ?? "paid" }],
+    orders: [{ ...built.order, _id: "orders_1", status: options.orderStatus ?? "paid" }],
+    orderLineItems: built.lines.map((line, index) => ({ ...line, _id: `orderLineItems_${index + 1}` })),
+    paymentEvents: [{
+      _id: "paymentEvents_1", orderRef: "ORDER-1", provider: "stripe",
+      providerPaymentId: "cs_test_ticket_delivery_fixture", providerPaymentIntentId: "pi_ticket_delivery_fixture",
+      status: "paid", amountCents: built.order.totalCents, currency: "usd", createdAt: 10
+    }],
+    refunds: [],
     posSales: [],
     operationsExceptions: []
   };
   const scheduled: Array<{ delayMs: number; args: Record<string, unknown> }> = [];
+  // Share the harness's index ordering, bounded reads and patch semantics;
+  // retain stable IDs used by these focused lifecycle assertions.
+  const harness = createConvexHarness({});
+  for (const table of Object.keys(state) as TableName[]) {
+    harness.rows(table).push(...state[table].map(doc => ({ _creationTime: 1, ...doc })));
+    state[table] = harness.rows(table);
+  }
 
   const ctx = {
     auth: {
@@ -89,54 +114,7 @@ function createCtx(options: {
         return { subject };
       }
     },
-    db: {
-      query(table: TableName) {
-        return {
-          withIndex(
-            _index: string,
-            build?: (query: { eq: (field: string, value: unknown) => unknown }) => unknown
-          ) {
-            const filters: Array<{ field: string; value: unknown }> = [];
-            const query = {
-              eq(field: string, value: unknown) {
-                filters.push({ field, value });
-                return query;
-              }
-            };
-            build?.(query);
-            return {
-              async take(count: number) {
-                return state[table].filter((doc) => filters.every(({ field, value }) => doc[field] === value)).slice(0, count);
-              },
-              async unique() {
-                const matches = state[table].filter((doc) =>
-                  filters.every(({ field, value }) => doc[field] === value)
-                );
-                if (matches.length > 1) throw new Error("Expected unique result");
-                return matches[0] ?? null;
-              }
-            };
-          }
-        };
-      },
-      async get(id: string) {
-        return Object.values(state)
-          .flat()
-          .find((doc) => doc._id === id) ?? null;
-      },
-      async patch(id: string, value: Record<string, unknown>) {
-        const doc = Object.values(state)
-          .flat()
-          .find((candidate) => candidate._id === id);
-        if (!doc) throw new Error(`Missing ${id}`);
-        Object.assign(doc, value);
-      },
-      async insert(table: TableName, value: Record<string, unknown>) {
-        const doc = { ...value, _id: `${table}_${state[table].length + 1}` };
-        state[table].push(doc);
-        return doc._id;
-      }
-    },
+    db: harness.ctx.db,
     scheduler: {
       async runAt(at: number, _reference: unknown, args: Record<string, unknown>) {
         scheduled.push({ delayMs: at - Date.now(), args });
@@ -349,9 +327,9 @@ describe("ticket delivery lifecycle", () => {
     expect(result.sentAt).toBeUndefined();
     expect(admin.state.ticketDeliveries[0]).toMatchObject({
       status: "queued",
-      sendVersion: 2,
-      failureReason: undefined
+      sendVersion: 2
     });
+    expect(admin.state.ticketDeliveries[0]).not.toHaveProperty("failureReason");
     expect(admin.scheduled).toEqual([
       { delayMs: 0, args: { deliveryId: "ticketDeliveries_1" } }
     ]);
@@ -415,10 +393,10 @@ describe("ticket delivery lifecycle", () => {
     });
     expect(admin.state.ticketDeliveries[0]).toMatchObject({
       status: "queued",
-      sendVersion: 4,
-      failureReason: undefined,
-      lastAttemptAt: undefined
+      sendVersion: 4
     });
+    expect(admin.state.ticketDeliveries[0]).not.toHaveProperty("failureReason");
+    expect(admin.state.ticketDeliveries[0]).not.toHaveProperty("lastAttemptAt");
     expect(admin.state.auditEvents[0]).toMatchObject({
       action: "ticket.deliveryResendRequested",
       metadata: {

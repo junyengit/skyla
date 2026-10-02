@@ -25,11 +25,13 @@ export function projectCheckoutReturnStatus(input: {
   /** An open billing or attempt exception: money may be held without a ticket. */
   needsAttention?: boolean;
 }): CheckoutReturnStatus {
-  if (input.orderStatus === "paid" && input.paymentStatuses.includes("paid") && input.bookingExists) {
-    return "confirmed";
-  }
+  // An open billing or attempt exception wins over every other state: a
+  // booking row alone never confirms money that staff still have to resolve.
   if (input.needsAttention) {
     return "needs_attention";
+  }
+  if (input.orderStatus === "paid" && input.paymentStatuses.includes("paid") && input.bookingExists) {
+    return "confirmed";
   }
   if (input.paymentStatuses.includes("failed")) {
     return "failed";
@@ -53,11 +55,10 @@ export function projectCheckoutAttemptStatus(input: {
   needsAttention: boolean;
   now: number;
 }): CheckoutAttemptStatus {
+  const needsAttention = input.needsAttention || input.attempt?.status === "exception";
+  if (needsAttention) return "needs_attention";
   if (!input.attempt && input.orderStatus === "draft") return "not_started";
-  const projected = projectCheckoutReturnStatus({
-    ...input,
-    needsAttention: input.needsAttention || input.attempt?.status === "exception"
-  });
+  const projected = projectCheckoutReturnStatus({ ...input, needsAttention });
   if (projected !== "pending") return projected;
   if (input.attempt?.status === "open" && input.attempt.expiresAt > input.now) return "awaiting_payment";
   return "pending";

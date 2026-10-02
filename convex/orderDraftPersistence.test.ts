@@ -340,13 +340,11 @@ describe("Convex order draft persistence helpers", () => {
     ).toThrow("entryTime must use HH:mm");
   });
 
-  it("builds staff-attributed POS sale docs with role-derived pricing", () => {
+  it("builds staff-attributed POS sale docs with canonical mixed-age admission and a selected visit", () => {
     const write = buildPosSaleDraftWrite(
       {
-        lines: [
-          { kind: "ticket", packageKey: "general", quantity: 1 },
-          { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
-        ],
+        admission: { packageKey: "general", adults: 1, children: 1, freeChildren: 1, visitDate: "2026-07-18", entryTime: "14:00" },
+        lines: [{ kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }],
         customerEmail: "STAFFSALE@EXAMPLE.COM",
         readerId: "tmr_reader_123",
         terminalLocationId: "tml_location_123",
@@ -357,24 +355,54 @@ describe("Convex order draft persistence helpers", () => {
 
     expect(write.sale).toMatchObject({
       saleRef: "SALE260704-ABC123",
-      subtotalCents: 2500,
+      subtotalCents: 3500,
       feeCents: 0,
-      totalCents: 2500,
+      totalCents: 3500,
       staffUserId: "staff_123",
       customerEmailLower: "staffsale@example.com",
+      visitDate: "2026-07-18",
+      entryTime: "14:00",
       readerId: "tmr_reader_123",
       terminalLocationId: "tml_location_123"
     });
     expect(write.lines).toEqual([
-      expect.objectContaining({
-        saleRef: "SALE260704-ABC123",
-        lineTotalCents: 2000,
-        metadata: catalogLineMetadata(ticketPackages.general)
-      }),
+      expect.objectContaining({ unitAmountCents: 2000, lineTotalCents: 2000, metadata: expect.objectContaining({ ageCategory: "adult" }) }),
+      expect.objectContaining({ unitAmountCents: 1000, lineTotalCents: 1000, metadata: expect.objectContaining({ ageCategory: "youth" }) }),
+      expect.objectContaining({ unitAmountCents: 0, lineTotalCents: 0, metadata: expect.objectContaining({ ageCategory: "child" }) }),
       expect.objectContaining({ saleRef: "SALE260704-ABC123", lineTotalCents: 500 })
     ]);
-    expect(write.lines[1].metadata).toEqual({ reason: "Guest requested locker" });
-    expect(write.lines[1].metadata).not.toHaveProperty("catalogAuthority");
+    expect(() => assertStoredPaymentLineProvenance(write.lines, "POS Terminal")).not.toThrow();
+    expect(write.lines[3].metadata).toEqual({ reason: "Guest requested locker" });
+    expect(write.lines[3].metadata).not.toHaveProperty("catalogAuthority");
+  });
+
+  it("rejects undated POS tickets, invalid visits and corrupt stored quantities or cents", () => {
+    const base = { packageKey: "general" as const, adults: 1, visitDate: "2026-07-18", entryTime: "14:00" };
+    const build = (args: Parameters<typeof buildPosSaleDraftWrite>[0]) =>
+      buildPosSaleDraftWrite(args, { saleRef: "SALE260704-ABC123", now, staffUserId: "staff_123", actorRole: "pos" });
+
+    expect(() => build({ lines: [{ kind: "ticket", packageKey: "general" } as never], idempotencyKey: "possale_000006" }))
+      .toThrow("Admission requires a selected visit date, entry time and age counts");
+    expect(() => build({ admission: { ...base, visitDate: "2026-02-30" }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("visitDate must be a real calendar date");
+    expect(() => build({ admission: { ...base, entryTime: "9:00" }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("entryTime must use HH:mm");
+    expect(() => build({ admission: { ...base, adults: 0, freeChildren: 2 }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("adults must be a whole number from 1 to 30");
+    expect(() => build({ admission: { ...base, adults: 25, children: 6 }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("party size must be 30 visitors or fewer");
+    expect(() => build({ lines: [{ kind: "cafe", itemKey: "b1", quantity: 100 }], idempotencyKey: "possale_000006" }))
+      .toThrow("line quantity must be an integer from 1 to 99");
+
+    const valid = build({ admission: { ...base, freeChildren: 1 }, lines: [], idempotencyKey: "possale_000006" });
+    for (const corrupt of [
+      { ...valid.lines[1], quantity: -1, lineTotalCents: 0 },
+      { ...valid.lines[1], quantity: 1.5 },
+      { ...valid.lines[0], unitAmountCents: -2000, lineTotalCents: -2000 },
+      { ...valid.lines[0], quantity: Number.MAX_SAFE_INTEGER + 1 }
+    ]) {
+      expect(() => assertStoredPaymentLineProvenance([corrupt], "POS Terminal")).toThrow("invalid quantity or amount");
+    }
   });
 
   it("persists cafe catalog provenance without adding it to custom POS lines", () => {
@@ -426,9 +454,11 @@ describe("Convex order draft persistence helpers", () => {
     ).toThrow("POS Terminal line 1 is custom but includes catalog provenance metadata");
   });
 
-  it("rejects viewer pricing and POS idempotency conflicts", () => {
+  it("rejects viewer pricing and POS idempotency conflicts, including a moved visit", () => {
+    const admission = { packageKey: "general" as const, adults: 1, visitDate: "2026-07-18", entryTime: "14:00" };
     const sale = {
-      lines: [{ kind: "ticket" as const, packageKey: "general" as const }],
+      admission,
+      lines: [],
       idempotencyKey: "possale_000002"
     };
 
@@ -442,16 +472,16 @@ describe("Convex order draft persistence helpers", () => {
       staffUserId: "staff_123",
       actorRole: "pos"
     });
-    const secondFingerprint = posSaleDraftFingerprint(
-      {
-        lines: [{ kind: "ticket", packageKey: "drink", quantity: 1 }],
-        idempotencyKey: "possale_000002"
-      },
-      "pos"
-    );
-
-    expect(() => assertSameDraftFingerprint(first.draftFingerprint, secondFingerprint)).toThrow(
-      "idempotencyKey was already used for a different draft"
-    );
+    for (const changed of [
+      { ...admission, visitDate: "2026-07-19" },
+      { ...admission, entryTime: "14:30" },
+      { ...admission, freeChildren: 1 }
+    ]) {
+      const secondFingerprint = posSaleDraftFingerprint({ admission: changed, lines: [], idempotencyKey: "possale_000002" }, "pos");
+      expect(() => assertSameDraftFingerprint(first.draftFingerprint, secondFingerprint)).toThrow(
+        "idempotencyKey was already used for a different draft"
+      );
+    }
+    expect(posSaleDraftFingerprint({ admission, lines: [], idempotencyKey: "possale_000002" }, "pos")).toBe(first.draftFingerprint);
   });
 });

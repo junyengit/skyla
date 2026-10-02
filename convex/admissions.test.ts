@@ -82,7 +82,7 @@ describe("atomic, paid, single-use admission", () => {
     if (corruption === "mismatched_money") await h.ctx.db.patch(h.rows("paymentEvents")[0]!._id, { amountCents: 1 });
     if (corruption === "corrupt_lines") await h.ctx.db.patch(h.rows("orderLineItems")[0]!._id, { unitAmountCents: 1 });
     if (corruption === "wrong_party") await h.ctx.db.patch(bookingId, { partySize: 2 });
-    if (corruption === "fully_refunded") h.seed("refunds", { providerPaymentIntentId: h.rows("paymentEvents")[0]!.providerPaymentIntentId, status: "succeeded", amountCents: 2000 });
+    if (corruption === "fully_refunded") h.seed("refunds", { providerRefundId: `re_full_${ref}`, providerPaymentIntentId: h.rows("paymentEvents")[0]!.providerPaymentIntentId, paymentProvider: "stripe", orderRef: ref, currency: "usd", status: "succeeded", amountCents: 2000 });
     if (corruption === "billing_exception") h.seed("operationsExceptions", { orderRef: ref, category: "billing", status: "open" });
     if (corruption === "private_event") h.seed("privateEvents", { visitDate: "2026-10-02", status: "confirmed" });
     await expect(admit(h, ref)).rejects.toThrow("Admission blocked:");
@@ -90,7 +90,7 @@ describe("atomic, paid, single-use admission", () => {
   });
   it("keeps the existing partial-refund entitlement policy", async () => {
     const h = setup(); const { ref } = paidBooking(h);
-    h.seed("refunds", { providerPaymentIntentId: h.rows("paymentEvents")[0]!.providerPaymentIntentId, status: "succeeded", amountCents: 1000 });
+    h.seed("refunds", { providerRefundId: `re_partial_${ref}`, providerPaymentIntentId: h.rows("paymentEvents")[0]!.providerPaymentIntentId, paymentProvider: "stripe", orderRef: ref, currency: "usd", status: "succeeded", amountCents: 1000 });
     expect((await admit(h, ref)).admissionOutcome).toBe("admitted");
   });
   it.each([0, -1, 0.5, Number.MAX_SAFE_INTEGER + 1])("rejects corrupt stored quantities %s before computing the party or paid total", async quantity => {

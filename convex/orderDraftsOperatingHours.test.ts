@@ -16,7 +16,7 @@ afterEach(() => {
 
 type QueryResult = {
   first?: () => Promise<Record<string, unknown> | null>;
-  take?: () => Promise<[]>;
+  take?: (count: number) => Promise<Array<Record<string, unknown>>>;
   unique?: () => Promise<{ data: unknown } | null>;
 };
 
@@ -35,15 +35,17 @@ describe("checkout draft operating-hour gate", () => {
               if (table === "publicGatewayRateLimits") {
                 return { unique: async () => null, take: async () => [] };
               }
-              if (table === "orders") return { first: async () => null };
+              if (table === "orders") return { first: async () => null, take: async () => [] };
               if (table === "config") {
+                const config = {
+                  data: {
+                    ...defaultHours,
+                    Monday: { open: "09:00", close: "00:00", closed: true }
+                  }
+                };
                 return {
-                  unique: async () => ({
-                    data: {
-                      ...defaultHours,
-                      Monday: { open: "09:00", close: "00:00", closed: true }
-                    }
-                  })
+                  unique: async () => config,
+                  take: async (count) => [config].slice(0, count)
                 };
               }
               throw new Error(`Unexpected table ${table}`);

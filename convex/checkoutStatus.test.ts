@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getCheckoutReturnStatus } from "./checkoutStatus";
+import { buildCheckoutDraftWrite } from "./lib/orderDraftPersistence";
 
 type TableName =
   | "paymentEvents"
@@ -8,7 +9,10 @@ type TableName =
   | "bookings"
   | "ticketDeliveries"
   | "checkoutPaymentAttempts"
-  | "operationsExceptions";
+  | "operationsExceptions"
+  | "orderLineItems"
+  | "bookingAdmissions"
+  | "refunds";
 type Doc = Record<string, unknown>;
 type State = Record<TableName, Doc[]>;
 
@@ -52,7 +56,7 @@ function createCtx(state: State) {
               async unique() {
                 const docs = await collect();
                 if (docs.length > 1) throw new Error("Expected unique result");
-                return docs[0];
+                return docs[0] ?? null;
               }
             };
           }
@@ -63,20 +67,29 @@ function createCtx(state: State) {
 }
 
 function paidState(): State {
+  const built = buildCheckoutDraftWrite({
+    packageKey: "general", adults: 1, children: 1, freeChildren: 1,
+    visitDate: "2026-10-02", entryTime: "10:00", idempotencyKey: "checkout_status_fixture"
+  }, { orderRef, now: 1 });
+  const intentId = "pi_checkout_status123456";
   return {
     paymentEvents: [
-      { provider: "stripe", providerPaymentId: sessionId, orderRef, status: "created" },
-      { provider: "stripe", providerPaymentId: sessionId, orderRef, status: "paid" }
+      { _id: "payment_created", provider: "stripe", providerPaymentId: sessionId, providerPaymentIntentId: intentId, orderRef, status: "created", currency: "usd", amountCents: built.order.totalCents },
+      { _id: "payment_paid", provider: "stripe", providerPaymentId: sessionId, providerPaymentIntentId: intentId, orderRef, status: "paid", currency: "usd", amountCents: built.order.totalCents }
     ],
-    orders: [{ orderRef, channel: "online", status: "paid" }],
-    bookings: [{ orderRef, bookingRef: orderRef, status: "confirmed", emailLower: "must-not-leak@example.com" }],
+    orders: [{ ...built.order, _id: "order", status: "paid" }],
+    orderLineItems: built.lines,
+    bookings: [{ _id: "booking", orderRef, bookingRef: orderRef, visitDate: built.order.visitDate, entryTime: built.order.entryTime, partySize: 3, status: "confirmed", emailLower: "must-not-leak@example.com" }],
     ticketDeliveries: [{
+      orderRef,
       bookingRef: orderRef,
       ticketCode: "tkt_0123456789abcdef0123456789abcdef",
       emailLower: "must-not-leak@example.com"
     }],
     checkoutPaymentAttempts: [],
-    operationsExceptions: []
+    operationsExceptions: [],
+    bookingAdmissions: [],
+    refunds: []
   };
 }
 
@@ -93,13 +106,13 @@ describe("checkout status query", () => {
   it("does not use paid evidence attached to another order", async () => {
     const state = paidState();
     state.paymentEvents[1] = {
-      provider: "stripe",
-      providerPaymentId: sessionId,
-      orderRef: "SKY2607-OTHER1",
-      status: "paid"
+      ...state.paymentEvents[1],
+      orderRef: "SKY2607-OTHER1"
     };
 
-    await expect(runStatus(state)).resolves.toEqual({ orderRef, status: "pending" });
+    // The Session now names two owners. Complete ownership proof denies the
+    // bearer and requires staff attention rather than inviting another payment.
+    await expect(runStatus(state)).resolves.toEqual({ orderRef, status: "needs_attention" });
   });
 
   it("keeps a paid order pending when its booking is missing", async () => {

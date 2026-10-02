@@ -18,7 +18,7 @@ type OperationsExceptionList = {
   status: "open" | "resolved";
   capped: boolean;
   exceptions: Array<{
-    category: "billing" | "checkout_attempt" | "ticket_delivery";
+    category: "billing" | "checkout_attempt" | "terminal_attempt" | "ticket_delivery";
     code: string;
     status: "open" | "resolved";
     moneyReceived: boolean;

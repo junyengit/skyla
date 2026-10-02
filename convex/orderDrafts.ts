@@ -9,7 +9,8 @@ import {
   assertCheckoutDraftCanStartPayment,
   checkoutDraftExpiresAt,
   checkoutDraftIsAbandoned,
-  checkoutDraftTtlMs
+  checkoutDraftTtlMs,
+  posDraftTtlMs
 } from "./lib/checkoutDraftExpiry";
 import {
   assertSameDraftFingerprint,
@@ -73,12 +74,17 @@ const cafeItemKey = v.union(
   v.literal("b8")
 );
 
+// Admission at the register: canonical age counts for one selected LA visit.
+const posAdmission = v.object({
+  packageKey: ticketPackageKey,
+  adults: v.number(),
+  children: v.optional(v.number()),
+  freeChildren: v.optional(v.number()),
+  visitDate: v.string(),
+  entryTime: v.string()
+});
+
 const posSaleLine = v.union(
-  v.object({
-    kind: v.literal("ticket"),
-    packageKey: ticketPackageKey,
-    quantity: v.optional(v.number())
-  }),
   v.object({
     kind: v.literal("cafe"),
     itemKey: cafeItemKey,
@@ -346,6 +352,7 @@ export const getCheckoutOrderDraft = query({
 
 export const createPosSaleDraft = mutation({
   args: {
+    admission: v.optional(posAdmission),
     lines: v.array(posSaleLine),
     customerEmail: v.optional(v.string()),
     readerId: v.optional(v.string()),
@@ -378,6 +385,8 @@ export const createPosSaleDraft = mutation({
       .first();
 
     if (existingSale) {
+      // The fingerprint includes the selected visit and age counts, so a
+      // retry returns the same sale and hold and can never move them.
       assertSameDraftFingerprint(existingSale.draftFingerprint, pendingWrite.draftFingerprint);
       const existingLines = await ctx.db
         .query("posSaleLines")
@@ -386,7 +395,14 @@ export const createPosSaleDraft = mutation({
       return posSaleDraftResult(existingSale, existingLines);
     }
 
-    const saleId = await ctx.db.insert("posSales", pendingWrite.sale);
+    // Purchase-time gate for admission: real LA date, offered entry time
+    // inside hours, and not already past today. Cafe-only sales skip it.
+    const admission = pendingWrite.input.admission;
+    const hours = admission ? await loadVenueHours(ctx) : undefined;
+    if (admission) assertBookableVisitSlot(hours!, admission.visitDate, admission.entryTime, now);
+
+    const expiresAt = now + posDraftTtlMs;
+    const saleId = await ctx.db.insert("posSales", { ...pendingWrite.sale, expiresAt });
     const saleRef = saleRefFromId(saleId, now);
     const write = buildPosSaleDraftWrite(authorizedArgs, {
       saleRef,
@@ -399,22 +415,114 @@ export const createPosSaleDraft = mutation({
     for (const line of write.lines) {
       await ctx.db.insert("posSaleLines", line);
     }
+    const partySize = ticketPartySize(write.lines);
+    if (admission) {
+      // Same transaction and the same indexed reads as online and private
+      // events: racing last-place requests cannot exceed 30 people.
+      await placeCapacityHold(ctx, {
+        saleRef,
+        visitDate: admission.visitDate,
+        entryTime: admission.entryTime,
+        partySize,
+        status: "draft",
+        hours: hours!,
+        now
+      });
+    }
+    await ctx.scheduler.runAt(expiresAt, internal.orderDrafts.expirePosSaleDraft, { saleRef });
 
     await ctx.db.insert("auditEvents", {
       actorStaffUserId: staffUser._id,
       action: "pos.saleDraft.create",
       entityType: "posSale",
       entityRef: saleRef,
-      metadata: {
+      metadata: withoutUndefinedMetadata({
         totalCents: write.sale.totalCents,
-        lineCount: write.lines.length
-      },
+        lineCount: write.lines.length,
+        partySize: admission ? partySize : undefined,
+        visitDate: admission?.visitDate,
+        entryTime: admission?.entryTime
+      }),
       createdAt: now
     });
 
-    return posSaleDraftResult(write.sale, write.lines);
+    return posSaleDraftResult({ ...write.sale, expiresAt }, write.lines);
   }
 });
+
+/**
+ * Releases a reviewed register sale the cashier changed or cleared. Only a
+ * still-draft sale with no Terminal attempt is released; anything that may
+ * have reached Stripe is never touched here.
+ */
+export const releasePosSaleDraft = mutation({
+  args: { saleRef: v.string(), idempotencyKey: v.string() },
+  handler: async (ctx, args) => {
+    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
+    const idempotencyKey = normalizeIdempotencyKey(args.idempotencyKey);
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .unique();
+    if (!sale || sale.idempotencyKey !== idempotencyKey) {
+      return { released: false as const };
+    }
+    if (staffUser.role !== "admin" && sale.staffUserId && sale.staffUserId !== staffUser._id) {
+      throw new Error("POS sale belongs to a different staff user");
+    }
+    if (sale.status !== "draft") {
+      return { released: false as const, status: sale.status };
+    }
+    if (await posTerminalAttemptExists(ctx, sale.saleRef)) {
+      return { released: false as const, status: sale.status };
+    }
+    const now = Date.now();
+    await ctx.db.patch(sale._id, { status: "canceled", customerEmailLower: undefined, updatedAt: now });
+    const release = await releaseUnpaidCapacityHold(ctx, { saleRef: sale.saleRef }, "pos_draft_released", now);
+    await ctx.db.insert("auditEvents", {
+      actorStaffUserId: staffUser._id,
+      action: "pos.saleDraft.release",
+      entityType: "posSale",
+      entityRef: sale.saleRef,
+      metadata: { holdReleased: release.released, totalCents: sale.totalCents },
+      createdAt: now
+    });
+    return { released: true as const };
+  }
+});
+
+export const expirePosSaleDraft = internalMutation({
+  args: { saleRef: v.string() },
+  handler: async (ctx, args) => {
+    const sale = await ctx.db
+      .query("posSales")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
+      .unique();
+    const now = Date.now();
+    if (!sale || sale.status !== "draft" || sale.expiresAt === undefined || sale.expiresAt > now) {
+      return { expired: false };
+    }
+    // A draft with any Terminal attempt is payment_pending; this is defensive.
+    if (await posTerminalAttemptExists(ctx, sale.saleRef)) return { expired: false };
+    await ctx.db.patch(sale._id, { status: "expired", customerEmailLower: undefined, updatedAt: now });
+    await releaseUnpaidCapacityHold(ctx, { saleRef: sale.saleRef }, "pos_draft_expired", now);
+    return { expired: true };
+  }
+});
+
+async function posTerminalAttemptExists(ctx: MutationCtx, saleRef: string) {
+  const attempt = await ctx.db
+    .query("terminalPaymentAttempts")
+    .withIndex("by_saleRef", (query) => query.eq("saleRef", saleRef))
+    .first();
+  return attempt !== null;
+}
+
+function withoutUndefinedMetadata(value: Record<string, string | number | boolean | undefined>) {
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+  );
+}
 
 export const getPosSaleDraft = query({
   args: {

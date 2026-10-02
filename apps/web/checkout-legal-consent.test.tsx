@@ -6,9 +6,9 @@ import {
   currentTermsAcceptanceText,
   currentTermsVersion
 } from "@skyla/payments";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { routeCheckoutFetch } from "./checkout-test-support";
+import { installCheckoutBrowserPlatform, routeCheckoutFetch } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 
 const orderRef = "SKY2608-CONSENT";
@@ -55,8 +55,15 @@ async function persistOrder(router: ReturnType<typeof routeCheckoutFetch>) {
   await screen.findByText(`Stored as ${orderRef}`);
 }
 
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
+
+beforeEach(() => {
+  platform = installCheckoutBrowserPlatform();
+});
+
 afterEach(() => {
   cleanup();
+  platform.restore();
   vi.unstubAllGlobals();
 });
 

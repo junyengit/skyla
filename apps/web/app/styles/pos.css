@@ -55,6 +55,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+.posNextHeader .brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  justify-self: start;
+}
+
 .posNextHeader nav {
   display: flex;
   justify-content: flex-end;
@@ -65,7 +72,7 @@
 .posNextStatus {
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
+  min-height: 44px;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
@@ -125,7 +132,7 @@
 }
 
 .posNextToolbar button {
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.06);
@@ -182,6 +189,9 @@
   gap: 14px;
   align-self: start;
   margin: 16px;
+  border: 0;
+  padding: 0;
+  min-width: 0;
 }
 
 .posNextCustom label,
@@ -290,17 +300,127 @@
 
 .posNextStepper {
   display: grid;
-  grid-template-columns: 34px 32px 34px;
+  grid-template-columns: 44px 40px 44px;
   align-items: center;
   text-align: center;
 }
 
 .posNextStepper button {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.07);
+  font-size: 1.2rem;
+}
+
+.posNextStepper output {
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.posNextPage button:disabled {
+  cursor: not-allowed;
+}
+
+.posNextPage a:focus-visible,
+.posNextPage button:focus-visible,
+.posNextPage input:focus-visible,
+.posNextPage select:focus-visible {
+  outline: 3px solid #e0bd60;
+  outline-offset: 3px;
+}
+
+.posNextAdmission {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 16px;
+}
+
+.posNextVisit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.posNextVisit legend {
+  margin-bottom: 10px;
+  padding: 0;
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.posNextVisit label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 800;
+}
+
+.posNextVisit input,
+.posNextVisit select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  font: inherit;
+  padding: 0 12px;
+}
+
+.posNextAges {
+  display: grid;
+  gap: 4px;
+}
+
+.posNextAgeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-height: 60px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.posNextAgeRow > span {
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.posNextAvailability {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.posNextAdmissionLine span + span {
+  margin-top: 2px;
+}
+
+.posNextPayment {
+  margin: 14px 18px 0;
+  line-height: 1.45;
+}
+
+.posNextPayment:empty {
+  display: none;
+}
+
+.posNextPayment.isAttention {
+  border: 1px solid #e0bd60;
+  border-radius: 8px;
+  padding: 12px;
+  font-weight: 800;
+}
+
+.posNextPage .checkoutTextButton {
+  color: #fff;
+  text-decoration: underline;
 }
 
 .posNextEmail,
@@ -447,6 +567,9 @@
 }
 
 .posNextReceipt a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: #fff;
   font-weight: 800;
   text-decoration: underline;
@@ -477,6 +600,19 @@
 .posNextActions .secondaryAction:disabled {
   opacity: 1;
   cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .posNextPage a,
+  .posNextPage button {
+    animation: none;
+    transition: none;
+  }
+
+  .posNextPage .primaryAction:hover,
+  .posNextPage .secondaryAction:hover {
+    transform: none;
+  }
 }
 
 @media (max-width: 980px) {
@@ -528,13 +664,13 @@
   }
 
   .posNextToolbar {
-    display: flex;
-    overflow-x: auto;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.85fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
   }
 
   .posNextToolbar button {
-    flex: 0 0 auto;
-    min-width: 112px;
+    padding-inline: 4px;
   }
 
   .posNextGrid {
@@ -562,5 +698,8 @@
   .posNextTerminalPicker {
     grid-template-columns: 1fr;
   }
-}
 
+  .posNextVisit {
+    grid-template-columns: 1fr;
+  }
+}

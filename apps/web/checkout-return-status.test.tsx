@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { installCheckoutBrowserPlatform } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 
 const ticketCode = "tkt_0123456789abcdef0123456789abcdef";
@@ -18,8 +19,15 @@ function renderReturnedCheckout() {
   );
 }
 
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
+
+beforeEach(() => {
+  platform = installCheckoutBrowserPlatform();
+});
+
 afterEach(() => {
   cleanup();
+  platform.restore();
   vi.unstubAllGlobals();
 });
 

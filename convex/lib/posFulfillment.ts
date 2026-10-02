@@ -1,8 +1,10 @@
-import type { StoredOrderLineRecord } from "@skyla/payments";
+import { checkoutEntryTimes, parseVisitDate, type StoredOrderLineRecord } from "@skyla/payments";
 
 export type PosFulfillmentSale = {
   saleRef: string;
   customerEmailLower?: string;
+  visitDate?: string;
+  entryTime?: string;
 };
 
 export type PosFulfillmentLine = Pick<StoredOrderLineRecord, "kind" | "quantity">;
@@ -11,6 +13,7 @@ export type ConfirmedPosBooking = {
   bookingRef: string;
   saleRef: string;
   visitDate: string;
+  entryTime: string;
   partySize: number;
   status: "confirmed";
   emailLower?: string;
@@ -19,6 +22,7 @@ export type ConfirmedPosBooking = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const offeredEntryTimes = new Set<string>(checkoutEntryTimes.map((slot) => slot.value));
 
 export function bookingRefFromSaleRef(value: string) {
   const saleRef = value.trim();
@@ -28,34 +32,37 @@ export function bookingRefFromSaleRef(value: string) {
   return saleRef;
 }
 
-export function venueDateFromTimestamp(timestamp: number) {
-  if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
-    throw new Error("now must be a non-negative safe integer timestamp");
-  }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(new Date(timestamp));
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${value.year}-${value.month}-${value.day}`;
+/** Total admitted people across ticket lines; 0 for cafe/custom-only sales. */
+export function posTicketPartySize(lines: readonly PosFulfillmentLine[]) {
+  return lines.reduce((total, line) => {
+    if (line.kind !== "ticket") return total;
+    if (!Number.isSafeInteger(line.quantity) || line.quantity <= 0) {
+      throw new Error("POS ticket quantities must be positive integers");
+    }
+    return total + line.quantity;
+  }, 0);
 }
 
+/**
+ * Builds the booking for a paid POS sale from its stored, immutable selected
+ * visit. Cafe/custom-only sales have no admission and return null. A sale
+ * with ticket lines but no valid stored visit (older records) is rejected:
+ * a processing date is never substituted for the guest's selected date.
+ */
 export function buildConfirmedPosFulfillment(
   sale: PosFulfillmentSale,
   lines: readonly PosFulfillmentLine[],
   now: number
 ) {
-  const ticketQuantity = lines.reduce((total, line) => {
-    if (line.kind !== "ticket") return total;
-    if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
-      throw new Error("POS ticket quantities must be positive integers");
-    }
-    return total + line.quantity;
-  }, 0);
+  if (!Number.isSafeInteger(now) || now < 0) {
+    throw new Error("now must be a non-negative safe integer timestamp");
+  }
+  const ticketQuantity = posTicketPartySize(lines);
   if (ticketQuantity === 0) return null;
 
+  if (!parseVisitDate(sale.visitDate) || !sale.entryTime || !offeredEntryTimes.has(sale.entryTime)) {
+    throw new Error("POS admission has no stored selected visit date and entry time");
+  }
   const bookingRef = bookingRefFromSaleRef(sale.saleRef);
   const normalizedEmail = sale.customerEmailLower?.trim().toLowerCase();
   if (normalizedEmail && (!emailPattern.test(normalizedEmail) || normalizedEmail.length > 254)) {
@@ -65,7 +72,8 @@ export function buildConfirmedPosFulfillment(
   const booking: ConfirmedPosBooking = {
     bookingRef,
     saleRef: bookingRef,
-    visitDate: venueDateFromTimestamp(now),
+    visitDate: sale.visitDate!,
+    entryTime: sale.entryTime,
     partySize: ticketQuantity,
     status: "confirmed",
     ...(normalizedEmail ? { emailLower: normalizedEmail } : {}),
@@ -82,6 +90,7 @@ export function buildConfirmedPosFulfillment(
       channel: "pos",
       status: "confirmed",
       visitDate: booking.visitDate,
+      entryTime: booking.entryTime,
       ticketQuantity,
       replaySafe: true
     }

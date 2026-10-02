@@ -4,32 +4,36 @@ import {
   type CheckoutLegalAcceptanceInput
 } from "@skyla/payments";
 
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
-import { requireStaffUser } from "./lib/auth";
 import { assertCheckoutDraftCanStartPayment } from "./lib/checkoutDraftExpiry";
 import { assertCheckoutFulfillmentReady } from "./lib/checkoutFulfillment";
 import { settleCheckoutPaid, settleCheckoutUnpaid } from "./lib/checkoutSettlement";
+import {
+  hasOpenBillingExceptionForOrder,
+  hasOpenBillingExceptionForSale,
+  openOperationsException
+} from "./lib/operationsExceptions";
+import {
+  recordPosPaymentFailed,
+  settlePosCanceled,
+  settlePosPaid,
+  type TerminalIntentFacts
+} from "./lib/posSettlement";
 import type { StripeCheckoutSnapshot } from "./lib/stripeCheckout";
-import {
-  stripeTerminalIntentIdempotencyKey,
-  stripeTerminalProcessIdempotencyKey,
-  type StripeTerminalProcessSnapshot,
-  type StripeTerminalSnapshot
-} from "./lib/stripeTerminal";
-import {
-  stripeTerminalSaleStatusAfterUnpaidOutcome,
-  type StripeRefundStatus
-} from "./lib/stripeWebhook";
-import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
+import type { StripeRefundStatus } from "./lib/stripeWebhook";
 import { assertStoredPaymentLineProvenance } from "./lib/orderDraftPersistence";
-import { buildConfirmedPosFulfillment, type ConfirmedPosBooking } from "./lib/posFulfillment";
-import { ensureTicketDelivery, sendTicketConfirmationAction } from "./lib/ticketDeliveryQueue";
-import { assertCheckoutTimeAvailable, safeOperatingHours } from "./lib/operatingHours";
+import { assertTicketDeliveryReady, ensureTicketDelivery, sendTicketConfirmationAction } from "./lib/ticketDeliveryQueue";
+import { assertCheckoutTimeAvailable } from "./lib/operatingHours";
+import { loadVenueHours } from "./lib/capacity";
+import {
+  checkIntentOwnership,
+  paidIdentityForIntent,
+  paidIdentityForProviderPayment,
+  paidSummaryForOrder,
+  paidSummaryForSale
+} from "./lib/paymentEvidence";
 
-declare const process: { env: Record<string, string | undefined> };
-
-const terminalProcessReservationTtlMs = 2 * 60 * 1000;
 const finalRefundStatuses = new Set<StripeRefundStatus>(["failed", "canceled"]);
 const refundCorrelationRetryWindowMs = 72 * 60 * 60 * 1000;
 const refundFulfillmentInvalidatedAction = "payment.refund.fulfillmentInvalidated";
@@ -136,15 +140,13 @@ export const getCheckoutPaymentSnapshot = internalQuery({
     }
     assertCheckoutDraftCanStartPayment(order, Date.now());
 
-    const [lines, hoursRow, legalAcceptance] = await Promise.all([
+    const [lines, hours, legalAcceptance] = await Promise.all([
       ctx.db
         .query("orderLineItems")
         .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
         .collect(),
-      ctx.db
-        .query("config")
-        .withIndex("by_key", (q) => q.eq("key", "hours"))
-        .unique(),
+      // Duplicated or malformed stored hours fail closed for a new payment.
+      loadVenueHours(ctx),
       ctx.db
         .query("checkoutLegalAcceptances")
         .withIndex("by_orderRef_idempotencyKey", (q) =>
@@ -155,7 +157,7 @@ export const getCheckoutPaymentSnapshot = internalQuery({
     assertStoredPaymentLineProvenance(lines, "Checkout");
     const fulfillment = assertCheckoutFulfillmentReady(order, lines);
     assertCheckoutTimeAvailable(
-      safeOperatingHours(hoursRow?.data),
+      hours,
       fulfillment.visitDate,
       fulfillment.entryTime
     );
@@ -186,407 +188,6 @@ export const getCheckoutPaymentSnapshot = internalQuery({
   }
 });
 
-export const getPosTerminalPaymentSnapshot = internalQuery({
-  args: {
-    saleRef: v.string(),
-    idempotencyKey: v.string()
-  },
-  handler: async (ctx, args): Promise<StripeTerminalSnapshot & { actorStaffUserId: Id<"staffUsers"> }> => {
-    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
-    const idempotencyKey = args.idempotencyKey.trim();
-    if (!idempotencyKey) {
-      throw new Error("POS sale idempotency key is required");
-    }
-
-    const sale = await ctx.db
-      .query("posSales")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
-      .unique();
-    if (!sale || sale.idempotencyKey !== idempotencyKey) {
-      throw new Error("POS sale was not found for this payment attempt");
-    }
-    if (sale.status !== "draft" && sale.status !== "payment_pending") {
-      throw new Error(`POS sale cannot create a Terminal intent from status ${sale.status}`);
-    }
-    if (staffUser.role !== "admin" && sale.staffUserId && sale.staffUserId !== staffUser._id) {
-      throw new Error("POS sale belongs to a different staff user");
-    }
-    if (!sale.readerId) {
-      throw new Error("POS sale does not have a stored Terminal reader");
-    }
-
-    const lines = await ctx.db
-      .query("posSaleLines")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
-      .collect();
-    assertStoredPaymentLineProvenance(lines, "POS Terminal");
-    const authorizedReader = authorizeTerminalReaderSelection(
-      { readerId: sale.readerId, terminalLocationId: sale.terminalLocationId },
-      process.env.SKYLA_TERMINAL_READER_REGISTRY
-    );
-
-    return {
-      actorStaffUserId: staffUser._id,
-      saleRef: sale.saleRef,
-      currency: sale.currency,
-      subtotalCents: sale.subtotalCents,
-      feeCents: sale.feeCents,
-      totalCents: sale.totalCents,
-      customerEmailLower: sale.customerEmailLower,
-      readerId: authorizedReader.readerId,
-      terminalLocationId: authorizedReader.terminalLocationId,
-      lines: lines.map((line) => ({
-        name: line.name,
-        quantity: line.quantity,
-        unitAmountCents: line.unitAmountCents,
-        lineTotalCents: line.lineTotalCents
-      }))
-    };
-  }
-});
-
-export const recordStripeTerminalPaymentIntent = internalMutation({
-  args: {
-    saleRef: v.string(),
-    providerPaymentId: v.string(),
-    idempotencyKey: v.string(),
-    amountCents: v.number(),
-    currency: v.literal("usd"),
-    actorStaffUserId: v.id("staffUsers"),
-    raw: v.optional(v.any())
-  },
-  handler: async (ctx, args) => {
-    const existingEvent = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_idempotencyKey", (q) =>
-        q.eq("provider", "terminal").eq("idempotencyKey", args.idempotencyKey)
-      )
-      .first();
-
-    if (existingEvent) {
-      if (
-        existingEvent.saleRef !== args.saleRef ||
-        existingEvent.providerPaymentId !== args.providerPaymentId ||
-        existingEvent.amountCents !== args.amountCents ||
-        existingEvent.currency !== args.currency
-      ) {
-        throw new Error("Stripe Terminal idempotency key was reused for a different payment");
-      }
-      return { eventId: existingEvent._id, reused: true };
-    }
-
-    const sale = await ctx.db
-      .query("posSales")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
-      .unique();
-    if (!sale) {
-      throw new Error("POS sale disappeared before payment recording");
-    }
-    if (sale.totalCents !== args.amountCents || sale.currency !== args.currency) {
-      throw new Error("Stripe Terminal amount does not match the stored POS sale");
-    }
-    if (sale.status !== "draft" && sale.status !== "payment_pending") {
-      throw new Error(`POS sale cannot record a Terminal intent from status ${sale.status}`);
-    }
-
-    const now = Date.now();
-    const eventId = await ctx.db.insert("paymentEvents", {
-      saleRef: args.saleRef,
-      provider: "terminal",
-      providerPaymentId: args.providerPaymentId,
-      providerPaymentIntentId: args.providerPaymentId,
-      idempotencyKey: args.idempotencyKey,
-      status: "requires_payment",
-      currency: args.currency,
-      amountCents: args.amountCents,
-      raw: args.raw,
-      createdAt: now
-    });
-
-    await ctx.db.patch(sale._id, {
-      status: "payment_pending",
-      updatedAt: now
-    });
-
-    await ctx.db.insert("auditEvents", {
-      actorStaffUserId: args.actorStaffUserId,
-      action: "pos.terminalIntent.create",
-      entityType: "posSale",
-      entityRef: args.saleRef,
-      metadata: {
-        amountCents: args.amountCents,
-        providerPaymentId: args.providerPaymentId
-      },
-      createdAt: now
-    });
-
-    return { eventId, reused: false };
-  }
-});
-
-export const getStripeTerminalReaderProcessSnapshot = internalQuery({
-  args: {
-    saleRef: v.string(),
-    idempotencyKey: v.string()
-  },
-  handler: async (
-    ctx,
-    args
-  ): Promise<StripeTerminalProcessSnapshot & { actorStaffUserId: Id<"staffUsers"> }> => {
-    const staffUser = await requireStaffUser(ctx, ["admin", "pos"]);
-    const idempotencyKey = args.idempotencyKey.trim();
-    if (!idempotencyKey) {
-      throw new Error("POS sale idempotency key is required");
-    }
-
-    const sale = await ctx.db
-      .query("posSales")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
-      .unique();
-    if (!sale || sale.idempotencyKey !== idempotencyKey) {
-      throw new Error("POS sale was not found for this reader process attempt");
-    }
-    if (sale.status !== "payment_pending") {
-      throw new Error(`POS sale cannot be sent to a Terminal reader from status ${sale.status}`);
-    }
-    if (staffUser.role !== "admin" && sale.staffUserId && sale.staffUserId !== staffUser._id) {
-      throw new Error("POS sale belongs to a different staff user");
-    }
-    if (!sale.readerId) {
-      throw new Error("POS sale does not have a stored Terminal reader");
-    }
-    const lines = await ctx.db
-      .query("posSaleLines")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
-      .collect();
-    assertStoredPaymentLineProvenance(lines, "POS Terminal reader process");
-    const authorizedReader = authorizeTerminalReaderSelection(
-      { readerId: sale.readerId, terminalLocationId: sale.terminalLocationId },
-      process.env.SKYLA_TERMINAL_READER_REGISTRY
-    );
-
-    const terminalEvent = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_idempotencyKey", (q) =>
-        q.eq("provider", "terminal").eq("idempotencyKey", stripeTerminalIntentIdempotencyKey(sale.saleRef))
-      )
-      .first();
-    if (!terminalEvent || terminalEvent.saleRef !== sale.saleRef) {
-      throw new Error("Terminal PaymentIntent was not created for this POS sale");
-    }
-    if (
-      terminalEvent.status !== "requires_payment" &&
-      terminalEvent.status !== "failed"
-    ) {
-      throw new Error(`Terminal PaymentIntent cannot be processed from status ${terminalEvent.status}`);
-    }
-    if (terminalEvent.amountCents !== sale.totalCents || terminalEvent.currency !== sale.currency) {
-      throw new Error("Terminal PaymentIntent amount does not match the stored POS sale");
-    }
-
-    return {
-      actorStaffUserId: staffUser._id,
-      saleRef: sale.saleRef,
-      paymentIntentId: terminalEvent.providerPaymentId,
-      readerId: authorizedReader.readerId!,
-      amountCents: sale.totalCents,
-      currency: sale.currency
-    };
-  }
-});
-
-export const reserveStripeTerminalReaderProcessAttempt = internalMutation({
-  args: {
-    saleRef: v.string(),
-    providerPaymentId: v.string(),
-    readerId: v.string(),
-    amountCents: v.number(),
-    currency: v.literal("usd")
-  },
-  handler: async (ctx, args) => {
-    const providerEvents = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_providerPaymentId", (q) =>
-        q.eq("provider", "terminal").eq("providerPaymentId", args.providerPaymentId)
-      )
-      .collect();
-    const terminalEvent = providerEvents.find((event) => event.saleRef === args.saleRef);
-    if (!terminalEvent) {
-      throw new Error("Terminal PaymentIntent event was not found for reader processing");
-    }
-    if (
-      terminalEvent.status !== "requires_payment" &&
-      terminalEvent.status !== "failed"
-    ) {
-      throw new Error(`Terminal PaymentIntent cannot be processed from status ${terminalEvent.status}`);
-    }
-    if (terminalEvent.amountCents !== args.amountCents || terminalEvent.currency !== args.currency) {
-      throw new Error("Terminal reader process amount does not match the payment event");
-    }
-
-    const now = Date.now();
-    const existingRaw = terminalRawBase(terminalEvent.raw);
-    if (terminalRawHasActiveProcessReservation(existingRaw, now)) {
-      throw new Error("Terminal reader process attempt is already in progress");
-    }
-
-    const processAttempt = terminalRawLastProcessAttempt(existingRaw) + 1;
-    const processIdempotencyKey = stripeTerminalProcessIdempotencyKey(
-      args.saleRef,
-      args.providerPaymentId,
-      args.readerId,
-      processAttempt
-    );
-    await ctx.db.patch(terminalEvent._id, {
-      raw: {
-        ...existingRaw,
-        readerProcessAttempt: processAttempt,
-        readerProcessIdempotencyKey: processIdempotencyKey,
-        readerProcessReservedAt: now
-      }
-    });
-
-    return { processAttempt, processIdempotencyKey };
-  }
-});
-
-export const recordStripeTerminalReaderProcess = internalMutation({
-  args: {
-    saleRef: v.string(),
-    providerPaymentId: v.string(),
-    readerId: v.string(),
-    amountCents: v.number(),
-    currency: v.literal("usd"),
-    processAttempt: v.number(),
-    processIdempotencyKey: v.string(),
-    status: v.union(v.literal("processing"), v.literal("paid"), v.literal("failed")),
-    actorStaffUserId: v.id("staffUsers"),
-    raw: v.optional(v.any())
-  },
-  handler: async (ctx, args) => {
-    const providerEvents = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_providerPaymentId", (q) =>
-        q.eq("provider", "terminal").eq("providerPaymentId", args.providerPaymentId)
-      )
-      .collect();
-    const terminalEvent = providerEvents.find((event) => event.saleRef === args.saleRef);
-    if (!terminalEvent) {
-      throw new Error("Terminal PaymentIntent event was not found for reader processing");
-    }
-    if (terminalEvent.amountCents !== args.amountCents || terminalEvent.currency !== args.currency) {
-      throw new Error("Terminal reader process amount does not match the payment event");
-    }
-
-    const sale = await ctx.db
-      .query("posSales")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef))
-      .unique();
-    if (!sale) {
-      throw new Error("POS sale disappeared before reader processing was recorded");
-    }
-    if (sale.totalCents !== args.amountCents || sale.currency !== args.currency) {
-      throw new Error("Terminal reader process amount does not match the stored POS sale");
-    }
-    if (sale.readerId !== args.readerId) {
-      throw new Error("Terminal reader process does not match the stored reader");
-    }
-
-    const now = Date.now();
-    const existingRaw = terminalRawBase(terminalEvent.raw);
-    if (existingRaw.readerProcessAttempt !== args.processAttempt) {
-      throw new Error("Terminal reader process attempt was not reserved");
-    }
-    if (existingRaw.readerProcessIdempotencyKey !== args.processIdempotencyKey) {
-      throw new Error("Terminal reader process idempotency key was not reserved");
-    }
-    const nextRaw = {
-      ...existingRaw,
-      readerProcessRecordedAt: now,
-      ...(args.raw === undefined ? {} : { readerProcess: args.raw })
-    };
-    const supersededByWebhook =
-      typeof existingRaw.terminalWebhookRecordedAt === "number" &&
-      Number.isFinite(existingRaw.terminalWebhookRecordedAt);
-    if (supersededByWebhook) {
-      await ctx.db.patch(terminalEvent._id, { raw: nextRaw });
-    } else {
-      await ctx.db.patch(terminalEvent._id, {
-        status: args.status,
-        raw: nextRaw
-      });
-
-      if (args.status === "paid") {
-        await ctx.db.patch(sale._id, {
-          status: "paid",
-          updatedAt: now
-        });
-      } else {
-        await ctx.db.patch(sale._id, {
-          status: "payment_pending",
-          updatedAt: now
-        });
-      }
-    }
-
-    await ctx.db.insert("auditEvents", {
-      actorStaffUserId: args.actorStaffUserId,
-      action: "pos.terminalReader.process",
-      entityType: "posSale",
-      entityRef: args.saleRef,
-      metadata: {
-        amountCents: args.amountCents,
-        providerPaymentId: args.providerPaymentId,
-        readerId: args.readerId,
-        processAttempt: args.processAttempt,
-        status: args.status,
-        resultStatus: supersededByWebhook ? terminalEvent.status : args.status,
-        supersededByWebhook
-      },
-      createdAt: now
-    });
-
-    return supersededByWebhook
-      ? { eventId: terminalEvent._id, status: terminalEvent.status, supersededByWebhook: true }
-      : { eventId: terminalEvent._id, status: args.status };
-  }
-});
-
-function terminalRawBase(raw: unknown): Record<string, unknown> {
-  if (raw === undefined || raw === null) {
-    return {};
-  }
-  if (typeof raw === "object" && !Array.isArray(raw)) {
-    const record = raw as Record<string, unknown>;
-    if (
-      "paymentIntent" in record ||
-      "readerProcess" in record ||
-      "readerProcessAttempt" in record ||
-      "readerProcessIdempotencyKey" in record
-    ) {
-      return record;
-    }
-  }
-  return { paymentIntent: raw };
-}
-
-function terminalRawLastProcessAttempt(raw: unknown) {
-  const base = terminalRawBase(raw);
-  const attempt = base.readerProcessAttempt;
-  return typeof attempt === "number" && Number.isInteger(attempt) && attempt > 0 ? attempt : 0;
-}
-
-function terminalRawHasActiveProcessReservation(base: Record<string, unknown>, now: number) {
-  const reservedAt = base.readerProcessReservedAt;
-  if (typeof reservedAt !== "number" || !Number.isFinite(reservedAt)) {
-    return false;
-  }
-  const recordedAt = base.readerProcessRecordedAt;
-  const hasRecordedThisReservation =
-    typeof recordedAt === "number" && Number.isFinite(recordedAt) && recordedAt >= reservedAt;
-  return !hasRecordedThisReservation && now - reservedAt < terminalProcessReservationTtlMs;
-}
-
 export const recordStripeTerminalWebhook = internalMutation({
   args: {
     providerEventId: v.string(),
@@ -596,7 +197,14 @@ export const recordStripeTerminalWebhook = internalMutation({
     saleRef: v.optional(v.string()),
     ticketCode: v.optional(v.string()),
     amountCents: v.optional(v.number()),
+    amountReceivedCents: v.optional(v.number()),
     currency: v.optional(v.literal("usd")),
+    // Signed PaymentIntent facts, verified against the frozen attempt.
+    attemptNonce: v.optional(v.string()),
+    intentSource: v.optional(v.string()),
+    livemode: v.optional(v.boolean()),
+    intentStatus: v.optional(v.string()),
+    providerEventCreatedAt: v.optional(v.number()),
     raw: v.optional(v.any())
   },
   handler: async (ctx, args) => {
@@ -650,228 +258,55 @@ export const recordStripeTerminalWebhook = internalMutation({
       return { status: "failed", duplicate: false, saleRef: args.saleRef };
     }
 
-    const sale = await ctx.db
-      .query("posSales")
-      .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
-      .unique();
-    if (!sale) {
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        saleRef: args.saleRef,
-        raw: { ...(args.raw ?? {}), reason: "pos_sale_not_found" }
-      });
-      return { status: "failed", duplicate: false, saleRef: args.saleRef };
-    }
-
-    const providerEvents = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_provider_providerPaymentId", (q) =>
-        q.eq("provider", "terminal").eq("providerPaymentId", args.providerPaymentId as string)
-      )
-      .collect();
-    const expectedIntentKey = stripeTerminalIntentIdempotencyKey(args.saleRef);
-    const terminalEvent =
-      providerEvents.find((event) => event.saleRef === args.saleRef && event.idempotencyKey === expectedIntentKey) ??
-      providerEvents.find((event) => event.saleRef === args.saleRef);
-    if (!terminalEvent) {
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        saleRef: args.saleRef,
-        raw: { ...(args.raw ?? {}), reason: "terminal_intent_not_created_by_convex" }
-      });
-      return { status: "failed", duplicate: false, saleRef: args.saleRef };
-    }
-
-    const amountCents = args.amountCents;
-    const currency = args.currency;
-    if (
-      sale.totalCents !== amountCents ||
-      sale.currency !== currency ||
-      terminalEvent.amountCents !== amountCents ||
-      terminalEvent.currency !== currency
-    ) {
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        saleRef: args.saleRef,
-        raw: { ...(args.raw ?? {}), reason: "amount_or_currency_mismatch" }
-      });
-      return { status: "failed", duplicate: false, saleRef: args.saleRef };
-    }
-
-    if (args.outcome !== "paid" && sale.status === "paid") {
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        saleRef: args.saleRef,
-        raw: { ...(args.raw ?? {}), reason: "pos_sale_already_paid" }
-      });
-      return { status: "failed", duplicate: false, saleRef: args.saleRef };
-    }
-    if (args.outcome !== "canceled" && sale.status === "canceled") {
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        saleRef: args.saleRef,
-        raw: { ...(args.raw ?? {}), reason: "pos_sale_already_canceled" }
-      });
-      return { status: "failed", duplicate: false, saleRef: args.saleRef };
-    }
-
-    if (
-      (args.outcome === "paid" && sale.status !== "payment_pending" && sale.status !== "paid") ||
-      (args.outcome !== "paid" && sale.status !== "payment_pending" && sale.status !== "canceled")
-    ) {
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "failed",
-        saleRef: args.saleRef,
-        raw: { ...(args.raw ?? {}), reason: "pos_sale_status_not_reconcilable" }
-      });
-      return { status: "failed", duplicate: false, saleRef: args.saleRef };
-    }
-
-    if (args.outcome === "paid") {
-      const now = Date.now();
-      const saleLines = await ctx.db
-        .query("posSaleLines")
-        .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
-        .collect();
-      assertStoredPaymentLineProvenance(saleLines, "POS Terminal webhook");
-      const fulfillment = buildConfirmedPosFulfillment(sale, saleLines, now);
-      if (fulfillment) {
-        const existingBooking = await ctx.db
-          .query("bookings")
-          .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
-          .unique();
-        if (existingBooking) {
-          assertMatchingPosBooking(existingBooking, fulfillment.booking);
-        } else {
-          await ctx.db.insert("bookings", fulfillment.booking);
-          await ctx.db.insert("auditEvents", {
-            action: "pos.bookingFulfilled",
-            entityType: "booking",
-            entityRef: fulfillment.booking.bookingRef,
-            metadata: fulfillment.auditMetadata,
-            createdAt: now
-          });
-        }
-        await ensureTicketDelivery(ctx, {
-          ticketCode: args.ticketCode,
-          bookingRef: fulfillment.booking.bookingRef,
-          saleRef: args.saleRef,
-          emailLower: fulfillment.booking.emailLower,
-          now
-        });
-      }
-      const existingPaidEvent = providerEvents.find((event) => event.saleRef === args.saleRef && event.status === "paid");
-      if (!existingPaidEvent) {
-        await ctx.db.insert("paymentEvents", {
-          saleRef: args.saleRef,
-          provider: "terminal",
-          providerPaymentId: args.providerPaymentId,
-          providerPaymentIntentId: args.providerPaymentId,
-          idempotencyKey: terminalEvent.idempotencyKey,
-          status: "paid",
-          currency,
-          amountCents,
-          rawEventId: args.providerEventId,
-          raw: args.raw,
-          createdAt: now
-        });
-      }
-
-      if (terminalEvent.status !== "paid") {
-        await ctx.db.patch(terminalEvent._id, {
-          status: "paid",
-          raw: withoutUndefined({
-            ...terminalRawBase(terminalEvent.raw),
-            terminalWebhookRecordedAt: now,
-            terminalWebhook: args.raw
-          })
-        });
-      }
-
-      if (sale.status !== "paid") {
-        await ctx.db.patch(sale._id, {
-          status: "paid",
-          updatedAt: now
-        });
-      }
-
-      await insertTerminalWebhookAuditEvent(ctx, {
-        saleRef: args.saleRef,
-        outcome: args.outcome,
-        amountCents,
-        providerPaymentId: args.providerPaymentId,
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        createdAt: now
-      });
-      await insertWebhookEvent(ctx, {
-        provider: "terminal",
-        providerEventId: args.providerEventId,
-        eventType: args.eventType,
-        status: "processed",
-        saleRef: args.saleRef,
-        raw: args.raw
-      });
-      return { status: "processed", duplicate: false, saleRef: args.saleRef };
-    }
-
+    // Paid, declined and canceled outcomes share the correlation and money
+    // checks used by staff Refresh and scheduled provider reads.
     const now = Date.now();
-    const providerStatus = args.outcome === "failed" ? "failed" : "canceled";
-    await ctx.db.insert("paymentEvents", {
-      saleRef: args.saleRef,
-      provider: "terminal",
-      providerPaymentId: args.providerPaymentId,
+    const facts: TerminalIntentFacts = {
+      source: "webhook",
+      providerEventId: args.providerEventId,
+      eventType: args.eventType,
       providerPaymentIntentId: args.providerPaymentId,
-      idempotencyKey: terminalEvent.idempotencyKey,
-      status: providerStatus,
-      currency,
-      amountCents,
-      rawEventId: args.providerEventId,
-      raw: args.raw,
-      createdAt: now
-    });
-
-    if (terminalEvent.status !== providerStatus) {
-      await ctx.db.patch(terminalEvent._id, {
-        status: providerStatus,
-        raw: withoutUndefined({
-          ...terminalRawBase(terminalEvent.raw),
-          terminalWebhookRecordedAt: now,
-          terminalWebhook: args.raw
-        })
-      });
+      saleRef: args.saleRef,
+      attemptNonce: args.attemptNonce,
+      intentSource: args.intentSource,
+      amountCents: args.amountCents,
+      amountReceivedCents: args.amountReceivedCents,
+      currency: args.currency,
+      livemode: args.livemode,
+      intentStatus: args.intentStatus,
+      paidAt: args.providerEventCreatedAt,
+      ticketCode: args.ticketCode,
+      raw: args.raw
+    };
+    let reason: string | undefined;
+    if (args.outcome === "paid") {
+      const result = await settlePosPaid(ctx, facts, now);
+      if (result.kind !== "fulfilled") {
+        reason = result.kind === "exception" ? result.code : result.reason;
+      }
+    } else {
+      // A decline is not a cancellation: the same intent stays payable.
+      const result =
+        args.outcome === "failed" ? await recordPosPaymentFailed(ctx, facts, now) : await settlePosCanceled(ctx, facts, now);
+      if (result.kind === "rejected") reason = result.reason;
     }
-
-    const nextSaleStatus = stripeTerminalSaleStatusAfterUnpaidOutcome(args.outcome);
-    if (sale.status !== nextSaleStatus) {
-      await ctx.db.patch(sale._id, {
-        status: nextSaleStatus,
-        updatedAt: now
+    if (reason) {
+      // Paid evidence that cannot become a ticket is durably recorded as a
+      // billing exception; the webhook itself is stored as not fulfilled.
+      await insertWebhookEvent(ctx, {
+        provider: "terminal",
+        providerEventId: args.providerEventId,
+        eventType: args.eventType,
+        status: "failed",
+        saleRef: args.saleRef,
+        raw: { ...(args.raw ?? {}), reason }
       });
+      return { status: "failed", duplicate: false, saleRef: args.saleRef };
     }
-
     await insertTerminalWebhookAuditEvent(ctx, {
       saleRef: args.saleRef,
       outcome: args.outcome,
-      amountCents,
+      amountCents: args.amountCents,
       providerPaymentId: args.providerPaymentId,
       providerEventId: args.providerEventId,
       eventType: args.eventType,
@@ -959,12 +394,14 @@ export const recordStripeRefundWebhook = internalMutation({
       return { status: "failed", duplicate: false };
     }
 
-    const paymentEvents = await ctx.db
-      .query("paymentEvents")
-      .withIndex("by_providerPaymentIntentId", (q) =>
-        q.eq("providerPaymentIntentId", args.providerPaymentIntentId as string)
-      )
-      .collect();
+    // The intent's paid record, read with take(2): two paid rows leave the
+    // refund's owner unproven, so no owner is chosen and nothing is changed;
+    // the provider's refund facts stay durably visible for staff.
+    const paidIdentity = await paidIdentityForIntent(ctx, args.providerPaymentIntentId);
+    if (paidIdentity.kind === "duplicate") {
+      return recordUnverifiedRefund(ctx, args, "refund_paid_identity_duplicate", {});
+    }
+    const paymentEvents = paidIdentity.kind === "one" ? [paidIdentity.row] : [];
     const paidEvents = paymentEvents.filter(
       (event) => event.status === "paid" && (event.provider === "stripe" || event.provider === "terminal")
     );
@@ -1012,18 +449,60 @@ export const recordStripeRefundWebhook = internalMutation({
       });
       return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
     }
+    const owner = { orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
+    // A refund can change admission only when the original settled money is
+    // still uniquely owned. Pending foreign claims and other paid purchases
+    // cannot be hidden by choosing the one paid row of this intent.
+    if (!paidEvent.providerPaymentId ||
+        (paidEvent.provider === "terminal" && paidEvent.providerPaymentId !== args.providerPaymentIntentId)) {
+      return recordUnverifiedRefund(ctx, args, "refund_payment_identity_unverified", owner);
+    }
+    const [providerIdentity, ownership, ownerPaid] = await Promise.all([
+      paidIdentityForProviderPayment(ctx, paidEvent.provider, paidEvent.providerPaymentId),
+      checkIntentOwnership(ctx, args.providerPaymentIntentId, (row) =>
+        row.provider === paidEvent.provider &&
+        row.orderRef === paidEvent.orderRef && row.saleRef === paidEvent.saleRef &&
+        row.providerPaymentId === paidEvent.providerPaymentId
+      ),
+      paidEvent.orderRef
+        ? paidSummaryForOrder(ctx, paidEvent.orderRef)
+        : paidSummaryForSale(ctx, paidEvent.saleRef!)
+    ]);
+    if (
+      providerIdentity.kind !== "one" || providerIdentity.row._id !== paidEvent._id ||
+      ownership.kind !== "exclusive" || ownerPaid.overflow ||
+      ownerPaid.rows.length !== 1 || ownerPaid.rows[0]._id !== paidEvent._id
+    ) {
+      return recordUnverifiedRefund(ctx, args, "refund_payment_identity_unverified", owner);
+    }
+    // Cancellation ownership comes from a bounded, action-indexed audit read;
+    // an unprovable history never cancels, restores or releases anything.
+    const invalidation = await findActiveRefundFulfillmentInvalidation(ctx, {
+      entityType: paidEvent.orderRef ? "order" : "posSale",
+      entityRef: (paidEvent.orderRef ?? paidEvent.saleRef) as string,
+      providerPaymentIntentId: args.providerPaymentIntentId
+    });
+    if (invalidation.kind === "unverified") {
+      return recordUnverifiedRefund(ctx, args, "refund_fulfillment_history_unverified", owner);
+    }
+    const activeInvalidation = invalidation.active;
+    // Owner records are preflighted (take 2) before any write, so a duplicate
+    // can neither throw after the refund is stored nor be chosen arbitrarily.
+    const [entities, ownerBookings] = await Promise.all([
+      paidEvent.orderRef
+        ? ctx.db.query("orders").withIndex("by_orderRef", (q) => q.eq("orderRef", paidEvent.orderRef as string)).take(2)
+        : ctx.db.query("posSales").withIndex("by_saleRef", (q) => q.eq("saleRef", paidEvent.saleRef as string)).take(2),
+      paidEvent.orderRef
+        ? ctx.db.query("bookings").withIndex("by_orderRef", (q) => q.eq("orderRef", paidEvent.orderRef as string)).take(2)
+        : ctx.db.query("bookings").withIndex("by_saleRef", (q) => q.eq("saleRef", paidEvent.saleRef as string)).take(2)
+    ]);
+    if (entities.length > 1 || ownerBookings.length > 1) {
+      return recordUnverifiedRefund(ctx, args, "refund_owner_records_duplicate", owner);
+    }
+    const entity: Doc<"orders"> | Doc<"posSales"> | undefined = entities[0];
+    const ownerBooking: Doc<"bookings"> | undefined = ownerBookings[0];
     if (paidEvent.orderRef) {
-      const order = await ctx.db
-        .query("orders")
-        .withIndex("by_orderRef", (q) => q.eq("orderRef", paidEvent.orderRef as string))
-        .unique();
-      const activeInvalidation = order?.status === "canceled"
-        ? await findActiveRefundFulfillmentInvalidation(ctx, {
-            entityType: "order",
-            entityRef: paidEvent.orderRef,
-            providerPaymentIntentId: args.providerPaymentIntentId
-          })
-        : undefined;
+      const order = entity as Doc<"orders"> | undefined;
       if (
         !order ||
         !(order.status === "paid" || (order.status === "canceled" && activeInvalidation)) ||
@@ -1041,17 +520,7 @@ export const recordStripeRefundWebhook = internalMutation({
         return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef };
       }
     } else {
-      const sale = await ctx.db
-        .query("posSales")
-        .withIndex("by_saleRef", (q) => q.eq("saleRef", paidEvent.saleRef as string))
-        .unique();
-      const activeInvalidation = sale?.status === "canceled"
-        ? await findActiveRefundFulfillmentInvalidation(ctx, {
-            entityType: "posSale",
-            entityRef: paidEvent.saleRef as string,
-            providerPaymentIntentId: args.providerPaymentIntentId
-          })
-        : undefined;
+      const sale = entity as Doc<"posSales"> | undefined;
       if (
         !sale ||
         !(sale.status === "paid" || (sale.status === "canceled" && activeInvalidation)) ||
@@ -1080,10 +549,12 @@ export const recordStripeRefundWebhook = internalMutation({
       return { status: "failed", duplicate: false, orderRef: paidEvent.orderRef, saleRef: paidEvent.saleRef };
     }
 
-    const existingRefund = await ctx.db
+    const existingRefunds = await ctx.db
       .query("refunds")
       .withIndex("by_providerRefundId", (q) => q.eq("providerRefundId", args.providerRefundId as string))
-      .unique();
+      .take(2);
+    if (existingRefunds.length > 1) return recordUnverifiedRefund(ctx, args, "refund_record_duplicate", owner);
+    const existingRefund = existingRefunds[0];
     if (
       existingRefund &&
       (existingRefund.providerPaymentIntentId !== args.providerPaymentIntentId ||
@@ -1145,16 +616,40 @@ export const recordStripeRefundWebhook = internalMutation({
       };
     }
 
+    // Bounded succeeded history: a cumulative sum is never inferred from a
+    // prefix, so an overflow changes nothing and stays visible for staff.
     const refunds = await ctx.db
       .query("refunds")
-      .withIndex("by_providerPaymentIntentId", (q) =>
-        q.eq("providerPaymentIntentId", args.providerPaymentIntentId as string)
+      .withIndex("by_providerPaymentIntentId_status", (q) =>
+        q.eq("providerPaymentIntentId", args.providerPaymentIntentId as string).eq("status", "succeeded")
       )
-      .collect();
-    const succeededRefundedCents = refunds.reduce((sum, refund) => {
-      if (existingRefund && refund._id === existingRefund._id) return sum;
-      return refund.status === "succeeded" ? sum + refund.amountCents : sum;
-    }, args.refundStatus === "succeeded" ? args.amountCents : 0);
+      .take(refundHistoryReadLimit + 1);
+    if (refunds.length > refundHistoryReadLimit) {
+      return recordUnverifiedRefund(ctx, args, "refund_history_unverified", owner);
+    }
+    const refundIds = new Set<string>();
+    let succeededRefundedCents = args.refundStatus === "succeeded" ? args.amountCents : 0;
+    for (const refund of refunds) {
+      // A negative, foreign or duplicated refund cannot offset real returned
+      // money and restore admission. Keep the current provider facts visible
+      // without changing fulfillment when the cumulative evidence is unknown.
+      if (
+        refund.providerPaymentIntentId !== args.providerPaymentIntentId ||
+        refund.paymentProvider !== paidEvent.provider ||
+        refund.orderRef !== paidEvent.orderRef || refund.saleRef !== paidEvent.saleRef ||
+        refund.currency !== paidEvent.currency ||
+        !Number.isSafeInteger(refund.amountCents) || refund.amountCents <= 0 ||
+        !refund.providerRefundId || refundIds.has(refund.providerRefundId)
+      ) {
+        return recordUnverifiedRefund(ctx, args, "refund_history_invalid", owner);
+      }
+      refundIds.add(refund.providerRefundId);
+      if (existingRefund && refund._id === existingRefund._id) continue;
+      succeededRefundedCents += refund.amountCents;
+      if (!Number.isSafeInteger(succeededRefundedCents)) {
+        return recordUnverifiedRefund(ctx, args, "refund_history_invalid", owner);
+      }
+    }
     if (succeededRefundedCents > paidEvent.amountCents) {
       await insertWebhookEvent(ctx, {
         providerEventId: args.providerEventId,
@@ -1192,6 +687,9 @@ export const recordStripeRefundWebhook = internalMutation({
       saleRef: paidEvent.saleRef,
       paidAmountCents: paidEvent.amountCents,
       cumulativeSucceededRefundedCents: succeededRefundedCents,
+      entity: entity!,
+      booking: ownerBooking,
+      activeInvalidation,
       now
     });
 
@@ -1240,6 +738,16 @@ type RefundFulfillmentInvalidation = {
   metadata?: Record<string, string | number | boolean>;
 };
 
+// Invalidation/restoration audit rows per entity; more is unprovable history.
+const refundAuditReadLimit = 100;
+const refundHistoryReadLimit = 100;
+
+/**
+ * The refund invalidation that currently owns an entity's cancellation, read
+ * through the action index (bounded): only invalidation and restoration rows
+ * are read, never unrelated audit history. Overflow is "unverified", never
+ * "no active invalidation".
+ */
 async function findActiveRefundFulfillmentInvalidation(
   ctx: MutationCtx,
   args: {
@@ -1247,21 +755,86 @@ async function findActiveRefundFulfillmentInvalidation(
     entityRef: string;
     providerPaymentIntentId: string;
   }
-) {
-  const events = await ctx.db
-    .query("auditEvents")
-    .withIndex("by_entity", (q) => q.eq("entityType", args.entityType).eq("entityRef", args.entityRef))
-    .collect();
+): Promise<{ kind: "ok"; active?: RefundFulfillmentInvalidation } | { kind: "unverified" }> {
+  const [invalidated, restored] = await Promise.all(
+    [refundFulfillmentInvalidatedAction, refundFulfillmentRestoredAction].map((action) =>
+      ctx.db
+        .query("auditEvents")
+        .withIndex("by_entity_action", (q) =>
+          q.eq("entityType", args.entityType).eq("entityRef", args.entityRef).eq("action", action)
+        )
+        .take(refundAuditReadLimit + 1)
+    )
+  );
+  if (invalidated.length > refundAuditReadLimit || restored.length > refundAuditReadLimit) return { kind: "unverified" };
   let active: RefundFulfillmentInvalidation | undefined;
-  for (const event of events.toSorted((left, right) => left.createdAt - right.createdAt)) {
+  const ordered = [...invalidated, ...restored].toSorted(
+    (left, right) => left.createdAt - right.createdAt || left._creationTime - right._creationTime
+  );
+  for (const event of ordered) {
     if (event.metadata?.providerPaymentIntentId !== args.providerPaymentIntentId) continue;
     if (event.action === refundFulfillmentInvalidatedAction) {
       active = { auditEventId: event._id, createdAt: event.createdAt, metadata: event.metadata };
-    } else if (event.action === refundFulfillmentRestoredAction) {
+    } else {
       active = undefined;
     }
   }
-  return active;
+  return { kind: "ok", active };
+}
+
+/**
+ * A provider refund event whose owner or history cannot be proven: nothing
+ * is cancelled, restored or released. The event is durably received (failed
+ * webhook record with its raw facts) and an open billing exception carries
+ * the refund facts for staff.
+ */
+async function recordUnverifiedRefund(
+  ctx: MutationCtx,
+  args: {
+    providerEventId: string;
+    eventType: string;
+    providerRefundId?: string;
+    providerPaymentIntentId?: string;
+    refundStatus?: string;
+    amountCents?: number;
+    currency?: "usd";
+    reason?: string;
+    failureReason?: string;
+    providerEventCreatedAt?: number;
+    raw?: unknown;
+  },
+  code: string,
+  owner: { orderRef?: string; saleRef?: string }
+) {
+  await openOperationsException(ctx, {
+    category: "billing",
+    code,
+    dedupeKey: `billing:${code}:refund:${args.providerRefundId}`,
+    moneyReceived: true,
+    orderRef: owner.orderRef,
+    saleRef: owner.saleRef,
+    providerPaymentIntentId: args.providerPaymentIntentId,
+    providerEventId: args.providerEventId,
+    amountCents: args.amountCents,
+    currency: args.currency,
+    evidence: {
+      providerRefundId: args.providerRefundId,
+      refundStatus: args.refundStatus,
+      refundReason: args.reason,
+      failureReason: args.failureReason,
+      providerEventCreatedAt: args.providerEventCreatedAt
+    },
+    now: Date.now()
+  });
+  await insertWebhookEvent(ctx, {
+    providerEventId: args.providerEventId,
+    eventType: args.eventType,
+    status: "failed",
+    orderRef: owner.orderRef,
+    saleRef: owner.saleRef,
+    raw: { ...((args.raw as Record<string, unknown> | undefined) ?? {}), reason: code }
+  });
+  return { status: "failed", duplicate: false, orderRef: owner.orderRef, saleRef: owner.saleRef };
 }
 
 async function reconcileRefundFulfillment(
@@ -1272,37 +845,16 @@ async function reconcileRefundFulfillment(
     saleRef?: string;
     paidAmountCents: number;
     cumulativeSucceededRefundedCents: number;
+    /** Preflighted before any write in this transaction. */
+    entity: Doc<"orders"> | Doc<"posSales">;
+    booking: Doc<"bookings"> | undefined;
+    activeInvalidation: RefundFulfillmentInvalidation | undefined;
     now: number;
   }
 ) {
   const entityType: RefundFulfillmentEntityType = args.orderRef ? "order" : "posSale";
   const entityRef = args.orderRef ?? args.saleRef!;
-  const [entity, booking, activeInvalidation] = await Promise.all([
-    args.orderRef
-      ? ctx.db
-          .query("orders")
-          .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
-          .unique()
-      : ctx.db
-          .query("posSales")
-          .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
-          .unique(),
-    args.orderRef
-      ? ctx.db
-          .query("bookings")
-          .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
-          .unique()
-      : ctx.db
-          .query("bookings")
-          .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
-          .unique(),
-    findActiveRefundFulfillmentInvalidation(ctx, {
-      entityType,
-      entityRef,
-      providerPaymentIntentId: args.providerPaymentIntentId
-    })
-  ]);
-  if (!entity) throw new Error("Refund fulfillment entity was not found");
+  const { entity, booking, activeInvalidation } = args;
 
   if (args.cumulativeSucceededRefundedCents === args.paidAmountCents) {
     if (activeInvalidation) return;
@@ -1378,10 +930,13 @@ async function reconcileRefundFulfillment(
       refundCancellationOwner: undefined,
       updatedAt: args.now
     });
-    const ticketDelivery = await ctx.db
+    // Only a single stored delivery is requeued; duplicates are left alone
+    // (and still fail the send-time proof) rather than throwing after writes.
+    const deliveries = await ctx.db
       .query("ticketDeliveries")
       .withIndex("by_bookingRef", (q) => q.eq("bookingRef", booking.bookingRef))
-      .unique();
+      .take(2);
+    const ticketDelivery = deliveries.length === 1 ? deliveries[0] : undefined;
     if (
       ticketDelivery?.status === "suppressed" &&
       ticketDelivery.failureReason === "booking_cancelled"
@@ -1566,23 +1121,6 @@ export const recordStripeCheckoutWebhook = internalMutation({
   }
 });
 
-function assertMatchingPosBooking(
-  existing: {
-    bookingRef: string;
-    saleRef?: string;
-    visitDate?: string;
-    partySize?: number;
-    emailLower?: string;
-  },
-  expected: ConfirmedPosBooking
-) {
-  const immutableFields = ["bookingRef", "saleRef", "visitDate", "partySize", "emailLower"] as const;
-  const mismatch = immutableFields.find((field) => existing[field] !== expected[field]);
-  if (mismatch) {
-    throw new Error(`Stored POS booking does not match paid sale fulfillment: ${mismatch}`);
-  }
-}
-
 async function repairDuplicatePaidCheckoutDelivery(
   ctx: MutationCtx,
   args: {
@@ -1612,7 +1150,12 @@ async function repairDuplicatePaidCheckoutDelivery(
       .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
       .unique()
   ]);
-  if (order?.status !== "paid" || !booking || booking.status !== "confirmed") {
+  if (
+    order?.status !== "paid" ||
+    !booking ||
+    booking.status !== "confirmed" ||
+    (await hasOpenBillingExceptionForOrder(ctx, args.orderRef))
+  ) {
     return;
   }
 
@@ -1654,16 +1197,35 @@ async function repairDuplicatePaidTerminalDelivery(
       .withIndex("by_saleRef", (q) => q.eq("saleRef", args.saleRef as string))
       .unique()
   ]);
-  if (sale?.status !== "paid" || !booking || booking.status !== "confirmed") {
+  // Only a confirmed booking for its sale's stored selected visit, with no
+  // open billing exception and a valid delivery shape, is repaired.
+  if (
+    sale?.status !== "paid" ||
+    !booking ||
+    booking.status !== "confirmed" ||
+    !sale.visitDate ||
+    !sale.entryTime ||
+    booking.visitDate !== sale.visitDate ||
+    booking.entryTime !== sale.entryTime ||
+    (await hasOpenBillingExceptionForSale(ctx, args.saleRef))
+  ) {
     return;
   }
-
+  const now = Date.now();
+  try {
+    await assertTicketDeliveryReady(ctx, {
+      ticketCode: args.ticketCode, bookingRef: booking.bookingRef,
+      saleRef: args.saleRef, emailLower: booking.emailLower, now
+    });
+  } catch {
+    return;
+  }
   await ensureTicketDelivery(ctx, {
     ticketCode: args.ticketCode,
     bookingRef: booking.bookingRef,
     saleRef: args.saleRef,
     emailLower: booking.emailLower,
-    now: Date.now()
+    now
   });
 }
 

@@ -1,6 +1,6 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-export type OperationsExceptionCategory = "billing" | "checkout_attempt" | "ticket_delivery";
+export type OperationsExceptionCategory = "billing" | "checkout_attempt" | "terminal_attempt" | "ticket_delivery";
 
 export type OperationsExceptionInput = {
   category: OperationsExceptionCategory;
@@ -26,11 +26,16 @@ export type OperationsExceptionInput = {
  * releases capacity or contacts the customer.
  */
 export async function openOperationsException(ctx: MutationCtx, input: OperationsExceptionInput) {
+  // Paid settlement calls this after recording money, so a duplicated row must
+  // not throw. The newest row for the key decides: an open one only counts
+  // the occurrence; a resolved one stays as its immutable history and the
+  // recurring problem opens a fresh active blocker with its own evidence.
   const existing = await ctx.db
     .query("operationsExceptions")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", input.dedupeKey))
-    .unique();
-  if (existing) {
+    .order("desc")
+    .first();
+  if (existing && existing.status === "open") {
     await ctx.db.patch(existing._id, {
       occurrenceCount: existing.occurrenceCount + 1,
       lastSeenAt: input.now,
@@ -83,11 +88,16 @@ export async function resolveOperationsException(
   resolution: string,
   now: number
 ) {
-  const existing = await ctx.db
+  // Bounded and classified: the newest row is resolved only when it is the
+  // single open row for the key. Two open rows are ambiguous and left for
+  // staff; money exceptions are never closed here.
+  const [existing, previous] = await ctx.db
     .query("operationsExceptions")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey))
-    .unique();
+    .order("desc")
+    .take(2);
   if (!existing || existing.status !== "open" || existing.moneyReceived) return false;
+  if (previous?.status === "open") return false;
   await ctx.db.patch(existing._id, { status: "resolved", resolvedAt: now, resolution, updatedAt: now });
   await ctx.db.insert("auditEvents", {
     action: "operations.exceptionResolved",
@@ -99,12 +109,47 @@ export async function resolveOperationsException(
   return true;
 }
 
+// Reads only the open billing subset, so resolved or non-billing history can
+// never push an open billing exception out of the bounded read. Any non-empty
+// result blocks tickets, so presence is all callers rely on.
+const openBillingReadLimit = 50;
+
 export async function openBillingExceptionsForOrder(ctx: QueryCtx | MutationCtx, orderRef: string) {
-  const rows = await ctx.db
+  return ctx.db
     .query("operationsExceptions")
-    .withIndex("by_orderRef", (q) => q.eq("orderRef", orderRef))
-    .take(50);
-  return rows.filter((row) => row.status === "open" && row.category === "billing");
+    .withIndex("by_orderRef_status_category", (q) =>
+      q.eq("orderRef", orderRef).eq("status", "open").eq("category", "billing")
+    )
+    .take(openBillingReadLimit);
+}
+
+export async function openBillingExceptionsForSale(ctx: QueryCtx | MutationCtx, saleRef: string) {
+  return ctx.db
+    .query("operationsExceptions")
+    .withIndex("by_saleRef_status_category", (q) =>
+      q.eq("saleRef", saleRef).eq("status", "open").eq("category", "billing")
+    )
+    .take(openBillingReadLimit);
+}
+
+export async function hasOpenBillingExceptionForOrder(ctx: QueryCtx | MutationCtx, orderRef: string) {
+  const row = await ctx.db
+    .query("operationsExceptions")
+    .withIndex("by_orderRef_status_category", (q) =>
+      q.eq("orderRef", orderRef).eq("status", "open").eq("category", "billing")
+    )
+    .first();
+  return row !== null;
+}
+
+export async function hasOpenBillingExceptionForSale(ctx: QueryCtx | MutationCtx, saleRef: string) {
+  const row = await ctx.db
+    .query("operationsExceptions")
+    .withIndex("by_saleRef_status_category", (q) =>
+      q.eq("saleRef", saleRef).eq("status", "open").eq("category", "billing")
+    )
+    .first();
+  return row !== null;
 }
 
 function scalarRecord(value: Record<string, string | number | boolean | undefined>) {

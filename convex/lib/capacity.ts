@@ -17,8 +17,8 @@ import {
 
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { safeOperatingHours } from "./operatingHours";
-import { bookingAdmission, loadPhysicalOccupancy, remainingAdmissionParty } from "./occupancy";
+import { defaultHours, normalizeHoursConfig } from "./adminConfig";
+import { loadPhysicalOccupancy, lookupBookingAdmission, remainingAdmissionParty } from "./occupancy";
 
 export const activeCapacityStatuses = ["draft", "payment_pending", "paid", "exception"] as const;
 export type ActiveCapacityStatus = (typeof activeCapacityStatuses)[number];
@@ -43,6 +43,20 @@ export type CapacityDecision =
 type CapacityCtx = QueryCtx | MutationCtx;
 type ReservationDoc = Doc<"capacityReservations">;
 
+/** A hold belongs to exactly one online order or one POS sale. */
+export type CapacityOwner = { orderRef: string; saleRef?: undefined } | { saleRef: string; orderRef?: undefined };
+
+function asOwner(owner: string | CapacityOwner): CapacityOwner {
+  return typeof owner === "string" ? { orderRef: owner } : owner;
+}
+
+/** Stable key for an order or sale; undefined when ownership is not exclusive. */
+export function capacityOwnerKey(row: { orderRef?: string; saleRef?: string }) {
+  if (row.orderRef && !row.saleRef) return `order:${row.orderRef}`;
+  if (row.saleRef && !row.orderRef) return `sale:${row.saleRef}`;
+  return undefined;
+}
+
 /** Largest number of people inside at any moment in [from, to). */
 export function peakOccupancy(intervals: readonly OccupancyInterval[], fromMinutes: number, toMinutes: number) {
   const points = new Set([fromMinutes]);
@@ -66,6 +80,23 @@ export function remainingPlaces(intervals: readonly OccupancyInterval[], window:
   return Math.max(0, venueCapacity - peakOccupancy(intervals, window.startMinutes, window.endMinutes));
 }
 
+/**
+ * Known structural corruption in the capacity or physical ledger (duplicate or
+ * dual owners, impossible departures). Paid settlement turns it into a billing
+ * exception instead of rolling its money record back; anything else still
+ * propagates.
+ */
+export class CapacityIntegrityError extends Error {
+  constructor(readonly code: CapacityIntegrityCode, message: string) {
+    super(message);
+    this.name = "CapacityIntegrityError";
+  }
+}
+export type CapacityIntegrityCode =
+  | "capacity_reservation_duplicate"
+  | "capacity_owner_invalid"
+  | "capacity_departure_invalid";
+
 /** A held/paid party's span, shortened only by a recorded departure. */
 export function reservationInterval(
   reservation: Pick<ReservationDoc, "visitDate" | "startMinutes" | "endMinutes" | "partySize" | "departedAt" | "departedCount">
@@ -77,7 +108,9 @@ export function reservationInterval(
     else if (departure.date === reservation.visitDate) endMinutes = Math.min(endMinutes, departure.minutes);
   }
   const partySize = reservation.partySize - (reservation.departedCount ?? 0);
-  if (!Number.isSafeInteger(partySize) || partySize < 0 || partySize > reservation.partySize) throw new Error("Stored capacity departure needs reconciliation");
+  if (!Number.isSafeInteger(partySize) || partySize < 0 || partySize > reservation.partySize) {
+    throw new CapacityIntegrityError("capacity_departure_invalid", "Stored capacity departure needs reconciliation");
+  }
   if (endMinutes <= reservation.startMinutes || partySize === 0) return null;
   return { startMinutes: reservation.startMinutes, endMinutes, partySize };
 }
@@ -104,22 +137,50 @@ export function legacyBookingInterval(
     : { startMinutes: entry ?? 0, endMinutes: venueDayMinutes, partySize };
 }
 
+/** Stored venue hours that cannot be trusted: never a fallback authority. */
+export class VenueHoursIntegrityError extends Error {
+  constructor(readonly code: "venue_hours_duplicate" | "venue_hours_malformed") {
+    super(`Stored venue hours need reconciliation (${code})`);
+    this.name = "VenueHoursIntegrityError";
+  }
+}
+
+/**
+ * The venue's hours. Only a genuinely absent row uses the documented
+ * owner-confirmed defaultHours; a duplicated or malformed stored row is an
+ * integrity failure, so tickets and new availability fail closed instead of
+ * silently trusting defaults.
+ */
 export async function loadVenueHours(ctx: CapacityCtx): Promise<VisitHours> {
-  const hoursRow = await ctx.db
+  const rows = await ctx.db
     .query("config")
     .withIndex("by_key", (q) => q.eq("key", "hours"))
-    .unique();
-  return safeOperatingHours(hoursRow?.data);
+    .take(2);
+  if (rows.length > 1) throw new VenueHoursIntegrityError("venue_hours_duplicate");
+  if (!rows[0]) return normalizeHoursConfig(defaultHours);
+  try {
+    return normalizeHoursConfig(rows[0].data);
+  } catch {
+    throw new VenueHoursIntegrityError("venue_hours_malformed");
+  }
 }
 
 /**
  * Everything that occupies the venue on one LA date, read through bounded
  * indexed queries: confirmed private events, active reservation holds, and
- * committed bookings without a reservation row (POS, earlier checkout). Unknown
- * party sizes, unknown booking states, unreconciled legacy imports, or a read
- * that hits the bound mark the date unverified instead of offering space.
+ * committed bookings without a reservation row (older POS, earlier checkout).
+ * Unknown party sizes, unknown booking states, unreconciled legacy imports, or
+ * a read that hits the bound mark the date unverified instead of offering
+ * space. `exclude` leaves out one owner's own hold and booking so a paid
+ * finalization can recheck the date without counting its own party twice.
  */
-export async function loadDateOccupancy(ctx: CapacityCtx, visitDate: string, hours: VisitHours): Promise<DateOccupancy> {
+export async function loadDateOccupancy(
+  ctx: CapacityCtx,
+  visitDate: string,
+  hours: VisitHours,
+  options: { exclude?: CapacityOwner } = {}
+): Promise<DateOccupancy> {
+  const excludedKey = options.exclude ? capacityOwnerKey(options.exclude) : undefined;
   const [privateEvent, reservationGroups, bookingGroups, unknownStatuses, undatedConfirmed, undatedCheckedIn, legacySources] =
     await Promise.all([
       ctx.db
@@ -180,28 +241,63 @@ export async function loadDateOccupancy(ctx: CapacityCtx, visitDate: string, hou
 
   const physical = await loadPhysicalOccupancy(ctx);
   if (physical.unverifiedReason) markUnverified(physical.unverifiedReason);
-  const physicalOrderRefs = new Set<string>();
+  const physicalOwners = new Set<string>();
   for (const admission of physical.admissions) {
     if (admission.visitDate > visitDate) continue;
-    const booking = await ctx.db.query("bookings").withIndex("by_bookingRef", q => q.eq("bookingRef", admission.bookingRef)).unique();
-    if (booking?.orderRef) physicalOrderRefs.add(booking.orderRef);
+    const owners = await ctx.db.query("bookings").withIndex("by_bookingRef", q => q.eq("bookingRef", admission.bookingRef)).take(2);
+    if (owners.length > 1) {
+      // Which party is inside is unknown: the admission stays counted and
+      // every hold stays counted too, under an unverified date.
+      markUnverified("booking_duplicate");
+      continue;
+    }
+    const owner = owners[0] ? capacityOwnerKey(owners[0]) : undefined;
+    if (owner) physicalOwners.add(owner);
   }
 
-  const reservedOrderRefs = new Set<string>();
+  const reservedOwners = new Set<string>();
   for (const reservation of reservationGroups.flat()) {
-    reservedOrderRefs.add(reservation.orderRef);
+    const owner = capacityOwnerKey(reservation);
+    if (!owner) {
+      // A hold with no single owner cannot be matched to its party.
+      markUnverified("capacity_owner_invalid");
+      continue;
+    }
+    if (reservedOwners.has(owner)) {
+      // A second hold for one owner is the same party: counted once, and the
+      // date can no longer be trusted.
+      markUnverified("capacity_reservation_duplicate");
+      continue;
+    }
+    reservedOwners.add(owner);
+    if (owner === excludedKey) continue;
     // An admitted party is counted from physical presence below, even after
     // cancellation or a closing break. Its paid hold is the same party.
-    if (physicalOrderRefs.has(reservation.orderRef)) continue;
-    const interval = reservationInterval(reservation);
+    if (physicalOwners.has(owner)) continue;
+    let interval: OccupancyInterval | null;
+    try {
+      interval = reservationInterval(reservation);
+    } catch (error) {
+      if (!(error instanceof CapacityIntegrityError)) throw error;
+      // An impossible departure never frees places: keep the full span.
+      markUnverified(error.code);
+      interval = Number.isSafeInteger(reservation.partySize) && reservation.partySize > 0
+        ? { startMinutes: reservation.startMinutes, endMinutes: reservation.endMinutes, partySize: reservation.partySize }
+        : null;
+    }
     if (interval) occupancy.intervals.push(interval);
   }
 
   for (const booking of bookings) {
-    if (booking.orderRef && reservedOrderRefs.has(booking.orderRef)) continue;
-    const admission = await bookingAdmission(ctx, booking.bookingRef);
-    if (admission) {
-      try { remainingAdmissionParty(admission); }
+    const owner = capacityOwnerKey(booking);
+    if (owner && (reservedOwners.has(owner) || owner === excludedKey)) continue;
+    const lookup = await lookupBookingAdmission(ctx, booking.bookingRef);
+    if (lookup.kind === "duplicate") {
+      markUnverified("admission_duplicate");
+      continue;
+    }
+    if (lookup.kind === "one") {
+      try { remainingAdmissionParty(lookup.admission); }
       catch { markUnverified("invalid_admission_record"); }
       continue;
     }
@@ -278,18 +374,87 @@ export function ticketPartySize(lines: ReadonlyArray<{ kind: string; quantity: n
   );
 }
 
-export async function findCapacityReservation(ctx: CapacityCtx, orderRef: string) {
-  return ctx.db
-    .query("capacityReservations")
-    .withIndex("by_orderRef", (q) => q.eq("orderRef", orderRef))
-    .unique();
+export type CapacityReservationLookup =
+  | { kind: "ok"; reservation: ReservationDoc | null }
+  | { kind: "inconsistent"; code: Exclude<CapacityIntegrityCode, "capacity_departure_invalid"> };
+
+/**
+ * The owner's hold, classified instead of thrown: two rows for one owner, or
+ * a row that also names another owner, cannot be matched to one party.
+ */
+export async function lookupCapacityReservation(
+  ctx: CapacityCtx,
+  ownerOrOrderRef: string | CapacityOwner
+): Promise<CapacityReservationLookup> {
+  const owner = asOwner(ownerOrOrderRef);
+  const rows = owner.orderRef !== undefined
+    ? await ctx.db
+      .query("capacityReservations")
+      .withIndex("by_orderRef", (q) => q.eq("orderRef", owner.orderRef))
+      .take(2)
+    : await ctx.db
+      .query("capacityReservations")
+      .withIndex("by_saleRef", (q) => q.eq("saleRef", owner.saleRef))
+      .take(2);
+  if (rows.length > 1) return { kind: "inconsistent", code: "capacity_reservation_duplicate" };
+  const reservation = rows[0] ?? null;
+  if (reservation && capacityOwnerKey(reservation) !== capacityOwnerKey(owner)) {
+    return { kind: "inconsistent", code: "capacity_owner_invalid" };
+  }
+  return { kind: "ok", reservation };
+}
+
+/** The one hold for an order (string) or for an explicit order/sale owner. */
+export async function findCapacityReservation(ctx: CapacityCtx, ownerOrOrderRef: string | CapacityOwner) {
+  const lookup = await lookupCapacityReservation(ctx, ownerOrOrderRef);
+  if (lookup.kind === "inconsistent") {
+    throw new CapacityIntegrityError(
+      lookup.code,
+      lookup.code === "capacity_reservation_duplicate"
+        ? "Stored capacity reservation is duplicated"
+        : "Stored capacity reservation has no single owner"
+    );
+  }
+  return lookup.reservation;
+}
+
+export type PaidExceptionHold = "converted" | "kept" | "none" | "ambiguous";
+
+/**
+ * Keeps paid-but-unfulfilled places counted, through the non-throwing lookup.
+ * Only the owner's single, exclusively owned hold is converted to a counted
+ * exception (never released). Duplicated or dual-owned holds are left exactly
+ * as stored: they stay in the active statuses that are counted, they make the
+ * date unverified, and the throwing release path refuses to free them, so
+ * nothing ambiguous is chosen or reclassified here.
+ */
+export async function holdPaidExceptionCapacity(
+  ctx: MutationCtx,
+  owner: CapacityOwner,
+  reason: string,
+  now: number
+): Promise<PaidExceptionHold> {
+  const lookup = await lookupCapacityReservation(ctx, owner);
+  if (lookup.kind === "inconsistent") return "ambiguous";
+  const hold = lookup.reservation;
+  if (!hold) return "none";
+  if (hold.status === "paid" || hold.status === "exception") return "kept";
+  await ctx.db.patch(hold._id, {
+    status: "exception",
+    exceptionReason: reason,
+    releasedAt: undefined,
+    releaseReason: undefined,
+    updatedAt: now
+  });
+  return "converted";
 }
 
 /** Checks capacity and inserts the hold in the caller's transaction. */
 export async function placeCapacityHold(
   ctx: MutationCtx,
   args: {
-    orderRef: string;
+    orderRef?: string;
+    saleRef?: string;
     visitDate: string;
     entryTime: string;
     partySize: number;
@@ -298,13 +463,21 @@ export async function placeCapacityHold(
     now: number;
   }
 ): Promise<Id<"capacityReservations">> {
+  if (!capacityOwnerKey(args)) {
+    throw new Error("A capacity hold needs exactly one order or sale owner");
+  }
+  if (!Number.isSafeInteger(args.partySize) || args.partySize < 1 || args.partySize > venueCapacity) {
+    throw new Error(`party size must be 1 to ${venueCapacity}`);
+  }
+  // Same indexed reads in every channel: Convex serializes conflicting online,
+  // POS and private-event writes, so a last place can only be taken once.
   const occupancy = await loadDateOccupancy(ctx, args.visitDate, args.hours);
   const decision = decideCapacity(occupancy, args.hours, args);
   if (!decision.ok) {
     throw new Error(decision.message);
   }
   return ctx.db.insert("capacityReservations", {
-    orderRef: args.orderRef,
+    ...(args.orderRef ? { orderRef: args.orderRef } : { saleRef: args.saleRef }),
     visitDate: args.visitDate,
     entryTime: args.entryTime,
     startMinutes: decision.window.startMinutes,
@@ -318,8 +491,13 @@ export async function placeCapacityHold(
 }
 
 /** Releases an unpaid hold. Paid and exception holds are never released here. */
-export async function releaseUnpaidCapacityHold(ctx: MutationCtx, orderRef: string, reason: string, now: number) {
-  const reservation = await findCapacityReservation(ctx, orderRef);
+export async function releaseUnpaidCapacityHold(
+  ctx: MutationCtx,
+  owner: string | CapacityOwner,
+  reason: string,
+  now: number
+) {
+  const reservation = await findCapacityReservation(ctx, owner);
   if (!reservation || (reservation.status !== "draft" && reservation.status !== "payment_pending")) {
     return { released: false, status: reservation?.status };
   }
@@ -346,44 +524,37 @@ export type PaidCapacitySettlement =
 export async function settlePaidCapacity(
   ctx: MutationCtx,
   args: {
-    orderRef: string;
+    orderRef?: string;
+    saleRef?: string;
     bookingRef: string;
     visitDate: string;
     entryTime: string;
     partySize: number;
     /** A committed booking already counts this party; record it without re-checking. */
     alreadyCommitted?: boolean;
+    /** Hours the caller already read (and classified) in this transaction. */
+    hours?: VisitHours;
     now: number;
   }
 ): Promise<PaidCapacitySettlement> {
-  const reservation = await findCapacityReservation(ctx, args.orderRef);
+  const owner: CapacityOwner = args.orderRef ? { orderRef: args.orderRef } : { saleRef: args.saleRef! };
+  if (!capacityOwnerKey(args)) throw new Error("A capacity hold needs exactly one order or sale owner");
+  const reservation = await findCapacityReservation(ctx, owner);
   if (reservation && (reservation.visitDate !== args.visitDate || reservation.entryTime !== args.entryTime || reservation.partySize !== args.partySize)) {
     throw new Error("Stored capacity reservation does not match paid order fulfillment");
-  }
-  if (reservation?.status === "paid") {
-    return { kind: "paid", reservationId: reservation._id, acquiredAtFulfillment: false };
   }
   if (reservation?.status === "exception") {
     return { kind: "exception", reservationId: reservation._id, reason: reservation.exceptionReason ?? "capacity_exception" };
   }
-  if (reservation && (reservation.status === "draft" || reservation.status === "payment_pending")) {
-    await ctx.db.patch(reservation._id, {
-      status: "paid",
-      bookingRef: args.bookingRef,
-      paidAt: args.now,
-      updatedAt: args.now
-    });
-    return { kind: "paid", reservationId: reservation._id, acquiredAtFulfillment: false };
-  }
 
-  const hours = await loadVenueHours(ctx);
+  const hours = args.hours ?? await loadVenueHours(ctx);
   const conservativeWindow = visitEntitlementWindow(hours, args.visitDate, args.entryTime) ?? {
     startMinutes: visitTimeMinutes(args.entryTime) ?? 0,
     endMinutes: venueDayMinutes
   };
   const decision: CapacityDecision = args.alreadyCommitted
     ? { ok: true, window: conservativeWindow, remaining: 0 }
-    : decideCapacity(await loadDateOccupancy(ctx, args.visitDate, hours), hours, args);
+    : decideCapacity(await loadDateOccupancy(ctx, args.visitDate, hours, { exclude: owner }), hours, args);
   const window = decision.ok ? decision.window : conservativeWindow;
   const status = decision.ok ? ("paid" as const) : ("exception" as const);
   const exceptionReason = decision.ok ? undefined : `paid_without_capacity:${decision.reason}`;
@@ -401,7 +572,7 @@ export async function settlePaidCapacity(
     await ctx.db.patch(reservation._id, fields);
   } else {
     reservationId = await ctx.db.insert("capacityReservations", {
-      orderRef: args.orderRef,
+      ...owner,
       visitDate: args.visitDate,
       entryTime: args.entryTime,
       partySize: args.partySize,
@@ -410,7 +581,11 @@ export async function settlePaidCapacity(
     });
   }
   return decision.ok
-    ? { kind: "paid", reservationId, acquiredAtFulfillment: true }
+    ? {
+        kind: "paid",
+        reservationId,
+        acquiredAtFulfillment: !reservation || !["draft", "payment_pending", "paid"].includes(reservation.status)
+      }
     : { kind: "exception", reservationId, reason: exceptionReason! };
 }
 
