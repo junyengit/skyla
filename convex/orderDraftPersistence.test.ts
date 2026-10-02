@@ -20,6 +20,8 @@ import {
 } from "./lib/orderDraftPersistence";
 
 const now = Date.UTC(2026, 6, 4, 12);
+// Visit drafts hold capacity, so date and entry time are required inputs.
+const visit = { visitDate: "2026-07-18", entryTime: "14:00" } as const;
 const catalogMetadata = {
   catalogVersion: "skyla-payments-catalog-2026-10-02",
   catalogSource: "@skyla/payments",
@@ -36,6 +38,7 @@ describe("Convex order draft persistence helpers", () => {
         children: 1,
         addons: { matcha: 1 },
         customerEmail: "Guest@Example.com",
+        ...visit,
         idempotencyKey: "checkout_000001",
         totalCents: 1
       } as Parameters<typeof buildCheckoutDraftWrite>[0] & { totalCents: number },
@@ -62,7 +65,7 @@ describe("Convex order draft persistence helpers", () => {
 
   it("persists free children as a zero-priced ticket line and normalizes them into the fingerprint", () => {
     const write = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, children: 2, freeChildren: 3, idempotencyKey: "checkout_free_0001" },
+      { packageKey: "general", adults: 1, children: 2, freeChildren: 3, ...visit, idempotencyKey: "checkout_free_0001" },
       { orderRef: "SKY2610-FREE01", now }
     );
 
@@ -90,11 +93,11 @@ describe("Convex order draft persistence helpers", () => {
 
   it("rejects idempotency reuse when only the free child count changes", () => {
     const first = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, freeChildren: 1, idempotencyKey: "checkout_free_0002" },
+      { packageKey: "general", adults: 1, freeChildren: 1, ...visit, idempotencyKey: "checkout_free_0002" },
       { orderRef: "SKY2610-FREE02", now }
     );
     const second = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, freeChildren: 2, idempotencyKey: "checkout_free_0002" },
+      { packageKey: "general", adults: 1, freeChildren: 2, ...visit, idempotencyKey: "checkout_free_0002" },
       { orderRef: "SKY2610-FREE02", now }
     );
 
@@ -105,18 +108,49 @@ describe("Convex order draft persistence helpers", () => {
   });
 
   it("keeps omitted and zero free children equivalent to the pre-existing fingerprint", () => {
-    const omitted = normalizeCheckoutDraftArgs({ packageKey: "general", adults: 2, idempotencyKey: "checkout_free_0003" });
+    const omitted = normalizeCheckoutDraftArgs({
+      packageKey: "general",
+      adults: 2,
+      ...visit,
+      idempotencyKey: "checkout_free_0003"
+    });
     const zero = normalizeCheckoutDraftArgs({
       packageKey: "general",
       adults: 2,
       freeChildren: 0,
+      ...visit,
       idempotencyKey: "checkout_free_0003"
     });
 
     expect(zero).toEqual(omitted);
     expect(zero).not.toHaveProperty("freeChildren");
     expect(checkoutDraftFingerprint(zero)).toBe(checkoutDraftFingerprint(omitted));
-    expect(checkoutDraftFingerprint(omitted)).toBe('v1:{"adults":2,"packageKey":"general"}');
+    expect(checkoutDraftFingerprint(omitted)).toBe(
+      'v1:{"adults":2,"entryTime":"14:00","packageKey":"general","visitDate":"2026-07-18"}'
+    );
+  });
+
+  it("requires a visit date and entry time because a draft holds capacity", () => {
+    expect(() =>
+      normalizeCheckoutDraftArgs({ packageKey: "general", adults: 1, entryTime: "14:00", idempotencyKey: "checkout_req_0001" })
+    ).toThrow("visitDate is required");
+    expect(() =>
+      normalizeCheckoutDraftArgs({ packageKey: "general", adults: 1, visitDate: "2026-07-18", idempotencyKey: "checkout_req_0002" })
+    ).toThrow("entryTime is required");
+  });
+
+  it("rejects idempotency reuse when only the visit date changes", () => {
+    const first = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, ...visit, idempotencyKey: "checkout_date_0001" },
+      { orderRef: "SKY2607-DATE01", now }
+    );
+    const second = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, ...visit, visitDate: "2026-07-19", idempotencyKey: "checkout_date_0001" },
+      { orderRef: "SKY2607-DATE01", now }
+    );
+    expect(() => assertSameDraftFingerprint(first.draftFingerprint, second.draftFingerprint)).toThrow(
+      "idempotencyKey was already used for a different draft"
+    );
   });
 
   it.each([
@@ -129,6 +163,7 @@ describe("Convex order draft persistence helpers", () => {
     expect(() =>
       normalizeCheckoutDraftArgs({
         packageKey: "general",
+        ...visit,
         idempotencyKey: "checkout_free_0004",
         ...counts
       } as Parameters<typeof normalizeCheckoutDraftArgs>[0])
@@ -142,12 +177,14 @@ describe("Convex order draft persistence helpers", () => {
       children: 0,
       addons: { matcha: 0 },
       customerEmail: "GUEST@EXAMPLE.COM",
+      ...visit,
       idempotencyKey: "checkout_000002"
     });
     const second = normalizeCheckoutDraftArgs({
       packageKey: "general",
       adults: 1,
       customerEmail: "guest@example.com",
+      ...visit,
       idempotencyKey: "checkout_000002"
     });
 
@@ -157,11 +194,11 @@ describe("Convex order draft persistence helpers", () => {
 
   it("rejects idempotency reuse with a different checkout draft", () => {
     const first = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, idempotencyKey: "checkout_000003" },
+      { packageKey: "general", adults: 1, ...visit, idempotencyKey: "checkout_000003" },
       { orderRef: "SKY2607-ABC123", now }
     );
     const second = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 2, idempotencyKey: "checkout_000003" },
+      { packageKey: "general", adults: 2, ...visit, idempotencyKey: "checkout_000003" },
       { orderRef: "SKY2607-DEF456", now }
     );
 
@@ -172,7 +209,7 @@ describe("Convex order draft persistence helpers", () => {
 
   it("returns a stable public line shape for persisted read-backs", () => {
     const write = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, idempotencyKey: "checkout_000006" },
+      { packageKey: "general", adults: 1, ...visit, idempotencyKey: "checkout_000006" },
       { orderRef: "SKY2607-ABC123", now }
     );
     const result = checkoutDraftResult(write.order, [
@@ -197,7 +234,7 @@ describe("Convex order draft persistence helpers", () => {
 
   it("accepts payment snapshots only when catalog-priced checkout lines keep provenance", () => {
     const write = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, children: 1, idempotencyKey: "checkout_000007" },
+      { packageKey: "general", adults: 1, children: 1, ...visit, idempotencyKey: "checkout_000007" },
       { orderRef: "SKY2607-ABC123", now }
     );
 
@@ -222,7 +259,7 @@ describe("Convex order draft persistence helpers", () => {
 
   it("rejects stored admission lines whose age category, price, or name was altered", () => {
     const write = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, children: 1, freeChildren: 1, idempotencyKey: "checkout_000008" },
+      { packageKey: "general", adults: 1, children: 1, freeChildren: 1, ...visit, idempotencyKey: "checkout_000008" },
       { orderRef: "SKY2607-ABC123", now }
     );
     const [adult, youth, child] = write.lines;
@@ -297,7 +334,7 @@ describe("Convex order draft persistence helpers", () => {
 
     expect(() =>
       buildCheckoutDraftWrite(
-        { packageKey: "general", adults: 1, entryTime: "25:00", idempotencyKey: "checkout_000005" },
+        { packageKey: "general", adults: 1, visitDate: "2026-07-18", entryTime: "25:00", idempotencyKey: "checkout_000005" },
         { orderRef: "SKY2607-ABC123", now }
       )
     ).toThrow("entryTime must use HH:mm");

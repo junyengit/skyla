@@ -31,6 +31,21 @@ const publicGatewayOperation = v.union(
   v.literal("stripe-checkout")
 );
 
+// draft: unpaid hold for a draft order, released when the draft expires.
+// payment_pending: hold for an order whose hosted payment may be payable; only a
+// signed, correlated unpaid provider outcome releases it, never a guessed TTL.
+// paid: hold converted with the paid booking; held through that LA day's closing
+// until a future staff-recorded departure. exception: a paid order that could not
+// be placed within capacity; still counted so the venue never oversells.
+const capacityReservationStatus = v.union(
+  v.literal("draft"),
+  v.literal("payment_pending"),
+  v.literal("paid"),
+  v.literal("released"),
+  v.literal("exception")
+);
+const privateEventStatus = v.union(v.literal("confirmed"), v.literal("cancelled"));
+
 const stringRecord = v.record(v.string(), v.union(v.string(), v.number(), v.boolean()));
 
 export default defineSchema({
@@ -279,6 +294,49 @@ export default defineSchema({
     .index("by_emailLower_createdAt", ["emailLower", "createdAt"])
     .index("by_legacyId", ["legacyId"])
     .index("by_createdAt", ["createdAt"]),
+
+  capacityReservations: defineTable({
+    orderRef: v.string(),
+    visitDate: v.string(),
+    entryTime: v.string(),
+    // LA wall-clock minutes on visitDate: entry through the closing of the
+    // segment entered. No visit duration is assumed.
+    startMinutes: v.number(),
+    endMinutes: v.number(),
+    partySize: v.number(),
+    status: capacityReservationStatus,
+    bookingRef: v.optional(v.string()),
+    paymentPendingAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    releasedAt: v.optional(v.number()),
+    releaseReason: v.optional(v.string()),
+    exceptionReason: v.optional(v.string()),
+    // Future staff admission milestone: a recorded departure ends the span.
+    departedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  })
+    .index("by_orderRef", ["orderRef"])
+    .index("by_visitDate_status", ["visitDate", "status"]),
+
+  privateEvents: defineTable({
+    eventRef: v.string(),
+    visitDate: v.string(),
+    status: privateEventStatus,
+    label: v.string(),
+    notes: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    requestFingerprint: v.string(),
+    createdBy: v.id("staffUsers"),
+    createdAt: v.number(),
+    cancelledAt: v.optional(v.number()),
+    cancelledBy: v.optional(v.id("staffUsers")),
+    cancelReason: v.optional(v.string()),
+    updatedAt: v.number()
+  })
+    .index("by_eventRef", ["eventRef"])
+    .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_visitDate_status", ["visitDate", "status"]),
 
   ticketDeliveries: defineTable({
     ticketCode: v.string(),

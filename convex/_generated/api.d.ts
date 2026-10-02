@@ -9,6 +9,7 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as availability from "../availability.js";
 import type * as catalog from "../catalog.js";
 import type * as checkoutStatus from "../checkoutStatus.js";
 import type * as http from "../http.js";
@@ -18,6 +19,7 @@ import type * as lib_adminConfig from "../lib/adminConfig.js";
 import type * as lib_adminOperations from "../lib/adminOperations.js";
 import type * as lib_adminVouchers from "../lib/adminVouchers.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_capacity from "../lib/capacity.js";
 import type * as lib_catalogVersioning from "../lib/catalogVersioning.js";
 import type * as lib_checkoutDraftExpiry from "../lib/checkoutDraftExpiry.js";
 import type * as lib_checkoutFulfillment from "../lib/checkoutFulfillment.js";
@@ -28,6 +30,7 @@ import type * as lib_memberApplications from "../lib/memberApplications.js";
 import type * as lib_operatingHours from "../lib/operatingHours.js";
 import type * as lib_orderDraftPersistence from "../lib/orderDraftPersistence.js";
 import type * as lib_posFulfillment from "../lib/posFulfillment.js";
+import type * as lib_privateEvents from "../lib/privateEvents.js";
 import type * as lib_publicGateway from "../lib/publicGateway.js";
 import type * as lib_staffBootstrap from "../lib/staffBootstrap.js";
 import type * as lib_stripeCheckout from "../lib/stripeCheckout.js";
@@ -41,6 +44,7 @@ import type * as orderDrafts from "../orderDrafts.js";
 import type * as paymentInternals from "../paymentInternals.js";
 import type * as payments from "../payments.js";
 import type * as posStatus from "../posStatus.js";
+import type * as privateEvents from "../privateEvents.js";
 import type * as publicConfig from "../publicConfig.js";
 import type * as staffBootstrap from "../staffBootstrap.js";
 import type * as ticketDelivery from "../ticketDelivery.js";
@@ -53,6 +57,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  availability: typeof availability;
   catalog: typeof catalog;
   checkoutStatus: typeof checkoutStatus;
   http: typeof http;
@@ -62,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   "lib/adminOperations": typeof lib_adminOperations;
   "lib/adminVouchers": typeof lib_adminVouchers;
   "lib/auth": typeof lib_auth;
+  "lib/capacity": typeof lib_capacity;
   "lib/catalogVersioning": typeof lib_catalogVersioning;
   "lib/checkoutDraftExpiry": typeof lib_checkoutDraftExpiry;
   "lib/checkoutFulfillment": typeof lib_checkoutFulfillment;
@@ -72,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   "lib/operatingHours": typeof lib_operatingHours;
   "lib/orderDraftPersistence": typeof lib_orderDraftPersistence;
   "lib/posFulfillment": typeof lib_posFulfillment;
+  "lib/privateEvents": typeof lib_privateEvents;
   "lib/publicGateway": typeof lib_publicGateway;
   "lib/staffBootstrap": typeof lib_staffBootstrap;
   "lib/stripeCheckout": typeof lib_stripeCheckout;
@@ -85,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   paymentInternals: typeof paymentInternals;
   payments: typeof payments;
   posStatus: typeof posStatus;
+  privateEvents: typeof privateEvents;
   publicConfig: typeof publicConfig;
   staffBootstrap: typeof staffBootstrap;
   ticketDelivery: typeof ticketDelivery;

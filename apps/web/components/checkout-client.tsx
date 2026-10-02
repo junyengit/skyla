@@ -1,27 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  addVisitDays,
   admissionAgeCategories,
   admissionMaxPartySize,
   admissionMinAdults,
+  checkoutBookingWindowDays,
   checkoutEntryTimes,
   currentLiabilityWaiverVersion,
   currentRefundAndVisitPolicyLabel,
   currentTermsAgeRepresentationText,
   currentTermsDocumentLabel,
   currentTermsVersion,
+  formatVisitDateLabel,
+  parseVisitDate,
+  venueToday,
   type AdmissionPartyField,
   type TicketPackageKey
 } from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 import {
   formatOperatingDay,
-  isCheckoutEntryTimeAvailable,
   operatingWeekdayForDate,
   type OperatingHours
 } from "@/lib/operating-hours";
+import { parseVisitAvailability, type VisitAvailability } from "@/lib/visit-availability";
 
 type PackageOption = {
   key: TicketPackageKey;
@@ -76,6 +81,15 @@ const visitorCounters = [
   { field: "freeChildren", category: admissionAgeCategories.child, fewer: "Fewer children", more: "More children" }
 ] as const;
 const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
+const entryTimeLabels = new Map<string, string>(checkoutEntryTimes.map((time) => [time.value, time.label]));
+// Party-count clicks settle before one live read is sent.
+const availabilityDebounceMs = 150;
+
+type AvailabilityState = {
+  key: string;
+  status: "ready" | "error";
+  data?: VisitAvailability;
+};
 
 function money(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -86,14 +100,7 @@ function money(cents: number) {
 }
 
 function todayIso() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
+  return venueToday(Date.now());
 }
 
 function clearStripeReturnIdentity() {
@@ -139,16 +146,18 @@ export function CheckoutClient({
   });
   const [partyLimitNotice, setPartyLimitNotice] = useState<string | null>(null);
   const [visitDate, setVisitDate] = useState(initialVisitDate);
-  const [entryTime, setEntryTime] = useState<string>(() => {
-    if (!operatingHours) return checkoutEntryTimes[0].value;
-    return (
-      checkoutEntryTimes.find((time) =>
-        isCheckoutEntryTimeAvailable(operatingHours, initialVisitDate, time.value)
-      )?.value ?? ""
-    );
-  });
+  // The guest's explicit time choice. Until they pick one, the earliest
+  // available time for the selected date is preselected.
+  const [chosenEntryTime, setChosenEntryTime] = useState("");
+  const [autoEntryTime, setAutoEntryTime] = useState(true);
+  const [availabilityState, setAvailabilityState] = useState<AvailabilityState | null>(null);
+  const [availabilityReload, setAvailabilityReload] = useState(0);
   const [customerEmail, setCustomerEmail] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
+  // Once a review is sent, the key may own a stored draft; any later change
+  // to the order uses a fresh key instead of colliding with that draft.
+  const [idempotencyKeyUsed, setIdempotencyKeyUsed] = useState(false);
+  const reviewSequence = useRef(0);
   const [draft, setDraft] = useState<DraftResponse | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -176,24 +185,65 @@ export function CheckoutClient({
   );
   const normalizedEmail = customerEmail.trim().toLowerCase();
   const selectedWeekday = operatingWeekdayForDate(visitDate);
-  const availableEntryTimes = operatingHours
-    ? checkoutEntryTimes.filter((time) =>
-        isCheckoutEntryTimeAvailable(operatingHours, visitDate, time.value)
-      )
-    : checkoutEntryTimes;
-  const selectedEntryTimeAvailable = operatingHours
-    ? isCheckoutEntryTimeAvailable(operatingHours, visitDate, entryTime)
-    : Boolean(entryTime);
+  const validVisitDate = parseVisitDate(visitDate);
+
+  // Only a response for exactly this date, party, and reload is used, so a
+  // slower response for an earlier selection can never drive the form.
+  const availabilityKey = `${visitDate}|${partySize}|${availabilityReload}`;
+  const currentAvailability = availabilityState?.key === availabilityKey ? availabilityState : null;
+  const availabilityPhase = !validVisitDate ? "invalid" : currentAvailability?.status ?? "loading";
+  const availability = currentAvailability?.status === "ready" ? currentAvailability.data ?? null : null;
+  const slotByTime = new Map(availability?.slots.map((slot) => [slot.entryTime, slot]) ?? []);
+  const firstAvailableEntryTime = availability?.slots.find((slot) => slot.status === "available")?.entryTime ?? "";
+  const chosenSlotAvailable = slotByTime.get(chosenEntryTime)?.status === "available";
+  const entryTime = !availability
+    ? ""
+    : chosenSlotAvailable
+      ? chosenEntryTime
+      : autoEntryTime
+        ? firstAvailableEntryTime
+        : "";
+  const selectedSlot = entryTime ? slotByTime.get(entryTime) : undefined;
+  const chosenEntryTimeLost = Boolean(availability && chosenEntryTime && !autoEntryTime && !chosenSlotAvailable);
+
   const canReview =
     !!selectedPackage &&
     party.adults >= admissionMinAdults &&
     partySize <= admissionMaxPartySize &&
-    !!visitDate &&
-    selectedEntryTimeAvailable &&
+    selectedSlot?.status === "available" &&
+    selectedSlot.remaining >= partySize &&
     emailPattern.test(normalizedEmail);
   const orderPersisted = Boolean(draft?.persisted && draft.orderRef);
   const legalReady = termsAccepted && liabilityWaiverAccepted;
   const canPay = orderPersisted && legalReady && !isPaying;
+
+  useEffect(() => {
+    if (!validVisitDate) return;
+    const key = `${validVisitDate}|${partySize}|${availabilityReload}`;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ date: validVisitDate, party: String(partySize) });
+        const response = await fetch(`/api/availability?${params}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const parsed = response.ok ? parseVisitAvailability(await response.json()) : null;
+        if (controller.signal.aborted) return;
+        setAvailabilityState(
+          parsed && parsed.visitDate === validVisitDate && parsed.partySize === partySize
+            ? { key, status: "ready", data: parsed }
+            : { key, status: "error" }
+        );
+      } catch {
+        if (!controller.signal.aborted) setAvailabilityState({ key, status: "error" });
+      }
+    }, availabilityDebounceMs);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [validVisitDate, partySize, availabilityReload]);
 
   useEffect(() => {
     if (stripeStatus !== "success" || !returnedCheckoutSessionId) {
@@ -286,9 +336,16 @@ export function CheckoutClient({
   }
 
   function resetDraft() {
+    // Invalidates any review still in flight for the previous order.
+    reviewSequence.current += 1;
+    setIsReviewing(false);
     setDraft(null);
     setMessage(null);
     resetConsent();
+    if (idempotencyKeyUsed) {
+      setIdempotencyKey(createIdempotencyKey());
+      setIdempotencyKeyUsed(false);
+    }
   }
 
   function counterMinimum(field: AdmissionPartyField) {
@@ -314,23 +371,86 @@ export function CheckoutClient({
   }
 
   function updateVisitDate(nextVisitDate: string) {
-    const firstAvailableEntryTime = operatingHours
-      ? checkoutEntryTimes.find((time) =>
-          isCheckoutEntryTimeAvailable(operatingHours, nextVisitDate, time.value)
-        )?.value ?? ""
-      : checkoutEntryTimes[0].value;
-
     setVisitDate(nextVisitDate);
-    setEntryTime((current) =>
-      !operatingHours || isCheckoutEntryTimeAvailable(operatingHours, nextVisitDate, current)
-        ? current
-        : firstAvailableEntryTime
-    );
+    setChosenEntryTime("");
+    setAutoEntryTime(true);
     resetDraft();
+  }
+
+  function chooseEntryTime(nextEntryTime: string) {
+    setChosenEntryTime(nextEntryTime);
+    setAutoEntryTime(false);
+    resetDraft();
+  }
+
+  function availabilityNotice(): { text: string; isError: boolean } {
+    if (availabilityPhase === "invalid") return { text: "Choose a valid date.", isError: true };
+    if (availabilityPhase === "loading") {
+      const hoursHint = operatingHours && selectedWeekday
+        ? ` ${selectedWeekday} hours: ${formatOperatingDay(operatingHours[selectedWeekday])}.`
+        : "";
+      return { text: `Checking live availability…${hoursHint}`, isError: false };
+    }
+    if (!availability) {
+      return {
+        text: "Live availability couldn't be loaded, so this order can't be reviewed yet.",
+        isError: true
+      };
+    }
+    const dateLabel = formatVisitDateLabel(availability.visitDate);
+    switch (availability.dayStatus) {
+      case "open": {
+        const hours = `${availability.weekday} hours: ${formatOperatingDay(availability.dayHours)}.`;
+        if (selectedSlot) {
+          return {
+            text: `${hours} ${selectedSlot.remaining} of ${availability.capacity} places open at ${entryTimeLabels.get(selectedSlot.entryTime)}.`,
+            isError: false
+          };
+        }
+        if (chosenEntryTimeLost) {
+          return {
+            text: `${entryTimeLabels.get(chosenEntryTime)} no longer has room for ${partySize} visitors. Choose another time.`,
+            isError: true
+          };
+        }
+        return { text: `${hours} Choose an entry time.`, isError: false };
+      }
+      case "full":
+        return {
+          text: `No entry time on ${dateLabel} has room for ${partySize} visitors. Try a smaller party or another date.`,
+          isError: true
+        };
+      case "past":
+        return {
+          text: availability.visitDate === availability.today
+            ? "Today's entry times have passed. Choose another date."
+            : "That date has passed. Choose another date.",
+          isError: true
+        };
+      case "closed":
+        return {
+          text: `Sky LA has no checkout arrival times on ${availability.weekday}. Choose another date.`,
+          isError: true
+        };
+      case "beyond_horizon":
+        return {
+          text: `Tickets can be booked up to ${checkoutBookingWindowDays} days ahead. Choose an earlier date.`,
+          isError: true
+        };
+      case "private_event":
+        return { text: `${dateLabel} is reserved for a private event. Choose another date.`, isError: true };
+      case "unverified":
+        return {
+          text: "Online availability can't be confirmed for this date. Choose another date or email us.",
+          isError: true
+        };
+    }
   }
 
   async function reviewOrder() {
     if (!canReview) return;
+    const sequence = ++reviewSequence.current;
+    setIdempotencyKeyUsed(true);
     setIsReviewing(true);
     setMessage(null);
     resetConsent();
@@ -351,8 +471,13 @@ export function CheckoutClient({
           idempotencyKey
         })
       });
-      const data = (await response.json()) as DraftResponse | { error?: string };
+      const data = (await response.json()) as DraftResponse | { error?: string; code?: string };
+      if (sequence !== reviewSequence.current) return;
       if (!response.ok) {
+        if ("code" in data && data.code === "visit_unavailable") {
+          // The server's capacity check is authoritative; refresh the slots.
+          setAvailabilityReload((current) => current + 1);
+        }
         throw new Error("error" in data ? data.error ?? "Could not review this order" : "Could not review this order");
       }
       const nextDraft = data as DraftResponse;
@@ -363,10 +488,11 @@ export function CheckoutClient({
         );
       }
     } catch (error) {
+      if (sequence !== reviewSequence.current) return;
       setDraft(null);
       setMessage(error instanceof Error ? error.message : "Could not review this order");
     } finally {
-      setIsReviewing(false);
+      if (sequence === reviewSequence.current) setIsReviewing(false);
     }
   }
 
@@ -412,11 +538,16 @@ export function CheckoutClient({
   }
 
   function startNewOrder() {
+    reviewSequence.current += 1;
+    setIsReviewing(false);
     setIdempotencyKey(createIdempotencyKey());
+    setIdempotencyKeyUsed(false);
     setDraft(null);
     setMessage(null);
     resetConsent();
   }
+
+  const notice = availabilityNotice();
 
   return (
     <section className="checkoutShell" aria-label="Ticket checkout">
@@ -526,6 +657,8 @@ export function CheckoutClient({
             <label>
               <span>Date</span>
               <input
+                aria-describedby="checkout-time-zone"
+                max={addVisitDays(todayIso(), checkoutBookingWindowDays)}
                 min={todayIso()}
                 type="date"
                 value={visitDate}
@@ -548,34 +681,46 @@ export function CheckoutClient({
             </label>
           </div>
 
-          {operatingHours && selectedWeekday ? (
-            <p
-              aria-live="polite"
-              className={availableEntryTimes.length === 0 ? "checkoutError" : "checkoutHours"}
-            >
-              {availableEntryTimes.length === 0
-                ? `Sky LA has no checkout arrival times on ${selectedWeekday}. Choose another date.`
-                : `${selectedWeekday} hours: ${formatOperatingDay(operatingHours[selectedWeekday])}.`}
-            </p>
-          ) : null}
+          <p className="checkoutTimeZone" id="checkout-time-zone">
+            Dates and entry times are Los Angeles time (PT).
+          </p>
 
-          <div className="checkoutTimes" aria-label="Entry time">
+          <div className="checkoutAvailability" aria-live="polite" aria-atomic="true">
+            <p className={notice.isError ? "checkoutError" : "checkoutHours"}>{notice.text}</p>
+            {availabilityPhase === "error" ? (
+              <button
+                className="checkoutTextButton"
+                type="button"
+                onClick={() => setAvailabilityReload((current) => current + 1)}
+              >
+                Try again
+              </button>
+            ) : null}
+          </div>
+
+          <div
+            aria-busy={availabilityPhase === "loading"}
+            aria-label="Entry time, Los Angeles time"
+            className="checkoutTimes"
+            role="group"
+          >
             {checkoutEntryTimes.map((time) => {
-              const available =
-                !operatingHours || isCheckoutEntryTimeAvailable(operatingHours, visitDate, time.value);
+              const slot = slotByTime.get(time.value);
+              const available = slot?.status === "available";
+              const selected = time.value === entryTime;
               return (
                 <button
-                  className={time.value === entryTime ? "isSelected" : ""}
+                  aria-pressed={selected}
+                  className={selected ? "isSelected" : ""}
                   disabled={!available}
                   key={time.value}
-                  style={available ? undefined : { cursor: "not-allowed", opacity: 0.38 }}
                   type="button"
-                  onClick={() => {
-                    setEntryTime(time.value);
-                    resetDraft();
-                  }}
+                  onClick={() => chooseEntryTime(time.value)}
                 >
                   {time.label}
+                  {slot?.status === "full" ? (
+                    <small>{slot.remaining === 0 ? "Full" : `${slot.remaining} left`}</small>
+                  ) : null}
                 </button>
               );
             })}

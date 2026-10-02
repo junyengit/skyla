@@ -1,4 +1,4 @@
-import { orderRefFromId, saleRefFromId } from "@skyla/payments";
+import { assertBookableVisitSlot, orderRefFromId, saleRefFromId } from "@skyla/payments";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -18,7 +18,13 @@ import {
   normalizeIdempotencyKey,
   posSaleDraftResult
 } from "./lib/orderDraftPersistence";
-import { assertCheckoutTimeAvailable, safeOperatingHours } from "./lib/operatingHours";
+import {
+  findCapacityReservation,
+  loadVenueHours,
+  placeCapacityHold,
+  releaseUnpaidCapacityHold,
+  ticketPartySize
+} from "./lib/capacity";
 import { consumePublicGatewayRateLimit } from "./lib/publicGateway";
 import { authorizeTerminalReaderSelection } from "./lib/terminalReaderRegistry";
 
@@ -126,15 +132,8 @@ export const createCheckoutOrderDraft = internalMutation({
       return checkoutResult(existingOrder, existingLines);
     }
 
-    const hoursRow = await ctx.db
-      .query("config")
-      .withIndex("by_key", (q) => q.eq("key", "hours"))
-      .unique();
-    assertCheckoutTimeAvailable(
-      safeOperatingHours(hoursRow?.data),
-      pendingWrite.input.visitDate,
-      pendingWrite.input.entryTime
-    );
+    const hours = await loadVenueHours(ctx);
+    const visit = assertBookableVisitSlot(hours, pendingWrite.input.visitDate, pendingWrite.input.entryTime, now);
 
     const expiresAt = now + checkoutDraftTtlMs;
     const orderId = await ctx.db.insert("orders", { ...pendingWrite.order, expiresAt });
@@ -145,6 +144,17 @@ export const createCheckoutOrderDraft = internalMutation({
     for (const line of write.lines) {
       await ctx.db.insert("orderLineItems", line);
     }
+    // Same transaction as the order: Convex serializes conflicting mutations,
+    // so concurrent last-place requests cannot both pass this check.
+    await placeCapacityHold(ctx, {
+      orderRef,
+      visitDate: visit.visitDate,
+      entryTime: visit.entryTime,
+      partySize: ticketPartySize(write.lines),
+      status: "draft",
+      hours,
+      now
+    });
 
     await ctx.scheduler.runAt(expiresAt, internal.orderDrafts.expireCheckoutOrderDraft, { orderRef });
 
@@ -169,7 +179,68 @@ export const expireCheckoutOrderDraft = internalMutation({
       customerEmailLower: undefined,
       updatedAt: now
     });
+    // Only a still-draft order reaches here, so no hosted payment can exist.
+    await releaseUnpaidCapacityHold(ctx, order.orderRef, "draft_expired", now);
     return { expired: true };
+  }
+});
+
+/**
+ * Moves a draft order and its capacity hold to payment_pending before any
+ * Stripe network call, so draft expiry can no longer release the places while
+ * a hosted session may be payable. Retries are idempotent. An older order
+ * without a hold reserves here (with the full purchase-time gate) or fails
+ * before Stripe is contacted.
+ */
+export const beginCheckoutPaymentAttempt = internalMutation({
+  args: {
+    orderRef: v.string(),
+    idempotencyKey: v.string()
+  },
+  handler: async (ctx, args) => {
+    const idempotencyKey = normalizeIdempotencyKey(args.idempotencyKey);
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (query) => query.eq("orderRef", args.orderRef))
+      .unique();
+    if (!order || order.channel !== "online" || order.idempotencyKey !== idempotencyKey) {
+      throw new Error("Checkout order was not found for this payment attempt");
+    }
+    const now = Date.now();
+    assertCheckoutDraftCanStartPayment(order, now);
+
+    const reservation = await findCapacityReservation(ctx, order.orderRef);
+    if (reservation?.status === "payment_pending" && order.status === "payment_pending") {
+      return { status: "payment_pending" as const, reused: true };
+    }
+    if (reservation && reservation.status !== "draft") {
+      throw new Error(`Visit unavailable: the capacity hold for this order is ${reservation.status}`);
+    }
+
+    if (order.status === "draft" || !reservation) {
+      const hours = await loadVenueHours(ctx);
+      assertBookableVisitSlot(hours, order.visitDate, order.entryTime, now);
+      if (!reservation) {
+        const lines = await ctx.db
+          .query("orderLineItems")
+          .withIndex("by_orderRef", (query) => query.eq("orderRef", order.orderRef))
+          .collect();
+        await placeCapacityHold(ctx, {
+          orderRef: order.orderRef,
+          visitDate: order.visitDate!,
+          entryTime: order.entryTime!,
+          partySize: ticketPartySize(lines),
+          status: "payment_pending",
+          hours,
+          now
+        });
+      }
+    }
+    if (reservation) {
+      await ctx.db.patch(reservation._id, { status: "payment_pending", paymentPendingAt: now, updatedAt: now });
+    }
+    await ctx.db.patch(order._id, { status: "payment_pending", expectedProvider: "stripe", updatedAt: now });
+    return { status: "payment_pending" as const, reused: false };
   }
 });
 

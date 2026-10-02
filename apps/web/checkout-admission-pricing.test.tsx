@@ -2,10 +2,11 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { siteConfig } from "@skyla/config";
 
 import CheckoutPage from "./app/checkout/page";
+import { routeCheckoutFetch } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 import { localAdmissionPreviewEnabled } from "./lib/local-admission-preview";
 
@@ -27,6 +28,13 @@ function click(name: string, times = 1) {
   const button = screen.getByRole("button", { name });
   for (let index = 0; index < times; index += 1) fireEvent.click(button);
 }
+
+let router: ReturnType<typeof routeCheckoutFetch>;
+
+beforeEach(() => {
+  router = routeCheckoutFetch();
+  vi.stubGlobal("fetch", router.fetchMock);
+});
 
 afterEach(() => {
   cleanup();
@@ -71,20 +79,27 @@ describe("checkout age-priced visitor counters", () => {
     expect(screen.getByRole("status").textContent).toBe("Each order needs at least 1 Adult 18+.");
   });
 
-  it("sends free children with the review request", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ error: "stop" }, { status: 503 }));
-    vi.stubGlobal("fetch", fetchMock);
+  it("checks availability for every visitor, free children included, and sends them with the review", async () => {
+    router.queue.push(Response.json({ error: "stop" }, { status: 503 }));
     renderCheckout();
 
     click("More youths");
     click("More children", 2);
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "guest@example.com" } });
+    const review = screen.getByRole("button", { name: "Review Order" }) as HTMLButtonElement;
+    await waitFor(() => expect(review.disabled).toBe(false));
+    expect(String(router.availabilityCalls().at(-1)?.[0])).toContain("party=5");
     click("Review Order");
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const [url, init] = fetchMock.mock.calls[0];
+    await waitFor(() => expect(router.orderCalls()).toHaveLength(1));
+    const [url, init] = router.orderCalls()[0];
     expect(url).toBe("/api/order-drafts/checkout");
-    expect(JSON.parse(String(init?.body))).toMatchObject({ adults: 2, children: 1, freeChildren: 2 });
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      adults: 2,
+      children: 1,
+      freeChildren: 2,
+      entryTime: "09:00"
+    });
   });
 });
 

@@ -4,7 +4,7 @@ The owner approved the five-milestone research plan and autonomous implementatio
 
 Confirmed offer: adults 18+ pay $20; ages 8–17 pay $10; ages 0–7 are free, every day. Displayed admission prices are charged prices with no extra booking fee. All three categories count toward the owner-confirmed capacity of 30. Tickets are valid on their selected America/Los_Angeles calendar date during operating hours. There is no existing normal-visit booking URL to preserve.
 
-The capacity interpretation (simultaneous occupancy or total daily reservations) and re-entry policy are pending owner clarification. Neither may be inferred from price or same-day validity. Do not enable sales until capacity and admission enforcement are complete.
+Owner confirmed October 2: capacity is 30 physically inside at once, including all ages; same-day re-entry is not allowed. One successful admission exhausts that ticket. Staff must record departures to reopen places. Until departure is recorded, each held/paid party retains its places through the selected LA day’s closing time, so there is no guessed visit duration. Confirmed private events block overlapping visit entitlements and active payment holds; inquiries alone do not. Do not enable sales until capacity and admission enforcement are complete.
 
 Authority: transaction routes come from junyengit/skyla at 753d02f; canonical homepage/assets/inquiry are rewritten to the separate skydeck-vercel deployment. The current branch codex/skydeck-ticketing-20261002 is isolated from all existing working copies. Hermes's design/media/inquiry assignments and the other SkyDeck redesign chat remain reserved. No homepage redesign, branch switching, PR merging, production writes or BestSpace changes are authorized here.
 

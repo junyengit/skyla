@@ -1,4 +1,4 @@
-import { createCheckoutOrderDraft } from "@skyla/payments";
+import { createCheckoutOrderDraft, isOfferedEntryTime, parseVisitDate, parseVisitTime } from "@skyla/payments";
 import {
   callPublicConvexGateway,
   PublicGatewayError,
@@ -61,6 +61,14 @@ export async function POST(request: Request) {
     const draft = createCheckoutOrderDraft(input);
 
     if (input.idempotencyKey) {
+      // A persisted draft holds capacity, so its visit shape is checked here
+      // before any server gateway call; Convex re-checks the LA date rules.
+      if (!parseVisitDate(input.visitDate)) {
+        throw new Error("visitDate must be a real YYYY-MM-DD date");
+      }
+      if (!parseVisitTime(input.entryTime) || !isOfferedEntryTime(input.entryTime!)) {
+        throw new Error("entryTime must be one of the offered HH:mm entry times");
+      }
       try {
         const result = await callPublicConvexGateway<PersistedCheckoutDraftResult>(
           request,

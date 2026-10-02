@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   catalogLineMetadata,
   cafeItems,
@@ -10,6 +10,7 @@ import {
 } from "@skyla/payments";
 
 import { defaultHours } from "./lib/adminConfig";
+import { loadDateOccupancy } from "./lib/capacity";
 import { isCheckoutTimeAvailable } from "./lib/operatingHours";
 import { stripeTerminalIntentIdempotencyKey } from "./lib/stripeTerminal";
 import {
@@ -36,7 +37,10 @@ type TableName =
   | "ticketDeliveries"
   | "config"
   | "auditEvents"
-  | "staffUsers";
+  | "staffUsers"
+  | "capacityReservations"
+  | "privateEvents"
+  | "legacyMigrationSources";
 type MockDoc = Record<string, unknown> & { _id: string; _creationTime: number };
 type MockState = Record<TableName, MockDoc[]>;
 type MockCtx = {
@@ -52,7 +56,9 @@ type MockCtx = {
         first: () => Promise<MockDoc | undefined>;
         unique: () => Promise<MockDoc | undefined>;
         collect: () => Promise<MockDoc[]>;
+        take: (count: number) => Promise<MockDoc[]>;
       };
+      take: (count: number) => Promise<MockDoc[]>;
     };
     insert: (table: TableName, doc: Record<string, unknown>) => Promise<string>;
     patch: (id: string, update: Record<string, unknown>) => Promise<void>;
@@ -1187,6 +1193,201 @@ describe("Stripe Terminal webhook internals", () => {
   );
 });
 
+describe("Checkout webhook capacity holds", () => {
+  const paidArgs = {
+    providerEventId: "evt_capacity_paid",
+    eventType: "checkout.session.completed",
+    outcome: "paid" as const,
+    providerPaymentId: checkoutProviderPaymentId,
+    orderRef,
+    amountCents: 4000,
+    currency: "usd" as const,
+    raw: { payment_status: "paid" }
+  };
+
+  async function occupancyFor(ctx: MockCtx, visitDate = checkoutVisitDate) {
+    return loadDateOccupancy(ctx as never, visitDate, defaultHours);
+  }
+
+  function seedFullDate(state: MockState, visitDate = checkoutVisitDate) {
+    state.capacityReservations.push({
+      _id: "capacityReservations_other",
+      _creationTime: 1,
+      orderRef: "ORD-OTHER-PARTY",
+      visitDate,
+      entryTime: "10:00",
+      startMinutes: 10 * 60,
+      endMinutes: 24 * 60,
+      partySize: 30,
+      status: "paid",
+      createdAt: 1,
+      updatedAt: 1
+    });
+  }
+
+  it("converts the payment_pending hold to paid with the booking, without double counting", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    await expect(runCheckoutWebhook(ctx, paidArgs)).resolves.toEqual({
+      status: "processed",
+      duplicate: false,
+      orderRef
+    });
+
+    expect(state.capacityReservations).toHaveLength(1);
+    expect(state.capacityReservations[0]).toMatchObject({ status: "paid", bookingRef: orderRef, paidAt: expect.any(Number) });
+    expect(state.bookings[0]).toMatchObject({ orderRef, partySize: 2, status: "confirmed" });
+    const occupancy = await occupancyFor(ctx);
+    expect(occupancy.intervals).toEqual([{ startMinutes: 14 * 60, endMinutes: 18 * 60, partySize: 2 }]);
+  });
+
+  it.each([
+    ["checkout.session.expired", "canceled", "expired"],
+    ["checkout.session.async_payment_failed", "failed", "canceled"]
+  ] as const)("releases an unpaid hold on a signed, correlated %s event", async (eventType, outcome, orderStatus) => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    await runCheckoutWebhook(ctx, {
+      providerEventId: `evt_capacity_${outcome}`,
+      eventType,
+      outcome,
+      providerPaymentId: checkoutProviderPaymentId,
+      orderRef,
+      amountCents: 4000,
+      currency: "usd",
+      raw: { payment_status: "unpaid" }
+    });
+
+    expect(state.orders[0].status).toBe(orderStatus);
+    expect(state.capacityReservations[0]).toMatchObject({
+      status: "released",
+      releaseReason: `stripe:${eventType}`,
+      releasedAt: expect.any(Number)
+    });
+    expect((await occupancyFor(ctx)).intervals).toEqual([]);
+  });
+
+  it("does not release when the unpaid event is not correlated to a Convex-created session", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+
+    const result = await runCheckoutWebhook(ctx, {
+      providerEventId: "evt_capacity_uncorrelated",
+      eventType: "checkout.session.expired",
+      outcome: "canceled",
+      providerPaymentId: "cs_test_someone_else",
+      orderRef,
+      raw: {}
+    });
+
+    expect(result.status).toBe("failed");
+    expect(state.capacityReservations[0].status).toBe("payment_pending");
+  });
+
+  it("keeps a paid hold through stale or reordered expiry and failure events", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx();
+    await runCheckoutWebhook(ctx, paidArgs);
+
+    for (const [providerEventId, eventType, outcome] of [
+      ["evt_capacity_stale_expired", "checkout.session.expired", "canceled"],
+      ["evt_capacity_stale_failed", "checkout.session.async_payment_failed", "failed"]
+    ] as const) {
+      await expect(
+        runCheckoutWebhook(ctx, {
+          providerEventId,
+          eventType,
+          outcome,
+          providerPaymentId: checkoutProviderPaymentId,
+          orderRef,
+          amountCents: 4000,
+          currency: "usd",
+          raw: {}
+        })
+      ).resolves.toMatchObject({ status: "failed" });
+    }
+
+    expect(state.orders[0].status).toBe("paid");
+    expect(state.capacityReservations[0].status).toBe("paid");
+    expect((await occupancyFor(ctx)).intervals).toHaveLength(1);
+  });
+
+  it("reserves at fulfillment for an older order without a hold when capacity allows", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ includeCapacityHold: false });
+
+    await expect(runCheckoutWebhook(ctx, paidArgs)).resolves.toMatchObject({ status: "processed" });
+
+    expect(state.capacityReservations).toHaveLength(1);
+    expect(state.capacityReservations[0]).toMatchObject({
+      orderRef,
+      visitDate: checkoutVisitDate,
+      entryTime: "14:00",
+      partySize: 2,
+      status: "paid"
+    });
+    expect(state.bookings).toHaveLength(1);
+  });
+
+  it("turns an older paid order into a counted, audited exception when the date is full", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ includeCapacityHold: false });
+    seedFullDate(state);
+
+    const result = await runCheckoutWebhook(ctx, paidArgs);
+
+    expect(result).toEqual({ status: "failed", duplicate: false, orderRef });
+    expect(state.bookings).toHaveLength(0);
+    expect(state.ticketDeliveries).toHaveLength(0);
+    expect(state.orders[0].status).toBe("payment_pending");
+    expect(state.capacityReservations.find((row) => row.orderRef === orderRef)).toMatchObject({
+      status: "exception",
+      exceptionReason: "paid_without_capacity:insufficient"
+    });
+    expect(state.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "checkout.capacityException",
+        entityRef: orderRef,
+        metadata: expect.objectContaining({ providerPaymentIntentId: checkoutPaymentIntentId, partySize: 2 })
+      })
+    );
+    expect(state.webhookEvents[0]).toMatchObject({
+      status: "failed",
+      raw: expect.objectContaining({ reason: "paid_order_capacity_exception" })
+    });
+    // Conservatively counted: the people who paid may still arrive.
+    const occupancy = await occupancyFor(ctx);
+    expect(occupancy.intervals.reduce((sum, interval) => sum + interval.partySize, 0)).toBe(32);
+  });
+
+  it("still fulfills a paid webhook that arrives after the entry time on the same LA day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // Saturday 2026-10-03, 5:00 PM in Los Angeles: three hours after the 2:00 PM entry.
+    vi.setSystemTime(new Date("2026-10-04T00:00:00.000Z"));
+    try {
+      const { ctx, state } = createCheckoutWebhookCtx();
+      state.orders[0].visitDate = "2026-10-03";
+      state.capacityReservations[0].visitDate = "2026-10-03";
+
+      await expect(runCheckoutWebhook(ctx, paidArgs)).resolves.toMatchObject({ status: "processed" });
+      expect(state.bookings[0]).toMatchObject({ visitDate: "2026-10-03", entryTime: "14:00", status: "confirmed" });
+      expect(state.capacityReservations[0].status).toBe("paid");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a paid hold when a full refund cancels the booking", async () => {
+    const { ctx, state } = createCheckoutWebhookCtx({ orderStatus: "paid", includePaidEvent: true, holdStatus: "paid" });
+    seedCheckoutTicketFulfillment(state);
+
+    await expect(runRefundWebhook(ctx, refundArgs({ amountCents: 4000 }))).resolves.toMatchObject({
+      status: "processed"
+    });
+
+    expect(state.bookings[0].status).toBe("cancelled");
+    expect(state.capacityReservations).toHaveLength(1);
+    expect(state.capacityReservations[0].status).toBe("paid");
+    expect((await occupancyFor(ctx)).intervals).toHaveLength(1);
+  });
+});
+
 async function runTerminalWebhook(ctx: MockCtx, args: TerminalWebhookArgs): Promise<TerminalWebhookResult> {
   const mutation = recordStripeTerminalWebhook as unknown as {
     _handler: (ctx: MockCtx, args: TerminalWebhookArgs) => Promise<TerminalWebhookResult>;
@@ -1474,7 +1675,7 @@ function createTerminalProcessSnapshotCtx(
 }
 
 function createCheckoutWebhookCtx(
-  options: { orderStatus?: string; includePaidEvent?: boolean } = {}
+  options: { orderStatus?: string; includePaidEvent?: boolean; includeCapacityHold?: boolean; holdStatus?: string } = {}
 ): ReturnType<typeof createMockCtx> {
   const state = createEmptyState();
   state.orders.push({
@@ -1519,6 +1720,24 @@ function createCheckoutWebhookCtx(
     amountCents: 4000,
     createdAt: 1
   });
+  // Every order created since capacity holds exists carries one; the session
+  // creation step moved it to payment_pending before Stripe was called.
+  if (options.includeCapacityHold !== false) {
+    state.capacityReservations.push({
+      _id: "capacityReservations_1",
+      _creationTime: 1,
+      orderRef,
+      visitDate: checkoutVisitDate,
+      entryTime: "14:00",
+      startMinutes: 14 * 60,
+      endMinutes: 18 * 60,
+      partySize: 2,
+      status: options.holdStatus ?? "payment_pending",
+      paymentPendingAt: 1,
+      createdAt: 1,
+      updatedAt: 1
+    });
+  }
   if (options.includePaidEvent) {
     state.paymentEvents.push({
       _id: "paymentEvents_2",
@@ -1676,7 +1895,10 @@ function createEmptyState(): MockState {
     ticketDeliveries: [],
     config: [],
     auditEvents: [],
-    staffUsers: []
+    staffUsers: [],
+    capacityReservations: [],
+    privateEvents: [],
+    legacyMigrationSources: []
   };
 }
 
@@ -1720,8 +1942,14 @@ function createMockCtx(state: MockState): {
                 }
                 return results[0];
               },
-              collect
+              collect,
+              async take(count: number) {
+                return (await collect()).slice(0, count);
+              }
             };
+          },
+          async take(count: number) {
+            return state[table].slice(0, count);
           }
         };
       },

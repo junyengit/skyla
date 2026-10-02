@@ -1,20 +1,18 @@
-export const operatingWeekdays = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday"
-] as const;
+import {
+  isEntryWithinHours,
+  visitTimeMinutes,
+  visitWeekdayForDate,
+  visitWeekdays,
+  type VisitHours,
+  type VisitHoursDay,
+  type VisitWeekday
+} from "@skyla/payments";
 
-export type OperatingWeekday = (typeof operatingWeekdays)[number];
-export type OperatingDay = {
-  open: string;
-  close: string;
-  closed: boolean;
-};
-export type OperatingHours = Record<OperatingWeekday, OperatingDay>;
+export const operatingWeekdays = visitWeekdays;
+
+export type OperatingWeekday = VisitWeekday;
+export type OperatingDay = VisitHoursDay;
+export type OperatingHours = VisitHours;
 export type PublicOperatingConfig = {
   announcement: {
     text: string;
@@ -26,7 +24,6 @@ export type PublicOperatingConfig = {
 
 const announcementTypes = new Set(["info", "warning", "success"]);
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
-const datePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 function objectRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -100,18 +97,7 @@ export function parsePublicOperatingConfig(value: unknown): PublicOperatingConfi
 }
 
 export function operatingWeekdayForDate(visitDate: string): OperatingWeekday | null {
-  const match = datePattern.exec(visitDate);
-  if (!match) return null;
-  const date = new Date(`${visitDate}T00:00:00.000Z`);
-  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== visitDate) return null;
-  const mondayBasedDay = (date.getUTCDay() + 6) % 7;
-  return operatingWeekdays[mondayBasedDay];
-}
-
-function timeMinutes(value: string) {
-  if (!timePattern.test(value)) return null;
-  const [hour, minute] = value.split(":").map(Number);
-  return hour * 60 + minute;
+  return visitWeekdayForDate(visitDate);
 }
 
 export function isCheckoutEntryTimeAvailable(
@@ -119,24 +105,11 @@ export function isCheckoutEntryTimeAvailable(
   visitDate: string,
   entryTime: string
 ) {
-  const weekday = operatingWeekdayForDate(visitDate);
-  const entryMinutes = timeMinutes(entryTime);
-  if (!weekday || entryMinutes === null) return false;
-
-  const day = operatingHours[weekday];
-  if (day.closed) return false;
-  const openMinutes = timeMinutes(day.open);
-  const closeMinutes = timeMinutes(day.close);
-  if (openMinutes === null || closeMinutes === null) return false;
-  if (openMinutes === closeMinutes) return true;
-  if (openMinutes < closeMinutes) {
-    return entryMinutes >= openMinutes && entryMinutes < closeMinutes;
-  }
-  return entryMinutes >= openMinutes || entryMinutes < closeMinutes;
+  return isEntryWithinHours(operatingHours, visitDate, entryTime);
 }
 
 function formatTime(value: string) {
-  const minutes = timeMinutes(value);
+  const minutes = visitTimeMinutes(value);
   if (minutes === null) return value;
   const hour = Math.floor(minutes / 60);
   const minute = minutes % 60;

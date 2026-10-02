@@ -65,16 +65,27 @@ export const createStripeCheckoutSession = internalAction({
       idempotencyKey: args.idempotencyKey,
       legalAcceptance: args.legalAcceptance
     });
+    // Provider credentials, return origins, and the stored snapshot are all
+    // checked before the order leaves draft, so a configuration failure never
+    // strands a payment_pending hold without a Stripe attempt.
     const secretKey = stripeSecretKey();
     const allowedReturnOrigins = parseStripeReturnOriginAllowlist(process.env.SKYLA_PAYMENT_RETURN_ORIGINS);
+    const successUrl = assertStripeReturnOriginAllowed(args.successUrl, "successUrl", allowedReturnOrigins);
+    const cancelUrl = assertStripeReturnOriginAllowed(args.cancelUrl, "cancelUrl", allowedReturnOrigins);
 
     const snapshot: StripeCheckoutSnapshot = await ctx.runQuery(internal.paymentInternals.getCheckoutPaymentSnapshot, {
       orderRef: args.orderRef,
       idempotencyKey: args.idempotencyKey
     });
-    const request = buildStripeCheckoutSessionRequest(snapshot, {
-      successUrl: assertStripeReturnOriginAllowed(args.successUrl, "successUrl", allowedReturnOrigins),
-      cancelUrl: assertStripeReturnOriginAllowed(args.cancelUrl, "cancelUrl", allowedReturnOrigins)
+    const request = buildStripeCheckoutSessionRequest(snapshot, { successUrl, cancelUrl });
+
+    // The hold becomes payment_pending before the network call. If the call
+    // fails or its result is unknown, the hold stays; only a signed, correlated
+    // unpaid outcome releases it (uncertainty reconciliation is the next
+    // payment milestone).
+    await ctx.runMutation(internal.orderDrafts.beginCheckoutPaymentAttempt, {
+      orderRef: args.orderRef,
+      idempotencyKey: args.idempotencyKey
     });
 
     const session = await stripeFormPost<StripeCheckoutSessionResponse>(request.endpoint, {

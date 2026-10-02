@@ -84,6 +84,8 @@ describe("/api/order-drafts/checkout", () => {
     const response = await POST(request({
       packageKey: "general",
       adults: 1,
+      visitDate: "2026-10-03",
+      entryTime: "14:00",
       idempotencyKey: "checkout_20260704_missing"
     }));
 
@@ -207,6 +209,8 @@ describe("/api/order-drafts/checkout", () => {
       request({
         packageKey: "general",
         adults: 1,
+        visitDate: "2026-10-03",
+        entryTime: "14:00",
         idempotencyKey: "checkout_20260704_abc123"
       })
     );
@@ -216,6 +220,51 @@ describe("/api/order-drafts/checkout", () => {
       persisted: false,
       error: "idempotencyKey was already used for a different draft"
     });
+  });
+
+  it("passes the server's capacity rejection through as a visit conflict", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json(
+      { ok: false, code: "visit_unavailable", error: "Only 1 of 30 places remain for that entry time." },
+      { status: 409 }
+    ));
+
+    const response = await POST(request({
+      packageKey: "general",
+      adults: 2,
+      visitDate: "2026-10-03",
+      entryTime: "14:00",
+      idempotencyKey: "checkout_20261002_full01"
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      persisted: false,
+      code: "visit_unavailable",
+      error: "Only 1 of 30 places remain for that entry time."
+    });
+  });
+
+  it.each([
+    ["no date", { entryTime: "14:00" }, "visitDate must be a real YYYY-MM-DD date"],
+    ["an impossible date", { visitDate: "2026-02-30", entryTime: "14:00" }, "visitDate must be a real YYYY-MM-DD date"],
+    ["no entry time", { visitDate: "2026-10-03" }, "entryTime must be one of the offered HH:mm entry times"],
+    ["an unoffered entry time", { visitDate: "2026-10-03", entryTime: "14:15" }, "entryTime must be one of the offered HH:mm entry times"]
+  ])("rejects a persisted draft with %s before calling the gateway", async (_label, visit, error) => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+
+    const response = await POST(request({
+      packageKey: "general",
+      adults: 1,
+      ...visit,
+      idempotencyKey: "checkout_20261002_shape1"
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("prices free children at zero and forwards them to Convex persistence", async () => {
@@ -247,6 +296,8 @@ describe("/api/order-drafts/checkout", () => {
       adults: 1,
       children: 1,
       freeChildren: 2,
+      visitDate: "2026-10-03",
+      entryTime: "14:00",
       idempotencyKey: "checkout_20261002_free01"
     }));
 

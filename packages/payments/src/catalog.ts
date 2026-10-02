@@ -101,6 +101,10 @@ export type AdmissionAgeCategory = {
 export const admissionPolicyVersion = "skydeck-admission-ages-2026-10-02" as const;
 export const admissionMaxPartySize = 30;
 export const admissionMinAdults = 1;
+// Owner-confirmed October 2, 2026: at most 30 people of any age physically
+// inside at once (not 30 per day). Held and paid parties keep their places
+// from entry through that LA day's closing until staff record a departure.
+export const venueCapacity = 30;
 
 export const admissionAgeCategories = {
   adult: {

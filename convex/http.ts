@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { siteConfig } from "@skyla/config";
+import { visitUnavailablePrefix } from "@skyla/payments";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
@@ -322,6 +323,15 @@ function bearerToken(authorization: string | null) {
 function publicGatewayFailure(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const normalized = message.toLowerCase();
+  const visitUnavailableAt = message.indexOf(visitUnavailablePrefix);
+  if (visitUnavailableAt >= 0) {
+    const reason = message.slice(visitUnavailableAt + visitUnavailablePrefix.length).trim();
+    return {
+      status: 409,
+      code: "visit_unavailable",
+      error: `${reason.charAt(0).toUpperCase()}${reason.slice(1)}.`
+    };
+  }
   if (
     normalized.includes("different inquiry") ||
     normalized.includes("different member application") ||

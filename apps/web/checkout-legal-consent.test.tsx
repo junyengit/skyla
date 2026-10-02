@@ -8,6 +8,7 @@ import {
 } from "@skyla/payments";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { routeCheckoutFetch } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 
 const orderRef = "SKY2608-CONSENT";
@@ -43,12 +44,14 @@ function renderCheckout() {
   );
 }
 
-async function persistOrder(fetchMock: ReturnType<typeof vi.fn>) {
-  fetchMock.mockResolvedValueOnce(Response.json(draftResponse));
+async function persistOrder(router: ReturnType<typeof routeCheckoutFetch>) {
+  router.queue.push(Response.json(draftResponse));
   fireEvent.change(screen.getByLabelText("Email"), {
     target: { value: "guest@example.com" }
   });
-  fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
+  const review = screen.getByRole("button", { name: "Review Order" }) as HTMLButtonElement;
+  await waitFor(() => expect(review.disabled).toBe(false));
+  fireEvent.click(review);
   await screen.findByText(`Stored as ${orderRef}`);
 }
 
@@ -59,11 +62,11 @@ afterEach(() => {
 
 describe("checkout legal consent", () => {
   it("keeps card payment locked until both separate agreements are checked", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+    const router = routeCheckoutFetch();
+    vi.stubGlobal("fetch", router.fetchMock);
     renderCheckout();
 
-    await persistOrder(fetchMock);
+    await persistOrder(router);
 
     const terms = screen.getByRole("checkbox", { name: /Terms of Use and Ticket Purchase Terms/i });
     const waiver = screen.getByRole("checkbox", { name: /Acknowledgment of Risk and Release of Liability/i });
@@ -89,21 +92,19 @@ describe("checkout legal consent", () => {
   });
 
   it("sends the accepted document versions and resets consent when the order changes", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+    const router = routeCheckoutFetch();
+    vi.stubGlobal("fetch", router.fetchMock);
     renderCheckout();
 
-    await persistOrder(fetchMock);
+    await persistOrder(router);
     fireEvent.click(screen.getByRole("checkbox", { name: /Terms of Use and Ticket Purchase Terms/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /Acknowledgment of Risk and Release of Liability/i }));
 
-    fetchMock.mockResolvedValueOnce(
-      Response.json({ url: "https://checkout.stripe.com/c/pay/cs_test_consent" })
-    );
+    router.queue.push(Response.json({ url: "https://checkout.stripe.com/c/pay/cs_test_consent" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue to Card Payment" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+    await waitFor(() => expect(router.orderCalls()).toHaveLength(2));
+    expect(JSON.parse(String(router.orderCalls()[1]?.[1]?.body))).toEqual({
       orderRef,
       idempotencyKey: expect.stringMatching(/^checkout_/),
       legalAcceptance: {

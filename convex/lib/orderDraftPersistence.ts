@@ -11,6 +11,7 @@ import {
   checkoutOrderRecord,
   createCheckoutOrderDraft,
   createPosSaleDraft,
+  parseVisitDate,
   posSaleLineRecords,
   posSaleRecord,
   ticketPackages,
@@ -142,16 +143,17 @@ function normalizeEmail(value: string | undefined) {
   return email;
 }
 
+// Visit drafts hold capacity, so the LA calendar date and entry time are
+// required from the first write rather than only at payment.
 function normalizeVisitDate(value: string | undefined) {
   const visitDate = optionalTrimmed(value, "visitDate", 10);
   if (!visitDate) {
-    return undefined;
+    throw new Error("visitDate is required");
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(visitDate)) {
     throw new Error("visitDate must use YYYY-MM-DD");
   }
-  const date = new Date(`${visitDate}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== visitDate) {
+  if (!parseVisitDate(visitDate)) {
     throw new Error("visitDate must be a real calendar date");
   }
   return visitDate;
@@ -159,7 +161,10 @@ function normalizeVisitDate(value: string | undefined) {
 
 function normalizeEntryTime(value: string | undefined) {
   const entryTime = optionalTrimmed(value, "entryTime", 5);
-  if (entryTime && !timePattern.test(entryTime)) {
+  if (!entryTime) {
+    throw new Error("entryTime is required");
+  }
+  if (!timePattern.test(entryTime)) {
     throw new Error("entryTime must use HH:mm");
   }
   return entryTime;

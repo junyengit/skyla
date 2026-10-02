@@ -8,6 +8,7 @@ import {
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
+import { releaseUnpaidCapacityHold, settlePaidCapacity } from "./lib/capacity";
 import { assertCheckoutDraftCanStartPayment } from "./lib/checkoutDraftExpiry";
 import {
   assertCheckoutFulfillmentReady,
@@ -1659,6 +1660,44 @@ export const recordStripeCheckoutWebhook = internalMutation({
         .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef as string))
         .unique();
 
+      // The hold becomes paid in this same transaction as the booking. An
+      // order with no usable hold either reserves now or becomes a counted,
+      // audited exception without a ticket; it never silently oversells.
+      const capacity = await settlePaidCapacity(ctx, {
+        orderRef: args.orderRef,
+        bookingRef: fulfillment.booking.bookingRef,
+        visitDate: fulfillment.booking.visitDate,
+        entryTime: fulfillment.booking.entryTime,
+        partySize: fulfillment.booking.partySize,
+        alreadyCommitted: Boolean(existingBooking),
+        now
+      });
+      if (capacity.kind === "exception") {
+        await ctx.db.insert("auditEvents", {
+          action: "checkout.capacityException",
+          entityType: "order",
+          entityRef: args.orderRef,
+          metadata: {
+            reason: capacity.reason,
+            visitDate: fulfillment.booking.visitDate,
+            entryTime: fulfillment.booking.entryTime,
+            partySize: fulfillment.booking.partySize,
+            providerPaymentId: args.providerPaymentId,
+            providerPaymentIntentId: args.providerPaymentIntentId,
+            amountCents
+          },
+          createdAt: now
+        });
+        await insertWebhookEvent(ctx, {
+          providerEventId: args.providerEventId,
+          eventType: args.eventType,
+          status: "failed",
+          orderRef: args.orderRef,
+          raw: { ...(args.raw ?? {}), reason: "paid_order_capacity_exception", capacityReason: capacity.reason }
+        });
+        return { status: "failed", duplicate: false, orderRef: args.orderRef };
+      }
+
       if (existingBooking) {
         assertMatchingCheckoutBooking(existingBooking, fulfillment.booking);
       } else {
@@ -1729,11 +1768,15 @@ export const recordStripeCheckoutWebhook = internalMutation({
     });
 
     if (order.status !== "paid") {
+      const now = Date.now();
       await ctx.db.patch(order._id, {
         status: stripeCheckoutOrderStatusAfterUnpaidOutcome(args.outcome),
         expectedProvider: "stripe",
-        updatedAt: Date.now()
+        updatedAt: now
       });
+      // Signed and correlated to the Convex-created session above; paid and
+      // exception holds are never reopened by a stale unpaid event.
+      await releaseUnpaidCapacityHold(ctx, args.orderRef, `stripe:${args.eventType}`, now);
     }
 
     await insertWebhookEvent(ctx, {

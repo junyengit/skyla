@@ -1,7 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createCheckoutOrderDraft } from "./orderDrafts";
 import { defaultHours } from "./lib/adminConfig";
+
+// Fixed clock: noon on Sunday 2026-07-12 in Los Angeles, so the Monday
+// fixture date is a real future date and only the closed-day rule rejects it.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-07-12T19:00:00.000Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 type QueryResult = {
   first?: () => Promise<Record<string, unknown> | null>;

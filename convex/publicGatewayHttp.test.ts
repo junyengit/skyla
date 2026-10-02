@@ -102,4 +102,25 @@ describe("Convex public gateway HTTP action", () => {
       retryAfterSeconds: 42
     });
   });
+
+  it.each([
+    ["Visit unavailable: only 1 of 30 places remain for that entry time", "Only 1 of 30 places remain for that entry time."],
+    ["Visit unavailable: that date is reserved for a private event", "That date is reserved for a private event."],
+    [
+      "Visit unavailable: that entry time is outside the configured operating hours for that date",
+      "That entry time is outside the configured operating hours for that date."
+    ]
+  ])("returns a guest-readable 409 for %s", async (message, error) => {
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    const ctx = { runMutation: vi.fn().mockRejectedValue(new Error(message)), runAction: vi.fn() };
+
+    const response = await handler(ctx, request({
+      operation: "checkout-draft",
+      rateLimitKey,
+      input: { packageKey: "general", adults: 2, visitDate: "2026-10-03", entryTime: "14:00", idempotencyKey: "checkout_draft_0002" }
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ ok: false, code: "visit_unavailable", error });
+  });
 });
