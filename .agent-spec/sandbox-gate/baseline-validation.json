@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-03T19:21:48Z",
+  "sourceCoreCommit": "5a4b5c923a65749e181fd8ab47e783bda369c659",
+  "branch": "codex/skydeck-sandbox-gate-20261003",
+  "change": "Deterministic weekday and weekend checkout hold closing-hour fixtures; runtime source unchanged.",
+  "command": "bun run check",
+  "exitCode": 0,
+  "testsPassed": 1477,
+  "turboTasksPassed": 16,
+  "convexTestsPassed": 751,
+  "scriptsTestsPassed": 46,
+  "evidenceLog": "/Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research/sandbox-gate-pre-opus-baseline-check.log",
+  "focusedPaymentInternalsTests": 51,
+  "diffCheckPassed": true,
+  "productionDeployment": false,
+  "providerPayments": false
+}
