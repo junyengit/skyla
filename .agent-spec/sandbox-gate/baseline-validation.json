@@ -13,5 +13,13 @@
   "focusedPaymentInternalsTests": 51,
   "diffCheckPassed": true,
   "productionDeployment": false,
-  "providerPayments": false
+  "providerPayments": false,
+  "postMoveValidation": {
+    "worktree": "/Users/jheller/Desktop/real outreach/skydeck-worktrees/sandbox-20261003",
+    "repair": "Use pathToFileURL for two executable-script guards so paths containing spaces cannot silently skip security/smoke validation.",
+    "command": "bun run check",
+    "exitCode": 0,
+    "testsPassed": 1477,
+    "evidenceLog": "/Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research/sandbox-gate-space-safe-baseline-check.log"
+  }
 }
