@@ -1,6 +1,6 @@
 # Approved narrow UI and sandbox gate implementation
 
-Target repository: /Users/jheller/Documents/Codex/2026-10-03/skydeck-sandbox-gate
+Target repository: /Users/jheller/Desktop/real outreach/skydeck-worktrees/sandbox-20261003
 Branch: codex/skydeck-sandbox-gate-20261003
 Phase: isolated sandbox allowance only, preserving existing accepted checkout anatomy.
 
