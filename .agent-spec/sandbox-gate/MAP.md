@@ -17,4 +17,6 @@ Official documentation rechecked October 9:
 - https://docs.convex.dev/production/environment-variables — CONVEX_CLOUD_URL is a runtime system deployment binding. Do not trust an arbitrary client or request declaration of the deployment identity.
 - https://docs.stripe.com/keys — sandbox keys and live keys are distinct; retain existing test-mode and key enforcement and never expose secret keys to a client.
 
-The October 3 isolated Preview expiry has passed. This source gate remains closed by default; its pinned target is not evidence of a currently usable provider deployment. Renew and review the exact sandbox binding before the first genuine test transaction.
+The October 3 Preview is revoked. The October 9 replacement is bold-reindeer-495, created with explicit --type preview and --expiration "in 4 days", without --select or --default. Reviewed source cutoff is conservatively 2026-10-12T04:00:00Z. No Stripe credentials or genuine payment test exists. The public CLI creation evidence is /Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research/sandbox-preview-create-20261009.json.
+
+Read https://vercel.com/docs/deployments/generated-urls for unique versus stable branch Preview URLs; match the one configured origin to VERCEL_BRANCH_URL with exact project/branch/environment checks, not the changing VERCEL_URL. This changes no accepted visible anatomy.
