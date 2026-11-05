@@ -12,6 +12,7 @@ import {
   validPublicGatewaySecret,
   type PublicGatewayOperation
 } from "./lib/publicGateway";
+import { backendSandboxAdmissionDecision } from "./lib/sandboxAdmission";
 import {
   assertStripeWebhookMode,
   parseStripeMode
@@ -78,7 +79,8 @@ export const publicGateway = httpAction(async (ctx, request) => {
         !siteConfig.launched &&
         (payload.operation === "checkout-draft" ||
           payload.operation === "checkout-draft-release" ||
-          payload.operation === "stripe-checkout")
+          payload.operation === "stripe-checkout") &&
+        !backendSandboxAdmissionDecision(process.env, Date.now()).open
       ) {
         return gatewayJson(
           {

@@ -20,7 +20,7 @@ function requiredString(value: unknown, label: string) {
  * with a payment attempt is never released here.
  */
 export async function POST(request: Request) {
-  const unavailable = ticketSalesUnavailableResponse();
+  const unavailable = ticketSalesUnavailableResponse(request);
   if (unavailable) {
     return unavailable;
   }
