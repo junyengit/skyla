@@ -1,9 +1,14 @@
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
+import {
+  assertCurrentCheckoutLegalAcceptance,
+  type CheckoutLegalAcceptanceInput
+} from "@skyla/payments";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { requireStaffUser } from "./lib/auth";
+import { assertCheckoutDraftCanStartPayment } from "./lib/checkoutDraftExpiry";
 import {
   assertCheckoutFulfillmentReady,
   buildConfirmedCheckoutFulfillment,
@@ -40,6 +45,92 @@ const sendTicketConfirmationAction = makeFunctionReference<
   null
 >("ticketDelivery:sendTicketConfirmation");
 
+export function assertStoredCheckoutLegalAcceptance(
+  acceptance: {
+    orderRef: string;
+    idempotencyKey: string;
+    customerEmailLower?: string;
+    termsVersion: string;
+    termsAcceptanceText: string;
+    liabilityWaiverVersion: string;
+    liabilityWaiverAcceptanceText: string;
+  } | null | undefined,
+  expected: { orderRef: string; idempotencyKey: string; customerEmailLower?: string }
+) {
+  if (!acceptance) {
+    throw new Error("Terms and liability waiver acceptance are required before payment");
+  }
+  if (
+    acceptance.orderRef !== expected.orderRef ||
+    acceptance.idempotencyKey !== expected.idempotencyKey ||
+    acceptance.customerEmailLower !== expected.customerEmailLower
+  ) {
+    throw new Error("Checkout legal acceptance does not match the stored order");
+  }
+  const canonical = assertCurrentCheckoutLegalAcceptance({
+    termsAccepted: true,
+    termsVersion: acceptance.termsVersion,
+    liabilityWaiverAccepted: true,
+    liabilityWaiverVersion: acceptance.liabilityWaiverVersion
+  });
+  if (
+    acceptance.termsAcceptanceText !== canonical.termsAcceptanceText ||
+    acceptance.liabilityWaiverAcceptanceText !== canonical.liabilityWaiverAcceptanceText
+  ) {
+    throw new Error("Checkout legal acceptance language does not match the current documents");
+  }
+  return canonical;
+}
+
+export const recordCheckoutLegalAcceptance = internalMutation({
+  args: {
+    orderRef: v.string(),
+    idempotencyKey: v.string(),
+    legalAcceptance: v.object({
+      termsAccepted: v.boolean(),
+      termsVersion: v.string(),
+      liabilityWaiverAccepted: v.boolean(),
+      liabilityWaiverVersion: v.string()
+    })
+  },
+  handler: async (ctx, args) => {
+    const canonical = assertCurrentCheckoutLegalAcceptance(args.legalAcceptance as CheckoutLegalAcceptanceInput);
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
+      .unique();
+    if (!order || order.channel !== "online" || order.idempotencyKey !== args.idempotencyKey) {
+      throw new Error("Checkout order was not found for this legal acceptance");
+    }
+    assertCheckoutDraftCanStartPayment(order, Date.now());
+
+    const existing = await ctx.db
+      .query("checkoutLegalAcceptances")
+      .withIndex("by_orderRef_idempotencyKey", (q) =>
+        q.eq("orderRef", args.orderRef).eq("idempotencyKey", args.idempotencyKey)
+      )
+      .unique();
+    if (existing) {
+      assertStoredCheckoutLegalAcceptance(existing, {
+        orderRef: order.orderRef,
+        idempotencyKey: args.idempotencyKey,
+        customerEmailLower: order.customerEmailLower
+      });
+      return { acceptanceId: existing._id, reused: true };
+    }
+
+    const acceptanceId = await ctx.db.insert("checkoutLegalAcceptances", {
+      orderRef: order.orderRef,
+      idempotencyKey: args.idempotencyKey,
+      customerEmailLower: order.customerEmailLower,
+      ...canonical,
+      acceptedAt: Date.now(),
+      source: "web-checkout"
+    });
+    return { acceptanceId, reused: false };
+  }
+});
+
 export const getCheckoutPaymentSnapshot = internalQuery({
   args: {
     orderRef: v.string(),
@@ -53,11 +144,9 @@ export const getCheckoutPaymentSnapshot = internalQuery({
     if (!order || order.channel !== "online" || order.idempotencyKey !== args.idempotencyKey) {
       throw new Error("Checkout order was not found for this payment attempt");
     }
-    if (order.status !== "draft" && order.status !== "payment_pending") {
-      throw new Error(`Checkout order cannot create a Stripe session from status ${order.status}`);
-    }
+    assertCheckoutDraftCanStartPayment(order, Date.now());
 
-    const [lines, hoursRow] = await Promise.all([
+    const [lines, hoursRow, legalAcceptance] = await Promise.all([
       ctx.db
         .query("orderLineItems")
         .withIndex("by_orderRef", (q) => q.eq("orderRef", args.orderRef))
@@ -65,6 +154,12 @@ export const getCheckoutPaymentSnapshot = internalQuery({
       ctx.db
         .query("config")
         .withIndex("by_key", (q) => q.eq("key", "hours"))
+        .unique(),
+      ctx.db
+        .query("checkoutLegalAcceptances")
+        .withIndex("by_orderRef_idempotencyKey", (q) =>
+          q.eq("orderRef", args.orderRef).eq("idempotencyKey", args.idempotencyKey)
+        )
         .unique()
     ]);
     assertStoredPaymentLineProvenance(lines, "Checkout");
@@ -74,6 +169,11 @@ export const getCheckoutPaymentSnapshot = internalQuery({
       fulfillment.visitDate,
       fulfillment.entryTime
     );
+    const canonicalAcceptance = assertStoredCheckoutLegalAcceptance(legalAcceptance, {
+      orderRef: order.orderRef,
+      idempotencyKey: args.idempotencyKey,
+      customerEmailLower: order.customerEmailLower
+    });
 
     return {
       orderRef: order.orderRef,
@@ -84,6 +184,8 @@ export const getCheckoutPaymentSnapshot = internalQuery({
       customerEmailLower: order.customerEmailLower,
       visitDate: order.visitDate,
       entryTime: order.entryTime,
+      termsVersion: canonicalAcceptance.termsVersion,
+      liabilityWaiverVersion: canonicalAcceptance.liabilityWaiverVersion,
       lines: lines.map((line) => ({
         name: line.name,
         quantity: line.quantity,

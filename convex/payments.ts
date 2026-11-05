@@ -43,6 +43,12 @@ export const createStripeCheckoutSession = internalAction({
     gatewayRateLimitKey: v.string(),
     orderRef: v.string(),
     idempotencyKey: v.string(),
+    legalAcceptance: v.object({
+      termsAccepted: v.boolean(),
+      termsVersion: v.string(),
+      liabilityWaiverAccepted: v.boolean(),
+      liabilityWaiverVersion: v.string()
+    }),
     successUrl: v.string(),
     cancelUrl: v.string()
   },
@@ -53,6 +59,11 @@ export const createStripeCheckoutSession = internalAction({
     await ctx.runQuery(internal.orderDrafts.assertCheckoutOrderDraftActive, {
       orderRef: args.orderRef,
       idempotencyKey: args.idempotencyKey
+    });
+    await ctx.runMutation(internal.paymentInternals.recordCheckoutLegalAcceptance, {
+      orderRef: args.orderRef,
+      idempotencyKey: args.idempotencyKey,
+      legalAcceptance: args.legalAcceptance
     });
     const secretKey = stripeSecretKey();
     const allowedReturnOrigins = parseStripeReturnOriginAllowlist(process.env.SKYLA_PAYMENT_RETURN_ORIGINS);

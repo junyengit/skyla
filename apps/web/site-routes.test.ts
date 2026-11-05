@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 
 import robots from "./app/robots";
 import sitemap from "./app/sitemap";
-import nextConfig from "./next.config.mjs";
+import nextConfig, { showcaseHomeOrigin, showcaseHomeRewrites } from "./next.config.mjs";
 import { proxy } from "./proxy";
 import {
   htmlCompatibilityRedirects,
@@ -23,6 +23,41 @@ const webDir = import.meta.dirname;
 const publicDir = join(webDir, "public");
 
 describe("App Router route ownership", () => {
+  it("serves the exact standalone showcase as the Vercel homepage", async () => {
+    const previousVercel = process.env.VERCEL;
+    process.env.VERCEL = "1";
+
+    try {
+      expect(showcaseHomeOrigin).toBe("https://skydeck-vercel.vercel.app");
+      expect(await nextConfig.rewrites?.()).toEqual({
+        beforeFiles: showcaseHomeRewrites,
+        afterFiles: [],
+        fallback: []
+      });
+      expect(showcaseHomeRewrites).toEqual([
+        {
+          source: "/",
+          destination: "https://skydeck-vercel.vercel.app/"
+        },
+        {
+          source: "/assets/:path*",
+          destination: "https://skydeck-vercel.vercel.app/assets/:path*"
+        },
+        {
+          source: "/favicon.svg",
+          destination: "https://skydeck-vercel.vercel.app/favicon.svg"
+        },
+        {
+          source: "/api/reserve",
+          destination: "https://skydeck-vercel.vercel.app/api/reserve"
+        }
+      ]);
+    } finally {
+      if (previousVercel === undefined) delete process.env.VERCEL;
+      else process.env.VERCEL = previousVercel;
+    }
+  });
+
   it("centralizes saved .html URLs and retired pages as permanent Next redirects", async () => {
     const redirects = await nextConfig.redirects?.();
 
@@ -71,6 +106,7 @@ describe("App Router route ownership", () => {
     const checks: Array<[string, string[]]> = [
       ["app/checkout/page.tsx", ["CheckoutClient", "data-native-checkout"]],
       ["components/checkout-client.tsx", ["/api/order-drafts/checkout", "/api/payments/stripe-checkout"]],
+      ["app/liability-waiver/page.tsx", ["Liability Waiver", "attorney-review draft"]],
       ["app/privacy/page.tsx", ["Convex"]],
       ["app/terms/page.tsx", ["Terms"]]
     ];
@@ -107,6 +143,7 @@ describe("App Router route ownership", () => {
     const customerFacingFiles = [
       "app/page.tsx",
       "app/checkout/page.tsx",
+      "app/liability-waiver/page.tsx",
       "components/checkout-client.tsx",
       "app/privacy/page.tsx"
     ];

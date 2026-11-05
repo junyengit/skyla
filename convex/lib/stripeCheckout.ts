@@ -23,6 +23,8 @@ export type StripeCheckoutSnapshot = {
   customerEmailLower?: string;
   visitDate?: string;
   entryTime?: string;
+  termsVersion: string;
+  liabilityWaiverVersion: string;
   lines: StripeCheckoutLine[];
 };
 
@@ -79,6 +81,8 @@ export function buildStripeCheckoutSessionRequest(
   params.set("client_reference_id", snapshot.orderRef);
   params.set("metadata[order_ref]", snapshot.orderRef);
   params.set("metadata[source]", "convex");
+  params.set("metadata[terms_version]", snapshot.termsVersion);
+  params.set("metadata[liability_waiver_version]", snapshot.liabilityWaiverVersion);
   if (snapshot.visitDate) {
     params.set("metadata[visit_date]", snapshot.visitDate);
   }

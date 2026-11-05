@@ -1,12 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, MapPin } from "@skyla/ui/icons";
 import { siteConfig } from "@skyla/config";
-import { LaunchStatusBanner } from "@/components/launch-status-banner";
 import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { MarketingScripts } from "@/components/marketing-scripts";
-import { MotionHero } from "@/components/motion-hero";
-import { PublicFooter, publicNavItems } from "@/components/public-page-shell";
+import { ShowcaseWalkthrough } from "@/components/showcase-walkthrough";
 import {
   formatOperatingDay,
   operatingWeekdays,
@@ -74,190 +70,62 @@ export function VisitorOperatingConfig({ config }: { config: PublicOperatingConf
 
 export default async function HomePage() {
   const operatingConfig = await loadPublicOperatingConfig();
+  const bookingEmail = `mailto:${siteConfig.email}?subject=${encodeURIComponent("Full venue booking inquiry")}`;
 
   return (
-    <main className={siteConfig.launched ? undefined : "prelaunch"}>
+    <main className="skyShowcase">
       <LocalBusinessJsonLd config={operatingConfig} />
       <MarketingScripts />
       <a className="skipLink" href="#main-content">
         Skip to content
       </a>
-      <nav className="nav" aria-label="Primary navigation">
-        <Link className="brand" href="/">
-          Sky LA
+      <header className="showcaseHeader">
+        <Link className="showcaseBrand" href="/">
+          Sky<em> ◆ </em>Deck LA
         </Link>
-        <div className="navLinks">
-          {publicNavItems.map((item) => (
-            <Link key={item.key} href={item.href} prefetch={false}>
-              {item.label}
-            </Link>
-          ))}
-        </div>
-        {siteConfig.launched ? (
-          <Link className="navCta" href="/checkout" prefetch={false}>
-            Buy Tickets
-          </Link>
-        ) : (
-          <span className="navStatus">{siteConfig.launchStatus.label}</span>
-        )}
-      </nav>
-      <LaunchStatusBanner />
+        <a className="showcaseButton isSolid" href="#book-venue">
+          Full venue booking
+        </a>
+      </header>
 
-      <section className="hero">
-        <div className="heroMedia" aria-hidden="true">
-          <Image
-            src="/images/view.jpg"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="heroImage"
-          />
-        </div>
-        <div className="heroScrim" />
-        <MotionHero>
-          <p className="location">
-            <MapPin size={16} />
-            {siteConfig.address.short}
-          </p>
-          <h1>Los Angeles, from the top of Wilshire.</h1>
-          <p className="heroCopy">
-            An observation deck on the top floor of 6100 Wilshire, with
-            360-degree views from the Hollywood Hills to the Westside.
-          </p>
-          <div className="heroTicket">
-            <span className="heroPrice">$20</span>
-            <span className="heroPriceMeta">
-              {siteConfig.launched ? "all-in, per adult" : "planned launch pricing, per adult"}
-              <em>Ages 12 and under $10</em>
-            </span>
-          </div>
-          <div className="heroActions">
-            {siteConfig.launched ? (
-              <Link className="primaryAction" href="/checkout" prefetch={false}>
-                Buy Tickets
-                <ArrowRight size={18} />
-              </Link>
-            ) : (
-              <a className="primaryAction" href={`mailto:${siteConfig.email}`}>
-                Ask about opening
-                <ArrowRight size={18} />
-              </a>
-            )}
-          </div>
-        </MotionHero>
-      </section>
+      <ShowcaseWalkthrough />
 
       <div id="main-content" />
 
-      <section className="ticketStatement" aria-label="What your ticket includes">
-        <p className="sectionLabel">One ticket</p>
-        <h2>One ticket, the whole skyline.</h2>
-        <p className="ticketStatementCopy">
-          Admission covers the full top floor: the open observation deck, the
-          indoor lounge behind floor-to-ceiling glass, and views that run from
-          the Hollywood Hills to the ocean. Entry is timed, so the deck stays
-          comfortable.
-        </p>
-        <ul className="ticketIncludes">
-          <li>
-            <strong>Observation deck</strong>
-            <span>360-degree views above Wilshire, from the hills to the sea</span>
-          </li>
-          <li>
-            <strong>Indoor lounge</strong>
-            <span>Seating behind floor-to-ceiling glass</span>
-          </li>
-          <li>
-            <strong>Timed entry</strong>
-            <span>Choose your date and arrival window</span>
-          </li>
-        </ul>
+      <section className="venueBooking" id="book-venue" aria-labelledby="venue-booking-title">
+        <div>
+          <p className="venueBookingLabel">Currently available</p>
+          <h2 id="venue-booking-title">The full venue. One private booking.</h2>
+          <p className="venueBookingLead">
+            <strong>Individual tickets are not available.</strong> Sky LA is currently
+            accepting inquiries only for exclusive use of the full venue: the
+            observation deck and indoor lounge together.
+          </p>
+        </div>
+        <div className="venueBookingAside">
+          <p>
+            <strong>Tell us about your event</strong>
+            Share your preferred date, estimated guest count, and what you are planning.
+          </p>
+          <a className="showcaseButton isSolid" href={bookingEmail}>
+            Request availability
+          </a>
+          <p>
+            <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
+          </p>
+        </div>
       </section>
 
-      <section className="viewsGallery" aria-label="Views from the deck">
-        <figure className="viewsGalleryLead">
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-hills.jpg"
-              alt="Residential blocks stretching west toward the Century City skyline"
-              fill
-              sizes="(max-width: 820px) 100vw, 62vw"
-            />
-          </div>
-          <figcaption>Toward Century City</figcaption>
-        </figure>
-        <figure>
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-academy.jpg"
-              alt="Academy Museum and Museum Row seen from above"
-              fill
-              sizes="(max-width: 820px) 100vw, 38vw"
-            />
-          </div>
-          <figcaption>Academy Museum</figcaption>
-        </figure>
-        <figure>
-          <div className="viewsGalleryFrame">
-            <Image
-              src="/images/view-westside.jpg"
-              alt="Rooftops running north to the Hollywood Hills"
-              fill
-              sizes="(max-width: 820px) 100vw, 38vw"
-            />
-          </div>
-          <figcaption>Hollywood Hills</figcaption>
-        </figure>
-      </section>
-
-      <div className="visitBand" id="visit">
-        <VisitorOperatingConfig config={operatingConfig} />
-
-        <section className="section intro visitLocation" aria-label="Location">
-          <div>
-            <p className="sectionLabel">Find us</p>
-            <h2>On Museum Row.</h2>
-          </div>
-          <div className="visitLocationBody">
-            <p>
-              {siteConfig.address.full}
-              <br />
-              <br />
-              <a
-                className="inlineLink"
-                href={directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Get Directions
-              </a>
-            </p>
-            <figure className="visitPhoto">
-              <Image
-                src="/images/building.jpg"
-                alt="The dark glass tower at 6100 Wilshire, on Museum Row"
-                width={647}
-                height={588}
-              />
-              <figcaption>6100 Wilshire, Museum Row</figcaption>
-            </figure>
-          </div>
-        </section>
-      </div>
-
-      <section className="dateNight" aria-label="Date Night preview">
-        <p className="sectionLabel">Coming soon</p>
-        <h2>Date Night</h2>
-        <p className="dateNightCopy">
-          A reserved after-hours visit for two. $98 for two, entry included.
-        </p>
-        <a className="inlineLink" href={`mailto:${siteConfig.email}`}>
-          Inquire at {siteConfig.email}
-        </a>
-      </section>
-
-      <PublicFooter />
+      <footer className="showcaseFooter">
+        <span>Sky Deck LA · {siteConfig.address.full}</span>
+        <span>
+          <a href={directionsUrl} target="_blank" rel="noopener noreferrer">Directions</a>
+          {" · "}
+          <Link href="/privacy" prefetch={false}>Privacy</Link>
+          {" · "}
+          <Link href="/terms" prefetch={false}>Terms</Link>
+        </span>
+      </footer>
     </main>
   );
 }

@@ -14,8 +14,9 @@ describe("siteConfig", () => {
   it("keeps the pre-launch gate and canonical status copy", () => {
     expect(siteConfig.launched).toBe(false);
     expect(siteConfig.launchStatus).toEqual({
-      label: "Coming soon",
-      message: "Sky LA is not open yet. Ticket sales are not live."
+      label: "Full venue bookings only",
+      message:
+        "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
     });
   });
 });

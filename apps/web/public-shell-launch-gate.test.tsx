@@ -4,6 +4,7 @@ import { siteConfig } from "@skyla/config";
 
 import ErrorPage from "./app/error";
 import GlobalError from "./app/global-error";
+import LiabilityWaiverPage from "./app/liability-waiver/page";
 import NotFound from "./app/not-found";
 import PrivacyPage from "./app/privacy/page";
 import TermsPage from "./app/terms/page";
@@ -32,6 +33,10 @@ describe("public shells during pre-launch", () => {
 
   it("keeps /terms free of a purchase CTA and mounts the status band", () => {
     expectPreLaunchGate(renderToStaticMarkup(<TermsPage />));
+  });
+
+  it("keeps /liability-waiver free of a purchase CTA and mounts the status band", () => {
+    expectPreLaunchGate(renderToStaticMarkup(<LiabilityWaiverPage />));
   });
 
   it("keeps the not-found surface free of a purchase CTA", () => {

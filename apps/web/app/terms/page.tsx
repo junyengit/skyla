@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { currentTermsVersion } from "@skyla/payments";
 import { siteConfig } from "@skyla/config";
 import { LegalPage } from "@/components/legal-page";
 
@@ -12,12 +13,21 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Use"
-      updated="June 17, 2026"
+      updated="August 6, 2026"
       intro={
-        <p>
-          Welcome to Skyla Los Angeles. By using our website or purchasing a
-          ticket, you agree to these Terms of Use. Please read them carefully.
-        </p>
+        <>
+          <p>
+            <strong>Pre-launch attorney-review draft.</strong> These purchase
+            terms are not effective and ticket sales remain unavailable until
+            venue counsel approves the final version.
+          </p>
+          <p>Document version: {currentTermsVersion}</p>
+          <p>
+            When ticket sales open, checking the separate Terms box and
+            completing a purchase will mean you agree to the version displayed
+            at checkout. Please read it carefully.
+          </p>
+        </>
       }
       sections={[
         {
@@ -25,7 +35,7 @@ export default function TermsPage() {
           items: [
             "All tickets are for a specific date and timed entry. Please arrive within 30 minutes of your selected entry window.",
             "Your booking confirmation and check-in QR code are sent to the email address you provide. Present them on your phone or printed at the front desk.",
-            "Prices are listed in U.S. dollars and include the booking fee shown at checkout. We reserve the right to update pricing and availability at any time.",
+            "Prices are listed in U.S. dollars. The total displayed before purchase includes all mandatory charges imposed by Sky LA; Sky LA currently adds no mandatory booking fee.",
             "Premium experiences and private rooms may carry additional terms, minimums, or fees disclosed at the time of booking."
           ]
         },

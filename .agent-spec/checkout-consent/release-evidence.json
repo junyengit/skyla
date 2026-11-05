@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "projectId": "skyla-checkout-consent",
+  "releaseStage": "candidate",
+  "buildMode": "bespoke",
+  "hypothesis": "For Sky LA ticket purchasers, two explicit unchecked agreements beside the final payment action will make legal consent clear and auditable without adding a separate checkout step or implying ticket sales are live.",
+  "scores": {
+    "customer-fit": 9.2,
+    "audience-fit": 9.1,
+    "truth": 9.5,
+    "clarity": 9.3,
+    "distinctiveness": 9,
+    "portfolio-similarity": 9,
+    "accessibility": 9.4,
+    "responsive-quality": 9.3,
+    "performance": 9.5,
+    "interaction": 9.4,
+    "maintainability": 9.2,
+    "cost-and-latency": 9.6
+  },
+  "hardRegressions": [],
+  "checks": {
+    "validation": true,
+    "build": true,
+    "keyboard": true,
+    "reducedMotion": true,
+    "noJsOrSsr": true,
+    "responsive": true,
+    "portfolioSimilarity": true,
+    "structuralDivergence": true,
+    "motionIntent": true,
+    "provenance": true,
+    "rollback": true
+  },
+  "viewports": [
+    "390x844",
+    "default desktop Chrome"
+  ],
+  "evidence": {
+    "deterministicReport": "Focused React, API, payments, Convex, route, typecheck, lint, and production-build checks passed; the only broad-suite failures are pre-existing path-with-spaces script-launch tests.",
+    "mobileRender": "/tmp/skyla-consent-mobile.png; 390px Chrome review found scrollWidth=390, no overflow, and both consent labels 111.25px tall.",
+    "desktopRender": "/tmp/skyla-consent-desktop.png; existing main Chrome full-page review.",
+    "visualReview": "Consent sits directly above payment, links are visually distinct, disabled payment is clear, and the existing checkout hierarchy remains intact.",
+    "performanceReport": "No dependency, image, font, animation, or network request added; two booleans and a small conditional fieldset only.",
+    "portfolioContactSheet": "Scoped inline consent fieldset compared against the unchanged Sky LA checkout baseline; no external customer anatomy or template was reused.",
+    "structuralFingerprint": "Persisted order -> two independent legal controls -> readiness message -> payment action; existing visit form and order summary topology preserved.",
+    "motionIntentMap": "No motion added. Native checkbox, focus, hover, disabled, and readiness state changes only."
+  },
+  "rollback": "Revert the checkout consent UI and legal-acceptance backend commits; the existing pre-launch gate remains the independent fail-closed control.",
+  "grader": {
+    "usedModelJudge": false
+  }
+}

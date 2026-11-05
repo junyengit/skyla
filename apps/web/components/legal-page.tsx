@@ -27,9 +27,15 @@ export function LegalPage({ title, updated, intro, sections }: LegalPageProps) {
           <Link href="/" prefetch={false}>
             Home
           </Link>
-          <Link href="/checkout" prefetch={false}>
-            Tickets
-          </Link>
+          {siteConfig.launched ? (
+            <Link href="/checkout" prefetch={false}>
+              Tickets
+            </Link>
+          ) : (
+            <Link href="/#book-venue" prefetch={false}>
+              Full venue booking
+            </Link>
+          )}
         </nav>
         {siteConfig.launched ? (
           <Link className="navCta" href="/checkout" prefetch={false}>
