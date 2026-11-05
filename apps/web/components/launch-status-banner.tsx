@@ -1,15 +1,14 @@
 import { siteConfig } from "@skyla/config";
 
-// Server-rendered pre-launch status band. Non-dismissible by design so the
-// launch truth cannot be hidden, and returns null after launch so callers
-// never gate it themselves.
+// Server-rendered availability band. Non-dismissible by design so the current
+// booking model is clear on every public surface.
 export function LaunchStatusBanner() {
-  if (siteConfig.launched) return null;
-
   return (
     <div className="launchBanner" role="status">
-      <strong className="launchBannerLabel">{siteConfig.launchStatus.label}</strong>
-      <span className="launchBannerMessage">{siteConfig.launchStatus.message}</span>
+      <strong className="launchBannerLabel">Full venue bookings only</strong>
+      <span className="launchBannerMessage">
+        Individual tickets are not available. Inquire about exclusive use of the entire top floor.
+      </span>
       <a className="launchBannerEmail" href={`mailto:${siteConfig.email}`}>
         {siteConfig.email}
       </a>

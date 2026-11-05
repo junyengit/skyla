@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: "%s | Sky LA"
   },
   description:
-    "Timed-entry observation deck on the top floor of 6100 Wilshire, with 360-degree views of Los Angeles. $20 all-in per adult.",
+    "Full-venue bookings for the observation deck and indoor lounge on the top floor of 6100 Wilshire. Individual tickets are not available.",
   alternates: {
     canonical: "./"
   },
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     siteName: "Sky LA",
     title: "Sky LA | Los Angeles Above It All",
     description:
-      "Timed-entry observation deck above Wilshire, with 360-degree views of Los Angeles.",
+      "Exclusive full-venue bookings above Wilshire, with 360-degree views of Los Angeles.",
     images: ["/images/og-image.jpg"]
   }
 };

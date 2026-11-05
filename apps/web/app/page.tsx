@@ -57,10 +57,11 @@ export function VisitorOperatingConfig({ config }: { config: PublicOperatingConf
           <h2>Hours and updates.</h2>
         </div>
         <p>
-          Sky LA is not open yet. Opening hours will be announced before launch.
+          Full-venue booking inquiries are open now. Individual tickets are not
+          available; public hours will be announced separately.
           <br />
           <br />
-          Questions about the opening:{" "}
+          Request the full venue:{" "}
           <a className="inlineLink" href={`mailto:${siteConfig.email}`}>
             {siteConfig.email}
           </a>
@@ -93,13 +94,9 @@ export default async function HomePage() {
             </Link>
           ))}
         </div>
-        {siteConfig.launched ? (
-          <Link className="navCta" href="/checkout" prefetch={false}>
-            Buy Tickets
-          </Link>
-        ) : (
-          <span className="navStatus">{siteConfig.launchStatus.label}</span>
-        )}
+        <a className="navCta" href="#book-venue">
+          Full venue booking
+        </a>
       </nav>
       <LaunchStatusBanner />
 
@@ -126,38 +123,35 @@ export default async function HomePage() {
             360-degree views from the Hollywood Hills to the Westside.
           </p>
           <div className="heroTicket">
-            <span className="heroPrice">$20</span>
+            <span className="heroPrice">Full venue</span>
             <span className="heroPriceMeta">
-              {siteConfig.launched ? "all-in, per adult" : "planned launch pricing, per adult"}
-              <em>Ages 12 and under $10</em>
+              Exclusive use of the top floor
+              <em>Individual tickets are not available</em>
             </span>
           </div>
           <div className="heroActions">
-            {siteConfig.launched ? (
-              <Link className="primaryAction" href="/checkout" prefetch={false}>
-                Buy Tickets
-                <ArrowRight size={18} />
-              </Link>
-            ) : (
-              <a className="primaryAction" href={`mailto:${siteConfig.email}`}>
-                Ask about opening
-                <ArrowRight size={18} />
-              </a>
-            )}
+            <a className="primaryAction" href={`mailto:${siteConfig.email}`}>
+              Request the full venue
+              <ArrowRight size={18} />
+            </a>
           </div>
         </MotionHero>
       </section>
 
       <div id="main-content" />
 
-      <section className="ticketStatement" aria-label="What your ticket includes">
-        <p className="sectionLabel">One ticket</p>
-        <h2>One ticket, the whole skyline.</h2>
+      <section
+        className="ticketStatement"
+        id="book-venue"
+        aria-label="What a full venue booking includes"
+      >
+        <p className="sectionLabel">Exclusive booking</p>
+        <h2>One booking, the whole skyline.</h2>
         <p className="ticketStatementCopy">
-          Admission covers the full top floor: the open observation deck, the
-          indoor lounge behind floor-to-ceiling glass, and views that run from
-          the Hollywood Hills to the ocean. Entry is timed, so the deck stays
-          comfortable.
+          Sky LA is currently available only as a full-venue booking. Exclusive
+          use includes the open observation deck, the indoor lounge behind
+          floor-to-ceiling glass, and views that run from the Hollywood Hills
+          to the ocean. Individual admission is not available.
         </p>
         <ul className="ticketIncludes">
           <li>
@@ -169,8 +163,8 @@ export default async function HomePage() {
             <span>Seating behind floor-to-ceiling glass</span>
           </li>
           <li>
-            <strong>Timed entry</strong>
-            <span>Choose your date and arrival window</span>
+            <strong>Complete top floor</strong>
+            <span>No shared admission or separate party alongside yours</span>
           </li>
         </ul>
       </section>
@@ -246,14 +240,15 @@ export default async function HomePage() {
         </section>
       </div>
 
-      <section className="dateNight" aria-label="Date Night preview">
-        <p className="sectionLabel">Coming soon</p>
-        <h2>Date Night</h2>
+      <section className="dateNight" aria-label="Full venue booking">
+        <p className="sectionLabel">Currently available</p>
+        <h2>Full venue bookings only</h2>
         <p className="dateNightCopy">
-          A reserved after-hours visit for two. $98 for two, entry included.
+          Reserve the observation deck, indoor lounge, and complete top floor
+          together for one private event.
         </p>
         <a className="inlineLink" href={`mailto:${siteConfig.email}`}>
-          Inquire at {siteConfig.email}
+          Request availability at {siteConfig.email}
         </a>
       </section>
 
