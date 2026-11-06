@@ -32,7 +32,8 @@ test("POS remains unavailable with readable disabled controls", async ({ page })
   await expect(setupGuidance).toBeVisible();
   await expect(page.getByRole("button", { name: "Load Readers" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Review Sale" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Send to Reader" })).toBeDisabled();
+  await expect(page.getByRole("combobox", { name: "Authorized Reader" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Send to Reader" })).toHaveCount(0);
   await expect(page.locator('[role="status"][aria-live="polite"][aria-atomic="true"]')).toHaveCount(1);
   expect(await renderedContrastRatio(setupLabel)).toBeGreaterThanOrEqual(4.5);
   expect(await renderedContrastRatio(setupGuidance)).toBeGreaterThanOrEqual(4.5);

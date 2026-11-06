@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { installCheckoutBrowserPlatform } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 
 const ticketCode = "tkt_0123456789abcdef0123456789abcdef";
@@ -18,8 +19,15 @@ function renderReturnedCheckout() {
   );
 }
 
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
+
+beforeEach(() => {
+  platform = installCheckoutBrowserPlatform();
+});
+
 afterEach(() => {
   cleanup();
+  platform.restore();
   vi.unstubAllGlobals();
 });
 
@@ -38,9 +46,9 @@ describe("checkout Stripe return status", () => {
     renderReturnedCheckout();
 
     await waitFor(() => {
-      expect(screen.getByText(/Payment confirmed\. Booking ORDER-123 was created\./)).toBeTruthy();
+      expect(screen.getByText(/Payment confirmed\. Booking BOOKING-456\./)).toBeTruthy();
     });
-    expect(screen.getByText(/Booking reference BOOKING-456\./)).toBeTruthy();
+    expect(screen.getByText(/Booking BOOKING-456\./)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open ticket" }).getAttribute("href")).toBe(
       `/tickets/${ticketCode}`
     );

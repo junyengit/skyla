@@ -1,5 +1,6 @@
 import {
   catalogProvenance,
+  catalogTicketMetadata,
   catalogVersion,
   listCatalogItems,
   type Addon,
@@ -166,11 +167,7 @@ function seedItemFromCatalogItem(item: CatalogItem): CatalogSeedItem {
     return withoutUndefined({
       ...base,
       kind: "ticket",
-      metadata: compactMetadata({
-        entryIncluded: item.entryIncluded,
-        minAdults: item.minAdults,
-        roomFeeCents: item.roomFeeCents
-      })
+      metadata: catalogTicketMetadata(item)
     });
   }
 

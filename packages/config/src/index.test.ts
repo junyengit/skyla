@@ -14,9 +14,9 @@ describe("siteConfig", () => {
   it("keeps the pre-launch gate and canonical status copy", () => {
     expect(siteConfig.launched).toBe(false);
     expect(siteConfig.launchStatus).toEqual({
-      label: "Full venue bookings only",
+      label: "Online tickets pending",
       message:
-        "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only."
+        "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings."
     });
   });
 });
@@ -42,6 +42,12 @@ describe("ticketPackages", () => {
         priceCents: 2000
       })
     ]);
+  });
+
+  it("describes the owner-confirmed admission ages", () => {
+    expect(ticketPackages.find((ticketPackage) => ticketPackage.key === "general")?.description).toBe(
+      "The full 360-degree view, indoor lounge, and timed entry. Adults 18+ $20, ages 8–17 $10, ages 0–7 free."
+    );
   });
 
   it("derives public ticket prices from the payment catalog", () => {

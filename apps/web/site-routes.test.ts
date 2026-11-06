@@ -246,10 +246,10 @@ describe("App Router route ownership", () => {
     expect(pos).toContain("posNextPage");
     expect(pos).not.toContain('href="/pos.html"');
     expect(payments).toMatch(
-      /export const createStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\) => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
+      /export const createStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\)(?:: [^=]+)? => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
     );
     expect(payments).toMatch(
-      /export const processStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\) => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
+      /export const processStripeTerminalPaymentIntent[\s\S]*?handler: async \(ctx, args\)(?:: [^=]+)? => \{\n\s+assertPosTerminalAcceptanceEnabled\(\);/
     );
   });
 });

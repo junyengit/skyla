@@ -6,7 +6,8 @@ const adminClient = readFileSync(join(import.meta.dirname, "components/admin-ops
 
 describe("admin ticket delivery UI", () => {
   it("shows the authoritative ticket and delivery status in booking lookup", () => {
-    expect(adminClient).toContain("booking.ticketDelivery.status");
+    expect(adminClient).toContain("ticketDeliveryLabel(booking.ticketDelivery)");
+    expect(adminClient).toContain("delivery.providerDeliveryStatus");
     expect(adminClient).toContain("booking.ticketDelivery.failureReason");
     expect(adminClient).toContain("`/tickets/${booking.ticketDelivery.ticketCode}`");
     expect(adminClient).toContain("Open Ticket");

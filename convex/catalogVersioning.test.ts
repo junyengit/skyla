@@ -39,7 +39,21 @@ describe("catalog versioning helpers", () => {
     const first = codeOwnedCatalogSeed(" initial seed ");
     const second = codeOwnedCatalogSeed("initial seed");
 
-    expect(first.version).toBe("skyla-payments-catalog-2026-07-20");
+    expect(first.version).toBe("skyla-payments-catalog-2026-10-02");
+    expect(first.items.find((item) => item.key === "general")?.metadata).toEqual({
+      minAdults: 1,
+      admissionPolicyVersion: "skydeck-admission-ages-2026-10-02",
+      admissionMaxPartySize: 30,
+      youthPriceCents: 1000,
+      childPriceCents: 0
+    });
+    expect(first.items.find((item) => item.key === "matcha")).toEqual({
+      key: "matcha",
+      kind: "addon",
+      name: "Ceremonial Matcha Latte",
+      priceCents: 800,
+      active: true
+    });
     expect(first.source).toBe("@skyla/payments");
     expect(first.authority).toBe("code-owned");
     expect(first.editableInAdmin).toBe(false);

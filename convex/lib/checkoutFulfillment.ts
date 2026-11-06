@@ -71,7 +71,7 @@ function normalizeCustomerEmailLower(value: string | undefined) {
   return email;
 }
 
-function normalizeVisitDate(value: string | undefined, now: number) {
+function normalizeVisitDate(value: string | undefined, now: number, enforcePurchaseWindow: boolean) {
   const visitDate = requiredTrimmed(value, "visitDate", 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(visitDate)) {
     throw new Error("visitDate must use YYYY-MM-DD");
@@ -79,6 +79,11 @@ function normalizeVisitDate(value: string | undefined, now: number) {
   const date = new Date(`${visitDate}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== visitDate) {
     throw new Error("visitDate must be a real calendar date");
+  }
+  // Paid fulfillment checks the entitlement window against provider time
+  // instead; the purchase-time date gate must not decide paid money.
+  if (!enforcePurchaseWindow) {
+    return visitDate;
   }
   const today = new Date(`${losAngelesCalendarDate(now)}T00:00:00.000Z`).getTime();
   if (date.getTime() < today) {
@@ -108,7 +113,8 @@ export function bookingRefFromOrderRef(orderRef: string) {
 export function assertCheckoutFulfillmentReady(
   order: CheckoutFulfillmentOrder,
   lines: readonly CheckoutFulfillmentLine[],
-  now = Date.now()
+  now = Date.now(),
+  options: { enforcePurchaseWindow?: boolean } = {}
 ): CheckoutFulfillmentReady {
   if (order.channel !== "online") {
     throw new Error("Checkout fulfillment requires an online order");
@@ -128,12 +134,17 @@ export function assertCheckoutFulfillmentReady(
   return {
     orderRef: bookingRefFromOrderRef(order.orderRef),
     customerEmailLower: normalizeCustomerEmailLower(order.customerEmailLower),
-    visitDate: normalizeVisitDate(order.visitDate, now),
+    visitDate: normalizeVisitDate(order.visitDate, now, options.enforcePurchaseWindow ?? true),
     entryTime: normalizeEntryTime(order.entryTime),
     ticketQuantity
   };
 }
 
+/**
+ * Builds the booking for a paid order. Only the stored snapshot is validated
+ * here; whether the visit window is still open is decided by the caller from
+ * trusted provider time, never by the purchase-time date gate.
+ */
 export function buildConfirmedCheckoutFulfillment(
   order: CheckoutFulfillmentOrder,
   lines: readonly CheckoutFulfillmentLine[],
@@ -143,7 +154,7 @@ export function buildConfirmedCheckoutFulfillment(
     throw new Error("now must be a non-negative safe integer timestamp");
   }
 
-  const ready = assertCheckoutFulfillmentReady(order, lines, now);
+  const ready = assertCheckoutFulfillmentReady(order, lines, now, { enforcePurchaseWindow: false });
   const bookingRef = bookingRefFromOrderRef(ready.orderRef);
 
   const booking: ConfirmedCheckoutBooking = {

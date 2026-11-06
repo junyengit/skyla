@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addons, catalogLineMetadata, ticketPackages } from "@skyla/payments";
+import {
+  addons,
+  admissionAgeCategories,
+  admissionLineMetadata,
+  catalogLineMetadata,
+  ticketPackages
+} from "@skyla/payments";
 
 vi.mock("@skyla/config", async (importOriginal) => {
   const original = await importOriginal<typeof import("@skyla/config")>();
@@ -52,15 +58,16 @@ describe("/api/order-drafts/checkout", () => {
           {
             kind: "ticket",
             productKey: "general",
-            metadata: catalogLineMetadata(ticketPackages.general)
+            quantity: 2,
+            unitAmountCents: 2000,
+            metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.adult)
           },
           {
             kind: "ticket",
             productKey: "general",
-            metadata: {
-              ...catalogLineMetadata(ticketPackages.general),
-              childDiscountRate: 0.5
-            }
+            quantity: 1,
+            unitAmountCents: 1000,
+            metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.youth)
           },
           {
             kind: "addon",
@@ -77,6 +84,8 @@ describe("/api/order-drafts/checkout", () => {
     const response = await POST(request({
       packageKey: "general",
       adults: 1,
+      visitDate: "2026-10-03",
+      entryTime: "14:00",
       idempotencyKey: "checkout_20260704_missing"
     }));
 
@@ -200,6 +209,8 @@ describe("/api/order-drafts/checkout", () => {
       request({
         packageKey: "general",
         adults: 1,
+        visitDate: "2026-10-03",
+        entryTime: "14:00",
         idempotencyKey: "checkout_20260704_abc123"
       })
     );
@@ -209,6 +220,110 @@ describe("/api/order-drafts/checkout", () => {
       persisted: false,
       error: "idempotencyKey was already used for a different draft"
     });
+  });
+
+  it("passes the server's capacity rejection through as a visit conflict", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json(
+      { ok: false, code: "visit_unavailable", error: "Only 1 of 30 places remain for that entry time." },
+      { status: 409 }
+    ));
+
+    const response = await POST(request({
+      packageKey: "general",
+      adults: 2,
+      visitDate: "2026-10-03",
+      entryTime: "14:00",
+      idempotencyKey: "checkout_20261002_full01"
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      persisted: false,
+      code: "visit_unavailable",
+      error: "Only 1 of 30 places remain for that entry time."
+    });
+  });
+
+  it.each([
+    ["no date", { entryTime: "14:00" }, "visitDate must be a real YYYY-MM-DD date"],
+    ["an impossible date", { visitDate: "2026-02-30", entryTime: "14:00" }, "visitDate must be a real YYYY-MM-DD date"],
+    ["no entry time", { visitDate: "2026-10-03" }, "entryTime must be one of the offered HH:mm entry times"],
+    ["an unoffered entry time", { visitDate: "2026-10-03", entryTime: "14:15" }, "entryTime must be one of the offered HH:mm entry times"]
+  ])("rejects a persisted draft with %s before calling the gateway", async (_label, visit, error) => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+
+    const response = await POST(request({
+      packageKey: "general",
+      adults: 1,
+      ...visit,
+      idempotencyKey: "checkout_20261002_shape1"
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("prices free children at zero and forwards them to Convex persistence", async () => {
+    const transient = await POST(request({ packageKey: "general", adults: 1, children: 1, freeChildren: 2 }));
+    const { draft } = await transient.json();
+    expect(draft.totalCents).toBe(3000);
+    expect(draft.lines).toContainEqual(expect.objectContaining({
+      quantity: 2,
+      unitAmountCents: 0,
+      lineTotalCents: 0,
+      metadata: expect.objectContaining({ ageCategory: "child" })
+    }));
+
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+    fetchMock.mockResolvedValueOnce(Response.json({
+      ok: true,
+      result: {
+        orderRef: "SKY2610-FREE01",
+        status: "draft",
+        totals: { currency: "usd", subtotalCents: 3000, feeCents: 0, totalCents: 3000 },
+        expiresAt: 1791000000000,
+        lines: draft.lines
+      }
+    }));
+
+    const persisted = await POST(request({
+      packageKey: "general",
+      adults: 1,
+      children: 1,
+      freeChildren: 2,
+      visitDate: "2026-10-03",
+      entryTime: "14:00",
+      idempotencyKey: "checkout_20261002_free01"
+    }));
+
+    expect(persisted.status).toBe(200);
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(init?.body)).input).toMatchObject({ adults: 1, children: 1, freeChildren: 2 });
+  });
+
+  it.each([
+    ["fractional", { adults: 1, freeChildren: 0.5 }, "freeChildren must be a whole number from 0 to 30"],
+    ["negative", { adults: 1, freeChildren: -1 }, "freeChildren must be a whole number from 0 to 30"],
+    ["string", { adults: 1, freeChildren: "2" }, "freeChildren must be a whole number from 0 to 30"],
+    ["over 30 visitors", { adults: 10, children: 10, freeChildren: 11 }, "party size must be 30 visitors or fewer"]
+  ])("rejects %s free child counts before persistence", async (_label, party, error) => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_PUBLIC_GATEWAY_SECRET = gatewaySecret;
+
+    const response = await POST(request({
+      packageKey: "general",
+      ...party,
+      idempotencyKey: "checkout_20261002_bad001"
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects inactive package selections", async () => {

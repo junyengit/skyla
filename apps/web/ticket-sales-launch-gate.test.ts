@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { POST as createCheckoutDraft } from "./app/api/order-drafts/checkout/route";
+import { POST as releaseCheckoutDraft } from "./app/api/order-drafts/checkout/release/route";
 import { POST as startStripeCheckout } from "./app/api/payments/stripe-checkout/route";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -25,6 +26,14 @@ describe("pre-launch ticket-sales API gate", () => {
       })
     ],
     [
+      "checkout draft release",
+      releaseCheckoutDraft,
+      new Request("https://skydeckla.com/api/order-drafts/checkout/release", {
+        method: "POST",
+        body: JSON.stringify({ orderRef: "SKY2608-PRELAUNCH", idempotencyKey: "checkout_prelaunch_0001" })
+      })
+    ],
+    [
       "Stripe Checkout",
       startStripeCheckout,
       new Request("https://skydeckla.com/api/payments/stripe-checkout", {
@@ -42,7 +51,7 @@ describe("pre-launch ticket-sales API gate", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       error:
-        "Individual tickets are not available. Sky LA is currently accepting full-venue booking inquiries only.",
+        "Online ticket purchasing is not enabled here yet. Contact us about normal visits or full-venue bookings.",
       code: "ticket_sales_not_live"
     });
     expect(fetchMock).not.toHaveBeenCalled();

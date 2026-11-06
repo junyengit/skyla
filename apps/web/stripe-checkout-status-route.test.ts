@@ -71,6 +71,43 @@ describe("/api/payments/stripe-checkout/status", () => {
     );
   });
 
+  it("reads a same-browser attempt by order and private key without trusting any browser amount", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    fetchQueryMock.mockResolvedValueOnce({
+      orderRef: "SKY2607-ABC123",
+      status: "awaiting_payment",
+      expiresAt: 1_790_970_300_000,
+      emailLower: "must-not-leak@example.com"
+    });
+
+    const response = await POST(request({
+      orderRef: "SKY2607-ABC123",
+      idempotencyKey: "checkout_20260704_abc123",
+      amountCents: 1,
+      status: "confirmed"
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      orderRef: "SKY2607-ABC123",
+      status: "awaiting_payment",
+      expiresAt: 1_790_970_300_000
+    });
+    expect(fetchQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { orderRef: "SKY2607-ABC123", idempotencyKey: "checkout_20260704_abc123" },
+      { url: "https://example.convex.cloud" }
+    );
+  });
+
+  it("requires the private key with an order identity", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    const response = await POST(request({ orderRef: "SKY2607-ABC123" }));
+
+    expect(response.status).toBe(400);
+    expect(fetchQueryMock).not.toHaveBeenCalled();
+  });
+
   it("maps an unknown session/order pair to a generic 404", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
     fetchQueryMock.mockRejectedValueOnce(new Error("Checkout payment was not found"));

@@ -14,19 +14,33 @@ export type StripeWebhookEvent = {
   };
 };
 
+/** Session facts every correlated outcome carries for strict verification. */
+export type StripeCheckoutSessionFacts = {
+  attemptNonce?: string;
+  /** Session mode, "missing" when absent so it can never pass as "payment". */
+  sessionMode: string;
+  livemode?: boolean;
+  sessionStatus?: string;
+  paymentStatus?: string;
+  /** Signed event creation time in ms. */
+  providerEventCreatedAt?: number;
+};
+
 export type StripeCheckoutWebhookOutcome =
-  | {
+  | ({
       outcome: "paid";
       providerEventId: string;
       eventType: string;
       providerPaymentId: string;
-      providerPaymentIntentId: string;
+      // A paid Session missing any of these is still passed on, so Convex can
+      // record a billing exception instead of silently ignoring paid money.
+      providerPaymentIntentId?: string;
       orderRef: string;
-      amountCents: number;
-      currency: "usd";
+      amountCents?: number;
+      currency?: "usd";
       raw: Record<string, unknown>;
-    }
-  | {
+    } & StripeCheckoutSessionFacts)
+  | ({
       outcome: "failed" | "canceled";
       providerEventId: string;
       eventType: string;
@@ -35,7 +49,7 @@ export type StripeCheckoutWebhookOutcome =
       amountCents?: number;
       currency?: "usd";
       raw: Record<string, unknown>;
-    }
+    } & StripeCheckoutSessionFacts)
   | {
       outcome: "ignored";
       providerEventId: string;
@@ -53,6 +67,14 @@ export type StripeTerminalWebhookOutcome =
       saleRef: string;
       amountCents: number;
       currency: "usd";
+      /** Facts Convex verifies against the frozen attempt. */
+      attemptNonce?: string;
+      intentSource?: string;
+      amountReceivedCents?: number;
+      livemode?: boolean;
+      intentStatus?: string;
+      /** Signed event creation time in ms. */
+      providerEventCreatedAt?: number;
       raw: Record<string, unknown>;
     }
   | {
@@ -112,14 +134,18 @@ type StripeCheckoutSessionObject = {
   payment_status?: unknown;
   status?: unknown;
   payment_intent?: unknown;
+  mode?: unknown;
+  livemode?: unknown;
 };
 
 type StripeTerminalPaymentIntentObject = {
   id?: unknown;
   object?: unknown;
   amount?: unknown;
+  amount_received?: unknown;
   currency?: unknown;
   status?: unknown;
+  livemode?: unknown;
   metadata?: unknown;
   latest_charge?: unknown;
 };
@@ -183,15 +209,13 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
     return ignored(providerEventId, eventType, orderRef, "not_checkout_session", event, session);
   }
 
+  const facts = checkoutSessionFacts(event, session);
   if (eventType === "checkout.session.completed" || eventType === "checkout.session.async_payment_succeeded") {
     if (session.payment_status !== "paid") {
       return ignored(providerEventId, eventType, orderRef, "checkout_session_not_paid", event, session);
     }
     const providerPaymentId = stringValue(session.id);
-    const providerPaymentIntentId = stringValue(session.payment_intent);
-    const amountCents = numberValue(session.amount_total);
-    const currency = currencyValue(session.currency);
-    if (!providerPaymentId || !providerPaymentIntentId || !orderRef || amountCents === undefined || !currency) {
+    if (!providerPaymentId || !orderRef) {
       return ignored(providerEventId, eventType, orderRef, "missing_checkout_payment_fields", event, session);
     }
 
@@ -200,10 +224,11 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
       providerEventId,
       eventType,
       providerPaymentId,
-      providerPaymentIntentId,
+      providerPaymentIntentId: stringValue(session.payment_intent),
       orderRef,
-      amountCents,
-      currency,
+      amountCents: integerValue(session.amount_total),
+      currency: currencyValue(session.currency),
+      ...facts,
       raw: sanitizedRaw(event, session, "paid")
     };
   }
@@ -221,6 +246,7 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
       orderRef,
       amountCents: numberValue(session.amount_total),
       currency: currencyValue(session.currency),
+      ...facts,
       raw: sanitizedRaw(event, session, "async_payment_failed")
     };
   }
@@ -238,6 +264,7 @@ export function stripeCheckoutOutcomeFromEvent(event: StripeWebhookEvent): Strip
       orderRef,
       amountCents: numberValue(session.amount_total),
       currency: currencyValue(session.currency),
+      ...facts,
       raw: sanitizedRaw(event, session, "checkout_expired")
     };
   }
@@ -274,6 +301,22 @@ export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhook
   if (!providerPaymentId || !saleRef || amountCents === undefined || !currency) {
     return terminalIgnored(providerEventId, eventType, saleRef, "missing_terminal_payment_fields", event, intent);
   }
+  const created = integerValue(event.created);
+  const facts = withoutUndefined({
+    attemptNonce: stringValue(terminalMetadata(intent).attempt_nonce),
+    intentSource: terminalMetadataSource(intent),
+    amountReceivedCents: integerValue(intent.amount_received),
+    // The event livemode was already checked against configuration; the
+    // intent's own flag is then checked against the attempt's frozen mode.
+    livemode:
+      typeof intent.livemode === "boolean"
+        ? intent.livemode
+        : typeof event.livemode === "boolean"
+          ? event.livemode
+          : undefined,
+    intentStatus: stringValue(intent.status),
+    providerEventCreatedAt: created !== undefined && created > 0 ? created * 1000 : undefined
+  });
 
   if (eventType === "payment_intent.succeeded") {
     const status = stringValue(intent.status);
@@ -288,6 +331,7 @@ export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhook
       saleRef,
       amountCents,
       currency,
+      ...facts,
       raw: terminalSanitizedRaw(event, intent, "paid")
     };
   }
@@ -300,6 +344,7 @@ export function stripeTerminalPaymentIntentOutcomeFromEvent(event: StripeWebhook
     saleRef,
     amountCents,
     currency,
+    ...facts,
     raw: terminalSanitizedRaw(event, intent, eventType === "payment_intent.canceled" ? "canceled" : "payment_failed")
   };
 }
@@ -443,6 +488,29 @@ function refundStatus(value: unknown): StripeRefundStatus | undefined {
     : undefined;
 }
 
+function checkoutSessionFacts(
+  event: StripeWebhookEvent,
+  session: StripeCheckoutSessionObject
+): StripeCheckoutSessionFacts {
+  const metadata = session.metadata && typeof session.metadata === "object" ? (session.metadata as Record<string, unknown>) : {};
+  const created = integerValue(event.created);
+  return withoutUndefined({
+    attemptNonce: stringValue(metadata.attempt_nonce),
+    sessionMode: stringValue(session.mode) ?? "missing",
+    // The event livemode was already checked against configuration; the
+    // Session's own flag is then checked against the attempt's frozen mode.
+    livemode:
+      typeof session.livemode === "boolean"
+        ? session.livemode
+        : typeof event.livemode === "boolean"
+          ? event.livemode
+          : undefined,
+    sessionStatus: stringValue(session.status),
+    paymentStatus: stringValue(session.payment_status),
+    providerEventCreatedAt: created !== undefined && created > 0 ? created * 1000 : undefined
+  }) as StripeCheckoutSessionFacts;
+}
+
 function checkoutOrderRef(session: StripeCheckoutSessionObject | undefined) {
   const metadata = session?.metadata && typeof session.metadata === "object" ? (session.metadata as Record<string, unknown>) : {};
   return stringValue(session?.client_reference_id) ?? stringValue(metadata.order_ref);
@@ -511,6 +579,8 @@ function sanitizedRaw(event: StripeWebhookEvent, session: StripeCheckoutSessionO
           currency: stringValue(session.currency),
           payment_status: stringValue(session.payment_status),
           status: stringValue(session.status),
+          mode: stringValue(session.mode),
+          livemode: typeof session.livemode === "boolean" ? session.livemode : undefined,
           payment_intent: stringValue(session.payment_intent),
           metadata: metadataSummary(session.metadata)
         })
@@ -534,8 +604,10 @@ function terminalSanitizedRaw(
           id: stringValue(intent.id),
           object: stringValue(intent.object),
           amount: numberValue(intent.amount),
+          amount_received: numberValue(intent.amount_received),
           currency: stringValue(intent.currency),
           status: stringValue(intent.status),
+          livemode: typeof intent.livemode === "boolean" ? intent.livemode : undefined,
           latest_charge: stringValue(intent.latest_charge),
           metadata: terminalMetadataSummary(intent.metadata)
         })
@@ -574,6 +646,7 @@ function metadataSummary(value: unknown) {
   return withoutUndefined({
     order_ref: stringValue(metadata.order_ref),
     source: stringValue(metadata.source),
+    attempt_nonce: stringValue(metadata.attempt_nonce),
     visit_date: stringValue(metadata.visit_date),
     entry_time: stringValue(metadata.entry_time)
   });
@@ -587,6 +660,10 @@ function terminalMetadataSummary(value: unknown) {
   return withoutUndefined({
     sale_ref: stringValue(metadata.sale_ref),
     source: stringValue(metadata.source),
+    attempt_nonce: stringValue(metadata.attempt_nonce),
+    visit_date: stringValue(metadata.visit_date),
+    entry_time: stringValue(metadata.entry_time),
+    party_size: stringValue(metadata.party_size),
     line_count: stringValue(metadata.line_count),
     reader_id: stringValue(metadata.reader_id),
     terminal_location_id: stringValue(metadata.terminal_location_id)
@@ -603,6 +680,10 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function integerValue(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) ? value : undefined;
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): T {

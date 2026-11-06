@@ -18,16 +18,17 @@ test("public home presents the approved showcase and only full-venue booking", a
   await expect(page.getByText(/\$20|\$29|planned launch pricing/i)).toHaveCount(0);
 });
 
-test("checkout is gated with the full-venue-only offer", async ({ page }) => {
+test("checkout keeps online sales gated and describes both visit options", async ({ page }) => {
   await goto(page, "/checkout");
 
   const banner = page.getByRole("status");
-  await expect(banner).toContainText("Full venue bookings only");
-  await expect(banner).toContainText("Individual tickets are not available");
+  await expect(banner).toContainText("Online tickets pending");
+  await expect(banner).toContainText("Online ticket purchasing is not enabled here yet");
 
   await expect(page.getByRole("heading", { level: 1, name: "Checkout" })).toBeVisible();
   const statusPanel = page.getByRole("region", { name: "Ticket sales status" });
-  await expect(statusPanel).toContainText("full-venue booking inquiries only");
+  await expect(statusPanel).toContainText("normal visits");
+  await expect(statusPanel).toContainText("full-venue availability");
   await expect(page.getByRole("region", { name: "Ticket checkout" })).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(page.getByRole("button")).toHaveCount(0);
@@ -38,7 +39,7 @@ test("legal pages route visitors to full-venue booking instead of checkout", asy
     await goto(page, path);
     await expect(page.getByRole("link", { name: "Full venue booking" })).toHaveAttribute(
       "href",
-      "/#book-venue"
+      "/#venue-booking"
     );
     await expect(page.locator('a[href="/checkout"]')).toHaveCount(0);
   }

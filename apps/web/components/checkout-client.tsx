@@ -1,24 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
+  addVisitDays,
+  admissionAgeCategories,
+  admissionMaxPartySize,
+  admissionMinAdults,
+  checkoutBookingWindowDays,
   checkoutEntryTimes,
-  childPriceCents,
   currentLiabilityWaiverVersion,
   currentRefundAndVisitPolicyLabel,
   currentTermsAgeRepresentationText,
   currentTermsDocumentLabel,
   currentTermsVersion,
+  formatVisitDateLabel,
+  parseVisitDate,
+  venueToday,
+  type AdmissionPartyField,
   type TicketPackageKey
 } from "@skyla/payments";
 import { ArrowRight, ShieldCheck } from "@skyla/ui/icons";
 import {
+  checkoutLockRefusalMessage,
+  clearCheckoutIntent,
+  clearCheckoutIntentLocked,
+  parseCheckoutIntentSnapshot,
+  readCheckoutIntentSlot,
+  readCheckoutIntentSnapshot,
+  sameCheckoutIntent,
+  storeCheckoutIntent,
+  subscribeToCheckoutIntent,
+  withCheckoutLock,
+  type CheckoutIntentRecord,
+  type ClearCheckoutIntentResult
+} from "@/lib/checkout-recovery";
+import {
   formatOperatingDay,
-  isCheckoutEntryTimeAvailable,
   operatingWeekdayForDate,
   type OperatingHours
 } from "@/lib/operating-hours";
+import { parseVisitAvailability, type VisitAvailability } from "@/lib/visit-availability";
 
 type PackageOption = {
   key: TicketPackageKey;
@@ -67,7 +89,143 @@ type CheckoutClientProps = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const visitorCounters = [
+  { field: "adults", category: admissionAgeCategories.adult, fewer: "Fewer adults", more: "More adults" },
+  { field: "children", category: admissionAgeCategories.youth, fewer: "Fewer youths", more: "More youths" },
+  { field: "freeChildren", category: admissionAgeCategories.child, fewer: "Fewer children", more: "More children" }
+] as const;
 const ticketCodePattern = /^tkt_[a-f0-9]{32}$/;
+const entryTimeLabels = new Map<string, string>(checkoutEntryTimes.map((time) => [time.value, time.label]));
+// Party-count clicks settle before one live read is sent.
+const availabilityDebounceMs = 150;
+const supportEmail = "reservations@skydeckla.com";
+const claimRefusalMessage = {
+  occupied: "Another payment is already being checked. Finish checking it before starting this order.",
+  corrupt: `This browser has saved payment progress it can't read, so no payment was started. Please email ${supportEmail} before paying again.`,
+  failed:
+    "We couldn't save your payment progress. No payment was started. Please allow this site to save data, or contact our team for help.",
+  settled: "That card payment was already settled in another tab. No payment was started."
+} as const;
+
+// One started card payment per browser, kept as opaque order identity only.
+type PaymentIntentRecord = CheckoutIntentRecord;
+
+type IntentStatus =
+  | "none"
+  | "checking"
+  | "awaiting_payment"
+  | "pending"
+  | "needs_attention"
+  | "unknown"
+  // Settled on the server, but this browser could not clear its pointer.
+  | "unsettled"
+  // The stored pointer cannot be read, so it may still name a payable order.
+  | "unreadable";
+
+type IntentCheck = {
+  orderRef: string;
+  idempotencyKey: string;
+  status: IntentStatus;
+  expiresAt?: number;
+};
+
+// A settled payment whose pointer this browser could not verifiably clear.
+// It keeps checkout locked even if storage now reads empty, until a later
+// locked check verifies the slot no longer holds this order and key.
+type UnverifiedClear = PaymentIntentRecord & { outcome: "ended" | "confirmed"; ticketCode: string | null };
+
+const attemptStatuses = [
+  "not_started",
+  "awaiting_payment",
+  "pending",
+  "confirmed",
+  "needs_attention",
+  "failed",
+  "canceled"
+] as const;
+const returnSessionStatuses = ["pending", "confirmed", "failed", "canceled", "needs_attention"] as const;
+
+type StatusReply<S extends string> = {
+  orderRef: string;
+  status: S;
+  bookingRef?: unknown;
+  ticketCode?: unknown;
+  expiresAt?: unknown;
+};
+
+/**
+ * A status reply only when it names an order and a status this page knows.
+ * Anything else is unrecognized and never settles, releases or clears.
+ */
+function parseStatusReply<S extends string>(data: unknown, known: readonly S[]): StatusReply<S> | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const reply = data as Record<string, unknown>;
+  if (typeof reply.orderRef !== "string" || !reply.orderRef.trim()) return null;
+  if (!known.includes(reply.status as S)) return null;
+  return reply as StatusReply<S>;
+}
+
+type IntentCheckResult =
+  | { kind: "ended" }
+  | { kind: "confirmed"; ticketCode: string | null }
+  | { kind: "status"; status: IntentStatus; expiresAt?: number };
+
+async function fetchPaymentIntentStatus(record: PaymentIntentRecord): Promise<IntentCheckResult> {
+  try {
+    const response = await fetch("/api/payments/stripe-checkout/status", {
+      method: "POST",
+      cache: "no-store",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orderRef: record.orderRef, idempotencyKey: record.idempotencyKey })
+    });
+    const data = response.ok ? parseStatusReply(await response.json().catch(() => null), attemptStatuses) : null;
+    if (!data || data.orderRef !== record.orderRef) return { kind: "status", status: "unknown" };
+    switch (data.status) {
+      case "not_started": {
+        // A delayed original request may still be about to begin payment.
+        // Atomically close this draft before allowing another order. If the
+        // payment won the race, the release fails and this intent stays locked.
+        const release = await fetch("/api/order-drafts/checkout/release", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ orderRef: record.orderRef, idempotencyKey: record.idempotencyKey })
+        });
+        const result = await release.json().catch(() => ({})) as { released?: boolean };
+        return release.ok && result.released === true ? { kind: "ended" } : { kind: "status", status: "pending" };
+      }
+      case "failed":
+      case "canceled":
+        return { kind: "ended" };
+      case "confirmed":
+        return { kind: "confirmed", ticketCode: normalizeVerifiedTicketCode(data.ticketCode) };
+      case "awaiting_payment":
+        return {
+          kind: "status",
+          status: "awaiting_payment",
+          ...(typeof data.expiresAt === "number" ? { expiresAt: data.expiresAt } : {})
+        };
+      case "pending":
+      case "needs_attention":
+        return { kind: "status", status: data.status };
+    }
+  } catch {
+    return { kind: "status", status: "unknown" };
+  }
+}
+
+function formatClockTime(timestamp: number) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(timestamp));
+}
+
+type AvailabilityState = {
+  key: string;
+  status: "ready" | "error";
+  data?: VisitAvailability;
+};
 
 function money(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -78,14 +236,7 @@ function money(cents: number) {
 }
 
 function todayIso() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
+  return venueToday(Date.now());
 }
 
 function clearStripeReturnIdentity() {
@@ -124,58 +275,238 @@ export function CheckoutClient({
     () =>
       packages.find((item) => item.key === initialPackageKey)?.key ?? packages[0]?.key ?? "general"
   );
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [visitDate, setVisitDate] = useState(initialVisitDate);
-  const [entryTime, setEntryTime] = useState<string>(() => {
-    if (!operatingHours) return checkoutEntryTimes[0].value;
-    return (
-      checkoutEntryTimes.find((time) =>
-        isCheckoutEntryTimeAvailable(operatingHours, initialVisitDate, time.value)
-      )?.value ?? ""
-    );
+  const [party, setParty] = useState<Record<AdmissionPartyField, number>>({
+    adults: 2,
+    children: 0,
+    freeChildren: 0
   });
+  const [partyLimitNotice, setPartyLimitNotice] = useState<string | null>(null);
+  const [visitDate, setVisitDate] = useState(initialVisitDate);
+  // The guest's explicit time choice. Until they pick one, the earliest
+  // available time for the selected date is preselected.
+  const [chosenEntryTime, setChosenEntryTime] = useState("");
+  const [autoEntryTime, setAutoEntryTime] = useState(true);
+  const [availabilityState, setAvailabilityState] = useState<AvailabilityState | null>(null);
+  const [availabilityReload, setAvailabilityReload] = useState(0);
   const [customerEmail, setCustomerEmail] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
+  // Once a review is sent, the key may own a stored draft; any later change
+  // to the order uses a fresh key instead of colliding with that draft.
+  const [idempotencyKeyUsed, setIdempotencyKeyUsed] = useState(false);
+  const reviewSequence = useRef(0);
   const [draft, setDraft] = useState<DraftResponse | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [liabilityWaiverAccepted, setLiabilityWaiverAccepted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [returnStatus, setReturnStatus] = useState<"checking" | "pending" | "confirmed" | "failed" | "canceled" | "unavailable">(
-    stripeStatus === "success" ? "checking" : "pending"
-  );
+  const [returnStatus, setReturnStatus] = useState<
+    "checking" | "pending" | "confirmed" | "failed" | "canceled" | "needs_attention" | "unavailable"
+  >(stripeStatus === "success" ? "checking" : "pending");
   const [verifiedOrderRef, setVerifiedOrderRef] = useState<string | null>(null);
   const [verifiedBookingRef, setVerifiedBookingRef] = useState<string | null>(null);
   const [verifiedTicketCode, setVerifiedTicketCode] = useState<string | null>(null);
+  // Set when a settled Stripe return could not clear this browser's pointer.
+  const [returnClearBlocked, setReturnClearBlocked] = useState(false);
+  // A card payment this browser started and has not seen settle, read from
+  // storage so every tab of this browser sees it. While it is unresolved, or
+  // the stored value cannot be read, no second payment can be started.
+  const storedIntentRaw = useSyncExternalStore(subscribeToCheckoutIntent, readCheckoutIntentSnapshot, () => null);
+  const intentSlot = useMemo(() => parseCheckoutIntentSnapshot(storedIntentRaw), [storedIntentRaw]);
+  const paymentIntent = intentSlot.kind === "intent" ? intentSlot.record : null;
+  const [intentCheck, setIntentCheck] = useState<IntentCheck | null>(null);
+  const [unverifiedClear, setUnverifiedClear] = useState<UnverifiedClear | null>(null);
+  const [confirmedIntent, setConfirmedIntent] = useState<{ orderRef: string; ticketCode: string | null } | null>(null);
+  const paymentInFlight = useRef(false);
+  const intentCheckSequence = useRef(0);
+  const returnedFromStripeSuccess = stripeStatus === "success" && Boolean(returnedCheckoutSessionId);
+  // Another stored payment takes precedence; otherwise an unverified clear
+  // stays authoritative even when storage now reads empty.
+  const pendingClear = unverifiedClear && (!paymentIntent || sameCheckoutIntent(unverifiedClear, paymentIntent))
+    ? unverifiedClear
+    : null;
+  const recoveryIntent = paymentIntent ?? pendingClear;
+  const currentIntentCheck = recoveryIntent && intentCheck && sameCheckoutIntent(intentCheck, recoveryIntent) ? intentCheck : null;
+  // A Stripe success return is confirmed by its own Session poll below.
+  const intentStatus: IntentStatus = intentSlot.kind === "corrupt" || intentSlot.kind === "unreadable"
+    ? "unreadable"
+    : pendingClear
+      // Settled on the server: never resumable, whatever a later read says.
+      ? currentIntentCheck?.status === "checking" ? "checking" : "unsettled"
+      : !paymentIntent
+        ? "none"
+        : currentIntentCheck?.status ?? (returnedFromStripeSuccess ? "pending" : "checking");
+  const intentExpiresAt = currentIntentCheck?.expiresAt ?? null;
 
   const selectedPackage = packages.find((item) => item.key === packageKey) ?? packages[0];
+  const partySize = party.adults + party.children + party.freeChildren;
+  const partyFull = partySize >= admissionMaxPartySize;
+  const counterPriceCents: Record<AdmissionPartyField, number> = {
+    adults: selectedPackage?.priceCents ?? admissionAgeCategories.adult.priceCents,
+    children: admissionAgeCategories.youth.priceCents,
+    freeChildren: admissionAgeCategories.child.priceCents
+  };
+  const estimatedTotalCents = visitorCounters.reduce(
+    (sum, counter) => sum + party[counter.field] * counterPriceCents[counter.field],
+    0
+  );
   const normalizedEmail = customerEmail.trim().toLowerCase();
   const selectedWeekday = operatingWeekdayForDate(visitDate);
-  const availableEntryTimes = operatingHours
-    ? checkoutEntryTimes.filter((time) =>
-        isCheckoutEntryTimeAvailable(operatingHours, visitDate, time.value)
-      )
-    : checkoutEntryTimes;
-  const selectedEntryTimeAvailable = operatingHours
-    ? isCheckoutEntryTimeAvailable(operatingHours, visitDate, entryTime)
-    : Boolean(entryTime);
+  const validVisitDate = parseVisitDate(visitDate);
+
+  // Only a response for exactly this date, party, and reload is used, so a
+  // slower response for an earlier selection can never drive the form.
+  const availabilityKey = `${visitDate}|${partySize}|${availabilityReload}`;
+  const currentAvailability = availabilityState?.key === availabilityKey ? availabilityState : null;
+  const availabilityPhase = !validVisitDate ? "invalid" : currentAvailability?.status ?? "loading";
+  const availability = currentAvailability?.status === "ready" ? currentAvailability.data ?? null : null;
+  const slotByTime = new Map(availability?.slots.map((slot) => [slot.entryTime, slot]) ?? []);
+  const firstAvailableEntryTime = availability?.slots.find((slot) => slot.status === "available")?.entryTime ?? "";
+  const chosenSlotAvailable = slotByTime.get(chosenEntryTime)?.status === "available";
+  const entryTime = !availability
+    ? ""
+    : chosenSlotAvailable
+      ? chosenEntryTime
+      : autoEntryTime
+        ? firstAvailableEntryTime
+        : "";
+  const selectedSlot = entryTime ? slotByTime.get(entryTime) : undefined;
+  const chosenEntryTimeLost = Boolean(availability && chosenEntryTime && !autoEntryTime && !chosenSlotAvailable);
+
   const canReview =
     !!selectedPackage &&
-    adults > 0 &&
-    !!visitDate &&
-    selectedEntryTimeAvailable &&
+    party.adults >= admissionMinAdults &&
+    partySize <= admissionMaxPartySize &&
+    selectedSlot?.status === "available" &&
+    selectedSlot.remaining >= partySize &&
     emailPattern.test(normalizedEmail);
   const orderPersisted = Boolean(draft?.persisted && draft.orderRef);
   const legalReady = termsAccepted && liabilityWaiverAccepted;
-  const canPay = orderPersisted && legalReady && !isPaying;
+  const returnUnresolved = stripeStatus === "success" && (returnClearBlocked ||
+    (returnStatus !== "confirmed" && returnStatus !== "failed" && returnStatus !== "canceled"));
+  const paymentLocked = intentStatus !== "none" || returnUnresolved;
+  const canPay = orderPersisted && legalReady && !isPaying && !paymentLocked;
+
+  /**
+   * Reads the stored attempt for this browser's order; never trusts the
+   * browser's amount. `lockHeld` is true only inside startPayment's critical
+   * section, which already holds the checkout lock.
+   */
+  async function checkPaymentIntent(record: PaymentIntentRecord, lockHeld = false) {
+    const sequence = ++intentCheckSequence.current;
+    const result = await fetchPaymentIntentStatus(record);
+    if (sequence === intentCheckSequence.current) await settleIntentCheck(record, result, lockHeld);
+  }
+
+  /**
+   * Applies a server status. A settled outcome clears only this exact order
+   * and key, under the checkout lock; the page unlocks only once that clear
+   * is verified, never merely because it was attempted.
+   */
+  async function settleIntentCheck(record: PaymentIntentRecord, result: IntentCheckResult, lockHeld: boolean) {
+    if (result.kind === "status") {
+      // Never unlocks: an unverified clear stays until a locked read verifies it.
+      setIntentCheck({ ...record, status: result.status, expiresAt: result.expiresAt });
+      return;
+    }
+    const cleared = lockHeld ? clearCheckoutIntent(record) : await clearCheckoutIntentLocked(record);
+    applySettledIntent(record, result, cleared);
+  }
+
+  function applySettledIntent(
+    record: PaymentIntentRecord,
+    result: Exclude<IntentCheckResult, { kind: "status" }>,
+    cleared: ClearCheckoutIntentResult | "busy" | "unavailable"
+  ) {
+    if (cleared !== "cleared" && cleared !== "already_empty" && cleared !== "different") {
+      // Attempting the clear proves nothing: stay locked until a later locked
+      // read shows this order and key are gone.
+      setUnverifiedClear({
+        ...record,
+        outcome: result.kind,
+        ticketCode: result.kind === "confirmed" ? result.ticketCode : null
+      });
+      setIntentCheck({ ...record, status: "unsettled" });
+      return;
+    }
+    // A locked read showed this exact pointer is no longer stored.
+    setUnverifiedClear((current) => (current && sameCheckoutIntent(current, record) ? null : current));
+    setIntentCheck(null);
+    if (cleared === "different") {
+      // Another tab already settled this order and stored a different one,
+      // which keeps its own lock and status.
+      return;
+    }
+    if (result.kind === "ended") {
+      // The atomically abandoned draft cannot be paid again with its old key.
+      if (draft?.orderRef === record.orderRef) startNewOrder();
+      setMessage(`The card payment for order ${record.orderRef} ended without payment. You can review a new order.`);
+    } else {
+      setConfirmedIntent({ orderRef: record.orderRef, ticketCode: result.ticketCode });
+    }
+  }
+
+  function recheckPaymentIntent(record: PaymentIntentRecord) {
+    setIntentCheck({ ...record, status: "checking" });
+    void checkPaymentIntent(record);
+  }
+
+  // A payment found in storage (after a reload, a Stripe return or another
+  // tab) is checked once against the server; this tab's own start is not.
+  const intentAlreadyKnown = useEffectEvent(
+    (record: PaymentIntentRecord) => Boolean(intentCheck && sameCheckoutIntent(intentCheck, record))
+  );
+  const onStoredIntentChecked = useEffectEvent((record: PaymentIntentRecord, result: IntentCheckResult) =>
+    void settleIntentCheck(record, result, false)
+  );
+  useEffect(() => {
+    if (!paymentIntent || returnedFromStripeSuccess || intentAlreadyKnown(paymentIntent)) return;
+    const sequence = ++intentCheckSequence.current;
+    let disposed = false;
+    void fetchPaymentIntentStatus(paymentIntent).then((result) => {
+      if (!disposed && sequence === intentCheckSequence.current) onStoredIntentChecked(paymentIntent, result);
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [paymentIntent, returnedFromStripeSuccess]);
+
+  useEffect(() => {
+    if (!validVisitDate) return;
+    const key = `${validVisitDate}|${partySize}|${availabilityReload}`;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ date: validVisitDate, party: String(partySize) });
+        const response = await fetch(`/api/availability?${params}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const parsed = response.ok ? parseVisitAvailability(await response.json()) : null;
+        if (controller.signal.aborted) return;
+        setAvailabilityState(
+          parsed && parsed.visitDate === validVisitDate && parsed.partySize === partySize
+            ? { key, status: "ready", data: parsed }
+            : { key, status: "error" }
+        );
+      } catch {
+        if (!controller.signal.aborted) setAvailabilityState({ key, status: "error" });
+      }
+    }, availabilityDebounceMs);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [validVisitDate, partySize, availabilityReload]);
 
   useEffect(() => {
     if (stripeStatus !== "success" || !returnedCheckoutSessionId) {
       return;
     }
     const checkoutSessionId = returnedCheckoutSessionId;
+    // The exact pointer this page returned with. A settled Session may clear
+    // only this order and key, never whatever another tab stores later.
+    const returnedWith = readCheckoutIntentSlot();
 
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -183,6 +514,18 @@ export function CheckoutClient({
 
     function scheduleNext(callback: () => void, delay: number) {
       timer = setTimeout(callback, delay);
+    }
+
+    /** Whether this browser no longer stores the returned order's payment. */
+    async function releaseReturnedIntent(orderRef: string) {
+      // A return without a saved pointer has nothing to clear.
+      if (returnedWith.kind === "empty") return true;
+      // An unreadable pointer may name this or another payable order.
+      if (returnedWith.kind !== "intent") return false;
+      // A pointer for another order is that order's to settle.
+      if (returnedWith.record.orderRef !== orderRef) return true;
+      const cleared = await clearCheckoutIntentLocked(returnedWith.record);
+      return cleared === "cleared" || cleared === "already_empty" || cleared === "different";
     }
 
     async function checkStatus() {
@@ -194,13 +537,10 @@ export function CheckoutClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ checkoutSessionId })
         });
-        const data = (await response.json()) as {
-          orderRef?: string;
-          status?: "pending" | "confirmed" | "failed" | "canceled";
-          bookingRef?: string;
-          ticketCode?: string;
-        };
-        if (!response.ok || !data.status || !data.orderRef) {
+        const body: unknown = await response.json();
+        // An unrecognized reply keeps the pointer and return URL and is retried.
+        const data = response.ok ? parseStatusReply(body, returnSessionStatuses) : null;
+        if (!data) {
           if (response.status === 400 || response.status === 404) {
             if (!disposed) setReturnStatus("unavailable");
             return;
@@ -218,8 +558,22 @@ export function CheckoutClient({
           } else {
             setReturnStatus("unavailable");
           }
+        } else if (data.status === "needs_attention") {
+          // A payment that needs staff help keeps the page from starting another
+          // one. The return URL stays: it may be this browser's only record of
+          // the Session, so a reload rechecks it until it settles.
+          if (returnedWith.kind === "intent" && returnedWith.record.orderRef === data.orderRef) {
+            setIntentCheck({ ...returnedWith.record, status: "needs_attention" });
+          }
         } else {
-          clearStripeReturnIdentity();
+          // A settled outcome ends this browser's payment intent. If its
+          // pointer cannot be cleared, the page stays locked and keeps the
+          // return URL so a reload can finish the job.
+          if (await releaseReturnedIntent(data.orderRef)) {
+            if (!disposed) clearStripeReturnIdentity();
+          } else if (!disposed) {
+            setReturnClearBlocked(true);
+          }
         }
       } catch {
         if (disposed) return;
@@ -239,21 +593,33 @@ export function CheckoutClient({
   }, [returnedCheckoutSessionId, stripeStatus]);
 
   function returnNotice() {
-    if (stripeStatus === "cancel") return "Payment was canceled before completion.";
+    if (stripeStatus === "cancel") return "Payment was not completed.";
     if (!returnedCheckoutSessionId) {
       return "Returned from Stripe, but the confirmation identity is incomplete. Please contact support before trying another payment.";
     }
+    const settled = settledReturnNotice();
+    return returnClearBlocked && settled
+      ? `${settled} This browser couldn't update its saved payment progress, so new orders stay locked here. Reload this page to finish.`
+      : settled ?? pendingReturnNotice();
+  }
+
+  function settledReturnNotice() {
     if (returnStatus === "confirmed") {
-      return `Payment confirmed. Booking ${verifiedOrderRef} was created.${
-        verifiedBookingRef ? ` Booking reference ${verifiedBookingRef}.` : ""
-      }`;
+      return `Payment confirmed. Booking ${verifiedBookingRef ?? verifiedOrderRef}.${verifiedTicketCode ? " Your ticket is ready." : " Keep this reference for admission."}`;
     }
     if (returnStatus === "failed") return "Stripe reported that the payment failed. No booking was confirmed.";
     if (returnStatus === "canceled") return "The payment expired or was canceled. No booking was confirmed.";
+    return null;
+  }
+
+  function pendingReturnNotice() {
+    if (returnStatus === "needs_attention") {
+      return `Your payment for order ${verifiedOrderRef} reached us, but the booking needs help from our team before a ticket can be issued. Please don't pay again; email ${supportEmail} with this order reference.`;
+    }
     if (returnStatus === "unavailable") {
       return `Returned from Stripe, but confirmation is taking longer than expected.${verifiedOrderRef ? ` Keep order reference ${verifiedOrderRef}.` : ""} Please contact support before trying another payment.`;
     }
-    return "Returned from Stripe. Waiting for the signed payment webhook.";
+    return "We're confirming your payment. Please keep this page open.";
   }
 
   function resetConsent() {
@@ -261,39 +627,139 @@ export function CheckoutClient({
     setLiabilityWaiverAccepted(false);
   }
 
+  /**
+   * Frees the places held by a reviewed draft the guest replaced. The server
+   * releases it only while it is still an unpaid draft for this key; a draft
+   * whose payment was started is never released from here.
+   */
+  function releaseReplacedDraft() {
+    const orderRef = draft?.persisted ? draft.orderRef : undefined;
+    if (!orderRef || paymentIntent?.orderRef === orderRef) return;
+    void fetch("/api/order-drafts/checkout/release", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderRef, idempotencyKey }),
+      keepalive: true
+    }).catch(() => undefined);
+  }
+
   function resetDraft() {
+    // Invalidates any review still in flight for the previous order.
+    reviewSequence.current += 1;
+    releaseReplacedDraft();
+    setIsReviewing(false);
     setDraft(null);
     setMessage(null);
     resetConsent();
+    if (idempotencyKeyUsed) {
+      setIdempotencyKey(createIdempotencyKey());
+      setIdempotencyKeyUsed(false);
+    }
   }
 
-  function updateGuests(kind: "adults" | "children", delta: number) {
-    if (kind === "adults") {
-      setAdults((current) => Math.min(20, Math.max(1, current + delta)));
-    } else {
-      setChildren((current) => Math.min(20, Math.max(0, current + delta)));
+  function counterMinimum(field: AdmissionPartyField) {
+    return field === "adults" ? admissionMinAdults : 0;
+  }
+
+  function updateGuests(field: AdmissionPartyField, delta: 1 | -1) {
+    if (delta > 0 && partyFull) {
+      setPartyLimitNotice(`An order can include up to ${admissionMaxPartySize} visitors, including children.`);
+      return;
     }
+    if (delta < 0 && party[field] <= counterMinimum(field)) {
+      setPartyLimitNotice(
+        field === "adults"
+          ? `Each order needs at least ${admissionMinAdults} ${admissionAgeCategories.adult.label}.`
+          : null
+      );
+      return;
+    }
+    setParty((current) => ({ ...current, [field]: current[field] + delta }));
+    setPartyLimitNotice(null);
     resetDraft();
   }
 
   function updateVisitDate(nextVisitDate: string) {
-    const firstAvailableEntryTime = operatingHours
-      ? checkoutEntryTimes.find((time) =>
-          isCheckoutEntryTimeAvailable(operatingHours, nextVisitDate, time.value)
-        )?.value ?? ""
-      : checkoutEntryTimes[0].value;
-
     setVisitDate(nextVisitDate);
-    setEntryTime((current) =>
-      !operatingHours || isCheckoutEntryTimeAvailable(operatingHours, nextVisitDate, current)
-        ? current
-        : firstAvailableEntryTime
-    );
+    setChosenEntryTime("");
+    setAutoEntryTime(true);
     resetDraft();
+  }
+
+  function chooseEntryTime(nextEntryTime: string) {
+    setChosenEntryTime(nextEntryTime);
+    setAutoEntryTime(false);
+    resetDraft();
+  }
+
+  function availabilityNotice(): { text: string; isError: boolean } {
+    if (availabilityPhase === "invalid") return { text: "Choose a valid date.", isError: true };
+    if (availabilityPhase === "loading") {
+      const hoursHint = operatingHours && selectedWeekday
+        ? ` ${selectedWeekday} hours: ${formatOperatingDay(operatingHours[selectedWeekday])}.`
+        : "";
+      return { text: `Checking live availability…${hoursHint}`, isError: false };
+    }
+    if (!availability) {
+      return {
+        text: "Live availability couldn't be loaded, so this order can't be reviewed yet.",
+        isError: true
+      };
+    }
+    const dateLabel = formatVisitDateLabel(availability.visitDate);
+    switch (availability.dayStatus) {
+      case "open": {
+        const hours = `${availability.weekday} hours: ${formatOperatingDay(availability.dayHours)}.`;
+        if (selectedSlot) {
+          return {
+            text: `${hours} ${selectedSlot.remaining} of ${availability.capacity} places open at ${entryTimeLabels.get(selectedSlot.entryTime)}.`,
+            isError: false
+          };
+        }
+        if (chosenEntryTimeLost) {
+          return {
+            text: `${entryTimeLabels.get(chosenEntryTime)} no longer has room for ${partySize} visitors. Choose another time.`,
+            isError: true
+          };
+        }
+        return { text: `${hours} Choose an entry time.`, isError: false };
+      }
+      case "full":
+        return {
+          text: `No entry time on ${dateLabel} has room for ${partySize} visitors. Try a smaller party or another date.`,
+          isError: true
+        };
+      case "past":
+        return {
+          text: availability.visitDate === availability.today
+            ? "Today's entry times have passed. Choose another date."
+            : "That date has passed. Choose another date.",
+          isError: true
+        };
+      case "closed":
+        return {
+          text: `Sky LA has no checkout arrival times on ${availability.weekday}. Choose another date.`,
+          isError: true
+        };
+      case "beyond_horizon":
+        return {
+          text: `Tickets can be booked up to ${checkoutBookingWindowDays} days ahead. Choose an earlier date.`,
+          isError: true
+        };
+      case "private_event":
+        return { text: `${dateLabel} is reserved for a private event. Choose another date.`, isError: true };
+      case "unverified":
+        return {
+          text: "Online availability can't be confirmed for this date. Choose another date or email us.",
+          isError: true
+        };
+    }
   }
 
   async function reviewOrder() {
     if (!canReview) return;
+    const sequence = ++reviewSequence.current;
+    setIdempotencyKeyUsed(true);
     setIsReviewing(true);
     setMessage(null);
     resetConsent();
@@ -304,8 +770,9 @@ export function CheckoutClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packageKey,
-          adults,
-          children,
+          adults: party.adults,
+          children: party.children,
+          freeChildren: party.freeChildren,
           addons: {},
           visitDate,
           entryTime,
@@ -313,8 +780,13 @@ export function CheckoutClient({
           idempotencyKey
         })
       });
-      const data = (await response.json()) as DraftResponse | { error?: string };
+      const data = (await response.json()) as DraftResponse | { error?: string; code?: string };
+      if (sequence !== reviewSequence.current) return;
       if (!response.ok) {
+        if ("code" in data && data.code === "visit_unavailable") {
+          // The server's capacity check is authoritative; refresh the slots.
+          setAvailabilityReload((current) => current + 1);
+        }
         throw new Error("error" in data ? data.error ?? "Could not review this order" : "Could not review this order");
       }
       const nextDraft = data as DraftResponse;
@@ -325,63 +797,231 @@ export function CheckoutClient({
         );
       }
     } catch (error) {
+      if (sequence !== reviewSequence.current) return;
       setDraft(null);
       setMessage(error instanceof Error ? error.message : "Could not review this order");
     } finally {
-      setIsReviewing(false);
+      if (sequence === reviewSequence.current) setIsReviewing(false);
     }
   }
 
-  async function startPayment() {
-    if (!draft?.persisted || !draft.orderRef) {
+  /**
+   * Starts card payment for the reviewed order, or returns to the payment
+   * this browser already started. The server keeps one Session per order, so
+   * a retry after a lost response reopens that Session instead of a new one.
+   * The checkout lock is held from claiming the stored pointer through the
+   * payment request and its immediate status check, so no other tab can start
+   * a second payment or clear this one meanwhile.
+   */
+  async function startPayment(resume?: PaymentIntentRecord) {
+    // A ref, not state, so two clicks in the same frame cannot both pass.
+    if (paymentInFlight.current) return;
+    if (!resume && paymentLocked) return;
+    if (!resume && (!draft?.persisted || !draft.orderRef)) {
       setMessage("Review and save this order before continuing to payment.");
       return;
     }
-    if (!termsAccepted || !liabilityWaiverAccepted) {
+    if (!resume && (!termsAccepted || !liabilityWaiverAccepted)) {
       setMessage(
         "Before card payment, check both boxes above: agree to the Terms of Use and Ticket Purchase Terms, and accept the Acknowledgment of Risk and Release of Liability for yourself."
       );
       return;
     }
+    const record: PaymentIntentRecord = resume ?? {
+      version: 1,
+      orderRef: draft!.orderRef!,
+      idempotencyKey
+    };
+    paymentInFlight.current = true;
     setIsPaying(true);
     setMessage(null);
+    try {
+      const outcome = await withCheckoutLock(() => payWhileLocked(record, Boolean(resume)));
+      if (outcome.status !== "held") {
+        setMessage(checkoutLockRefusalMessage[outcome.status]);
+      } else if (outcome.value !== "started") {
+        setMessage(claimRefusalMessage[outcome.value]);
+      }
+    } finally {
+      paymentInFlight.current = false;
+      setIsPaying(false);
+    }
+  }
+
+  /** Claims the stored pointer, then requests payment. Runs holding the checkout lock. */
+  async function payWhileLocked(
+    record: PaymentIntentRecord,
+    resuming: boolean
+  ): Promise<"started" | keyof typeof claimRefusalMessage> {
+    // Stored before the request, so a reload or lost response still knows a
+    // payment may have started for this order. A resume reuses the stored
+    // pointer and never writes one. Marked pending first so storing it does
+    // not trigger this tab's own recovery check.
+    setIntentCheck({ ...record, status: "pending" });
+    const current = readCheckoutIntentSlot();
+    if (resuming) {
+      if (current.kind === "corrupt") return "corrupt";
+      if (current.kind === "unreadable") return "failed";
+      if (current.kind === "empty") return "settled";
+      if (!sameCheckoutIntent(current.record, record)) return "occupied";
+    } else {
+      const stored = storeCheckoutIntent(record);
+      if (stored !== "stored") return stored;
+    }
+    // Any older status read for this order is discarded.
+    intentCheckSequence.current += 1;
+    setConfirmedIntent(null);
 
     try {
       const response = await fetch("/api/payments/stripe-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          orderRef: draft.orderRef,
-          idempotencyKey,
+          orderRef: record.orderRef,
+          idempotencyKey: record.idempotencyKey,
+          // Accepted when this payment was first started; a resumed attempt
+          // reuses the acceptance stored with that order.
           legalAcceptance: {
-            termsAccepted,
+            termsAccepted: true,
             termsVersion: currentTermsVersion,
-            liabilityWaiverAccepted,
+            liabilityWaiverAccepted: true,
             liabilityWaiverVersion: currentLiabilityWaiverVersion
           }
         })
       });
-      const data = (await response.json()) as { url?: string; error?: string; code?: string };
-      if (!response.ok || !data.url) {
-        throw new Error(data.error ?? "Could not start card checkout");
+      const data = (await response.json().catch(() => ({}))) as { url?: string; error?: string; code?: string };
+      if (response.ok && data.url) {
+        window.location.assign(data.url);
+        return "started";
       }
-      window.location.href = data.url;
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not start card checkout");
-    } finally {
-      setIsPaying(false);
+      if (data.code === "payment_session_closed") {
+        const cleared = clearCheckoutIntent(record);
+        if (cleared === "cleared" || cleared === "already_empty") {
+          setIntentCheck(null);
+          setMessage(`The payment page for order ${record.orderRef} has closed without payment. Review your order again to start a new one.`);
+          startNewOrder();
+        } else {
+          applySettledIntent(record, { kind: "ended" }, cleared);
+        }
+        return "started";
+      }
+      setMessage(data.error ?? "Card payment could not be opened.");
+      await checkPaymentIntent(record, true);
+    } catch {
+      setMessage(
+        "We couldn't confirm that the payment page opened. Your order is held: use Return to payment, which reopens the same payment instead of starting another."
+      );
+      await checkPaymentIntent(record, true);
     }
+    return "started";
   }
 
   function startNewOrder() {
+    reviewSequence.current += 1;
+    releaseReplacedDraft();
+    setIsReviewing(false);
     setIdempotencyKey(createIdempotencyKey());
+    setIdempotencyKeyUsed(false);
     setDraft(null);
-    setMessage(null);
     resetConsent();
   }
 
+  function intentNotice(): { text: string; tone: "isGood" | "isWarn" } | null {
+    if (intentStatus === "unreadable") {
+      return {
+        text: `This browser has saved card payment progress it can't read, so a new payment can't start here. Please don't pay again until you email ${supportEmail}.`,
+        tone: "isWarn"
+      };
+    }
+    if (!recoveryIntent || intentStatus === "none") {
+      return confirmedIntent
+        ? { text: `Payment confirmed for order ${confirmedIntent.orderRef}. Your ticket is ready.`, tone: "isGood" }
+        : null;
+    }
+    const orderRef = recoveryIntent.orderRef;
+    switch (intentStatus) {
+      case "checking":
+        return { text: `Checking the card payment started for order ${orderRef}…`, tone: "isWarn" };
+      case "awaiting_payment":
+        return {
+          text: `A card payment for order ${orderRef} is open${
+            intentExpiresAt ? ` until ${formatClockTime(intentExpiresAt)} PT` : ""
+          }. Return to it to finish paying. A new order stays locked until that payment page closes, so you are not charged twice.`,
+          tone: "isWarn"
+        };
+      case "needs_attention":
+        return {
+          text: `Your payment for order ${orderRef} needs help from our team before a ticket can be issued. Please don't pay again; email ${supportEmail} with this order reference.`,
+          tone: "isWarn"
+        };
+      case "unknown":
+        return {
+          text: `We couldn't check the card payment for order ${orderRef}. Check again before starting another order.`,
+          tone: "isWarn"
+        };
+      case "unsettled":
+        return {
+          text: `${
+            pendingClear?.outcome === "confirmed"
+              ? `Payment confirmed for order ${orderRef}.`
+              : `The card payment for order ${orderRef} ended without payment.`
+          } This browser couldn't update its saved payment progress yet, so new orders stay locked. Check payment status to try again.`,
+          tone: "isWarn"
+        };
+      default:
+        return {
+          text: `A card payment for order ${orderRef} is still being confirmed. Please don't start another payment yet.`,
+          tone: "isWarn"
+        };
+    }
+  }
+
+  const notice = availabilityNotice();
+  // A Stripe success return reports through its own Session poll above.
+  const recovery = returnedFromStripeSuccess ? null : intentNotice();
+  const canResumePayment =
+    intentStatus === "awaiting_payment" || intentStatus === "pending" || intentStatus === "unknown";
+  // A confirmed ticket is shown even while its pointer could not be cleared.
+  const recoveryTicketCode = intentStatus === "unsettled"
+    ? pendingClear?.ticketCode
+    : !paymentIntent ? confirmedIntent?.ticketCode : null;
+
   return (
     <section className="checkoutShell" aria-label="Ticket checkout">
+      {recovery ? (
+        <div aria-live="polite" className={`checkoutNotice ${recovery.tone}`} role="status">
+          {recovery.text}
+          <div className="checkoutActions">
+            {recoveryTicketCode ? (
+              <Link className="secondaryAction" href={`/tickets/${encodeURIComponent(recoveryTicketCode)}`}>
+                Open ticket
+                <ArrowRight size={18} />
+              </Link>
+            ) : null}
+            {paymentIntent && canResumePayment ? (
+              <button
+                className="secondaryAction"
+                type="button"
+                disabled={isPaying}
+                onClick={() => void startPayment(paymentIntent)}
+              >
+                {isPaying ? "Opening..." : "Return to payment"}
+                <ArrowRight size={18} />
+              </button>
+            ) : null}
+            {recoveryIntent && intentStatus !== "checking" ? (
+              <button
+                className="checkoutTextButton"
+                type="button"
+                onClick={() => recheckPaymentIntent(recoveryIntent)}
+              >
+                Check payment status
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {stripeStatus ? (
         <div
           aria-live="polite"
@@ -401,11 +1041,6 @@ export function CheckoutClient({
 
       <div className="checkoutForm">
         <div className="checkoutPanel">
-          <div className="checkoutPanelHeader">
-            <p className="checkoutPanelLabel">Your visit</p>
-            <h2>The details</h2>
-          </div>
-
           <div className="checkoutPackages" role="radiogroup" aria-label="Ticket package">
             {packages.map((ticket) => (
               <button
@@ -423,49 +1058,79 @@ export function CheckoutClient({
                 <span className="checkoutPackageDetail">
                   Observation deck and lounge, timed entry
                 </span>
-                <strong>{money(ticket.priceCents)}</strong>
-                <em>all-in, per adult</em>
+                <strong>
+                  {money(ticket.priceCents)} <small>per adult</small>
+                </strong>
               </button>
             ))}
           </div>
 
-          <div className="checkoutGuests">
-            <div className="checkoutCounter">
-              <div className="checkoutCounterLabel">
-                <span>Adults</span>
-                <em>{selectedPackage ? money(selectedPackage.priceCents) : "$20"} each</em>
+          <fieldset className="checkoutGuests" aria-describedby="checkout-party-rules">
+            <legend>Visitors</legend>
+            {visitorCounters.map((counter) => {
+              const count = party[counter.field];
+              const atMinimum = count <= counterMinimum(counter.field);
+              const priceCents = counterPriceCents[counter.field];
+              const labelId = `checkout-${counter.field}-label`;
+              return (
+                <div className="checkoutCounter" key={counter.field} role="group" aria-labelledby={labelId}>
+                  <div className="checkoutCounterLabel">
+                    <span id={labelId}>{counter.category.label}</span>
+                    <em>{priceCents === 0 ? "Free" : `${money(priceCents)} each`}</em>
+                  </div>
+                  <div className="checkoutStepper">
+                    <button
+                      type="button"
+                      aria-label={counter.fewer}
+                      aria-disabled={atMinimum}
+                      onClick={() => updateGuests(counter.field, -1)}
+                    >
+                      &minus;
+                    </button>
+                    <span aria-live="polite" aria-atomic="true">
+                      <span className="srOnly">{counter.category.label}: </span>
+                      {count}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={counter.more}
+                      aria-disabled={partyFull}
+                      onClick={() => updateGuests(counter.field, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            <dl className="checkoutPartyTotals" aria-live="polite" aria-atomic="true">
+              <div>
+                <dt>Total visitors</dt>
+                <dd>{partySize}</dd>
               </div>
-              <div className="checkoutStepper">
-                <button type="button" aria-label="Fewer adults" onClick={() => updateGuests("adults", -1)}>
-                  &minus;
-                </button>
-                <span aria-live="polite">{adults}</span>
-                <button type="button" aria-label="More adults" onClick={() => updateGuests("adults", 1)}>
-                  +
-                </button>
+              <div>
+                <dt>Estimated total</dt>
+                <dd>{money(estimatedTotalCents)}</dd>
               </div>
-            </div>
-            <div className="checkoutCounter">
-              <div className="checkoutCounterLabel">
-                <span>Ages 12 and under</span>
-                <em>{selectedPackage ? money(childPriceCents(selectedPackage.priceCents)) : "$10"} each</em>
-              </div>
-              <div className="checkoutStepper">
-                <button type="button" aria-label="Fewer children" onClick={() => updateGuests("children", -1)}>
-                  &minus;
-                </button>
-                <span aria-live="polite">{children}</span>
-                <button type="button" aria-label="More children" onClick={() => updateGuests("children", 1)}>
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
+            </dl>
+            <p className="checkoutHours" id="checkout-party-rules">
+              Each order needs at least {admissionMinAdults} {admissionAgeCategories.adult.label}. Up to{" "}
+              {admissionMaxPartySize} visitors per order, children included. Review Order confirms the exact total.
+              {" "}Valid on the selected Los Angeles date, from entry time until closing. One admission for the booked party; no re-entry.
+            </p>
+            {partyLimitNotice ? (
+              <p className="checkoutError" role="status">
+                {partyLimitNotice}
+              </p>
+            ) : null}
+          </fieldset>
 
           <div className="checkoutGrid">
             <label>
               <span>Date</span>
               <input
+                aria-describedby="checkout-time-zone"
+                max={addVisitDays(todayIso(), checkoutBookingWindowDays)}
                 min={todayIso()}
                 type="date"
                 value={visitDate}
@@ -488,34 +1153,46 @@ export function CheckoutClient({
             </label>
           </div>
 
-          {operatingHours && selectedWeekday ? (
-            <p
-              aria-live="polite"
-              className={availableEntryTimes.length === 0 ? "checkoutError" : "checkoutHours"}
-            >
-              {availableEntryTimes.length === 0
-                ? `Sky LA has no checkout arrival times on ${selectedWeekday}. Choose another date.`
-                : `${selectedWeekday} hours: ${formatOperatingDay(operatingHours[selectedWeekday])}.`}
-            </p>
-          ) : null}
+          <p className="checkoutTimeZone" id="checkout-time-zone">
+            Dates and entry times are Los Angeles time (PT).
+          </p>
 
-          <div className="checkoutTimes" aria-label="Entry time">
+          <div className="checkoutAvailability" aria-live="polite" aria-atomic="true">
+            <p className={notice.isError ? "checkoutError" : "checkoutHours"}>{notice.text}</p>
+            {availabilityPhase === "error" ? (
+              <button
+                className="checkoutTextButton"
+                type="button"
+                onClick={() => setAvailabilityReload((current) => current + 1)}
+              >
+                Try again
+              </button>
+            ) : null}
+          </div>
+
+          <div
+            aria-busy={availabilityPhase === "loading"}
+            aria-label="Entry time, Los Angeles time"
+            className="checkoutTimes"
+            role="group"
+          >
             {checkoutEntryTimes.map((time) => {
-              const available =
-                !operatingHours || isCheckoutEntryTimeAvailable(operatingHours, visitDate, time.value);
+              const slot = slotByTime.get(time.value);
+              const available = slot?.status === "available";
+              const selected = time.value === entryTime;
               return (
                 <button
-                  className={time.value === entryTime ? "isSelected" : ""}
+                  aria-pressed={selected}
+                  className={selected ? "isSelected" : ""}
                   disabled={!available}
                   key={time.value}
-                  style={available ? undefined : { cursor: "not-allowed", opacity: 0.38 }}
                   type="button"
-                  onClick={() => {
-                    setEntryTime(time.value);
-                    resetDraft();
-                  }}
+                  onClick={() => chooseEntryTime(time.value)}
                 >
                   {time.label}
+                  {slot?.status === "full" ? (
+                    <small>{slot.remaining === 0 ? "Full" : `${slot.remaining} left`}</small>
+                  ) : null}
                 </button>
               );
             })}
@@ -523,18 +1200,17 @@ export function CheckoutClient({
         </div>
       </div>
 
-      <aside className="checkoutSummary" aria-label="Order summary">
-        <div className="checkoutPanelHeader">
-          <p className="checkoutPanelLabel">Order</p>
-          <h2>{selectedPackage ? selectedPackage.name : "Ticket package"}</h2>
-        </div>
+      <aside className="checkoutSummary" aria-labelledby="checkout-summary-title">
+        <h2 className="checkoutSummaryTitle" id="checkout-summary-title">
+          Order summary
+        </h2>
 
         {draft ? (
           <div className="checkoutLines">
             {draft.draft.lines.map((line) => (
               <div className="checkoutLine" key={`${line.kind}-${line.name}`}>
                 <span>{line.name} x {line.quantity}</span>
-                <strong>{money(line.lineTotalCents)}</strong>
+                <strong>{line.lineTotalCents === 0 ? "Free" : money(line.lineTotalCents)}</strong>
               </div>
             ))}
             <div className="checkoutTotal">
@@ -606,19 +1282,32 @@ export function CheckoutClient({
         {message ? <p className="checkoutError">{message}</p> : null}
 
         <div className="checkoutActions">
-          <button className="primaryAction" type="button" disabled={!canReview || isReviewing} onClick={reviewOrder}>
+          <button
+            className="primaryAction"
+            type="button"
+            disabled={!canReview || isReviewing || paymentLocked}
+            onClick={reviewOrder}
+          >
             {isReviewing ? "Reviewing..." : "Review Order"}
           </button>
           <button
             className="secondaryAction"
             type="button"
             disabled={!canPay}
-            onClick={startPayment}
+            onClick={() => void startPayment()}
           >
             {isPaying ? "Starting..." : "Continue to Card Payment"}
             <ArrowRight size={18} />
           </button>
-          <button className="checkoutTextButton" type="button" onClick={startNewOrder}>
+          <button
+            className="checkoutTextButton"
+            type="button"
+            disabled={paymentLocked}
+            onClick={() => {
+              setMessage(null);
+              startNewOrder();
+            }}
+          >
             New order
           </button>
         </div>

@@ -42,6 +42,13 @@ export type StripeCheckoutSessionRequest = {
   body: URLSearchParams;
 };
 
+export type StripeCheckoutAttemptOptions = {
+  /** Random per-attempt nonce echoed back in Session metadata. */
+  attemptNonce: string;
+  /** Absolute Session expiry in ms; frozen with the stored request. */
+  expiresAt: number;
+};
+
 export type StripeCheckoutSessionResponse = {
   id?: string;
   object?: string;
@@ -50,6 +57,11 @@ export type StripeCheckoutSessionResponse = {
   status?: string;
   amount_total?: number;
   currency?: string;
+  livemode?: boolean;
+  mode?: string;
+  client_reference_id?: string;
+  expires_at?: number;
+  payment_intent?: string | { id?: string } | null;
   metadata?: Record<string, string>;
   error?: {
     message?: string;
@@ -66,9 +78,22 @@ export function stripeCheckoutIdempotencyKey(orderRef: string) {
   return `skyla:checkout-session:${ref}`;
 }
 
+/** Key for one frozen attempt; never reused for a different request body. */
+export function stripeCheckoutAttemptIdempotencyKey(orderRef: string, attemptNonce: string) {
+  const ref = orderRef.trim();
+  if (!ref) {
+    throw new Error("orderRef is required");
+  }
+  if (!/^[a-z0-9]{16,64}$/.test(attemptNonce)) {
+    throw new Error("attemptNonce is invalid");
+  }
+  return `skyla:checkout-session:v2:${ref}:${attemptNonce}`;
+}
+
 export function buildStripeCheckoutSessionRequest(
   snapshot: StripeCheckoutSnapshot,
-  urls: StripeCheckoutUrls
+  urls: StripeCheckoutUrls,
+  attempt?: StripeCheckoutAttemptOptions
 ): StripeCheckoutSessionRequest {
   const successUrl = normalizeStripeReturnUrl(urls.successUrl, "successUrl");
   const cancelUrl = normalizeStripeReturnUrl(urls.cancelUrl, "cancelUrl");
@@ -76,11 +101,20 @@ export function buildStripeCheckoutSessionRequest(
   const params = new URLSearchParams();
 
   params.set("mode", "payment");
+  // Admission is paid by card only; no delayed-settlement methods.
+  params.set("payment_method_types[0]", "card");
   params.set("success_url", successUrl);
   params.set("cancel_url", cancelUrl);
   params.set("client_reference_id", snapshot.orderRef);
   params.set("metadata[order_ref]", snapshot.orderRef);
   params.set("metadata[source]", "convex");
+  if (attempt) {
+    if (!Number.isSafeInteger(attempt.expiresAt) || attempt.expiresAt <= 0) {
+      throw new Error("Checkout Session expiry must be a positive timestamp");
+    }
+    params.set("expires_at", String(Math.floor(attempt.expiresAt / 1000)));
+    params.set("metadata[attempt_nonce]", attempt.attemptNonce);
+  }
   params.set("metadata[terms_version]", snapshot.termsVersion);
   params.set("metadata[liability_waiver_version]", snapshot.liabilityWaiverVersion);
   if (snapshot.visitDate) {
@@ -103,7 +137,9 @@ export function buildStripeCheckoutSessionRequest(
   return {
     endpoint: "/checkout/sessions",
     apiVersion: stripeApiVersion,
-    idempotencyKey: stripeCheckoutIdempotencyKey(snapshot.orderRef),
+    idempotencyKey: attempt
+      ? stripeCheckoutAttemptIdempotencyKey(snapshot.orderRef, attempt.attemptNonce)
+      : stripeCheckoutIdempotencyKey(snapshot.orderRef),
     body: params
   };
 }
@@ -125,7 +161,11 @@ export function stripeCheckoutLineItems(snapshot: StripeCheckoutSnapshot) {
     throw new Error("Stored line items do not match order subtotal");
   }
 
-  const checkoutLines = storedLines.map(({ lineTotalCents: _lineTotalCents, ...line }) => line);
+  // Free admission lines (children 0-7) stay on the stored order and booking
+  // party size; Stripe only receives lines that carry a charge.
+  const checkoutLines = storedLines
+    .filter((line) => line.unitAmountCents > 0)
+    .map(({ lineTotalCents: _lineTotalCents, ...line }) => line);
   if (snapshot.feeCents > 0) {
     checkoutLines.push({
       name: "Online booking fee",
@@ -209,6 +249,9 @@ export function sanitizeStripeCheckoutSession(data: StripeCheckoutSessionRespons
     payment_status: stringValue(data.payment_status),
     amount_total: numberValue(data.amount_total),
     currency: stringValue(data.currency),
+    livemode: typeof data.livemode === "boolean" ? data.livemode : undefined,
+    mode: stringValue(data.mode),
+    expires_at: numberValue(data.expires_at),
     metadata: data.metadata
   });
 }
@@ -217,8 +260,8 @@ function normalizeLine(line: StripeCheckoutLine) {
   if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
     throw new Error("Stripe checkout line quantity must be a positive integer");
   }
-  if (!Number.isInteger(line.unitAmountCents) || line.unitAmountCents < 50) {
-    throw new Error("Stripe checkout line unit amount must be at least 50 cents");
+  if (!Number.isInteger(line.unitAmountCents) || (line.unitAmountCents !== 0 && line.unitAmountCents < 50)) {
+    throw new Error("Stripe checkout line unit amount must be free or at least 50 cents");
   }
   if (line.quantity * line.unitAmountCents !== line.lineTotalCents) {
     throw new Error("Stripe checkout line total is inconsistent");

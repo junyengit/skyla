@@ -7,15 +7,33 @@ type CheckoutStatusArgs = {
   checkoutSessionId: string;
 };
 
+type CheckoutAttemptStatusArgs = {
+  orderRef: string;
+  idempotencyKey: string;
+};
+
+type CheckoutStatus =
+  | "pending"
+  | "confirmed"
+  | "failed"
+  | "canceled"
+  | "needs_attention"
+  | "not_started"
+  | "awaiting_payment";
+
 type CheckoutStatusResult = {
   orderRef: string;
-  status: "pending" | "confirmed" | "failed" | "canceled";
+  status: CheckoutStatus;
   bookingRef?: string;
   ticketCode?: string;
+  expiresAt?: number;
 };
 
 const getCheckoutReturnStatusQuery = makeFunctionReference<"query", CheckoutStatusArgs, CheckoutStatusResult>(
   "checkoutStatus:getCheckoutReturnStatus"
+);
+const getCheckoutAttemptStatusQuery = makeFunctionReference<"query", CheckoutAttemptStatusArgs, CheckoutStatusResult>(
+  "checkoutStatus:getCheckoutAttemptStatus"
 );
 
 function convexUrl() {
@@ -36,6 +54,11 @@ function requiredString(value: unknown, key: string) {
   return normalized;
 }
 
+/**
+ * Reads stored payment state for a Stripe return (Session id) or for the
+ * browser that started the payment (order ref plus its private idempotency
+ * key). It never trusts a browser-supplied amount or status.
+ */
 export async function POST(request: Request) {
   try {
     const deploymentUrl = convexUrl();
@@ -46,20 +69,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const input = (await request.json()) as { checkoutSessionId?: unknown };
-    const result = await fetchQuery(
-      getCheckoutReturnStatusQuery,
-      {
-        checkoutSessionId: requiredString(input.checkoutSessionId, "checkoutSessionId")
-      },
-      { url: deploymentUrl }
-    );
+    const input = (await request.json()) as { checkoutSessionId?: unknown; orderRef?: unknown; idempotencyKey?: unknown };
+    const result = input.checkoutSessionId === undefined && input.orderRef !== undefined
+      ? await fetchQuery(
+          getCheckoutAttemptStatusQuery,
+          {
+            orderRef: requiredString(input.orderRef, "orderRef"),
+            idempotencyKey: requiredString(input.idempotencyKey, "idempotencyKey")
+          },
+          { url: deploymentUrl }
+        )
+      : await fetchQuery(
+          getCheckoutReturnStatusQuery,
+          {
+            checkoutSessionId: requiredString(input.checkoutSessionId, "checkoutSessionId")
+          },
+          { url: deploymentUrl }
+        );
 
     return paymentJson({
       orderRef: result.orderRef,
       status: result.status,
       bookingRef: result.bookingRef,
-      ticketCode: result.ticketCode
+      ticketCode: result.ticketCode,
+      expiresAt: result.status === "awaiting_payment" ? result.expiresAt : undefined
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not check Checkout confirmation";

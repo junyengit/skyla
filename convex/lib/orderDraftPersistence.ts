@@ -1,18 +1,23 @@
 import {
   addons,
+  admissionAgeCategories,
+  admissionLineMetadata,
+  admissionLineName,
+  admissionPartyCounts,
+  admissionUnitAmountCents,
   cafeItems,
   catalogLineMetadata,
-  childDiscountRate,
-  childPriceCents,
   checkoutOrderLineRecords,
   checkoutOrderRecord,
   createCheckoutOrderDraft,
   createPosSaleDraft,
+  parseVisitDate,
   posSaleLineRecords,
   posSaleRecord,
   ticketPackages,
   type CatalogPricedItem,
   type AddonKey,
+  type AdmissionAgeCategoryKey,
   type CafeItemKey,
   type CheckoutOrderDraft,
   type PosSaleDraft,
@@ -29,6 +34,7 @@ export type CheckoutDraftArgs = {
   packageKey: TicketPackageKey;
   adults: number;
   children?: number;
+  freeChildren?: number;
   addons?: Partial<Record<AddonKey, number>>;
   visitDate?: string;
   entryTime?: string;
@@ -37,7 +43,17 @@ export type CheckoutDraftArgs = {
   idempotencyKey: string;
 };
 
+export type PosSaleAdmissionArgs = {
+  packageKey: TicketPackageKey;
+  adults: number;
+  children?: number;
+  freeChildren?: number;
+  visitDate?: string;
+  entryTime?: string;
+};
+
 export type PosSaleDraftArgs = {
+  admission?: PosSaleAdmissionArgs;
   lines: PosSaleInput["lines"];
   customerEmail?: string;
   readerId?: string;
@@ -46,7 +62,9 @@ export type PosSaleDraftArgs = {
 };
 
 export type NormalizedCheckoutDraftArgs = CheckoutDraftArgs;
-export type NormalizedPosSaleDraftArgs = PosSaleDraftArgs;
+export type NormalizedPosSaleDraftArgs = Omit<PosSaleDraftArgs, "admission"> & {
+  admission?: PosSaleAdmissionArgs & { visitDate: string; entryTime: string };
+};
 
 export type BuiltCheckoutDraftWrite = {
   input: NormalizedCheckoutDraftArgs;
@@ -93,9 +111,15 @@ type PosSaleDraftResultSale = {
   feeCents: number;
   totalCents: number;
   customerEmailLower?: string;
+  visitDate?: string;
+  entryTime?: string;
   readerId?: string;
   terminalLocationId?: string;
+  expiresAt?: number;
 };
+
+/** Stored POS lines (cafe, custom and admission age lines) per sale. */
+export const posStoredLineLimit = 100;
 
 const idempotencyKeyPattern = /^[A-Za-z0-9:_-]{12,96}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,16 +161,17 @@ function normalizeEmail(value: string | undefined) {
   return email;
 }
 
+// Visit drafts hold capacity, so the LA calendar date and entry time are
+// required from the first write rather than only at payment.
 function normalizeVisitDate(value: string | undefined) {
   const visitDate = optionalTrimmed(value, "visitDate", 10);
   if (!visitDate) {
-    return undefined;
+    throw new Error("visitDate is required");
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(visitDate)) {
     throw new Error("visitDate must use YYYY-MM-DD");
   }
-  const date = new Date(`${visitDate}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== visitDate) {
+  if (!parseVisitDate(visitDate)) {
     throw new Error("visitDate must be a real calendar date");
   }
   return visitDate;
@@ -154,7 +179,10 @@ function normalizeVisitDate(value: string | undefined) {
 
 function normalizeEntryTime(value: string | undefined) {
   const entryTime = optionalTrimmed(value, "entryTime", 5);
-  if (entryTime && !timePattern.test(entryTime)) {
+  if (!entryTime) {
+    throw new Error("entryTime is required");
+  }
+  if (!timePattern.test(entryTime)) {
     throw new Error("entryTime must use HH:mm");
   }
   return entryTime;
@@ -186,14 +214,13 @@ export function normalizeCheckoutDraftArgs(args: CheckoutDraftArgs): NormalizedC
   if (!(args.packageKey in ticketPackages)) {
     throw new Error("packageKey is not recognized");
   }
-  assertIntegerRange(args.adults, "adults", 1, 20);
-  const children = args.children ?? 0;
-  assertIntegerRange(children, "children", 0, 20);
+  const party = admissionPartyCounts(args);
 
   return withoutUndefined({
     packageKey: args.packageKey,
-    adults: args.adults,
-    children: children > 0 ? children : undefined,
+    adults: party.adults,
+    children: party.children > 0 ? party.children : undefined,
+    freeChildren: party.freeChildren > 0 ? party.freeChildren : undefined,
     addons: normalizeCheckoutAddons(args.addons),
     visitDate: normalizeVisitDate(args.visitDate),
     entryTime: normalizeEntryTime(args.entryTime),
@@ -204,15 +231,12 @@ export function normalizeCheckoutDraftArgs(args: CheckoutDraftArgs): NormalizedC
 }
 
 function normalizePosLine(line: PosSaleInput["lines"][number]): PosSaleInput["lines"][number] {
+  if ((line as { kind: string }).kind === "ticket") {
+    // Admission always carries its age counts and selected visit.
+    throw new Error("Admission requires a selected visit date, entry time and age counts");
+  }
   const quantity = line.quantity ?? 1;
   assertIntegerRange(quantity, "line quantity", 1, 99);
-
-  if (line.kind === "ticket") {
-    if (!(line.packageKey in ticketPackages)) {
-      throw new Error("packageKey is not recognized");
-    }
-    return { kind: "ticket", packageKey: line.packageKey, quantity };
-  }
 
   if (line.kind === "cafe") {
     if (!(line.itemKey in cafeItems)) {
@@ -236,8 +260,24 @@ function normalizePosLine(line: PosSaleInput["lines"][number]): PosSaleInput["li
   };
 }
 
+function normalizePosAdmission(admission: PosSaleAdmissionArgs | undefined) {
+  if (admission === undefined) return undefined;
+  if (!(admission.packageKey in ticketPackages)) {
+    throw new Error("packageKey is not recognized");
+  }
+  const party = admissionPartyCounts(admission);
+  return withoutUndefined({
+    packageKey: admission.packageKey,
+    adults: party.adults,
+    children: party.children > 0 ? party.children : undefined,
+    freeChildren: party.freeChildren > 0 ? party.freeChildren : undefined,
+    visitDate: normalizeVisitDate(admission.visitDate),
+    entryTime: normalizeEntryTime(admission.entryTime)
+  });
+}
+
 export function normalizePosSaleDraftArgs(args: PosSaleDraftArgs): NormalizedPosSaleDraftArgs {
-  if (!Array.isArray(args.lines) || args.lines.length === 0) {
+  if (!Array.isArray(args.lines) || (args.lines.length === 0 && args.admission === undefined)) {
     throw new Error("POS sale requires at least one line");
   }
   if (args.lines.length > 100) {
@@ -245,6 +285,7 @@ export function normalizePosSaleDraftArgs(args: PosSaleDraftArgs): NormalizedPos
   }
 
   return withoutUndefined({
+    admission: normalizePosAdmission(args.admission),
     lines: args.lines.map(normalizePosLine),
     customerEmail: normalizeEmail(args.customerEmail),
     readerId: normalizeReaderValue(args.readerId, "readerId"),
@@ -276,6 +317,7 @@ export function checkoutDraftFingerprint(input: NormalizedCheckoutDraftArgs) {
     packageKey: input.packageKey,
     adults: input.adults,
     children: input.children,
+    freeChildren: input.freeChildren,
     addons: input.addons,
     visitDate: input.visitDate,
     entryTime: input.entryTime,
@@ -283,9 +325,12 @@ export function checkoutDraftFingerprint(input: NormalizedCheckoutDraftArgs) {
   });
 }
 
+// The selected visit and age counts are part of the fingerprint, so an
+// idempotent retry can never move a stored sale to another date or party.
 export function posSaleDraftFingerprint(input: NormalizedPosSaleDraftArgs, actorRole: StaffRole) {
   return exactFingerprint({
     actorRole,
+    admission: input.admission,
     lines: input.lines,
     customerEmail: input.customerEmail,
     readerId: input.readerId,
@@ -323,10 +368,17 @@ export function buildPosSaleDraftWrite<StaffUserId extends string>(
   const input = normalizePosSaleDraftArgs(args);
   const draft = createPosSaleDraft({
     actorRole: options.actorRole,
+    admission: input.admission,
     lines: input.lines,
     customerEmail: input.customerEmail
   });
   const draftFingerprint = posSaleDraftFingerprint(input, options.actorRole);
+  // Admission expands into up to three age lines, so the complete stored set
+  // is checked here, before any sale row or capacity hold is written: Terminal
+  // payment and settlement read at most this many stored lines.
+  if (draft.lines.length > posStoredLineLimit) {
+    throw new Error(`POS sale can store at most ${posStoredLineLimit} lines including admission age lines`);
+  }
 
   return {
     input,
@@ -379,8 +431,11 @@ export function posSaleDraftResult(sale: PosSaleDraftResultSale, lines: DraftRes
       totalCents: sale.totalCents
     },
     customerEmail: sale.customerEmailLower,
+    visitDate: sale.visitDate,
+    entryTime: sale.entryTime,
     readerId: sale.readerId,
     terminalLocationId: sale.terminalLocationId,
+    expiresAt: sale.expiresAt,
     lines: lines.map(draftLineResult)
   });
 }
@@ -404,6 +459,16 @@ export function assertStoredPaymentLineProvenance(lines: DraftResultLine[], labe
 
   for (const [index, line] of lines.entries()) {
     const lineLabel = `${label} line ${index + 1}`;
+    // Zero-priced lines (free children) are valid; corrupt counts or cents
+    // never are, whatever their catalog provenance.
+    if (
+      !Number.isSafeInteger(line.quantity) || line.quantity < 1 ||
+      !Number.isSafeInteger(line.unitAmountCents) || line.unitAmountCents < 0 ||
+      !Number.isSafeInteger(line.lineTotalCents) || line.lineTotalCents < 0 ||
+      line.quantity * line.unitAmountCents !== line.lineTotalCents
+    ) {
+      throw new Error(`${lineLabel} has an invalid quantity or amount`);
+    }
     if (line.kind === "custom") {
       assertCustomLineMetadata(line, lineLabel);
       continue;
@@ -457,13 +522,26 @@ function assertCatalogLineAmount(
   metadata: Record<string, string | number | boolean>,
   lineLabel: string
 ) {
-  const isChildTicket = line.kind === "ticket" && metadata.childDiscountRate === childDiscountRate;
-  if (line.kind !== "ticket" && metadata.childDiscountRate !== undefined) {
-    throw new Error(`${lineLabel} has child pricing metadata on a non-ticket line`);
+  if (metadata.childDiscountRate !== undefined) {
+    throw new Error(`${lineLabel} has retired child discount metadata`);
   }
 
-  const expectedName = isChildTicket ? `${item.name} Child` : item.name;
-  const expectedUnitAmountCents = isChildTicket ? childPriceCents(item.priceCents) : item.priceCents;
+  let expectedName = item.name;
+  let expectedUnitAmountCents = item.priceCents;
+  if (metadata.ageCategory !== undefined || metadata.admissionPolicyVersion !== undefined) {
+    if (item.kind !== "ticket") {
+      throw new Error(`${lineLabel} has admission age metadata on a non-ticket line`);
+    }
+    const category = admissionCategoryForMetadata(metadata.ageCategory, lineLabel);
+    const expectedMetadata = admissionLineMetadata(item, category);
+    for (const [key, value] of Object.entries(expectedMetadata)) {
+      if (metadata[key] !== value) {
+        throw new Error(`${lineLabel} has mismatched admission age metadata: ${key}`);
+      }
+    }
+    expectedName = admissionLineName(item, category);
+    expectedUnitAmountCents = admissionUnitAmountCents(item, category);
+  }
 
   if (line.name !== expectedName) {
     throw new Error(`${lineLabel} name does not match the code-owned catalog`);
@@ -474,6 +552,13 @@ function assertCatalogLineAmount(
   if (line.quantity * line.unitAmountCents !== line.lineTotalCents) {
     throw new Error(`${lineLabel} total is inconsistent with quantity and unit price`);
   }
+}
+
+function admissionCategoryForMetadata(value: unknown, lineLabel: string) {
+  if (typeof value !== "string" || !Object.hasOwn(admissionAgeCategories, value)) {
+    throw new Error(`${lineLabel} has an unknown admission age category`);
+  }
+  return admissionAgeCategories[value as AdmissionAgeCategoryKey];
 }
 
 function assertCustomLineMetadata(line: DraftResultLine, lineLabel: string) {

@@ -13,7 +13,8 @@ export function bookingStatusPatch(status: BookingAdminStatus, now: number) {
   if (status === "cancelled") {
     return { ...base, cancelledAt: now };
   }
-  return { ...base, checkedInAt: undefined, cancelledAt: undefined };
+  // Redemption history is immutable even when billing restores a booking.
+  return { ...base, cancelledAt: undefined };
 }
 
 export function memberStatusPatch(status: MemberAdminStatus, now: number) {

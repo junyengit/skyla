@@ -1,11 +1,17 @@
 import {
   addons,
+  admissionAgeCategories,
+  admissionLineName,
+  admissionMaxPartySize,
+  admissionMinAdults,
+  admissionPolicyVersion,
   bookingFeeCents,
   cafeItems,
   catalogLineMetadata,
-  childPriceCents,
   type AddonKey,
+  type AdmissionAgeCategory,
   type CafeItemKey,
+  type TicketPackage,
   type TicketPackageKey,
   ticketPackages
 } from "./catalog";
@@ -53,18 +59,38 @@ export type OrderLine = {
 
 export type CheckoutOrderInput = {
   packageKey: TicketPackageKey;
+  /** Adults 18+, at the package price. */
   adults: number;
+  /** Paid youths 8-17. Kept as `children` for API compatibility. */
   children?: number;
+  /** Children 0-7, admitted free as a zero-priced ticket line. */
+  freeChildren?: number;
   addons?: Partial<Record<AddonKey, number>>;
   visitDate?: string;
   entryTime?: string;
   customerEmail?: string;
 };
 
+/**
+ * Admission sold at the register: the same canonical age categories, prices
+ * and provenance as online checkout, for one selected LA date and entry time.
+ */
+export type PosAdmissionInput = {
+  packageKey: TicketPackageKey;
+  /** Adults 18+. At least one is required. */
+  adults: number;
+  /** Paid youths 8-17. */
+  children?: number;
+  /** Children 0-7, admitted free as a zero-priced ticket line. */
+  freeChildren?: number;
+  visitDate: string;
+  entryTime: string;
+};
+
 export type PosSaleInput = {
   actorRole: StaffRole;
+  admission?: PosAdmissionInput;
   lines: Array<
-    | { kind: "ticket"; packageKey: TicketPackageKey; quantity?: number }
     | { kind: "cafe"; itemKey: CafeItemKey; quantity?: number }
     | { kind: "custom"; name: string; amountCents: number; quantity?: number; reason: string }
   >;
@@ -92,18 +118,57 @@ export type PosSaleDraft = DraftTotals & {
   status: "draft";
   lines: OrderLine[];
   customerEmail?: string;
+  /** Present only when the sale includes admission. */
+  visitDate?: string;
+  entryTime?: string;
 };
 
 function assertPositiveInteger(value: number, label: string) {
-  if (!Number.isInteger(value) || value <= 0) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${label} must be a positive integer`);
   }
 }
 
-function assertNonNegativeInteger(value: number, label: string) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`${label} must be a non-negative integer`);
+export type AdmissionPartyCounts = {
+  adults: number;
+  children: number;
+  freeChildren: number;
+  partySize: number;
+};
+
+function assertAdmissionCount(value: unknown, label: string, min: number) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < min || value > admissionMaxPartySize) {
+    throw new Error(`${label} must be a whole number from ${min} to ${admissionMaxPartySize}`);
   }
+  return value;
+}
+
+export function admissionPartyCounts(input: {
+  adults: unknown;
+  children?: unknown;
+  freeChildren?: unknown;
+}): AdmissionPartyCounts {
+  const adults = assertAdmissionCount(input.adults, "adults", admissionMinAdults);
+  const children = assertAdmissionCount(input.children ?? 0, "children", 0);
+  const freeChildren = assertAdmissionCount(input.freeChildren ?? 0, "freeChildren", 0);
+  const partySize = adults + children + freeChildren;
+  if (partySize > admissionMaxPartySize) {
+    throw new Error(`party size must be ${admissionMaxPartySize} visitors or fewer`);
+  }
+  return { adults, children, freeChildren, partySize };
+}
+
+export function admissionLineMetadata(ticket: TicketPackage, category: AdmissionAgeCategory) {
+  return {
+    ...catalogLineMetadata(ticket),
+    admissionPolicyVersion,
+    ageCategory: category.key,
+    ageRange: category.ageRange
+  };
+}
+
+export function admissionUnitAmountCents(ticket: Pick<TicketPackage, "priceCents">, category: AdmissionAgeCategory) {
+  return category.key === "adult" ? ticket.priceCents : category.priceCents;
 }
 
 function addLine(lines: OrderLine[], line: Omit<OrderLine, "lineTotalCents">) {
@@ -124,37 +189,39 @@ function totals(lines: OrderLine[], includeBookingFee: boolean): DraftTotals {
   };
 }
 
-export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrderDraft {
-  const adults = input.adults;
-  const children = input.children ?? 0;
-  assertPositiveInteger(adults, "adults");
-  assertNonNegativeInteger(children, "children");
-
-  const ticket = ticketPackages[input.packageKey];
+function bookableAdmissionPackage(packageKey: TicketPackageKey): TicketPackage {
+  const ticket: TicketPackage | undefined = ticketPackages[packageKey];
   if (!ticket || !ticket.active) {
     throw new Error("Ticket package is not bookable");
   }
+  if (ticket.admissionPolicyVersion !== admissionPolicyVersion) {
+    throw new Error("Ticket package has no confirmed admission age policy");
+  }
+  return ticket;
+}
 
-  const lines: OrderLine[] = [];
-  addLine(lines, {
-    kind: "ticket",
-    productKey: ticket.key,
-    name: ticket.name,
-    quantity: adults,
-    unitAmountCents: ticket.priceCents,
-    metadata: catalogLineMetadata(ticket)
-  });
-
-  if (children > 0) {
+/** One canonical line per non-empty age category, shared by checkout and POS. */
+function addAdmissionLines(lines: OrderLine[], ticket: TicketPackage, party: AdmissionPartyCounts) {
+  for (const category of Object.values(admissionAgeCategories)) {
+    const quantity = party[category.partyField];
+    if (quantity === 0) continue;
     addLine(lines, {
       kind: "ticket",
       productKey: ticket.key,
-      name: `${ticket.name} Child`,
-      quantity: children,
-      unitAmountCents: childPriceCents(ticket.priceCents),
-      metadata: { ...catalogLineMetadata(ticket), childDiscountRate: 0.5 }
+      name: admissionLineName(ticket, category),
+      quantity,
+      unitAmountCents: admissionUnitAmountCents(ticket, category),
+      metadata: admissionLineMetadata(ticket, category)
     });
   }
+}
+
+export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrderDraft {
+  const party = admissionPartyCounts(input);
+  const ticket = bookableAdmissionPackage(input.packageKey);
+
+  const lines: OrderLine[] = [];
+  addAdmissionLines(lines, ticket, party);
 
   for (const [addonKey, quantity = 0] of Object.entries(input.addons ?? {}) as Array<[AddonKey, number]>) {
     if (quantity === 0) continue;
@@ -186,34 +253,40 @@ export function createCheckoutOrderDraft(input: CheckoutOrderInput): CheckoutOrd
   };
 }
 
+const posVisitDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const posEntryTimePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 export function createPosSaleDraft(input: PosSaleInput): PosSaleDraft {
   if (input.actorRole !== "admin" && input.actorRole !== "pos") {
     throw new Error("POS sale requires a pos or admin role");
   }
-  if (!input.lines.length) {
+  if (!input.lines.length && !input.admission) {
     throw new Error("POS sale requires at least one line");
   }
 
   const lines: OrderLine[] = [];
+  let visit: { visitDate: string; entryTime: string } | undefined;
+  if (input.admission) {
+    // Same canonical age lines as online checkout. Calendar and capacity
+    // rules are enforced by the server when the sale is stored.
+    const party = admissionPartyCounts(input.admission);
+    const ticket = bookableAdmissionPackage(input.admission.packageKey);
+    if (!posVisitDatePattern.test(input.admission.visitDate ?? "")) {
+      throw new Error("visitDate must use YYYY-MM-DD");
+    }
+    if (!posEntryTimePattern.test(input.admission.entryTime ?? "")) {
+      throw new Error("entryTime must use HH:mm");
+    }
+    addAdmissionLines(lines, ticket, party);
+    visit = { visitDate: input.admission.visitDate, entryTime: input.admission.entryTime };
+  }
+
   for (const inputLine of input.lines) {
+    if ((inputLine as { kind: string }).kind === "ticket") {
+      throw new Error("Admission requires a selected visit date, entry time and age counts");
+    }
     const quantity = inputLine.quantity ?? 1;
     assertPositiveInteger(quantity, "line quantity");
-
-    if (inputLine.kind === "ticket") {
-      const ticket = ticketPackages[inputLine.packageKey];
-      if (!ticket || !ticket.active) {
-        throw new Error("Ticket package is not sellable at POS");
-      }
-      addLine(lines, {
-        kind: "ticket",
-        productKey: ticket.key,
-        name: ticket.name,
-        quantity,
-        unitAmountCents: ticket.priceCents,
-        metadata: catalogLineMetadata(ticket)
-      });
-      continue;
-    }
 
     if (inputLine.kind === "cafe") {
       const item = cafeItems[inputLine.itemKey];
@@ -254,6 +327,7 @@ export function createPosSaleDraft(input: PosSaleInput): PosSaleDraft {
     status: "draft",
     ...totals(lines, false),
     lines,
-    customerEmail: input.customerEmail?.trim().toLowerCase()
+    customerEmail: input.customerEmail?.trim().toLowerCase(),
+    ...visit
   };
 }

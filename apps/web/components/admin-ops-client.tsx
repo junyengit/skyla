@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdmissionActions } from "@/components/admission-actions";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, CalendarDays, Download, ShieldCheck } from "@skyla/ui/icons";
 import { useStaffSession } from "@/components/staff-auth-provider";
@@ -45,6 +46,9 @@ type AdminBooking = {
   lastName?: string;
   partySize?: number;
   checkedInAt?: number;
+  admittedPartySize?: number;
+  departedPartySize?: number;
+  departedAt?: number;
   cancelledAt?: number;
   createdAt: number;
   updatedAt?: number;
@@ -56,6 +60,9 @@ type AdminBooking = {
     sendVersion: number;
     lastAttemptAt?: number;
     sentAt?: number;
+    providerDeliveryStatus?: string;
+    providerStatusAt?: number;
+    deliveredAt?: number;
     failureReason?: string;
     updatedAt: number;
   };
@@ -355,6 +362,21 @@ function shortDate(value: number) {
   }).format(new Date(value));
 }
 
+function ticketDeliveryLabel(delivery: NonNullable<AdminBooking["ticketDelivery"]>) {
+  const providerStatus = delivery.providerDeliveryStatus;
+  if (providerStatus === "bounced") return "Email bounced. Contact details need review.";
+  if (providerStatus === "complained") return "Email reported as spam.";
+  if (providerStatus === "failed" || providerStatus === "canceled") return "Email delivery failed.";
+  if (providerStatus === "suppressed" || delivery.status === "suppressed") return "Email delivery suppressed.";
+  if (delivery.deliveredAt || providerStatus === "delivered" || providerStatus === "opened" || providerStatus === "clicked") {
+    const at = delivery.deliveredAt ?? delivery.providerStatusAt;
+    return `Delivered to recipient mail server${at ? ` ${shortDate(at)}` : ""}.`;
+  }
+  if (delivery.status === "sent") return "Accepted by email provider; delivery unconfirmed.";
+  if (delivery.status === "failed") return `Delivery failed after ${delivery.attemptCount} attempt${delivery.attemptCount === 1 ? "" : "s"}`;
+  return delivery.status === "sending" ? "Delivery in progress" : "Delivery queued";
+}
+
 function totalReady(readiness: Readiness) {
   return Object.values(readiness).filter(Boolean).length;
 }
@@ -412,6 +434,9 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const authEpochRef = useRef(0);
+  const operationsReadEpochRef = useRef(0);
+  const bookingLookupReadEpochRef = useRef(0);
+  const adminActionInFlightRef = useRef(false);
   const inquiryEditorRef = useRef<HTMLFormElement>(null);
 
   const readinessScore = useMemo(() => (snapshot ? totalReady(snapshot.readiness) : 0), [snapshot]);
@@ -440,6 +465,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
 
   async function loadOperations() {
     const authEpoch = authEpochRef.current;
+    const readEpoch = ++operationsReadEpochRef.current;
     setIsLoading(true);
     setMessage(null);
     setInquiryListError(null);
@@ -482,7 +508,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!catalogResponse.ok) {
         throw new Error("error" in catalogData ? catalogData.error ?? "Could not load admin catalog" : "Could not load admin catalog");
       }
-      if (authEpoch !== authEpochRef.current) return;
+      if (authEpoch !== authEpochRef.current || readEpoch !== operationsReadEpochRef.current) return false;
       setSnapshot(operationsData as OperationsSnapshot);
       setConfigSnapshot(configData as ConfigSnapshot);
       setConvexCatalogSnapshot(catalogData as CatalogSnapshot);
@@ -493,8 +519,9 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       setInquiryNotesDraft("");
       setAnnouncementDraft((configData as ConfigSnapshot).config.announcement);
       setHoursDraft((configData as ConfigSnapshot).config.hours);
+      return true;
     } catch (error) {
-      if (authEpoch !== authEpochRef.current) return;
+      if (authEpoch !== authEpochRef.current || readEpoch !== operationsReadEpochRef.current) return false;
       setSnapshot(null);
       setConfigSnapshot(null);
       setConvexCatalogSnapshot(null);
@@ -502,16 +529,33 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       setInquiryListError(null);
       setSelectedInquiry(null);
       setMessage(error instanceof Error ? error.message : "Could not load admin operations");
+      return false;
     } finally {
-      if (authEpoch === authEpochRef.current) setIsLoading(false);
+      if (authEpoch === authEpochRef.current && readEpoch === operationsReadEpochRef.current) setIsLoading(false);
     }
   }
 
+  function clearBookingControls(bookingRef: string) {
+    // Responses started before the mutation must not restore an unused ticket.
+    operationsReadEpochRef.current += 1;
+    bookingLookupReadEpochRef.current += 1;
+    setIsLoading(false);
+    setIsLookupLoading(false);
+    setBookingLookup(current => current ? { ...current, matches: current.matches.filter(booking => booking.bookingRef !== bookingRef) } : null);
+    setSnapshot(current => current ? { ...current, recent: { ...current.recent, bookings: current.recent.bookings.filter(booking => booking.bookingRef !== bookingRef) } } : null);
+  }
+
   async function postAdminAction(
-    endpoint: "/api/admin/bookings/status" | "/api/admin/bookings/vouchers" | "/api/admin/members/status",
-    body: Record<string, string>
+    endpoint: "/api/admin/bookings/status" | "/api/admin/bookings/vouchers" | "/api/admin/members/status" | "/api/admin/admission/departure",
+    body: Record<string, string | number>
   ) {
+    if (adminActionInFlightRef.current) return;
+    adminActionInFlightRef.current = true;
     const authEpoch = authEpochRef.current;
+    const changesAdmission = endpoint === "/api/admin/bookings/status" || endpoint === "/api/admin/admission/departure";
+    const bookingRef = typeof body.bookingRef === "string" ? body.bookingRef : undefined;
+    let requestOutcome: "uncertain" | "rejected" | "confirmed" = "uncertain";
+    if (changesAdmission && bookingRef) clearBookingControls(bookingRef);
     setActionKey(`${endpoint}:${Object.values(body).join(":")}`);
     setMessage(null);
 
@@ -523,21 +567,30 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
         },
         body: JSON.stringify(body)
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; booking?: { admissionOutcome?: string }; outcome?: string };
       if (!response.ok) {
+        requestOutcome = "rejected";
         throw new Error(data.error ?? "Admin action failed");
       }
+      requestOutcome = "confirmed";
       if (authEpoch !== authEpochRef.current) return;
-      await loadOperations();
-      if ((endpoint === "/api/admin/bookings/status" || endpoint === "/api/admin/bookings/vouchers") && bookingLookupQuery.trim()) {
-        await lookupBooking({ silent: true });
+      const operationsRefreshed = await loadOperations();
+      let lookupRefreshed = true;
+      if ((endpoint === "/api/admin/bookings/status" || endpoint === "/api/admin/bookings/vouchers" || endpoint === "/api/admin/admission/departure") && bookingLookupQuery.trim()) {
+        lookupRefreshed = await lookupBooking({ silent: true });
       }
       if (authEpoch !== authEpochRef.current) return;
-      setMessage("Admin action saved.");
+      if (!operationsRefreshed || !lookupRefreshed) return;
+      setMessage(data.booking?.admissionOutcome === "already_admitted" ? "This ticket was already used. No re-entry." : data.booking?.admissionOutcome === "admitted" ? "Party admitted. Record departure when people leave." : data.outcome === "recorded" || data.outcome === "already_recorded" ? "Departure recorded. The ticket stays used." : "Admin action saved.");
     } catch (error) {
       if (authEpoch !== authEpochRef.current) return;
-      setMessage(error instanceof Error ? error.message : "Admin action failed");
+      if (changesAdmission && bookingRef) clearBookingControls(bookingRef);
+      const detail = error instanceof Error ? error.message : "Admin action failed";
+      setMessage(changesAdmission && requestOutcome === "uncertain"
+        ? `The action may have been recorded. Look up this ticket again before admitting anyone or recording another departure. ${detail}`
+        : detail);
     } finally {
+      adminActionInFlightRef.current = false;
       if (authEpoch === authEpochRef.current) setActionKey(null);
     }
   }
@@ -666,11 +719,12 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
 
   async function lookupBooking(options: { silent?: boolean } = {}) {
     const authEpoch = authEpochRef.current;
+    const readEpoch = ++bookingLookupReadEpochRef.current;
     const query = bookingLookupQuery.trim();
     if (!query) {
       setMessage("Booking reference or email required.");
       setBookingLookup(null);
-      return;
+      return false;
     }
 
     setIsLookupLoading(true);
@@ -686,18 +740,20 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
       if (!response.ok) {
         throw new Error("error" in data ? data.error ?? "Booking lookup failed" : "Booking lookup failed");
       }
-      if (authEpoch !== authEpochRef.current) return;
+      if (authEpoch !== authEpochRef.current || readEpoch !== bookingLookupReadEpochRef.current) return false;
       setBookingLookup(data as BookingLookupResult);
       if (!options.silent) {
         const count = (data as BookingLookupResult).matches.length;
         setMessage(count ? `Found ${count} booking${count === 1 ? "" : "s"}.` : "No booking found.");
       }
+      return true;
     } catch (error) {
-      if (authEpoch !== authEpochRef.current) return;
+      if (authEpoch !== authEpochRef.current || readEpoch !== bookingLookupReadEpochRef.current) return false;
       setBookingLookup(null);
       setMessage(error instanceof Error ? error.message : "Booking lookup failed");
+      return false;
     } finally {
-      if (authEpoch === authEpochRef.current) setIsLookupLoading(false);
+      if (authEpoch === authEpochRef.current && readEpoch === bookingLookupReadEpochRef.current) setIsLookupLoading(false);
     }
   }
 
@@ -884,7 +940,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
         <button
           className="primaryAction"
           type="button"
-          disabled={isLoading || staffSession.status !== "signed-in"}
+          disabled={isLoading || Boolean(actionKey) || staffSession.status !== "signed-in"}
           onClick={loadOperations}
         >
           {isLoading ? "Loading" : "Load Snapshot"}
@@ -976,7 +1032,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
             className="adminOpsLookupForm"
             onSubmit={(event) => {
               event.preventDefault();
-              void lookupBooking();
+              if (!actionKey) void lookupBooking();
             }}
           >
             <label>
@@ -987,10 +1043,11 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                 maxLength={120}
                 placeholder="SKY2607-ABC123"
                 value={bookingLookupQuery}
+                disabled={Boolean(actionKey)}
                 onChange={(event) => setBookingLookupQuery(event.target.value)}
               />
             </label>
-            <button className="secondaryAction" type="submit" disabled={isLookupLoading}>
+            <button className="secondaryAction" type="submit" disabled={isLookupLoading || Boolean(actionKey)}>
               {isLookupLoading ? "Looking" : "Look Up"}
               <ArrowRight size={18} />
             </button>
@@ -1020,13 +1077,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                       <div>
                         <strong>Ticket Confirmation</strong>
                         <span>
-                          {booking.ticketDelivery.status === "sent" && booking.ticketDelivery.sentAt
-                            ? `Sent ${shortDate(booking.ticketDelivery.sentAt)}`
-                            : booking.ticketDelivery.status === "failed"
-                              ? `Delivery failed after ${booking.ticketDelivery.attemptCount} attempt${booking.ticketDelivery.attemptCount === 1 ? "" : "s"}`
-                              : booking.ticketDelivery.status === "suppressed"
-                                ? "Email delivery suppressed"
-                                : "Delivery queued"}
+                          {ticketDeliveryLabel(booking.ticketDelivery)}
                         </span>
                         {booking.ticketDelivery.failureReason ? <em>{booking.ticketDelivery.failureReason}</em> : null}
                       </div>
@@ -1047,23 +1098,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                     </div>
                   ) : null}
                   <div className="adminOpsRowActions">
-                    {!canMutateBooking ? null : booking.status === "checked-in" ? (
-                      <button
-                        type="button"
-                        disabled={Boolean(actionKey)}
-                        onClick={() => updateBookingStatus(booking.bookingRef, "confirmed")}
-                      >
-                        Undo
-                      </button>
-                    ) : booking.status === "cancelled" ? null : (
-                      <button
-                        type="button"
-                        disabled={Boolean(actionKey)}
-                        onClick={() => updateBookingStatus(booking.bookingRef, "checked-in")}
-                      >
-                        Check In
-                      </button>
-                    )}
+                    <AdmissionActions booking={booking} canMutate={canMutateBooking} busy={Boolean(actionKey)} onAdmit={() => updateBookingStatus(booking.bookingRef, "checked-in")} onDepart={(departedCount) => void postAdminAction("/api/admin/admission/departure", { bookingRef: booking.bookingRef, departedCount })} />
                   </div>
                   <div className="adminOpsVoucherList">
                     <div className="adminOpsVoucherHeader">
@@ -1357,23 +1392,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
                       <span>{booking.status}</span>
                       <span>{voucherLabel}</span>
                       <div className="adminOpsRowActions">
-                        {!canMutateBooking ? null : booking.status === "checked-in" ? (
-                          <button
-                            type="button"
-                            disabled={Boolean(actionKey)}
-                            onClick={() => updateBookingStatus(booking.bookingRef, "confirmed")}
-                          >
-                            Undo
-                          </button>
-                        ) : booking.status === "cancelled" ? null : (
-                          <button
-                            type="button"
-                            disabled={Boolean(actionKey)}
-                            onClick={() => updateBookingStatus(booking.bookingRef, "checked-in")}
-                          >
-                            Check In
-                          </button>
-                        )}
+                        <AdmissionActions booking={booking} canMutate={canMutateBooking} busy={Boolean(actionKey)} onAdmit={() => updateBookingStatus(booking.bookingRef, "checked-in")} onDepart={(departedCount) => void postAdminAction("/api/admin/admission/departure", { bookingRef: booking.bookingRef, departedCount })} />
                         {booking.status !== "cancelled" && snapshot?.staff.role === "admin" ? (
                           <button
                             className="isDanger"

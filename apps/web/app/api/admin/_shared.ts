@@ -66,8 +66,11 @@ export function adminFailureStatus(message: string) {
     return 404;
   }
   if (
+    normalized.startsWith("admission blocked:") ||
     normalized.includes("cancelled bookings cannot") ||
-    normalized.includes("already sending")
+    normalized.includes("already sending") ||
+    normalized.includes("private event conflicts with") ||
+    normalized.includes("already used for a different")
   ) {
     return 409;
   }

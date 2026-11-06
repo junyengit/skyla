@@ -44,6 +44,7 @@ export type TicketPackage = CatalogItem & {
   entryIncluded?: boolean;
   roomFeeCents?: number;
   minAdults?: number;
+  admissionPolicyVersion?: typeof admissionPolicyVersion;
 };
 
 export type Addon = CatalogItem & {
@@ -61,7 +62,7 @@ export type CatalogListOptions = {
   activeOnly?: boolean;
 };
 
-export const catalogVersion = "skyla-payments-catalog-2026-07-20" as const;
+export const catalogVersion = "skyla-payments-catalog-2026-10-02" as const;
 export const catalogProvenance = {
   version: catalogVersion,
   source: "@skyla/payments",
@@ -79,7 +80,82 @@ export type CatalogLineMetadata = {
 };
 
 export const bookingFeeRate = 0.05;
-export const childDiscountRate = 0.5;
+
+export type AdmissionAgeCategoryKey = "adult" | "youth" | "child";
+export type AdmissionPartyField = "adults" | "children" | "freeChildren";
+
+export type AdmissionAgeCategory = {
+  key: AdmissionAgeCategoryKey;
+  label: string;
+  ageRange: string;
+  minAge: number;
+  maxAge?: number;
+  priceCents: number;
+  partyField: AdmissionPartyField;
+};
+
+// Owner-confirmed October 2, 2026: the same rates apply every day, every age
+// counts toward the party, and one order may hold at most 30 visitors. The
+// public `children` input stays the paid youth count for API compatibility;
+// `freeChildren` carries ages 0-7 as zero-priced ticket lines.
+export const admissionPolicyVersion = "skydeck-admission-ages-2026-10-02" as const;
+export const admissionMaxPartySize = 30;
+export const admissionMinAdults = 1;
+// Owner-confirmed October 2, 2026: at most 30 people of any age physically
+// inside at once (not 30 per day). Held and paid parties keep their places
+// from entry through that LA day's closing until staff record a departure.
+export const venueCapacity = 30;
+
+export const admissionAgeCategories = {
+  adult: {
+    key: "adult",
+    label: "Adult 18+",
+    ageRange: "18+",
+    minAge: 18,
+    priceCents: 2000,
+    partyField: "adults"
+  },
+  youth: {
+    key: "youth",
+    label: "Youth 8–17",
+    ageRange: "8-17",
+    minAge: 8,
+    maxAge: 17,
+    priceCents: 1000,
+    partyField: "children"
+  },
+  child: {
+    key: "child",
+    label: "Child 0–7",
+    ageRange: "0-7",
+    minAge: 0,
+    maxAge: 7,
+    priceCents: 0,
+    partyField: "freeChildren"
+  }
+} as const satisfies Record<AdmissionAgeCategoryKey, AdmissionAgeCategory>;
+
+export const admissionPolicy = {
+  version: admissionPolicyVersion,
+  packageKey: "general",
+  maxPartySize: admissionMaxPartySize,
+  minAdults: admissionMinAdults,
+  bookingFeeCents: 0,
+  categories: admissionAgeCategories
+} as const;
+
+export function admissionAgeCategoryForAge(age: number): AdmissionAgeCategory {
+  if (!Number.isSafeInteger(age) || age < 0 || age > 130) {
+    throw new Error("age must be a whole number of years from 0 to 130");
+  }
+  if (age >= admissionAgeCategories.adult.minAge) return admissionAgeCategories.adult;
+  if (age >= admissionAgeCategories.youth.minAge) return admissionAgeCategories.youth;
+  return admissionAgeCategories.child;
+}
+
+export function admissionLineName(ticket: Pick<TicketPackage, "name">, category: AdmissionAgeCategory) {
+  return `${ticket.name} · ${category.label}`;
+}
 
 export const ticketPackages = {
   general: {
@@ -87,7 +163,9 @@ export const ticketPackages = {
     kind: "ticket",
     name: "The View",
     priceCents: 2000,
-    active: true
+    active: true,
+    minAdults: admissionMinAdults,
+    admissionPolicyVersion
   },
   drink: {
     key: "drink",
@@ -156,10 +234,6 @@ export const cafeItems = {
   b8: { key: "b8", kind: "cafe", category: "bites", name: "Avocado Toast", priceCents: 1200, active: true }
 } as const satisfies Record<CafeItemKey, CafeItem>;
 
-export function childPriceCents(priceCents: number) {
-  return Math.ceil((priceCents / 100) * childDiscountRate) * 100;
-}
-
 export function bookingFeeCents(subtotalCents: number) {
   return Math.round(subtotalCents * bookingFeeRate);
 }
@@ -217,15 +291,30 @@ function catalogSnapshotItem(item: CatalogPricedItem) {
   if (item.kind === "ticket") {
     return compactObject({
       ...base,
-      metadata: compactObject({
-        entryIncluded: item.entryIncluded,
-        minAdults: item.minAdults,
-        roomFeeCents: item.roomFeeCents
-      })
+      metadata: catalogTicketMetadata(item)
     });
   }
 
   return base;
+}
+
+// Shared by line provenance hashes and the Convex catalog seed so both record
+// the same age policy for admission tickets.
+export function catalogTicketMetadata(item: TicketPackage) {
+  const admission = item.admissionPolicyVersion
+    ? {
+        admissionPolicyVersion: item.admissionPolicyVersion,
+        admissionMaxPartySize,
+        youthPriceCents: admissionAgeCategories.youth.priceCents,
+        childPriceCents: admissionAgeCategories.child.priceCents
+      }
+    : {};
+  return compactObject({
+    entryIncluded: item.entryIncluded,
+    minAdults: item.minAdults,
+    roomFeeCents: item.roomFeeCents,
+    ...admission
+  }) as Record<string, string | number | boolean> | undefined;
 }
 
 function stableContentHash(value: unknown) {

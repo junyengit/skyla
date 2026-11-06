@@ -1,5 +1,7 @@
 export const checkoutDraftTtlMs = 30 * 60 * 1000;
 export const checkoutDraftPaymentStartBufferMs = 60 * 1000;
+// A reviewed register sale that never reaches the reader releases its places.
+export const posDraftTtlMs = 30 * 60 * 1000;
 
 export type CheckoutDraftExpiryRecord = {
   createdAt: number;

@@ -27,7 +27,18 @@ type StripeCheckoutGatewayResult = {
   url: string;
   amountCents: number;
   currency: "usd";
+  expiresAt?: number;
 };
+
+// Conflicts that tell the browser what happened to its one payment attempt,
+// so it never offers a second payment while the first may still succeed.
+const paymentStateCodes = new Set([
+  "payment_in_progress",
+  "payment_already_received",
+  "payment_session_closed",
+  "payment_session_expiring",
+  "payment_needs_attention"
+]);
 
 function requiredString(value: unknown, label: string) {
   if (typeof value !== "string" || !value.trim()) {
@@ -77,7 +88,8 @@ function toPublicCheckoutResult(result: StripeCheckoutGatewayResult) {
     checkoutSessionId: result.checkoutSessionId,
     url: result.url,
     amountCents: result.amountCents,
-    currency: result.currency
+    currency: result.currency,
+    ...(typeof result.expiresAt === "number" ? { expiresAt: result.expiresAt } : {})
   };
 }
 
@@ -121,6 +133,9 @@ export async function POST(request: Request) {
           },
           { status: 429, headers }
         );
+      }
+      if (error.status === 409 && paymentStateCodes.has(error.code)) {
+        return paymentJson({ error: error.message, code: error.code }, { status: 409, headers });
       }
       if (error.status === 400 || error.status === 409) {
         return paymentJson(invalidPaymentRequest(error.message), { status: error.status, headers });

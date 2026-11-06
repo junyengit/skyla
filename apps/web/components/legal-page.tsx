@@ -32,7 +32,7 @@ export function LegalPage({ title, updated, intro, sections }: LegalPageProps) {
               Tickets
             </Link>
           ) : (
-            <Link href="/#book-venue" prefetch={false}>
+            <Link href="/#venue-booking" prefetch={false}>
               Full venue booking
             </Link>
           )}

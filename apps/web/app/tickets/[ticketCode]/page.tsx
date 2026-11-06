@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { TicketQr } from "@/components/ticket-qr";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarDays, ShieldCheck } from "@skyla/ui/icons";
@@ -64,31 +64,27 @@ export default async function TicketPage({ params }: TicketPageProps) {
         <h1 id="ticket-title">Sky LA</h1>
         <p className="ticketRef">Booking {ticket.bookingRef}</p>
         {isConfirmed ? (
-          <Image
-            className="ticketQr"
-            src={`/tickets/${encodeURIComponent(ticket.ticketCode)}/qr`}
-            width="260"
-            height="260"
-            alt="QR code for this Sky LA ticket"
-            unoptimized
-          />
+          <TicketQr ticketCode={ticket.ticketCode} />
         ) : null}
         <dl className="ticketDetails">
           <div><dt>Status</dt><dd>{ticket.status}</dd></div>
           {ticket.visitDate ? <div><dt>Date</dt><dd>{ticket.visitDate}</dd></div> : null}
-          {ticket.entryTime ? <div><dt>Entry</dt><dd>{ticket.entryTime}</dd></div> : null}
+          {ticket.entryTime ? <div><dt>Entry (Los Angeles)</dt><dd>{ticket.entryTime}</dd></div> : null}
           {ticket.partySize ? <div><dt>Guests</dt><dd>{ticket.partySize}</dd></div> : null}
         </dl>
         <p className="ticketNote">
           <CalendarDays size={18} />
           {isConfirmed
-            ? "Present this code at the front desk."
+            ? "Present this ticket at the front desk."
             : isCheckedIn
-              ? "This ticket has already been checked in."
+              ? "This ticket has already been used. No re-entry."
               : ticket.status === "cancelled"
                 ? "This booking was cancelled and cannot be used for check-in."
-                : "This ticket cannot currently be used for check-in."}
+                : ticket.status === "expired"
+                  ? "This ticket expired at closing on its Los Angeles visit date."
+                  : "This ticket cannot currently be used for check-in. Show your booking reference to staff."}
         </p>
+        {isConfirmed ? <p>Valid on the selected Los Angeles date, from your entry time until closing. One admission for the booked party. No re-entry.</p> : null}
         <Link className="ticketHomeLink" href="/">Back to Sky LA</Link>
       </section>
     </main>

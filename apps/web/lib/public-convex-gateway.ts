@@ -4,6 +4,7 @@ export type PublicGatewayOperation =
   | "experience-inquiry"
   | "member-application"
   | "checkout-draft"
+  | "checkout-draft-release"
   | "stripe-checkout";
 
 type GatewayErrorBody = {

@@ -185,6 +185,26 @@ describe("/api/payments/stripe-terminal", () => {
     );
   });
 
+  it.each([
+    ["payment_outcome_unknown", "The payment outcome is not confirmed yet. Do not charge again; use Refresh Status."],
+    ["payment_already_received", "Payment for this sale was already received."],
+    ["payment_needs_attention", "This sale's payment needs staff review. Do not charge the guest again."]
+  ])("returns the staff-safe %s conflict instead of a provider failure", async (code, message) => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    process.env.SKYLA_POS_TERMINAL_ACCEPTANCE = "enabled";
+    fetchActionMock.mockRejectedValueOnce(
+      new Error(`[CONVEX A(payments:createStripeTerminalPaymentIntent)] Uncaught Error: Terminal payment state: ${code}: ${message}\n    at handler`)
+    );
+
+    const response = await CREATE_POST(
+      request({ saleRef: "SALE260704-ABC123", idempotencyKey: "pos_20260704_abc123" }, { headers: { authorization: "Bearer staff.jwt.token" } })
+    );
+
+    expect(response.status).toBe(409);
+    expectStaffPaymentHeaders(response);
+    await expect(response.json()).resolves.toEqual({ code, error: message });
+  });
+
   it("requires explicit POS Terminal acceptance before calling Convex", async () => {
     process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
 

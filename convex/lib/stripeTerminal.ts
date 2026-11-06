@@ -1,8 +1,10 @@
 import { stripeApiBaseUrl, stripeApiVersion } from "./stripeCheckout";
+import type { StripeMode } from "./stripeMode";
 
 const maxStripeDescriptionLength = 120;
 
 export { stripeApiBaseUrl, stripeApiVersion };
+export const terminalIntentSource = "convex-terminal";
 
 export type StripeTerminalLine = {
   name: string;
@@ -20,6 +22,10 @@ export type StripeTerminalSnapshot = {
   customerEmailLower?: string;
   readerId?: string;
   terminalLocationId?: string;
+  /** Selected LA visit and all-age party, present only with admission lines. */
+  visitDate?: string;
+  entryTime?: string;
+  partySize?: number;
   lines: StripeTerminalLine[];
 };
 
@@ -53,8 +59,14 @@ export type StripeTerminalPaymentIntentResponse = {
   id?: string;
   object?: string;
   amount?: number;
+  amount_received?: number;
   currency?: string;
   status?: string;
+  livemode?: boolean;
+  capture_method?: string;
+  payment_method_types?: unknown;
+  latest_charge?: unknown;
+  last_payment_error?: { code?: string; decline_code?: string; message?: string } | null;
   client_secret?: string;
   metadata?: Record<string, string>;
   error?: {
@@ -92,12 +104,25 @@ export type StripeTerminalReaderProcessResponse = {
   [key: string]: unknown;
 };
 
+/** Key used before frozen attempts; only read for legacy correlation. */
 export function stripeTerminalIntentIdempotencyKey(saleRef: string) {
   const ref = saleRef.trim();
   if (!ref) {
     throw new Error("saleRef is required");
   }
   return `skyla:terminal-intent:${ref}`;
+}
+
+/** One key per frozen attempt; a replay always sends the stored body with it. */
+export function stripeTerminalAttemptIdempotencyKey(saleRef: string, attemptNonce: string) {
+  const ref = saleRef.trim();
+  if (!ref) {
+    throw new Error("saleRef is required");
+  }
+  if (!/^[a-f0-9]{32}$/.test(attemptNonce)) {
+    throw new Error("attemptNonce must be 32 lowercase hex characters");
+  }
+  return `skyla:terminal-intent:v2:${ref}:${attemptNonce}`;
 }
 
 export function stripeTerminalProcessIdempotencyKey(
@@ -124,8 +149,14 @@ export function stripeTerminalProcessIdempotencyKey(
   return `skyla:terminal-process:${ref}:${intent}:${reader}:attempt-${processAttempt}`;
 }
 
+/**
+ * The exact PaymentIntent request for one frozen attempt. It is stored before
+ * the first POST and replayed byte-for-byte with the same key; it is never
+ * rebuilt for a retry.
+ */
 export function buildStripeTerminalPaymentIntentRequest(
-  snapshot: StripeTerminalSnapshot
+  snapshot: StripeTerminalSnapshot,
+  options: { attemptNonce: string }
 ): StripeTerminalIntentRequest {
   assertStripeTerminalSnapshot(snapshot);
 
@@ -136,8 +167,14 @@ export function buildStripeTerminalPaymentIntentRequest(
   params.set("capture_method", "automatic");
   params.set("description", terminalDescription(snapshot.saleRef));
   params.set("metadata[sale_ref]", snapshot.saleRef);
-  params.set("metadata[source]", "convex-terminal");
+  params.set("metadata[source]", terminalIntentSource);
+  params.set("metadata[attempt_nonce]", options.attemptNonce);
   params.set("metadata[line_count]", String(snapshot.lines.length));
+  if (snapshot.visitDate && snapshot.entryTime && snapshot.partySize) {
+    params.set("metadata[visit_date]", snapshot.visitDate);
+    params.set("metadata[entry_time]", snapshot.entryTime);
+    params.set("metadata[party_size]", String(snapshot.partySize));
+  }
   if (snapshot.customerEmailLower) {
     params.set("receipt_email", snapshot.customerEmailLower);
   }
@@ -151,7 +188,7 @@ export function buildStripeTerminalPaymentIntentRequest(
   return {
     endpoint: "/payment_intents",
     apiVersion: stripeApiVersion,
-    idempotencyKey: stripeTerminalIntentIdempotencyKey(snapshot.saleRef),
+    idempotencyKey: stripeTerminalAttemptIdempotencyKey(snapshot.saleRef, options.attemptNonce),
     body: params
   };
 }
@@ -182,7 +219,7 @@ export function assertStripeTerminalSnapshot(snapshot: StripeTerminalSnapshot) {
   if (snapshot.currency !== "usd") {
     throw new Error("Stripe Terminal currently supports USD POS sales only");
   }
-  if (!Number.isInteger(snapshot.totalCents) || snapshot.totalCents < 50) {
+  if (!Number.isSafeInteger(snapshot.totalCents) || snapshot.totalCents < 50) {
     throw new Error("Stripe Terminal total must be at least 50 cents");
   }
   if (snapshot.feeCents !== 0) {
@@ -231,13 +268,27 @@ export function stripeTerminalReaderErrorMessage(data: StripeTerminalReaderProce
 }
 
 export function sanitizeStripeTerminalPaymentIntent(data: StripeTerminalPaymentIntentResponse) {
+  const metadata = data.metadata && typeof data.metadata === "object" ? data.metadata : {};
   return withoutUndefined({
     id: stringValue(data.id),
     object: stringValue(data.object),
     status: stringValue(data.status),
     amount: numberValue(data.amount),
+    amount_received: numberValue(data.amount_received),
     currency: stringValue(data.currency),
-    metadata: data.metadata
+    livemode: booleanValue(data.livemode),
+    latest_charge: stringValue(data.latest_charge),
+    decline_code: stringValue(data.last_payment_error?.decline_code ?? data.last_payment_error?.code),
+    // Known correlation fields only; never the receipt email or client secret.
+    metadata: withoutUndefined({
+      sale_ref: stringValue(metadata.sale_ref),
+      source: stringValue(metadata.source),
+      attempt_nonce: stringValue(metadata.attempt_nonce),
+      reader_id: stringValue(metadata.reader_id),
+      visit_date: stringValue(metadata.visit_date),
+      entry_time: stringValue(metadata.entry_time),
+      party_size: stringValue(metadata.party_size)
+    })
   });
 }
 
@@ -290,18 +341,115 @@ export function assertStripeTerminalReaderProcessResult(
   }
 }
 
+// Free children are zero-priced canonical admission lines; the intent amount
+// is the positive sale total, so a zero line is valid but corrupt cents are not.
 function normalizeLine(line: StripeTerminalLine) {
-  if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
+  if (!Number.isSafeInteger(line.quantity) || line.quantity <= 0) {
     throw new Error("Stripe Terminal line quantity must be a positive integer");
   }
-  if (!Number.isInteger(line.unitAmountCents) || line.unitAmountCents < 50) {
-    throw new Error("Stripe Terminal line unit amount must be at least 50 cents");
+  if (!Number.isSafeInteger(line.unitAmountCents) || line.unitAmountCents < 0) {
+    throw new Error("Stripe Terminal line unit amount must be a non-negative whole number of cents");
   }
-  if (line.quantity * line.unitAmountCents !== line.lineTotalCents) {
+  if (!Number.isSafeInteger(line.lineTotalCents) || line.quantity * line.unitAmountCents !== line.lineTotalCents) {
     throw new Error("Stripe Terminal line total is inconsistent");
   }
 
   return line;
+}
+
+export type TerminalIntentExpectation = {
+  saleRef: string;
+  amountCents: number;
+  currency: "usd";
+  stripeMode: StripeMode;
+  attemptNonce: string;
+  providerPaymentIntentId?: string;
+};
+
+const paymentIntentIdPattern = /^pi_[A-Za-z0-9]{8,200}$/;
+
+export function isStripePaymentIntentId(value: unknown): value is string {
+  return typeof value === "string" && paymentIntentIdPattern.test(value);
+}
+
+/** First field of a PaymentIntent that does not match the frozen attempt. */
+export function terminalIntentMismatch(
+  intent: StripeTerminalPaymentIntentResponse | null | undefined,
+  expected: TerminalIntentExpectation
+): string | null {
+  if (!intent || typeof intent !== "object") return "intent_missing";
+  if (intent.object !== "payment_intent") return "intent_object_invalid";
+  if (!isStripePaymentIntentId(intent.id)) return "intent_id_invalid";
+  if (expected.providerPaymentIntentId && intent.id !== expected.providerPaymentIntentId) return "intent_id_mismatch";
+  if (typeof intent.livemode !== "boolean") return "intent_livemode_missing";
+  if (intent.livemode !== (expected.stripeMode === "live")) return "intent_livemode_mismatch";
+  const metadata = intent.metadata && typeof intent.metadata === "object" ? intent.metadata : {};
+  if (metadata.sale_ref !== expected.saleRef) return "intent_sale_mismatch";
+  if (metadata.source !== terminalIntentSource) return "intent_source_mismatch";
+  if (metadata.attempt_nonce !== expected.attemptNonce) return "intent_attempt_nonce_mismatch";
+  if (typeof intent.amount !== "number" || !Number.isSafeInteger(intent.amount)) return "intent_amount_missing";
+  if (intent.amount !== expected.amountCents) return "intent_amount_mismatch";
+  if (intent.currency !== expected.currency) return "intent_currency_mismatch";
+  if (intent.capture_method !== "automatic") return "intent_capture_method_mismatch";
+  if (!Array.isArray(intent.payment_method_types) || !intent.payment_method_types.includes("card_present")) {
+    return "intent_payment_method_mismatch";
+  }
+  return null;
+}
+
+export type CreatedTerminalIntentVerification =
+  | { ok: true; paymentIntentId: string }
+  | { ok: false; reason: string };
+
+/** A creation (or exact replay) response must describe the new, unpaid intent. */
+export function verifyCreatedTerminalIntent(
+  intent: StripeTerminalPaymentIntentResponse | null | undefined,
+  expected: TerminalIntentExpectation
+): CreatedTerminalIntentVerification {
+  const mismatch = terminalIntentMismatch(intent, expected);
+  if (mismatch) return { ok: false, reason: mismatch };
+  if (intent!.status !== "requires_payment_method") return { ok: false, reason: "intent_not_new_at_creation" };
+  return { ok: true, paymentIntentId: intent!.id as string };
+}
+
+export type RetrievedTerminalIntentState =
+  | { state: "paid"; paymentIntentId: string }
+  | { state: "canceled"; paymentIntentId: string }
+  | { state: "open"; providerState: string }
+  | { state: "mismatch"; reason: string }
+  | { state: "unknown"; reason: string };
+
+/**
+ * Only a correlated `succeeded` intent whose full amount was received is
+ * paid, and only a correlated `canceled` intent is closed. A decline leaves
+ * the same intent payable (`requires_payment_method`); in-progress states are
+ * never treated as paid or as a release.
+ */
+export function classifyRetrievedTerminalIntent(
+  intent: StripeTerminalPaymentIntentResponse | null | undefined,
+  expected: TerminalIntentExpectation
+): RetrievedTerminalIntentState {
+  const mismatch = terminalIntentMismatch(intent, expected);
+  if (mismatch) return { state: "mismatch", reason: mismatch };
+  const paymentIntentId = intent!.id as string;
+  switch (intent!.status) {
+    case "succeeded":
+      return intent!.amount_received === expected.amountCents
+        ? { state: "paid", paymentIntentId }
+        : { state: "mismatch", reason: "intent_amount_received_mismatch" };
+    case "canceled":
+      return { state: "canceled", paymentIntentId };
+    case "requires_payment_method":
+    case "requires_confirmation":
+    case "requires_action":
+    case "processing":
+      return { state: "open", providerState: intent!.status };
+    case "requires_capture":
+      // Automatic capture should never leave an authorization; not paid.
+      return { state: "unknown", reason: "intent_requires_capture" };
+    default:
+      return { state: "unknown", reason: "intent_status_unsupported" };
+  }
 }
 
 function terminalDescription(saleRef: string) {

@@ -1,8 +1,16 @@
-import { createPosSaleDraft, cafeItems, ticketPackages, type PosSaleInput } from "@skyla/payments";
+import {
+  admissionMaxPartySize,
+  createPosSaleDraft,
+  cafeItems,
+  ticketPackages,
+  type PosAdmissionInput,
+  type PosSaleInput
+} from "@skyla/payments";
 import { fetchMutation } from "convex/nextjs";
 import { makeFunctionReference } from "convex/server";
 
 type PosDraftInput = {
+  admission?: unknown;
   lines?: unknown;
   customerEmail?: unknown;
   readerId?: unknown;
@@ -10,6 +18,7 @@ type PosDraftInput = {
 };
 
 type PosDraftMutationArgs = {
+  admission?: PosAdmissionInput;
   lines: PosSaleInput["lines"];
   customerEmail?: string;
   readerId?: string;
@@ -26,8 +35,11 @@ type PersistedPosDraftResult = {
     totalCents: number;
   };
   customerEmail?: string;
+  visitDate?: string;
+  entryTime?: string;
   readerId?: string;
   terminalLocationId?: string;
+  expiresAt?: number;
   lines: ReturnType<typeof createPosSaleDraft>["lines"];
 };
 
@@ -63,8 +75,11 @@ function toDraftResponse(result: PersistedPosDraftResult) {
     totalCents: result.totals.totalCents,
     lines: result.lines,
     customerEmail: result.customerEmail,
+    visitDate: result.visitDate,
+    entryTime: result.entryTime,
     readerId: result.readerId,
     terminalLocationId: result.terminalLocationId,
+    expiresAt: result.expiresAt,
     saleRef: result.saleRef
   };
 }
@@ -128,18 +143,36 @@ function normalizeReaderId(value: unknown) {
   return readerId;
 }
 
+// Counts, date and time are shape-checked here; calendar, hours, the current
+// LA time and capacity are decided by Convex when the sale is stored.
+function normalizeAdmission(value: unknown): PosAdmissionInput | undefined {
+  if (value === undefined || value === null) return undefined;
+  const admission = assertObject(value, "admission");
+  const packageKey = optionalTrimmed(admission.packageKey, "packageKey", 80) ?? "general";
+  if (!(packageKey in ticketPackages)) {
+    throw new Error("packageKey is not recognized");
+  }
+  const visitDate = optionalTrimmed(admission.visitDate, "visitDate", 10);
+  const entryTime = optionalTrimmed(admission.entryTime, "entryTime", 5);
+  if (!visitDate) throw new Error("visitDate is required");
+  if (!entryTime) throw new Error("entryTime is required");
+  return withoutUndefined({
+    packageKey: packageKey as keyof typeof ticketPackages,
+    adults: integerRange(admission.adults, "adults", 1, admissionMaxPartySize),
+    children: integerRange(admission.children ?? 0, "children", 0, admissionMaxPartySize) || undefined,
+    freeChildren: integerRange(admission.freeChildren ?? 0, "freeChildren", 0, admissionMaxPartySize) || undefined,
+    visitDate,
+    entryTime
+  });
+}
+
 function normalizePosLine(value: unknown): PosSaleInput["lines"][number] {
   const line = assertObject(value, "line");
   const kind = line.kind;
-  const quantity = integerRange(line.quantity ?? 1, "line quantity", 1, 99);
-
   if (kind === "ticket") {
-    const packageKey = optionalTrimmed(line.packageKey, "packageKey", 80);
-    if (!packageKey || !(packageKey in ticketPackages)) {
-      throw new Error("packageKey is not recognized");
-    }
-    return { kind, packageKey: packageKey as keyof typeof ticketPackages, quantity };
+    throw new Error("Admission requires a selected visit date, entry time and age counts");
   }
+  const quantity = integerRange(line.quantity ?? 1, "line quantity", 1, 99);
 
   if (kind === "cafe") {
     const itemKey = optionalTrimmed(line.itemKey, "itemKey", 80);
@@ -163,23 +196,26 @@ function normalizePosLine(value: unknown): PosSaleInput["lines"][number] {
 }
 
 function normalizeInput(input: PosDraftInput) {
-  if (!Array.isArray(input.lines) || input.lines.length === 0) {
+  const admission = normalizeAdmission(input.admission);
+  const lines = input.lines ?? [];
+  if (!Array.isArray(lines) || (lines.length === 0 && !admission)) {
     throw new Error("POS sale requires at least one line");
   }
-  if (input.lines.length > 100) {
+  if (lines.length > 100) {
     throw new Error("POS sale can include at most 100 lines");
   }
 
-    return withoutUndefined({
-      lines: input.lines.map(normalizePosLine),
-      customerEmail: normalizeEmail(input.customerEmail),
-      readerId: normalizeReaderId(input.readerId),
-      idempotencyKey: normalizeIdempotencyKey(input.idempotencyKey)
-    });
+  return withoutUndefined({
+    admission,
+    lines: lines.map(normalizePosLine),
+    customerEmail: normalizeEmail(input.customerEmail),
+    readerId: normalizeReaderId(input.readerId),
+    idempotencyKey: normalizeIdempotencyKey(input.idempotencyKey)
+  });
 }
 
 function persistenceFailureStatus(message: string) {
-  if (message.includes("different draft")) {
+  if (message.includes("different draft") || message.includes("Visit unavailable:")) {
     return 409;
   }
   if (message.includes("idempotencyKey must") || message.includes("must be")) {
@@ -196,6 +232,7 @@ export async function POST(request: Request) {
     const input = normalizeInput((await request.json()) as PosDraftInput);
     const draft = createPosSaleDraft({
       actorRole: "pos",
+      admission: input.admission,
       lines: input.lines,
       customerEmail: input.customerEmail
     });
@@ -207,6 +244,7 @@ export async function POST(request: Request) {
         const result = await fetchMutation(
           createPosSaleDraftMutation,
           withoutUndefined({
+            admission: input.admission,
             lines: input.lines,
             customerEmail: input.customerEmail,
             readerId: input.readerId,
@@ -222,7 +260,13 @@ export async function POST(request: Request) {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Could not persist POS sale draft";
-        return Response.json({ error: message, persisted: false }, { status: persistenceFailureStatus(message) });
+        // Calendar and capacity refusals are shown to the cashier as written.
+        const visitAt = message.indexOf("Visit unavailable:");
+        const publicMessage = visitAt >= 0 ? message.slice(visitAt).split("\n")[0].trim() : message;
+        return Response.json(
+          { error: publicMessage, ...(visitAt >= 0 ? { code: "visit_unavailable" } : {}), persisted: false },
+          { status: persistenceFailureStatus(message) }
+        );
       }
     }
 

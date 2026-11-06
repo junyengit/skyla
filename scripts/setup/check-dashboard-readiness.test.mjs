@@ -11,8 +11,8 @@ const stripeSecretKeyValue = ["sk", "test", "thisShouldNeverAppearInOutput"].joi
 const stripeWebhookSecretValue = ["whsec", "thisShouldNeverAppearInOutput"].join("_");
 const publicGatewaySecretValue = "gatewaySecretThatShouldNeverAppear123";
 const goodVercelProject = {
-  id: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
-  name: "web",
+  id: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
+  name: "skyla",
   rootDirectory: "apps/web",
   framework: "nextjs",
   nodeVersion: "24.x"

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addons, cafeItems, catalogLineMetadata, ticketPackages } from "@skyla/payments";
+import {
+  addons,
+  admissionAgeCategories,
+  admissionLineMetadata,
+  cafeItems,
+  catalogLineMetadata,
+  ticketPackages
+} from "@skyla/payments";
 
 import {
   assertSameDraftFingerprint,
@@ -13,8 +20,10 @@ import {
 } from "./lib/orderDraftPersistence";
 
 const now = Date.UTC(2026, 6, 4, 12);
+// Visit drafts hold capacity, so date and entry time are required inputs.
+const visit = { visitDate: "2026-07-18", entryTime: "14:00" } as const;
 const catalogMetadata = {
-  catalogVersion: "skyla-payments-catalog-2026-07-20",
+  catalogVersion: "skyla-payments-catalog-2026-10-02",
   catalogSource: "@skyla/payments",
   catalogAuthority: "code-owned",
   catalogContentHash: expect.stringMatching(/^fnv1a32:/)
@@ -29,6 +38,7 @@ describe("Convex order draft persistence helpers", () => {
         children: 1,
         addons: { matcha: 1 },
         customerEmail: "Guest@Example.com",
+        ...visit,
         idempotencyKey: "checkout_000001",
         totalCents: 1
       } as Parameters<typeof buildCheckoutDraftWrite>[0] & { totalCents: number },
@@ -47,13 +57,117 @@ describe("Convex order draft persistence helpers", () => {
     expect(write.lines).toHaveLength(3);
     expect(write.lines[0]).toEqual(expect.objectContaining({ orderRef: "SKY2607-ABC123", lineTotalCents: 4000 }));
     expect(write.lines.map((line) => line.metadata)).toEqual([
-      catalogLineMetadata(ticketPackages.general),
-      {
-        ...catalogLineMetadata(ticketPackages.general),
-        childDiscountRate: 0.5
-      },
+      admissionLineMetadata(ticketPackages.general, admissionAgeCategories.adult),
+      admissionLineMetadata(ticketPackages.general, admissionAgeCategories.youth),
       catalogLineMetadata(addons.matcha)
     ]);
+  });
+
+  it("persists free children as a zero-priced ticket line and normalizes them into the fingerprint", () => {
+    const write = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, children: 2, freeChildren: 3, ...visit, idempotencyKey: "checkout_free_0001" },
+      { orderRef: "SKY2610-FREE01", now }
+    );
+
+    expect(write.input).toMatchObject({ adults: 1, children: 2, freeChildren: 3 });
+    expect(write.order).toMatchObject({ subtotalCents: 4000, feeCents: 0, totalCents: 4000 });
+    expect(write.lines.map(({ name, quantity, unitAmountCents, lineTotalCents }) => ({
+      name,
+      quantity,
+      unitAmountCents,
+      lineTotalCents
+    }))).toEqual([
+      { name: "The View · Adult 18+", quantity: 1, unitAmountCents: 2000, lineTotalCents: 2000 },
+      { name: "The View · Youth 8–17", quantity: 2, unitAmountCents: 1000, lineTotalCents: 2000 },
+      { name: "The View · Child 0–7", quantity: 3, unitAmountCents: 0, lineTotalCents: 0 }
+    ]);
+    expect(write.lines[2]).toMatchObject({
+      orderRef: "SKY2610-FREE01",
+      kind: "ticket",
+      productKey: "general",
+      metadata: admissionLineMetadata(ticketPackages.general, admissionAgeCategories.child)
+    });
+    expect(write.draftFingerprint).toContain('"freeChildren":3');
+    expect(() => assertStoredPaymentLineProvenance(write.lines, "Checkout")).not.toThrow();
+  });
+
+  it("rejects idempotency reuse when only the free child count changes", () => {
+    const first = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, freeChildren: 1, ...visit, idempotencyKey: "checkout_free_0002" },
+      { orderRef: "SKY2610-FREE02", now }
+    );
+    const second = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, freeChildren: 2, ...visit, idempotencyKey: "checkout_free_0002" },
+      { orderRef: "SKY2610-FREE02", now }
+    );
+
+    expect(first.order.totalCents).toBe(second.order.totalCents);
+    expect(() => assertSameDraftFingerprint(first.draftFingerprint, second.draftFingerprint)).toThrow(
+      "idempotencyKey was already used for a different draft"
+    );
+  });
+
+  it("keeps omitted and zero free children equivalent to the pre-existing fingerprint", () => {
+    const omitted = normalizeCheckoutDraftArgs({
+      packageKey: "general",
+      adults: 2,
+      ...visit,
+      idempotencyKey: "checkout_free_0003"
+    });
+    const zero = normalizeCheckoutDraftArgs({
+      packageKey: "general",
+      adults: 2,
+      freeChildren: 0,
+      ...visit,
+      idempotencyKey: "checkout_free_0003"
+    });
+
+    expect(zero).toEqual(omitted);
+    expect(zero).not.toHaveProperty("freeChildren");
+    expect(checkoutDraftFingerprint(zero)).toBe(checkoutDraftFingerprint(omitted));
+    expect(checkoutDraftFingerprint(omitted)).toBe(
+      'v1:{"adults":2,"entryTime":"14:00","packageKey":"general","visitDate":"2026-07-18"}'
+    );
+  });
+
+  it("requires a visit date and entry time because a draft holds capacity", () => {
+    expect(() =>
+      normalizeCheckoutDraftArgs({ packageKey: "general", adults: 1, entryTime: "14:00", idempotencyKey: "checkout_req_0001" })
+    ).toThrow("visitDate is required");
+    expect(() =>
+      normalizeCheckoutDraftArgs({ packageKey: "general", adults: 1, visitDate: "2026-07-18", idempotencyKey: "checkout_req_0002" })
+    ).toThrow("entryTime is required");
+  });
+
+  it("rejects idempotency reuse when only the visit date changes", () => {
+    const first = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, ...visit, idempotencyKey: "checkout_date_0001" },
+      { orderRef: "SKY2607-DATE01", now }
+    );
+    const second = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, ...visit, visitDate: "2026-07-19", idempotencyKey: "checkout_date_0001" },
+      { orderRef: "SKY2607-DATE01", now }
+    );
+    expect(() => assertSameDraftFingerprint(first.draftFingerprint, second.draftFingerprint)).toThrow(
+      "idempotencyKey was already used for a different draft"
+    );
+  });
+
+  it.each([
+    ["fractional free children", { adults: 1, freeChildren: 1.5 }, "freeChildren must be a whole number from 0 to 30"],
+    ["negative free children", { adults: 1, freeChildren: -1 }, "freeChildren must be a whole number from 0 to 30"],
+    ["infinite youths", { adults: 1, children: Number.POSITIVE_INFINITY }, "children must be a whole number from 0 to 30"],
+    ["NaN adults", { adults: Number.NaN }, "adults must be a whole number from 1 to 30"],
+    ["31 visitors", { adults: 20, children: 5, freeChildren: 6 }, "party size must be 30 visitors or fewer"]
+  ])("rejects %s in normalized Convex draft input", (_label, counts, message) => {
+    expect(() =>
+      normalizeCheckoutDraftArgs({
+        packageKey: "general",
+        ...visit,
+        idempotencyKey: "checkout_free_0004",
+        ...counts
+      } as Parameters<typeof normalizeCheckoutDraftArgs>[0])
+    ).toThrow(message);
   });
 
   it("normalizes equivalent checkout carts to the same fingerprint", () => {
@@ -63,12 +177,14 @@ describe("Convex order draft persistence helpers", () => {
       children: 0,
       addons: { matcha: 0 },
       customerEmail: "GUEST@EXAMPLE.COM",
+      ...visit,
       idempotencyKey: "checkout_000002"
     });
     const second = normalizeCheckoutDraftArgs({
       packageKey: "general",
       adults: 1,
       customerEmail: "guest@example.com",
+      ...visit,
       idempotencyKey: "checkout_000002"
     });
 
@@ -78,11 +194,11 @@ describe("Convex order draft persistence helpers", () => {
 
   it("rejects idempotency reuse with a different checkout draft", () => {
     const first = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, idempotencyKey: "checkout_000003" },
+      { packageKey: "general", adults: 1, ...visit, idempotencyKey: "checkout_000003" },
       { orderRef: "SKY2607-ABC123", now }
     );
     const second = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 2, idempotencyKey: "checkout_000003" },
+      { packageKey: "general", adults: 2, ...visit, idempotencyKey: "checkout_000003" },
       { orderRef: "SKY2607-DEF456", now }
     );
 
@@ -93,7 +209,7 @@ describe("Convex order draft persistence helpers", () => {
 
   it("returns a stable public line shape for persisted read-backs", () => {
     const write = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, idempotencyKey: "checkout_000006" },
+      { packageKey: "general", adults: 1, ...visit, idempotencyKey: "checkout_000006" },
       { orderRef: "SKY2607-ABC123", now }
     );
     const result = checkoutDraftResult(write.order, [
@@ -103,17 +219,22 @@ describe("Convex order draft persistence helpers", () => {
     expect(result.lines[0]).toEqual({
       kind: "ticket",
       productKey: "general",
-      name: "The View",
+      name: "The View · Adult 18+",
       quantity: 1,
       unitAmountCents: 2000,
       lineTotalCents: 2000,
-      metadata: catalogMetadata
+      metadata: {
+        ...catalogMetadata,
+        admissionPolicyVersion: "skydeck-admission-ages-2026-10-02",
+        ageCategory: "adult",
+        ageRange: "18+"
+      }
     });
   });
 
   it("accepts payment snapshots only when catalog-priced checkout lines keep provenance", () => {
     const write = buildCheckoutDraftWrite(
-      { packageKey: "general", adults: 1, children: 1, idempotencyKey: "checkout_000007" },
+      { packageKey: "general", adults: 1, children: 1, ...visit, idempotencyKey: "checkout_000007" },
       { orderRef: "SKY2607-ABC123", now }
     );
 
@@ -128,12 +249,61 @@ describe("Convex order draft persistence helpers", () => {
         [
           {
             ...write.lines[0],
-            metadata: { ...catalogLineMetadata(ticketPackages.general), catalogContentHash: "fnv1a32:00000000:92" }
+            metadata: { ...write.lines[0].metadata, catalogContentHash: "fnv1a32:00000000:92" }
           }
         ],
         "Checkout"
       )
     ).toThrow("Checkout line 1 has mismatched catalog provenance: catalogContentHash");
+  });
+
+  it("rejects stored admission lines whose age category, price, or name was altered", () => {
+    const write = buildCheckoutDraftWrite(
+      { packageKey: "general", adults: 1, children: 1, freeChildren: 1, ...visit, idempotencyKey: "checkout_000008" },
+      { orderRef: "SKY2607-ABC123", now }
+    );
+    const [adult, youth, child] = write.lines;
+
+    expect(() =>
+      assertStoredPaymentLineProvenance([{ ...youth, metadata: { ...youth.metadata, ageCategory: "child" } }], "Checkout")
+    ).toThrow("Checkout line 1 has mismatched admission age metadata: ageRange");
+    expect(() =>
+      assertStoredPaymentLineProvenance(
+        [{ ...adult, unitAmountCents: 0, lineTotalCents: 0, metadata: { ...adult.metadata, ageCategory: "child", ageRange: "0-7" } }],
+        "Checkout"
+      )
+    ).toThrow("Checkout line 1 name does not match the code-owned catalog");
+    expect(() =>
+      assertStoredPaymentLineProvenance([{ ...child, unitAmountCents: 1, lineTotalCents: 1 }], "Checkout")
+    ).toThrow("Checkout line 1 price does not match the code-owned catalog");
+    expect(() =>
+      assertStoredPaymentLineProvenance(
+        [{ ...child, metadata: { ...child.metadata, ageCategory: "toString" } }],
+        "Checkout"
+      )
+    ).toThrow("Checkout line 1 has an unknown admission age category");
+    expect(() =>
+      assertStoredPaymentLineProvenance(
+        [{ ...youth, metadata: { ...youth.metadata, childDiscountRate: 0.5 } }],
+        "Checkout"
+      )
+    ).toThrow("Checkout line 1 has retired child discount metadata");
+    expect(() =>
+      assertStoredPaymentLineProvenance(
+        [
+          {
+            kind: "addon",
+            productKey: "matcha",
+            name: "Ceremonial Matcha Latte",
+            quantity: 1,
+            unitAmountCents: 800,
+            lineTotalCents: 800,
+            metadata: { ...catalogLineMetadata(addons.matcha), ageCategory: "child" }
+          }
+        ],
+        "Checkout"
+      )
+    ).toThrow("Checkout line 1 has admission age metadata on a non-ticket line");
   });
 
   it("validates checkout dates, times, emails, and bounded quantities", () => {
@@ -153,23 +323,28 @@ describe("Convex order draft persistence helpers", () => {
       buildCheckoutDraftWrite(
         {
           packageKey: "general",
-          adults: 21,
+          adults: 31,
           entryTime: "25:00",
           customerEmail: "not-an-email",
           idempotencyKey: "checkout_000005"
         },
         { orderRef: "SKY2607-ABC123", now }
       )
-    ).toThrow("adults must be an integer from 1 to 20");
+    ).toThrow("adults must be a whole number from 1 to 30");
+
+    expect(() =>
+      buildCheckoutDraftWrite(
+        { packageKey: "general", adults: 1, visitDate: "2026-07-18", entryTime: "25:00", idempotencyKey: "checkout_000005" },
+        { orderRef: "SKY2607-ABC123", now }
+      )
+    ).toThrow("entryTime must use HH:mm");
   });
 
-  it("builds staff-attributed POS sale docs with role-derived pricing", () => {
+  it("builds staff-attributed POS sale docs with canonical mixed-age admission and a selected visit", () => {
     const write = buildPosSaleDraftWrite(
       {
-        lines: [
-          { kind: "ticket", packageKey: "general", quantity: 1 },
-          { kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }
-        ],
+        admission: { packageKey: "general", adults: 1, children: 1, freeChildren: 1, visitDate: "2026-07-18", entryTime: "14:00" },
+        lines: [{ kind: "custom", name: "Locker fee", amountCents: 500, reason: "Guest requested locker" }],
         customerEmail: "STAFFSALE@EXAMPLE.COM",
         readerId: "tmr_reader_123",
         terminalLocationId: "tml_location_123",
@@ -180,24 +355,54 @@ describe("Convex order draft persistence helpers", () => {
 
     expect(write.sale).toMatchObject({
       saleRef: "SALE260704-ABC123",
-      subtotalCents: 2500,
+      subtotalCents: 3500,
       feeCents: 0,
-      totalCents: 2500,
+      totalCents: 3500,
       staffUserId: "staff_123",
       customerEmailLower: "staffsale@example.com",
+      visitDate: "2026-07-18",
+      entryTime: "14:00",
       readerId: "tmr_reader_123",
       terminalLocationId: "tml_location_123"
     });
     expect(write.lines).toEqual([
-      expect.objectContaining({
-        saleRef: "SALE260704-ABC123",
-        lineTotalCents: 2000,
-        metadata: catalogLineMetadata(ticketPackages.general)
-      }),
+      expect.objectContaining({ unitAmountCents: 2000, lineTotalCents: 2000, metadata: expect.objectContaining({ ageCategory: "adult" }) }),
+      expect.objectContaining({ unitAmountCents: 1000, lineTotalCents: 1000, metadata: expect.objectContaining({ ageCategory: "youth" }) }),
+      expect.objectContaining({ unitAmountCents: 0, lineTotalCents: 0, metadata: expect.objectContaining({ ageCategory: "child" }) }),
       expect.objectContaining({ saleRef: "SALE260704-ABC123", lineTotalCents: 500 })
     ]);
-    expect(write.lines[1].metadata).toEqual({ reason: "Guest requested locker" });
-    expect(write.lines[1].metadata).not.toHaveProperty("catalogAuthority");
+    expect(() => assertStoredPaymentLineProvenance(write.lines, "POS Terminal")).not.toThrow();
+    expect(write.lines[3].metadata).toEqual({ reason: "Guest requested locker" });
+    expect(write.lines[3].metadata).not.toHaveProperty("catalogAuthority");
+  });
+
+  it("rejects undated POS tickets, invalid visits and corrupt stored quantities or cents", () => {
+    const base = { packageKey: "general" as const, adults: 1, visitDate: "2026-07-18", entryTime: "14:00" };
+    const build = (args: Parameters<typeof buildPosSaleDraftWrite>[0]) =>
+      buildPosSaleDraftWrite(args, { saleRef: "SALE260704-ABC123", now, staffUserId: "staff_123", actorRole: "pos" });
+
+    expect(() => build({ lines: [{ kind: "ticket", packageKey: "general" } as never], idempotencyKey: "possale_000006" }))
+      .toThrow("Admission requires a selected visit date, entry time and age counts");
+    expect(() => build({ admission: { ...base, visitDate: "2026-02-30" }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("visitDate must be a real calendar date");
+    expect(() => build({ admission: { ...base, entryTime: "9:00" }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("entryTime must use HH:mm");
+    expect(() => build({ admission: { ...base, adults: 0, freeChildren: 2 }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("adults must be a whole number from 1 to 30");
+    expect(() => build({ admission: { ...base, adults: 25, children: 6 }, lines: [], idempotencyKey: "possale_000006" }))
+      .toThrow("party size must be 30 visitors or fewer");
+    expect(() => build({ lines: [{ kind: "cafe", itemKey: "b1", quantity: 100 }], idempotencyKey: "possale_000006" }))
+      .toThrow("line quantity must be an integer from 1 to 99");
+
+    const valid = build({ admission: { ...base, freeChildren: 1 }, lines: [], idempotencyKey: "possale_000006" });
+    for (const corrupt of [
+      { ...valid.lines[1], quantity: -1, lineTotalCents: 0 },
+      { ...valid.lines[1], quantity: 1.5 },
+      { ...valid.lines[0], unitAmountCents: -2000, lineTotalCents: -2000 },
+      { ...valid.lines[0], quantity: Number.MAX_SAFE_INTEGER + 1 }
+    ]) {
+      expect(() => assertStoredPaymentLineProvenance([corrupt], "POS Terminal")).toThrow("invalid quantity or amount");
+    }
   });
 
   it("persists cafe catalog provenance without adding it to custom POS lines", () => {
@@ -249,9 +454,11 @@ describe("Convex order draft persistence helpers", () => {
     ).toThrow("POS Terminal line 1 is custom but includes catalog provenance metadata");
   });
 
-  it("rejects viewer pricing and POS idempotency conflicts", () => {
+  it("rejects viewer pricing and POS idempotency conflicts, including a moved visit", () => {
+    const admission = { packageKey: "general" as const, adults: 1, visitDate: "2026-07-18", entryTime: "14:00" };
     const sale = {
-      lines: [{ kind: "ticket" as const, packageKey: "general" as const }],
+      admission,
+      lines: [],
       idempotencyKey: "possale_000002"
     };
 
@@ -265,16 +472,16 @@ describe("Convex order draft persistence helpers", () => {
       staffUserId: "staff_123",
       actorRole: "pos"
     });
-    const secondFingerprint = posSaleDraftFingerprint(
-      {
-        lines: [{ kind: "ticket", packageKey: "drink", quantity: 1 }],
-        idempotencyKey: "possale_000002"
-      },
-      "pos"
-    );
-
-    expect(() => assertSameDraftFingerprint(first.draftFingerprint, secondFingerprint)).toThrow(
-      "idempotencyKey was already used for a different draft"
-    );
+    for (const changed of [
+      { ...admission, visitDate: "2026-07-19" },
+      { ...admission, entryTime: "14:30" },
+      { ...admission, freeChildren: 1 }
+    ]) {
+      const secondFingerprint = posSaleDraftFingerprint({ admission: changed, lines: [], idempotencyKey: "possale_000002" }, "pos");
+      expect(() => assertSameDraftFingerprint(first.draftFingerprint, secondFingerprint)).toThrow(
+        "idempotencyKey was already used for a different draft"
+      );
+    }
+    expect(posSaleDraftFingerprint({ admission, lines: [], idempotencyKey: "possale_000002" }, "pos")).toBe(first.draftFingerprint);
   });
 });

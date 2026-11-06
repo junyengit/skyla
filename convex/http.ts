@@ -1,8 +1,11 @@
 import { httpRouter } from "convex/server";
 import { siteConfig } from "@skyla/config";
+import { visitUnavailablePrefix } from "@skyla/payments";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
+import { parseCheckoutPaymentStateError } from "./lib/checkoutAttempts";
+import { newTicketCode } from "./lib/ticketDelivery";
 import {
   publicGatewayRateLimitError,
   publicGatewaySecretMatches,
@@ -73,7 +76,9 @@ export const publicGateway = httpAction(async (ctx, request) => {
     try {
       if (
         !siteConfig.launched &&
-        (payload.operation === "checkout-draft" || payload.operation === "stripe-checkout")
+        (payload.operation === "checkout-draft" ||
+          payload.operation === "checkout-draft-release" ||
+          payload.operation === "stripe-checkout")
       ) {
         return gatewayJson(
           {
@@ -95,7 +100,9 @@ export const publicGateway = httpAction(async (ctx, request) => {
           ? await ctx.runMutation(internal.memberApplications.submitApplication, args)
           : payload.operation === "checkout-draft"
             ? await ctx.runMutation(internal.orderDrafts.createCheckoutOrderDraft, args)
-            : await ctx.runAction(internal.payments.createStripeCheckoutSession, args);
+            : payload.operation === "checkout-draft-release"
+              ? await ctx.runMutation(internal.orderDrafts.releaseCheckoutOrderDraft, args)
+              : await ctx.runAction(internal.payments.createStripeCheckoutSession, args);
 
       return gatewayJson({ ok: true, result });
     } catch (error) {
@@ -175,11 +182,19 @@ http.route({
           saleRef: outcome.saleRef,
           ticketCode: outcome.outcome === "paid" ? newTicketCode() : undefined,
           amountCents: "amountCents" in outcome ? outcome.amountCents : undefined,
+          amountReceivedCents: "amountReceivedCents" in outcome ? outcome.amountReceivedCents : undefined,
           currency: "currency" in outcome ? outcome.currency : undefined,
+          attemptNonce: "attemptNonce" in outcome ? outcome.attemptNonce : undefined,
+          intentSource: "intentSource" in outcome ? outcome.intentSource : undefined,
+          livemode: "livemode" in outcome ? outcome.livemode : undefined,
+          intentStatus: "intentStatus" in outcome ? outcome.intentStatus : undefined,
+          providerEventCreatedAt: "providerEventCreatedAt" in outcome ? outcome.providerEventCreatedAt : undefined,
           raw: outcome.raw
         })
       );
 
+      // Paid money that cannot become a ticket is durably recorded as a
+      // billing exception, so Stripe gets a 2xx and need not redeliver it.
       return json({
         ok: result.status !== "failed",
         status: result.status,
@@ -236,10 +251,18 @@ http.route({
         ticketCode: outcome.outcome === "paid" ? newTicketCode() : undefined,
         amountCents: "amountCents" in outcome ? outcome.amountCents : undefined,
         currency: "currency" in outcome ? outcome.currency : undefined,
+        attemptNonce: "attemptNonce" in outcome ? outcome.attemptNonce : undefined,
+        sessionMode: "sessionMode" in outcome ? outcome.sessionMode : undefined,
+        livemode: "livemode" in outcome ? outcome.livemode : undefined,
+        sessionStatus: "sessionStatus" in outcome ? outcome.sessionStatus : undefined,
+        paymentStatus: "paymentStatus" in outcome ? outcome.paymentStatus : undefined,
+        providerEventCreatedAt: "providerEventCreatedAt" in outcome ? outcome.providerEventCreatedAt : undefined,
         raw: outcome.raw
       })
     );
 
+    // A paid-but-unfulfillable Session is durably recorded as a billing
+    // exception, so Stripe gets a 2xx and does not need to redeliver it.
     return json({
       ok: result.status !== "failed",
       status: result.status,
@@ -256,10 +279,6 @@ http.route({
 });
 
 export default http;
-
-function newTicketCode() {
-  return `tkt_${crypto.randomUUID().replaceAll("-", "").toLowerCase()}`;
-}
 
 function json(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), {
@@ -293,6 +312,7 @@ function parsePublicGatewayPayload(value: unknown): PublicGatewayPayload {
     "experience-inquiry",
     "member-application",
     "checkout-draft",
+    "checkout-draft-release",
     "stripe-checkout"
   ]);
   if (typeof payload.operation !== "string" || !operations.has(payload.operation as PublicGatewayOperation)) {
@@ -322,6 +342,19 @@ function bearerToken(authorization: string | null) {
 function publicGatewayFailure(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const normalized = message.toLowerCase();
+  const paymentState = parseCheckoutPaymentStateError(message);
+  if (paymentState) {
+    return { status: 409, code: paymentState.code, error: paymentState.message };
+  }
+  const visitUnavailableAt = message.indexOf(visitUnavailablePrefix);
+  if (visitUnavailableAt >= 0) {
+    const reason = message.slice(visitUnavailableAt + visitUnavailablePrefix.length).trim();
+    return {
+      status: 409,
+      code: "visit_unavailable",
+      error: `${reason.charAt(0).toUpperCase()}${reason.slice(1)}.`
+    };
+  }
   if (
     normalized.includes("different inquiry") ||
     normalized.includes("different member application") ||

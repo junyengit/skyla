@@ -3,6 +3,7 @@
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { installCheckoutBrowserPlatform } from "./checkout-test-support";
 import { CheckoutClient } from "./components/checkout-client";
 
 const checkoutSessionId = "cs_test_abc123xyz7890123";
@@ -18,7 +19,10 @@ function renderReturnedCheckout() {
   );
 }
 
+let platform: ReturnType<typeof installCheckoutBrowserPlatform>;
+
 beforeEach(() => {
+  platform = installCheckoutBrowserPlatform();
   window.history.replaceState(
     {},
     "",
@@ -28,6 +32,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  platform.restore();
   vi.unstubAllGlobals();
 });
 
