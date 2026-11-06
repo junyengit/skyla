@@ -3,11 +3,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const expected = {
-  scope: "junyen-enterprises",
+  scope: "jaky",
   projectRoot: "apps/web",
-  projectName: "web",
-  projectId: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
-  orgId: "team_3kWPO8fPD6E7x39voGoNNeog",
+  projectName: "skyla",
+  projectId: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
+  orgId: "team_PyRZqoI0WGhS4RybAKnWdIpQ",
   framework: "nextjs",
   nodeVersion: "24.x",
   packageManager: "bun@1.4.0-canary.1",
@@ -35,7 +35,7 @@ const dashboard = normalizeProject(source.payload);
 
 const checks = [
   check("dashboardProjectId", dashboard.id, expected.projectId, "Vercel project ID should stay linked to the Skyla web project."),
-  check("dashboardProjectName", dashboard.name, expected.projectName, "Vercel project name should stay `web`."),
+  check("dashboardProjectName", dashboard.name, expected.projectName, "Vercel project name should stay `skyla`."),
   check("dashboardRootDirectory", dashboard.rootDirectory, expected.projectRoot, "The Vercel project root must be the Next app at apps/web."),
   check("dashboardFramework", normalizeFramework(dashboard.framework), expected.framework, "The Vercel framework preset should be Next.js."),
   check("dashboardNodeVersion", dashboard.nodeVersion, expected.nodeVersion, "Vercel should build with Node 24.x."),
@@ -56,8 +56,8 @@ const checks = [
 if (localLink.present) {
   checks.push(
     check("localLinkProjectId", localLink.data?.projectId, expected.projectId, "Local apps/web/.vercel/project.json should point to the same Vercel project."),
-    check("localLinkOrgId", localLink.data?.orgId, expected.orgId, "Local apps/web/.vercel/project.json should point to Junyen Enterprises."),
-    check("localLinkProjectName", localLink.data?.projectName, expected.projectName, "Local apps/web/.vercel/project.json should name the web project.")
+    check("localLinkOrgId", localLink.data?.orgId, expected.orgId, "Local apps/web/.vercel/project.json should point to jaky."),
+    check("localLinkProjectName", localLink.data?.projectName, expected.projectName, "Local apps/web/.vercel/project.json should name the skyla project.")
   );
 } else if (process.env.SKYLA_VERCEL_REQUIRE_LOCAL_LINK === "1") {
   checks.push({
@@ -65,7 +65,7 @@ if (localLink.present) {
     actual: null,
     expected: "apps/web/.vercel/project.json",
     ok: false,
-    note: "Run `cd apps/web && bunx vercel link --yes --scope junyen-enterprises --project web` before dashboard work."
+    note: "Run `cd apps/web && bunx vercel link --yes --scope jaky --project skyla` before dashboard work."
   });
 }
 
@@ -155,7 +155,7 @@ function loadProjectInspect() {
       payload: {},
       error: [
         "Could not inspect Vercel project settings.",
-        "Run `cd apps/web && bunx vercel link --yes --scope junyen-enterprises --project web`, then retry.",
+        "Run `cd apps/web && bunx vercel link --yes --scope jaky --project skyla`, then retry.",
         result.stderr.trim() || result.stdout.trim()
       ].filter(Boolean).join(" ")
     };
@@ -337,8 +337,8 @@ function buildNextActions({ source, failedChecks }) {
       id: "link-vercel-project",
       owner: "operator",
       priority: 1,
-      action: "Link the local apps/web directory to the Junyen Enterprises web project, then rerun the project checker.",
-      command: "cd apps/web && bunx vercel link --yes --scope junyen-enterprises --project web"
+      action: "Link the local apps/web directory to the jaky Skyla project, then rerun the project checker.",
+      command: "cd apps/web && bunx vercel link --yes --scope jaky --project skyla"
     });
   }
 

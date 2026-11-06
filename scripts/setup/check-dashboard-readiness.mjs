@@ -121,7 +121,7 @@ function buildNextActions({ gates, convex, vercel, vercelProject }) {
       id: "fix-vercel-project-shape",
       owner: "vercel-dashboard-and-repo",
       priority: 1,
-      action: "Keep Vercel linked to Junyen Enterprises/web with root apps/web, Next.js, Node 24.x, and keep apps/web/vercel.json as the Bun canary build authority.",
+      action: "Keep Vercel linked to jaky/skyla with root apps/web, Next.js, Node 24.x, and keep apps/web/vercel.json as the Bun canary build authority.",
       command: "bun run vercel:project:check",
       evidence: failedCheckNames(vercelProject)
     });
