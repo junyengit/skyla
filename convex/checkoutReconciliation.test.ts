@@ -862,6 +862,11 @@ describe("legacy and abandoned drafts", () => {
     const draft = await createDraft(harness);
     await harness.call(orderDrafts.beginCheckoutPaymentAttempt, draft);
     const legacySessionId = "cs_test_legacysession0001";
+    // A long history of failures must never hide the one creation receipt.
+    for (let index = 0; index < 150; index++) harness.seed("paymentEvents", {
+      orderRef: draft.orderRef, provider: "stripe", providerPaymentId: legacySessionId,
+      status: "failed", currency: "usd", amountCents: 4000, createdAt: Date.now() - 6 * minute
+    });
     harness.seed("paymentEvents", {
       orderRef: draft.orderRef,
       provider: "stripe",
@@ -906,6 +911,22 @@ describe("legacy and abandoned drafts", () => {
     expect(stripe.calls).toHaveLength(0);
     expect(openExceptions(harness)[0]).toMatchObject({ code: "legacy_payment_pending_without_session" });
     expect(holdRow(harness).status).toBe("payment_pending");
+  });
+
+  it("holds an overflowing legacy creation history for review without another Stripe request", async () => {
+    const { harness, stripe } = setup();
+    const draft = await createDraft(harness);
+    await harness.call(orderDrafts.beginCheckoutPaymentAttempt, draft);
+    for (let index = 0; index < 51; index++) harness.seed("paymentEvents", {
+      orderRef: draft.orderRef, provider: "stripe", providerPaymentId: `cs_test_legacy_${index}`,
+      status: "created", currency: "usd", amountCents: 4000, createdAt: Date.now()
+    });
+
+    await expect(startPayment(harness, draft)).rejects.toThrow("payment_needs_attention");
+    expect(stripe.calls).toHaveLength(0);
+    expect(harness.rows("checkoutPaymentAttempts")).toHaveLength(0);
+    expect(holdRow(harness).status).toBe("payment_pending");
+    expect(openExceptions(harness)[0]).toMatchObject({ code: "legacy_payment_pending_without_session" });
   });
 
   it("releases a replaced draft only while it is still a draft and the key matches", async () => {
