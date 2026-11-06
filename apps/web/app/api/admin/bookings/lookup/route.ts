@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     const result = await fetchQuery(
       lookupBookingQuery,
       withoutUndefined({
-        query: requiredString(url.searchParams.get("q"), "q", 120),
+        query: requiredString(url.searchParams.get("q"), "q", 200),
         limit: parseLimit(url.searchParams.get("limit"))
       }),
       { url: deploymentUrl, token }

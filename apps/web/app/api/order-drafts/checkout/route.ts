@@ -51,7 +51,7 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
 }
 
 export async function POST(request: Request) {
-  const unavailable = ticketSalesUnavailableResponse();
+  const unavailable = ticketSalesUnavailableResponse(request);
   if (unavailable) {
     return unavailable;
   }

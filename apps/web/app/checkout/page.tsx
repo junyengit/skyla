@@ -7,6 +7,7 @@ import { CheckoutClient } from "@/components/checkout-client";
 import { LaunchStatusBanner } from "@/components/launch-status-banner";
 import { localAdmissionPreviewEnabled } from "@/lib/local-admission-preview";
 import { loadPublicOperatingConfig } from "@/lib/public-operating-config";
+import { verifiedSandboxAdmissionOrigin } from "@/lib/sandbox-admission";
 
 export const dynamic = "force-dynamic";
 
@@ -93,9 +94,18 @@ function LocalAdmissionPreviewNotice() {
   );
 }
 
+function SandboxAdmissionNotice() {
+  return (
+    <p className="checkoutPreviewNotice" role="note">
+      Test checkout. No real money is charged.
+    </p>
+  );
+}
+
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
-  const localPreview = !siteConfig.launched && localAdmissionPreviewEnabled();
-  if (!siteConfig.launched && !localPreview) {
+  const sandboxAdmission = !siteConfig.launched && verifiedSandboxAdmissionOrigin() !== undefined;
+  const localPreview = !siteConfig.launched && !sandboxAdmission && localAdmissionPreviewEnabled();
+  if (!siteConfig.launched && !sandboxAdmission && !localPreview) {
     return <PreLaunchCheckout />;
   }
 
@@ -128,6 +138,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         </Link>
       </nav>
 
+      {sandboxAdmission ? <SandboxAdmissionNotice /> : null}
       {localPreview ? <LocalAdmissionPreviewNotice /> : null}
 
       <section className="checkoutHero">

@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-03T19:21:48Z",
+  "sourceCoreCommit": "5a4b5c923a65749e181fd8ab47e783bda369c659",
+  "branch": "codex/skydeck-sandbox-gate-20261003",
+  "change": "Deterministic weekday and weekend checkout hold closing-hour fixtures; runtime source unchanged.",
+  "command": "bun run check",
+  "exitCode": 0,
+  "testsPassed": 1477,
+  "turboTasksPassed": 16,
+  "convexTestsPassed": 751,
+  "scriptsTestsPassed": 46,
+  "evidenceLog": "/Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research/sandbox-gate-pre-opus-baseline-check.log",
+  "focusedPaymentInternalsTests": 51,
+  "diffCheckPassed": true,
+  "productionDeployment": false,
+  "providerPayments": false,
+  "postMoveValidation": {
+    "worktree": "/Users/jheller/Desktop/real outreach/skydeck-worktrees/sandbox-20261003",
+    "repair": "Use pathToFileURL for two executable-script guards so paths containing spaces cannot silently skip security/smoke validation.",
+    "command": "bun run check",
+    "exitCode": 0,
+    "testsPassed": 1477,
+    "evidenceLog": "/Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research/sandbox-gate-space-safe-baseline-check.log"
+  },
+  "resumeValidation": {
+    "checkedAt": "2026-10-09T04:14:58.331854+00:00",
+    "command": "bun run check",
+    "exitCode": 0,
+    "testsPassed": 1477,
+    "turboTasksPassed": 16,
+    "convexTestsPassed": 751,
+    "scriptsTestsPassed": 46,
+    "turboCacheReused": true,
+    "evidenceLog": "/Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research/sandbox-gate-baseline-20261009.log",
+    "sourceHead": "7f72a9c2f0067647d526f1693d9f066dfe9dc1d0"
+  }
+}

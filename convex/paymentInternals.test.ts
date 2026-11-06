@@ -1149,20 +1149,31 @@ describe("Checkout webhook capacity holds", () => {
     });
   }
 
-  it("converts the payment_pending hold to paid with the booking, without double counting", async () => {
-    const { ctx, state } = createCheckoutWebhookCtx();
+  it.each([
+    { visitDate: "2026-10-05", closingHour: 18 },
+    { visitDate: "2026-10-03", closingHour: 22 }
+  ])("converts the payment_pending hold to paid through $closingHour:00 on $visitDate, without double counting", async ({ visitDate, closingHour }) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T16:00:00.000Z"));
+    try {
+      const { ctx, state } = createCheckoutWebhookCtx();
+      state.orders[0].visitDate = visitDate;
+      state.capacityReservations[0].visitDate = visitDate;
 
-    await expect(runCheckoutWebhook(ctx, paidArgs)).resolves.toEqual({
-      status: "processed",
-      duplicate: false,
-      orderRef
-    });
+      await expect(runCheckoutWebhook(ctx, paidArgs)).resolves.toEqual({
+        status: "processed",
+        duplicate: false,
+        orderRef
+      });
 
-    expect(state.capacityReservations).toHaveLength(1);
-    expect(state.capacityReservations[0]).toMatchObject({ status: "paid", bookingRef: orderRef, paidAt: expect.any(Number) });
-    expect(state.bookings[0]).toMatchObject({ orderRef, partySize: 2, status: "confirmed" });
-    const occupancy = await occupancyFor(ctx);
-    expect(occupancy.intervals).toEqual([{ startMinutes: 14 * 60, endMinutes: 18 * 60, partySize: 2 }]);
+      expect(state.capacityReservations).toHaveLength(1);
+      expect(state.capacityReservations[0]).toMatchObject({ status: "paid", bookingRef: orderRef, paidAt: expect.any(Number) });
+      expect(state.bookings[0]).toMatchObject({ orderRef, partySize: 2, status: "confirmed" });
+      const occupancy = await occupancyFor(ctx, visitDate);
+      expect(occupancy.intervals).toEqual([{ startMinutes: 14 * 60, endMinutes: closingHour * 60, partySize: 2 }]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it.each([

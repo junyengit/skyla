@@ -89,7 +89,7 @@ export function AdmissionClient() {
     <p role="status">{occupancy ? occupancy.verified ? `${occupancy.insideCount} of ${occupancy.capacity} inside` : "Occupancy needs reconciliation. Admission stays blocked." : "Occupancy has not been verified."}</p>
     <form onSubmit={event => { event.preventDefault(); setBookings([]); void run(async () => { const matches = await lookup(); await readOccupancy(); if (!matches.length) setMessage("No matching ticket. Check the booking reference."); }); }}>
       <label htmlFor="admission-lookup">Ticket QR link, booking reference or email</label>
-      <input id="admission-lookup" value={query} onChange={event => { setQuery(event.target.value); setBookings([]); }} autoComplete="off" maxLength={120} disabled={!signedIn || busy} />
+      <input id="admission-lookup" value={query} onChange={event => { setQuery(event.target.value); setBookings([]); }} autoComplete="off" maxLength={200} disabled={!signedIn || busy} />
       <button type="submit" className="primaryAction" disabled={!signedIn || busy || !query.trim()}>Find ticket</button>
     </form>
     {message ? <p role="status">{message}</p> : null}

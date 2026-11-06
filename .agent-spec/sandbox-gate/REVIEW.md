@@ -1,0 +1,19 @@
+# Sandbox gate review — October 9, 2026
+
+Status: reviewed local implementation; not a completed provider payment flow or a release-ready change. Runtime edits remain uncommitted pending the project release gate.
+
+Actual UI implementer: `claude-opus-5-5`, run `650a7998-4baf-4715-936f-5e846e0a8320`. The orchestrator stopped the run after Claude denied an optional guard-removal mutation-testing command. No denied mutation command was rerun. The model did not deliver a final report. All reviewed guard hashes were restored and independently confirmed by the read-only review agent.
+
+The orchestrator repaired only the new Convex test helper: an explicit environment-map type and scanner-recognized `...` placeholders for nonfunctional Stripe fixture strings. Runtime predicates, UI, assertions, and the security scanner were unchanged by those repairs.
+
+Validation: `bun run check` passed after those repairs. 1,749 tests passed: web 794, Convex 795, config 48, payments 60, UI 6, scripts 46. Build, lint, types, tracked artifact guard, and legacy Supabase retirement guard passed. The read-only agent found no concrete runtime gate defect.
+
+Rendered proof in the existing main Chrome: desktop, 390×844, and 320×740. One readable test notice; full-venue link retained; no measured horizontal overflow at 390 or 320. Native date keyboard selected October 10 and showed Saturday hours 10:00–22:00 PT. Two adults, one youth, and one child showed four visitors and $50. Cancellation-parameter copy was inspected as a display state, not proof of a provider cancellation. A browser fill helper did not commit the native date, while real keyboard changes did. Review-button automation subsequently detached in the extension; a completed browser review/payment interaction is not claimed. A later stale browser capture must not be used as evidence of default closed behavior.
+
+Native Preview: official Convex CLI pushed the reviewed backend only to `preview:bold-reindeer-495` using an explicit private target file from a disposable source copy. The resulting copy's public URLs confirm the target. No original Dev/Prod deployment was changed. No Stripe key, webhook key, sales opt-in, staff identity, payment, email, or customer record was created. Read-only config and Saturday availability work; capacity is 30. Actual HTTP proof: wrong bearer 401; all three backend purchase operations 503 `ticket_sales_not_live`; local unapproved origin 403. The default web environment separately renders the closed page over HTTP and returns purchase 503.
+
+External evidence directory: `/Users/jheller/Documents/Codex/2026-10-02/skydeck-ticketing-research`. Logs and captures use `sandbox-gate-*-20261009` names. The native proof is `sandbox-gate-native-proof-20261009.json`, SSR proof `sandbox-gate-ssr-proof-20261009.json`, default closed proof `sandbox-gate-default-closed-proof-20261009.json`. Initial raw-text SSR counting was corrected to count parsed HTML notes; React's serialized payload can repeat text without creating a second note.
+
+Remaining acceptance: actual branch-scoped Vercel Preview, SkyDeck Stripe test credentials and webhook, confirmed test payment, phone ticket, authenticated staff identity and admission, repeated notification/redemption/expiry checks, and printed-size QR scan. The separately identified Preview QR parser defect remains: the QR contains a configured Preview URL, while staff lookup accepts only `skydeckla.com` or a bare ticket token. Fix it as the next bounded change after this increment's release gate. Email delivery has not been proven. Production deployment and live money remain owner-gated.
+
+Rollback: remove/unset the sandbox opt-in; both web and backend fail closed. The source cutoff is October 12 at 04:00 UTC, earlier than the isolated provider expiry. Runtime source can be returned to reviewed parent `4285902` in this isolated worktree after preserving this diff; do not reset original/Hermes work.

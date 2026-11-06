@@ -1040,7 +1040,7 @@ export function AdminOpsClient({ catalog, catalogState }: AdminOpsClientProps) {
               <input
                 autoComplete="off"
                 inputMode="search"
-                maxLength={120}
+                maxLength={200}
                 placeholder="SKY2607-ABC123"
                 value={bookingLookupQuery}
                 disabled={Boolean(actionKey)}

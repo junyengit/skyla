@@ -1,4 +1,5 @@
 import { retiredSupabaseFunctions } from "../security/check-legacy-supabase-retirement.mjs";
+import { pathToFileURL } from "node:url";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const baseUrlInput = process.env.SKYLA_SUPABASE_RETIREMENT_BASE_URL ?? process.env.SUPABASE_FUNCTION_BASE_URL ?? "";
@@ -156,7 +157,7 @@ function printResults(results) {
   console.log("Supabase retirement smoke passed. All probed functions are disabled or fail-closed retired.");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const results = await runSupabaseRetirementSmoke();
     printResults(results);
