@@ -9,8 +9,8 @@ import { describe, expect, it } from "vitest";
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scriptPath = resolve(repoRoot, "scripts/setup/check-vercel-project.mjs");
 const goodProject = {
-  id: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
-  name: "web",
+  id: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
+  name: "skyla",
   rootDirectory: "apps/web",
   framework: "nextjs",
   nodeVersion: "24.x"
@@ -62,7 +62,7 @@ describe("check-vercel-project", () => {
     expect(output.readyForProjectShape).toBe(true);
     expect(output.dashboard).toMatchObject({
       id: goodProject.id,
-      name: "web",
+      name: "skyla",
       rootDirectory: "apps/web",
       framework: "nextjs",
       nodeVersion: "24.x"
@@ -206,13 +206,13 @@ describe("check-vercel-project", () => {
   it("parses Vercel CLI project inspect output", () => {
     const result = runCheckWithFakeCli(`
 Vercel CLI 54.21.1 (Node.js 26.4.0)
-> Found Project junyen-enterprises/web [249ms]
+> Found Project jaky/skyla [249ms]
 
   General
 
-    ID                              prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr
-    Name                            web
-    Owner                           Junyen Enterprises
+    ID                              prj_9kHRLLx98IDDFlvparVhBDPtIpFt
+    Name                            skyla
+    Owner                           jaky
     Root Directory                  apps/web
     Node.js Version                 24.x
 
@@ -235,10 +235,10 @@ Vercel CLI 54.21.1 (Node.js 26.4.0)
   it("parses Vercel CLI project inspect output when the CLI writes to stderr", () => {
     const result = runCheckWithFakeCli(`
 Vercel CLI 54.21.1 (Node.js 26.4.0)
-> Found Project junyen-enterprises/web [249ms]
+> Found Project jaky/skyla [249ms]
 
-    ID				prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr
-    Name			web
+    ID				prj_9kHRLLx98IDDFlvparVhBDPtIpFt
+    Name			skyla
     Root Directory		apps/web
     Node.js Version		24.x
     Framework Preset		Next.js
