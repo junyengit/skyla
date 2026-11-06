@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const defaultScope = "junyen-enterprises";
+const defaultScope = "jaky";
 const required = [
   {
     key: "NEXT_PUBLIC_CONVEX_URL",
@@ -221,7 +221,7 @@ function loadEnvList() {
       payload: { envs: [] },
       error: [
         "Could not read Vercel env list.",
-        "Run `cd apps/web && bunx vercel link --yes --scope junyen-enterprises --project web`, then retry.",
+        "Run `cd apps/web && bunx vercel link --yes --scope jaky --project skyla`, then retry.",
         result.stderr.trim() || result.stdout.trim()
       ].filter(Boolean).join(" ")
     };
