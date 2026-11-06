@@ -16,9 +16,9 @@ vi.stubGlobal("fetch", fetchMock);
 
 // Test fixtures only: hosts shaped like Junyen's Vercel generated URLs. They
 // are not the deployed Preview hostnames, which the source never guesses.
-const fixtureBranchHost = "web-git-sandbox-fixture-junyen-enterprises.vercel.app";
+const fixtureBranchHost = "skyla-git-sandbox-fixture-jaky.vercel.app";
 const fixtureOrigin = `https://${fixtureBranchHost}`;
-const fixtureUniqueHost = "web-a1b2c3d4e-junyen-enterprises.vercel.app";
+const fixtureUniqueHost = "web-a1b2c3d4e-jaky.vercel.app";
 
 const insideWindow = Date.parse("2026-10-10T18:00:00Z");
 const cutoff = Date.parse("2026-10-12T04:00:00Z");
@@ -30,7 +30,7 @@ const verifiedEnv: Record<string, string | undefined> = {
   VERCEL: "1",
   VERCEL_ENV: "preview",
   VERCEL_TARGET_ENV: "preview",
-  VERCEL_PROJECT_ID: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
+  VERCEL_PROJECT_ID: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
   VERCEL_GIT_COMMIT_REF: "codex/skydeck-sandbox-gate-20261003",
   VERCEL_BRANCH_URL: fixtureBranchHost,
   VERCEL_URL: fixtureUniqueHost,
@@ -109,7 +109,7 @@ describe("sandbox admission web decision", () => {
     ["a placeholder site URL", { CONVEX_SITE_URL: "undefined" }, "backend_unpinned"],
     ["no configured origin", { SKYLA_SANDBOX_ADMISSION_ORIGIN: undefined }, "origin_unapproved"],
     ["no branch URL", { VERCEL_BRANCH_URL: undefined }, "origin_unapproved"],
-    ["an origin for another branch", { VERCEL_BRANCH_URL: "web-git-other-branch-junyen-enterprises.vercel.app" }, "origin_unapproved"],
+    ["an origin for another branch", { VERCEL_BRANCH_URL: "skyla-git-other-branch-jaky.vercel.app" }, "origin_unapproved"],
     ["the unique deployment URL as the origin", { SKYLA_SANDBOX_ADMISSION_ORIGIN: `https://${fixtureUniqueHost}`, SKYLA_PUBLIC_ORIGIN: `https://${fixtureUniqueHost}` }, "origin_unapproved"],
     ["a branch URL that is also the unique deployment URL", { VERCEL_URL: fixtureBranchHost }, "origin_unapproved"],
     ["a branch URL that is also the production URL", { VERCEL_PROJECT_PRODUCTION_URL: fixtureBranchHost }, "origin_unapproved"],

@@ -104,4 +104,18 @@ describe("admin booking lookup route", () => {
       { url: "https://example.convex.cloud", token: "staff_token" }
     );
   });
+
+  it("forwards a long Preview QR URL but rejects lookup input beyond 200 characters", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://example.convex.cloud";
+    const query = `https://skyla-git-${"a".repeat(48)}-jaky.vercel.app/tickets/tkt_${"b".repeat(32)}`;
+    vi.mocked(fetchQuery).mockResolvedValueOnce({ matches: [] });
+    const response = await route.GET(request(`/api/admin/bookings/lookup?q=${encodeURIComponent(query)}`, { Authorization: "Bearer staff_token" }));
+    expect(query.length).toBeGreaterThan(120);
+    expect(response.status).toBe(200);
+    expect(fetchQuery).toHaveBeenCalledWith("admin:lookupBookingForCheckIn", { query }, { url: "https://example.convex.cloud", token: "staff_token" });
+    vi.mocked(fetchQuery).mockClear();
+    const rejected = await route.GET(request(`/api/admin/bookings/lookup?q=${"a".repeat(201)}`, { Authorization: "Bearer staff_token" }));
+    expect(rejected.status).toBe(400);
+    expect(fetchQuery).not.toHaveBeenCalled();
+  });
 });

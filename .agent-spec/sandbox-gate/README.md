@@ -7,6 +7,18 @@ development, and every other deployment keep the existing closed behavior.
 Nothing here proves a real Stripe payment, staff sign-in, email delivery, or a
 printed QR scan. Unit tests use fixtures and mocked network calls only.
 
+November 6 maintenance: the web identity now binds to the owner's `jaky/skyla`
+project. The October backend and cutoff remain expired deliberately. No opt-in
+has been enabled and no expiry has been extended. A usable sandbox still needs
+a new isolated backend, reviewed source pins, test Stripe configuration, and the
+provider acceptance checks below. Production sales remain disabled.
+
+Staff lookup now accepts a ticket URL from the exact sandbox origin only while
+the backend independently verifies the sandbox gate. The browser, web lookup
+route, and backend allow up to 200 characters so the longest valid Vercel branch
+host fits. Lookalike origins, URL suffixes, expired gates, and live mode fail
+closed. Bare codes and canonical production ticket URLs retain their behavior.
+
 ## Pinned in reviewed source
 
 `packages/config/src/sandbox-admission.ts` (exported from `@skyla/config`):
@@ -17,7 +29,7 @@ printed QR scan. Unit tests use fixtures and mocked network calls only.
 | Cloud URL | `https://bold-reindeer-495.convex.cloud` |
 | Site URL | `https://bold-reindeer-495.convex.site` |
 | Gate cutoff | `2026-10-12T04:00:00Z` (provider expiry is about `2026-10-13T04:19Z`) |
-| Vercel project | `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr` (Junyen `web`) |
+| Vercel project | `prj_9kHRLLx98IDDFlvparVhBDPtIpFt` (jaky `skyla`) |
 | Vercel branch | `codex/skydeck-sandbox-gate-20261003` |
 | Always rejected | `grand-ferret-807` (revoked), `disciplined-chickadee-688` (original Dev), `perceptive-fox-396` (original Prod) |
 
@@ -46,19 +58,19 @@ Supplied by Vercel and checked exactly:
 | `VERCEL` | `1` |
 | `VERCEL_ENV` | `preview` |
 | `VERCEL_TARGET_ENV` | `preview` |
-| `VERCEL_PROJECT_ID` | `prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr` |
+| `VERCEL_PROJECT_ID` | `prj_9kHRLLx98IDDFlvparVhBDPtIpFt` |
 | `VERCEL_GIT_COMMIT_REF` | `codex/skydeck-sandbox-gate-20261003` |
 | `VERCEL_BRANCH_URL` | must equal the configured origin without `https://` |
 | `VERCEL_URL` | must not equal the configured origin (unique deployment URL is never approved) |
 | `VERCEL_PROJECT_PRODUCTION_URL` | must not equal the configured origin |
 | `NODE_ENV` | `production` (compiled build mode) |
 
-The configured origin must be exactly `https://web-git-<branch>-junyen-enterprises.vercel.app`:
+The configured origin must be exactly `https://skyla-git-<branch>-jaky.vercel.app`:
 one lowercase DNS label of at most 63 characters, no port, path, query,
 fragment, credentials, trailing slash, or list. Do not guess it: read the
 stable branch URL from the Vercel deployment (it equals `VERCEL_BRANCH_URL`).
-If Vercel truncates the label so it no longer starts with `web-git-` and ends
-with `-junyen-enterprises`, the gate stays closed and the binding needs review.
+If Vercel truncates the label so it no longer starts with `skyla-git-` and ends
+with `-jaky`, the gate stays closed and the binding needs review.
 
 Because the origin is matched to the stable branch URL, redeploying the branch
 (which changes `VERCEL_URL`) does not require reconfiguration.
@@ -147,7 +159,7 @@ fulfillment are untouched.
 - `scripts/setup/check-vercel-env.mjs` does not know the new names; it was not
   changed (protected path).
 - The Vercel branch URL's exact hostname was not observed. Tests use the
-  labeled fixture `web-git-sandbox-fixture-junyen-enterprises.vercel.app`.
+  labeled fixture `skyla-git-sandbox-fixture-jaky.vercel.app`.
 - No provider operation, Preview deployment, payment, ticket, staff admission,
   or email was performed or proven.
 

@@ -9,9 +9,9 @@ import {
   strictSandboxAdmissionOrigin
 } from "./index";
 
-// Test fixture only: shaped like Junyen's Vercel Git-branch hosts. It is not
+// Test fixture only: shaped like jaky's Vercel Git-branch hosts. It is not
 // the deployed Preview hostname, which the source never guesses.
-const fixtureBranchHost = "web-git-sandbox-fixture-junyen-enterprises.vercel.app";
+const fixtureBranchHost = "skyla-git-sandbox-fixture-jaky.vercel.app";
 const fixtureOrigin = `https://${fixtureBranchHost}`;
 
 describe("sandbox admission binding", () => {
@@ -21,7 +21,7 @@ describe("sandbox admission binding", () => {
       convexCloudUrl: "https://bold-reindeer-495.convex.cloud",
       convexSiteUrl: "https://bold-reindeer-495.convex.site",
       closesAt: Date.parse("2026-10-12T04:00:00Z"),
-      vercelProjectId: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
+      vercelProjectId: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
       vercelBranch: "codex/skydeck-sandbox-gate-20261003"
     });
     expect(Object.isFrozen(sandboxAdmission)).toBe(true);
@@ -64,7 +64,7 @@ describe("sandbox admission binding", () => {
 });
 
 describe("strict sandbox admission origin", () => {
-  it("accepts a bare HTTPS Junyen web Git-branch origin", () => {
+  it("accepts a bare HTTPS jaky skyla Git-branch origin", () => {
     expect(strictSandboxAdmissionOrigin(fixtureOrigin)).toBe(fixtureOrigin);
   });
 
@@ -81,22 +81,22 @@ describe("strict sandbox admission origin", () => {
     ["explicit port", `https://${fixtureBranchHost}:8443`],
     ["credentials", `https://guest:pw@${fixtureBranchHost}`],
     ["uppercase", fixtureOrigin.toUpperCase()],
-    ["mixed case host", "https://Web-git-sandbox-fixture-junyen-enterprises.vercel.app"],
+    ["mixed case host", "https://Skyla-git-sandbox-fixture-jaky.vercel.app"],
     ["trailing dot", `${fixtureOrigin}.`],
     ["surrounding space", ` ${fixtureOrigin} `],
     ["list", `${fixtureOrigin},https://skydeckla.com`],
     ["production domain", "https://skydeckla.com"],
     ["www production domain", "https://www.skydeckla.com"],
     ["localhost", "http://localhost:3000"],
-    ["unique deployment URL", "https://web-a1b2c3d4e-junyen-enterprises.vercel.app"],
-    ["production vercel.app alias", "https://web-junyen-enterprises.vercel.app"],
-    ["another project", "https://admin-git-sandbox-fixture-junyen-enterprises.vercel.app"],
-    ["another team", "https://web-git-sandbox-fixture-other-team.vercel.app"],
-    ["empty branch", "https://web-git--junyen-enterprises.vercel.app"],
+    ["unique deployment URL", "https://skyla-a1b2c3d4e-jaky.vercel.app"],
+    ["production vercel.app alias", "https://skyla-jaky.vercel.app"],
+    ["another project", "https://admin-git-sandbox-fixture-jaky.vercel.app"],
+    ["another team", "https://skyla-git-sandbox-fixture-other-team.vercel.app"],
+    ["empty branch", "https://skyla-git--jaky.vercel.app"],
     ["nested subdomain", `https://preview.${fixtureBranchHost}`],
-    ["lookalike suffix", "https://web-git-sandbox-fixture-junyen-enterprises.vercel.app.example.com"],
-    ["custom preview suffix", "https://web-git-sandbox-fixture-junyen-enterprises.skydeckla.com"],
-    ["over-long DNS label", `https://web-git-${"a".repeat(40)}-junyen-enterprises.vercel.app`]
+    ["lookalike suffix", "https://skyla-git-sandbox-fixture-jaky.vercel.app.example.com"],
+    ["custom preview suffix", "https://skyla-git-sandbox-fixture-jaky.skydeckla.com"],
+    ["over-long DNS label", `https://skyla-git-${"a".repeat(64)}-jaky.vercel.app`]
   ])("rejects %s", (_label, value) => {
     expect(strictSandboxAdmissionOrigin(value)).toBeUndefined();
   });

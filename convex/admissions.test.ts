@@ -6,6 +6,7 @@ import * as ticketDelivery from "./ticketDelivery";
 import { createConvexHarness, type ConvexHarness } from "./convexHarness.testkit";
 import { buildCheckoutDraftWrite } from "./lib/orderDraftPersistence";
 import { loadDateOccupancy, loadVenueHours } from "./lib/capacity";
+import { sandboxAdmission } from "@skyla/config";
 
 const noon = Date.parse("2026-10-02T19:00:00Z");
 let sequence = 0;
@@ -113,6 +114,28 @@ describe("atomic, paid, single-use admission", () => {
     await h.ctx.db.patch(bookingId, { status: "confirmed", checkedInAt: undefined });
     expect(await h.call(ticketDelivery.getTicket, { ticketCode })).toMatchObject({ status: "checked-in" });
     expect((await admit(h, ref)).admissionOutcome).toBe("already_admitted");
+  });
+  it("looks up a long sandbox QR only during the independently verified backend window", async () => {
+    const h = setup(); const { ref } = paidBooking(h);
+    const ticketCode = `tkt_${sequence.toString(16).padStart(32, "0")}`;
+    h.seed("ticketDeliveries", { ticketCode, bookingRef: ref, orderRef: ref, status: "suppressed", attemptCount: 0, sendVersion: 1, createdAt: noon, updatedAt: noon });
+    const origin = `https://skyla-git-${"a".repeat(48)}-jaky.vercel.app`;
+    const env = {
+      SKYLA_SANDBOX_ADMISSION: sandboxAdmission.deployment,
+      CONVEX_CLOUD_URL: sandboxAdmission.convexCloudUrl,
+      CONVEX_SITE_URL: sandboxAdmission.convexSiteUrl,
+      SKYLA_STRIPE_MODE: "test", STRIPE_SECRET_KEY: "sk_test_...",
+      SKYLA_SANDBOX_ADMISSION_ORIGIN: origin,
+      SKYLA_PUBLIC_ORIGIN: origin, SKYLA_PAYMENT_RETURN_ORIGINS: origin
+    };
+    try {
+      for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+      const query = `${origin}/tickets/${ticketCode}`;
+      expect(query.length).toBeGreaterThan(120);
+      expect(await h.call(admin.lookupBookingForCheckIn, { query }, "pos")).toMatchObject({ matchType: "ticketCode", matches: [{ bookingRef: ref }] });
+      vi.setSystemTime(sandboxAdmission.closesAt);
+      expect(await h.call(admin.lookupBookingForCheckIn, { query }, "pos")).toMatchObject({ matches: [] });
+    } finally { vi.unstubAllEnvs(); }
   });
   it("expires public ticket display by the Los Angeles closing time and withholds unpaid QR eligibility", async () => {
     const h = setup(); const { ref } = paidBooking(h);

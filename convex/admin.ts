@@ -23,6 +23,7 @@ import {
 import { buildAdminBookingVouchers, type AdminBookingVouchers } from "./lib/adminVouchers";
 import { requireStaffUser } from "./lib/auth";
 import { admitBooking } from "./lib/admission";
+import { ticketCodeFromStaffLookup } from "./lib/ticketLookup";
 import { listTerminalReaderRegistry } from "./lib/terminalReaderRegistry";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -889,15 +890,14 @@ export const lookupBookingForCheckIn = query({
     if (!queryText) {
       throw new Error("query is required");
     }
-    if (queryText.length > 120) {
-      throw new Error("query must be 120 characters or fewer");
+    if (queryText.length > 200) {
+      throw new Error("query must be 200 characters or fewer");
     }
     const limit = Math.max(1, Math.min(args.limit ?? 6, 8));
     const normalizedRef = queryText.toUpperCase();
 
     let ticketRef: string | undefined;
-    const opaqueCode = queryText.toLowerCase().match(/^tkt_[a-f0-9]{32}$/)?.[0]
-      ?? queryText.match(/^https:\/\/skydeckla\.com\/tickets\/(tkt_[a-f0-9]{32})\/?$/i)?.[1]?.toLowerCase();
+    const opaqueCode = ticketCodeFromStaffLookup(queryText);
     if (opaqueCode) {
       const delivery = await ctx.db.query("ticketDeliveries").withIndex("by_ticketCode", q => q.eq("ticketCode", opaqueCode)).unique();
       ticketRef = delivery?.bookingRef;

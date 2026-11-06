@@ -1,5 +1,5 @@
 // The one reviewed admission sandbox: the isolated Convex Preview created on
-// 2026-10-09 with a four-day provider expiry, reached only from the Junyen
+// 2026-10-09 with a four-day provider expiry, reached only from the jaky
 // Vercel Preview of this branch. Every identity is pinned here so pointing the
 // sandbox anywhere else takes a reviewed code change, never an environment edit.
 export const sandboxAdmission = Object.freeze({
@@ -8,7 +8,7 @@ export const sandboxAdmission = Object.freeze({
   convexSiteUrl: "https://bold-reindeer-495.convex.site",
   // About a day before the provider expiry, so a lapsing backend is never trusted.
   closesAt: Date.parse("2026-10-12T04:00:00Z"),
-  vercelProjectId: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
+  vercelProjectId: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
   vercelBranch: "codex/skydeck-sandbox-gate-20261003"
 });
 
@@ -20,8 +20,8 @@ export const sandboxAdmissionRejectedDeployments = Object.freeze([
   "perceptive-fox-396"
 ] as const);
 
-const previewHostPrefix = "web-git-";
-const previewHostSuffix = "-junyen-enterprises";
+const previewHostPrefix = "skyla-git-";
+const previewHostSuffix = "-jaky";
 const dnsLabel = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export function sandboxAdmissionOpenAt(now: number) {
@@ -30,7 +30,7 @@ export function sandboxAdmissionOpenAt(now: number) {
 
 /**
  * Returns the value only when it is exactly `https://` plus one Git-branch
- * host of Junyen's `web` project under vercel.app. Ports, paths, queries,
+ * host of jaky's `skyla` project under vercel.app. Ports, paths, queries,
  * fragments, credentials, uppercase, trailing dots, and lists never match.
  */
 export function strictSandboxAdmissionOrigin(value: string | undefined) {

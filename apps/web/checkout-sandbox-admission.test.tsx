@@ -12,7 +12,7 @@ vi.mock("./lib/public-operating-config", () => ({
 
 // Test fixture only: shaped like Junyen's Vercel Git-branch hosts. It is not
 // the deployed Preview hostname, which the source never guesses.
-const fixtureBranchHost = "web-git-sandbox-fixture-junyen-enterprises.vercel.app";
+const fixtureBranchHost = "skyla-git-sandbox-fixture-jaky.vercel.app";
 const fixtureOrigin = `https://${fixtureBranchHost}`;
 const sandboxNotice = "Test checkout. No real money is charged.";
 
@@ -21,10 +21,10 @@ const verifiedEnv: Record<string, string> = {
   VERCEL: "1",
   VERCEL_ENV: "preview",
   VERCEL_TARGET_ENV: "preview",
-  VERCEL_PROJECT_ID: "prj_fhlOjcwSbnPAuLi8tTiGbhjVomnr",
+  VERCEL_PROJECT_ID: "prj_9kHRLLx98IDDFlvparVhBDPtIpFt",
   VERCEL_GIT_COMMIT_REF: "codex/skydeck-sandbox-gate-20261003",
   VERCEL_BRANCH_URL: fixtureBranchHost,
-  VERCEL_URL: "web-a1b2c3d4e-junyen-enterprises.vercel.app",
+  VERCEL_URL: "web-a1b2c3d4e-jaky.vercel.app",
   VERCEL_PROJECT_PRODUCTION_URL: "skydeckla.com",
   SKYLA_SANDBOX_ADMISSION: "bold-reindeer-495",
   SKYLA_SANDBOX_ADMISSION_ORIGIN: fixtureOrigin,

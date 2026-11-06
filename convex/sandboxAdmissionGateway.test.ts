@@ -9,7 +9,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 // Test fixture only: shaped like Junyen's Vercel Git-branch hosts. It is not
 // the deployed Preview hostname, which the source never guesses.
-const fixtureOrigin = "https://web-git-sandbox-fixture-junyen-enterprises.vercel.app";
+const fixtureOrigin = "https://skyla-git-sandbox-fixture-jaky.vercel.app";
 const insideWindow = Date.parse("2026-10-10T18:00:00Z");
 const cutoff = Date.parse("2026-10-12T04:00:00Z");
 const gatewaySecret = "convex-sandbox-gateway-secret-32-chars";
