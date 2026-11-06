@@ -135,6 +135,19 @@ async function findAttemptForOrder(ctx: QueryCtx | MutationCtx, orderRef: string
     .first();
 }
 
+const creationEvidenceLimit = 50;
+
+async function legacySessionCreation(ctx: QueryCtx | MutationCtx, orderRef: string) {
+  // Failed webhook history must not grow the hot recovery read. An overflowing
+  // creation subset is ambiguous, so leave the order held for staff review.
+  const events = await ctx.db.query("paymentEvents")
+    .withIndex("by_orderRef_status", q => q.eq("orderRef", orderRef).eq("status", "created"))
+    .take(creationEvidenceLimit + 1);
+  return events.length <= creationEvidenceLimit
+    ? events.find(event => event.provider === "stripe")
+    : undefined;
+}
+
 async function scheduleReconcile(ctx: MutationCtx, attemptId: AttemptId, reconcileAt: number) {
   await ctx.scheduler.runAt(reconcileAt, reconcileCheckoutAttemptAction, { attemptId });
 }
@@ -196,12 +209,7 @@ export const getCheckoutAttemptContext = internalQuery({
     if (attempt) return { kind: "attempt", attempt: attemptView(attempt) };
     if (order.status === "draft") return { kind: "draft" };
     if (order.status !== "payment_pending") return { kind: "closed", status: order.status };
-    const created = (
-      await ctx.db
-        .query("paymentEvents")
-        .withIndex("by_orderRef", (q) => q.eq("orderRef", order.orderRef))
-        .collect()
-    ).find((event) => event.provider === "stripe" && event.status === "created");
+    const created = await legacySessionCreation(ctx, order.orderRef);
     const raw = created?.raw && typeof created.raw === "object" ? (created.raw as { url?: unknown }) : {};
     return {
       kind: "legacy_pending",
@@ -377,10 +385,14 @@ async function applyCreateOutcome(
     }, now);
     const created = await ctx.db
       .query("paymentEvents")
-      .withIndex("by_provider_providerPaymentId", (q) =>
-        q.eq("provider", "stripe").eq("providerPaymentId", outcome.providerSessionId)
+      .withIndex("by_provider_providerPaymentId_status", (q) =>
+        q.eq("provider", "stripe").eq("providerPaymentId", outcome.providerSessionId).eq("status", "created")
       )
-      .collect();
+      .take(creationEvidenceLimit + 1);
+    if (created.length > creationEvidenceLimit) {
+      await markAttemptException(ctx, attempt, "checkout_creation_evidence_overflow", now);
+      return { status: "exception" as const };
+    }
     if (!created.some((event) => event.orderRef === attempt.orderRef && event.status === "created")) {
       await ctx.db.insert("paymentEvents", {
         orderRef: attempt.orderRef,
@@ -495,12 +507,7 @@ export const adoptLegacyCheckoutSession = internalMutation({
     const existing = await findAttemptForOrder(ctx, order.orderRef);
     if (existing) return { kind: "existing", attempt: attemptView(existing) };
     const now = Date.now();
-    const created = (
-      await ctx.db
-        .query("paymentEvents")
-        .withIndex("by_orderRef", (q) => q.eq("orderRef", order.orderRef))
-        .collect()
-    ).find((event) => event.provider === "stripe" && event.status === "created");
+    const created = await legacySessionCreation(ctx, order.orderRef);
     if (order.status !== "payment_pending" || !created) {
       await openOperationsException(ctx, {
         category: "checkout_attempt",
