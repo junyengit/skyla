@@ -62,6 +62,6 @@
   "dependencies": {
     "@skyla/config": "workspace:*",
     "@skyla/payments": "workspace:*",
-    "convex": "^1.42.1"
+    "convex": "^1.49.0"
   }
 }
